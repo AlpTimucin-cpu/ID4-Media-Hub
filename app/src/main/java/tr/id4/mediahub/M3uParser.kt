@@ -38,6 +38,15 @@ object M3uParser {
         return ""
     }
 
+    /** Clean previously saved titles from the old parser without destroying user-defined names. */
+    fun displayTitle(raw: String): String {
+        val contaminated = listOf("group-title=", "user-agent=", "tvg-name=").any {
+            raw.contains(it, ignoreCase = true)
+        }
+        val candidate = if (contaminated && ',' in raw) raw.substringAfterLast(',') else raw
+        return cleanName(candidate, "Kanal")
+    }
+
     private fun cleanName(raw: String, fallback: String): String =
         raw.replace(Regex("[\\p{Cntrl}]"), " ")
             .replace(Regex("\\s+"), " ").trim().take(100).ifBlank { fallback }
