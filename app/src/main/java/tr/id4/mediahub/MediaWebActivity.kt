@@ -16,6 +16,9 @@ import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceError
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebStorage
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -201,6 +204,26 @@ class MediaWebActivity : Activity() {
                 if(selected()===tab) updateHeader()
                 renderTabs();persist()
             }
+            override fun onReceivedError(view:WebView?,request:WebResourceRequest,
+                error:WebResourceError){
+                if(request.isForMainFrame && selected()===tab) {
+                    toast("Web sayfası yüklenemedi: "+error.description.toString().take(80))
+                }
+            }
+            override fun onRenderProcessGone(view:WebView?,
+                detail:RenderProcessGoneDetail):Boolean {
+                val index=tabs.indexOfFirst{it.web===view}
+                if(index>=0){
+                    val failed=tabs.removeAt(index)
+                    pages.removeView(failed.web)
+                    failed.web.destroy()
+                    active=-1
+                    if(tabs.isEmpty())addTab(failed.url)
+                    else selectTab(0)
+                    toast("Web oynatıcı işlemi yeniden başlatıldı")
+                }
+                return true
+            }
             override fun onReceivedSslError(view:WebView?,handler:SslErrorHandler,error:SslError){
                 handler.cancel();toast("Sertifika hatası: sayfa engellendi")
             }
@@ -352,7 +375,7 @@ class MediaWebActivity : Activity() {
 
     private fun options(){
         val opts=arrayOf("Yeni sekme","Sekmeyi kapat","Favoriler","Geçmiş",
-            "Netflix Web","Masaüstü / Mobil","Tam ekran")
+            "Netflix Web","Masaüstü / Mobil","Tam ekran","Site verilerini temizle")
         AlertDialog.Builder(this).setTitle("Web Medya")
             .setItems(opts){_,index->when(index){
                 0->addTab()
@@ -362,7 +385,23 @@ class MediaWebActivity : Activity() {
                 4->open(NETFLIX_URL)
                 5->toggleDesktop()
                 6->immersive()
+                7->clearSiteData()
             }}.setNegativeButton("Kapat",null).show()
+    }
+
+    private fun clearSiteData() {
+        AlertDialog.Builder(this)
+            .setTitle("Site verilerini sil")
+            .setMessage("Giriş çerezleri ve web depolaması silinecek. " +
+                "Web favorilerin ve kanal listelerin kalacak. Devam edilsin mi?")
+            .setNegativeButton("İptal", null)
+            .setPositiveButton("Temizle") { _, _ ->
+                CookieManager.getInstance().removeAllCookies { }
+                CookieManager.getInstance().flush()
+                WebStorage.getInstance().deleteAllData()
+                tabs.forEach { it.web.clearCache(true);it.web.reload() }
+                toast("Site oturumları ve önbellek temizlendi")
+            }.show()
     }
 
     private fun updateAgent(web:WebView){
