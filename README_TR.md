@@ -1,7 +1,18 @@
-# ID.4 MEDIA HUB • v0.16 BETA
+# ID.4 MEDIA HUB • v0.17 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+
+## v0.17 — DiPlay'dan öğrendiklerimizi IPTV oynatıcısına uyguladık
+
+DiPlay 0.2.16'nın video performans ve kesinti tanılama yaklaşımı incelendi; **CarPlay alıcı kaynak kodu, özel sertifikalar ve BYD bileşenleri alınmadı**. İlgili ölçümler Media3'ün kendi olaylarıyla bağımsız olarak yeniden geliştirildi.
+
+- TV → **Yayın performansı ve bağlantı raporu**: ilk görüntünün gelme süresi, tamponlama süresi/sayısı, düşen kareler, işlenen kare sayısından hesaplanan **tahmini** işleme hızı, görüntü çözünürlüğü, video çözücü ve başlatma gecikmesi, hata türü, yeniden bağlanma denemeleri.
+- Rapor yereldir ve **video URL'si, M3U erişim tokenı, çerez, DRM verisi veya hesap bilgisi** içermez; kullanıcı isterse kopyalayabilir.
+- Geçici bağlantı sorununda en fazla **2 otomatik yeniden deneme** (1,5 ve 4 saniye). 401, 403, 404, 429, DRM veya codec hatalarında otomatik deneme yapılmaz.
+- Kanal değiştirildiğinde, TV sekmesinden çıkıldığında ya da uygulama kapandığında bekleyen yeniden denemeler iptal edilir.
+- Hız/kare ölçümleri Media3'ün olaylarıyla sınırlıdır. **Bu sürümde gerçek araç ekranı video aktarımı hâlâ doğrulanmadı.**
 
 ## Özellikler
 
