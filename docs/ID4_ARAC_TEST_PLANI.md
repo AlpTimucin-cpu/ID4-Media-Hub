@@ -1,0 +1,42 @@
+# ID.4 Media Hub v0.17 — Araç Üzerinde Doğrulama Planı
+
+**Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
+
+## Önceden doğrulananlar (tekrar kurma)
+
+- Telefonda Shizuku **önceden kurulup ayarlanmış**; tekrar kurulmasına gerek yok.
+- AABrowser **ID.4 büyük ekranda** YouTube sayfasını açtı.
+- Netflix web sitesi açıldı; Netflix videosu oynatılmadı.
+- ID.4 Media Hub'ın **Web Medya** bölümü Android 15 emülatöründe çalıştı; bu, araç ekranı başarısı değildir.
+
+## Park halinde gerçek araç testi
+
+1. Araç güvenli şekilde **park halinde** olsun.
+2. Telefonu ID.4'ün **kendi kablosuz Android Auto** bağlantısına bağla.
+3. ID.4 ekranındaki **Android Auto uygulama listesini** aç. ID.4 Media Hub'ın (müzik/radyo) simgesi var mı, not et.
+4. Görünüyorsa Media Hub'ın **Tüm radyolar** klasörünü aç; bir yayını seçerek **sesin araç hoparlörlerine aktarılıp aktarılmadığını** kontrol et.
+5. Telefonda ID.4 Media Hub → **Kitaplık → Araç / Android Auto bağlantı raporu** menüsünü aç.
+6. Raporun **Android Auto kitaplık isteği** satırına bak. Artık zaman damgası görünüyorsa Android Auto radyo kitaplığımıza bir istek gönderdi. **Bu, video desteğinin kanıtı değildir.**
+7. Raporun **Android Auto**, **Android WebView**, **Widevine**, **AABrowser** ve **Shizuku** sürümlerini kaydet. Gerekirse raporu **kopyala**.
+8. Araç ekranındaki **uygulama listesinin görüntüsü** ile raporu paylaş. Hesap veya yayın aboneliği bilgilerini paylaşma.
+
+## Olası sonuçları ayırma
+
+| Sonuç | Anlamı | Sonraki adım |
+| --- | --- | --- |
+| Media Hub AA listesinde var, radyolar açılıyor | Standart sürüş güvenli Android Auto ses hizmeti çalışıyor | IPTV ve web oynatıcısının telefon tarafında geliştirilmesi; park-video entegrasyonu ayrı araştırma |
+| Simgesi yok | AA discovery/package/install yöntemi sorunu olabilir | Android Auto sürümü, uygulama listesi ve APK imzasını karşılaştır |
+| Simgesi var, kitaplık boş | MediaLibraryService veya katalog sorunu | Bağlantı raporu, ses servisi/istek zamanları ve katalog içeriğini denetle |
+| Ses var ancak araçta video yok | Desteklenen Android Auto ses sınıfında normal | Ses ve park video mimarilerini birbirine karıştırma |
+| AABrowser görüntü veriyor ancak Media Hub yalnızca ses | AABrowser'ın mevcut araç entegrasyonu farklı | Onaylı park video API'leri ile cihaz uyumluluğunu yeniden değerlendir; sahte kategori veya sürüş kısıtı atlatma yok |
+
+## Sınırlar
+
+- Android Auto'da bu uygulamanın video görüntüsünü oynattığı **henüz doğrulanmadı**.
+- AABrowser'ın açık kaynak projesindeki car-launcher/navigasyon/oyun ilanları bu medya uygulamasına olduğu gibi kopyalanmıyor.
+- Aracın sürüş güvenliği kilitleri devre dışı bırakılmıyor; araç hareket ederken ön ekranda video gösterme hedeflenmiyor.
+- Widevine seviyesi Netflix'in site lisansı/DRM politikasını aşmaz; SportzX üçüncü taraf APK'sının akışı uygulamaya otomatik gömülmez.
+
+## Geliştirici notu
+
+`CarConnectionJournal` yalnızca medya kitaplığı erişim türünü ve zamanını saklar; kanal URL, cihaz kimliği veya token saklamaz. `CarCompatibility` raporu anlık Android Auto sürümü ve Widevine/WebView tanılaması sağlar.
