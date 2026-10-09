@@ -165,13 +165,16 @@ class MainActivity : Activity() {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
         mediaApps.addView(label("VİDEO UYGULAMALARI",16,true))
-        mediaApps.addView(label("Telefona kurulu uygulamalar doğrudan açılır. Android Auto ekranında video gösterilmez.",12,false))
+        mediaApps.addView(label("Uygulama içi web oynatıcı: YouTube ve desteklenen HTTPS videoları. Netflix DRM ayrı uygulamada çalışır.",12,false))
         val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        appActions.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
+        appActions.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
             LinearLayout.LayoutParams(0,dp(50),1f))
-        appActions.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
+        appActions.addView(button("▣ Netflix ↗") { InstalledMediaApps.openNetflix(this) },
             LinearLayout.LayoutParams(0,dp(50),1f))
         mediaApps.addView(appActions)
+        mediaApps.addView(button("🌐 Web Medya • HTTPS video bağlantısı aç") {
+            openWebMedia(MediaWebActivity.YOUTUBE_URL)
+        })
         television.addView(mediaApps)
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
@@ -245,8 +248,8 @@ class MainActivity : Activity() {
             try { startActivity(launch ?: Intent(Intent.ACTION_VIEW,Uri.parse("https://music.youtube.com"))) }
             catch (_: Exception) { toast("YouTube Music açılamadı") }
         })
-        external.addView(textAction("▶  YouTube'u telefonda aç") {
-            InstalledMediaApps.openYouTube(this)
+        external.addView(textAction("▶  YouTube'u uygulama içinde aç") {
+            openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
         external.addView(textAction("▣  Netflix'i telefonda aç") {
             InstalledMediaApps.openNetflix(this)
@@ -312,6 +315,15 @@ class MainActivity : Activity() {
             },mainExecutor)
         }
         syncRadioCatalogue(false)
+    }
+
+    private fun openWebMedia(url: String) {
+        try {
+            startActivity(Intent(this, MediaWebActivity::class.java)
+                .putExtra(MediaWebActivity.EXTRA_URL, url))
+        } catch (_: Exception) {
+            toast("Web Medya başlatılamadı; APK kurulumunu kontrol edin.")
+        }
     }
 
     private fun toggleRadioPlayback() {
@@ -415,7 +427,7 @@ class MainActivity : Activity() {
             SportzXLauncher.openIfInstalled(this)
         })
         val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        appsRow.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
+        appsRow.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
             LinearLayout.LayoutParams(0,dp(49),1f))
         appsRow.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
             LinearLayout.LayoutParams(0,dp(49),1f))
