@@ -14,10 +14,38 @@ object M3uParser {
     private val audioGroups = setOf("radio", "radyo", "internet radio", "internet radyo", "audio", "podcast", "podcasts")
     private val audioExtensions = setOf("mp3", "aac", "ogg", "opus", "flac", "m4a")
     private const val MAX_ENTRIES = 2500
+    /**
+     * EXTINF labels are separated by the first comma OUTSIDE quoted attributes.
+     * A user-agent value can contain its own comma ("like Gecko, ...").
+     */
+    private fun labelPart(line: String): String {
+        var quoted = false
+        var escaped = false
+        for (index in line.indices) {
+            val ch = line[index]
+            if (escaped) { escaped = false; continue }
+            if (ch == '\\' && quoted) { escaped = true; continue }
+            if (ch == '"') quoted = !quoted
+            if (ch == ',' && !quoted) {
+                val candidate = line.substring(index + 1).trim()
+                // Some lists contain malformed, unquoted metadata. Prefer the final name.
+                return if (candidate.contains("group-title=", true) ||
+                    candidate.contains("tvg-name=", true) ||
+                    candidate.contains("user-agent=", true)) candidate.substringAfterLast(',').trim()
+                    else candidate
+            }
+        }
+        return ""
+    }
+
+    private fun cleanName(raw: String, fallback: String): String =
+        raw.replace(Regex("[\\p{Cntrl}]"), " ")
+            .replace(Regex("\\s+"), " ").trim().take(100).ifBlank { fallback }
+
 
     fun parse(text: String): List<PlaylistEntry> {
         // HLS manifests describe stream segments, not an IPTV channel catalogue.
-        if (text.lineSequence().any { it.startsWith("#EXT-X-", ignoreCase = true) }) return emptyList()
+        if (text.lineSequence().any { it.trim().startsWith("#EXT-X-", ignoreCase = true) }) return emptyList()
         val result = mutableListOf<PlaylistEntry>()
         val used = mutableSetOf<String>()
         var title: String? = null
@@ -33,8 +61,8 @@ object M3uParser {
                 }
                 group = attrs["group-title"].orEmpty().ifBlank { "Diğer" }.take(100)
                 logo = attrs["tvg-logo"].orEmpty().takeIf { isHttpsUrl(it) }.orEmpty()
-                val label = current.substringAfter(',', "").trim()
-                title = attrs["tvg-name"].orEmpty().ifBlank { label }.take(160)
+                val label = labelPart(current)
+                title = cleanName(attrs["tvg-name"].orEmpty().ifBlank { label }, "")
                 audioHint = attrs["radio"].equals("true", true) || attrs["radio"] == "1" ||
                     attrs["type"].equals("radio", true) || attrs["tvg-type"].equals("radio", true)
                 waiting = true
