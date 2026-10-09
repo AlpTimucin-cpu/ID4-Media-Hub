@@ -11,14 +11,26 @@ import android.widget.Toast
 /** Launch an already installed SportzX app by its visible name; no APK is bundled or modified. */
 object SportzXLauncher {
     private const val SITE = "https://sportzxlive.com/"
+    private const val KNOWN_PACKAGE = "com.sportzx.live"
 
     fun openIfInstalled(activity: Activity) {
+        // Package name seen in multiple Android APK catalogs; not proof of authorship or safety.
+        val known = activity.packageManager.getLaunchIntentForPackage(KNOWN_PACKAGE)
+        if (known != null) {
+            try {
+                activity.startActivity(known)
+                return
+            } catch (_: Exception) {
+                Toast.makeText(activity, "Yüklü SportzX başlatılamadı. Uygulamanın kendi açılışını kontrol et.", Toast.LENGTH_LONG).show()
+            }
+        }
         val query = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
         val options = activity.packageManager.queryIntentActivities(query, 0)
         val matches = options.filter {
             it.loadLabel(activity.packageManager).toString().replace(" ", "")
-                .contains("sportzx", ignoreCase = true)
+                .contains("sportzx", ignoreCase = true) ||
+                it.activityInfo.packageName.contains("sportzx", ignoreCase = true)
         }.distinctBy { it.activityInfo.packageName }
         when (matches.size) {
             0 -> AlertDialog.Builder(activity)
