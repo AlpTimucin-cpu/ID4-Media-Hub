@@ -1,6 +1,7 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -164,12 +165,12 @@ class MainActivity : Activity() {
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
-        mediaApps.addView(label("VİDEO UYGULAMALARI",16,true))
+        mediaApps.addView(label("WEB MEDYA • UYGULAMA İÇİNDE",16,true))
         mediaApps.addView(label("Uygulama içi web oynatıcı: YouTube ve desteklenen HTTPS videoları. Netflix DRM ayrı uygulamada çalışır.",12,false))
         val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         appActions.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
             LinearLayout.LayoutParams(0,dp(50),1f))
-        appActions.addView(button("▣ Netflix ↗") { InstalledMediaApps.openNetflix(this) },
+        appActions.addView(button("▣ Netflix Web") { openWebMedia(MediaWebActivity.NETFLIX_URL) },
             LinearLayout.LayoutParams(0,dp(50),1f))
         mediaApps.addView(appActions)
         mediaApps.addView(button("🌐 Web Medya • HTTPS video bağlantısı aç") {
@@ -215,6 +216,8 @@ class MainActivity : Activity() {
                 importFromHttps(source.url)
             })
         }
+        ready.addView(button("🌍 Dünya kanalları • Ülke seç") { showWorldPicker(true) })
+        ready.addView(button("▦ Kategoriye göre kanal ara") { showWorldPicker(false) })
         ready.addView(textAction("▶  TRT Haber kanalı") {
             if (VideoStore.add(this, "TRT Haber", TrustedSources.TRT_HABER, "Türkiye / Haber")) {
                 refreshVideo(); renderHome(); toast("TRT Haber eklendi")
@@ -251,7 +254,10 @@ class MainActivity : Activity() {
         external.addView(textAction("▶  YouTube'u uygulama içinde aç") {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
-        external.addView(textAction("▣  Netflix'i telefonda aç") {
+        external.addView(textAction("▣  Netflix Web • Media Hub içinde") {
+            openWebMedia(MediaWebActivity.NETFLIX_URL)
+        })
+        external.addView(textAction("▣  Netflix uygulamasına geç") {
             InstalledMediaApps.openNetflix(this)
         })
         external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
@@ -318,6 +324,48 @@ class MainActivity : Activity() {
             },mainExecutor)
         }
         syncRadioCatalogue(false)
+    }
+
+    /** Community-listed playlists are user-selected, not bundled broadcasts. */
+    private fun showWorldPicker(byCountry: Boolean) {
+        val sources = if (byCountry) WorldCatalog.countries() else WorldCatalog.genres
+        val visible = sources.toMutableList()
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(8), dp(12), dp(6))
+        }
+        val input = searchInput(if (byCountry) "Ülke ara" else "Kategori ara")
+        wrapper.addView(input)
+        val adapter = android.widget.ArrayAdapter(
+            this, android.R.layout.simple_list_item_1, visible.map { it.name }.toMutableList()
+        )
+        val list = android.widget.ListView(this).apply { this.adapter = adapter }
+        wrapper.addView(list, LinearLayout.LayoutParams(-1, dp(340)))
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (byCountry) "Ülkeye göre IPTV" else "Kategoriye göre IPTV")
+            .setView(wrapper)
+            .setNegativeButton("Kapat", null)
+            .create()
+        input.addTextChangedListener(watch {
+            val filter = input.text.toString().trim()
+            visible.clear()
+            visible.addAll(sources.filter { it.name.contains(filter, ignoreCase = true) })
+            adapter.clear()
+            adapter.addAll(visible.map { it.name })
+            adapter.notifyDataSetChanged()
+        })
+        list.setOnItemClickListener { _, _, position, _ ->
+            val chosen = visible.getOrNull(position) ?: return@setOnItemClickListener
+            dialog.dismiss()
+            AlertDialog.Builder(this)
+                .setTitle(chosen.name)
+                .setMessage("İptv-org topluluk dizininden liste içe aktarılacak. Yayınların " +
+                    "çalışması, kullanım hakkı ve bölgesel erişimi garanti değildir.")
+                .setNegativeButton("İptal", null)
+                .setPositiveButton("Listeyi yükle") { _, _ -> importFromHttps(chosen.url) }
+                .show()
+        }
+        dialog.show()
     }
 
     private fun openWebMedia(url: String) {
@@ -432,9 +480,12 @@ class MainActivity : Activity() {
         val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         appsRow.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
             LinearLayout.LayoutParams(0,dp(49),1f))
-        appsRow.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
+        appsRow.addView(button("▣ Netflix Web") { openWebMedia(MediaWebActivity.NETFLIX_URL) },
             LinearLayout.LayoutParams(0,dp(49),1f))
         sportzHome.addView(appsRow)
+        sportzHome.addView(button("🌐 Web Medya • Sekmeler ve favoriler") {
+            openWebMedia(MediaWebActivity.YOUTUBE_URL)
+        })
         homeContainer.addView(sportzHome)
         val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
