@@ -29,7 +29,7 @@ object VideoStore {
                     val obj = array.getJSONObject(i)
                     val url = obj.getString("url")
                     if (M3uParser.isHttpsUrl(url)) add(VideoChannel(
-                        obj.getString("id"), obj.getString("name"), url,
+                        obj.getString("id"), M3uParser.displayTitle(obj.getString("name")), url,
                         obj.optString("group", "Diğer"), obj.optBoolean("favorite", false),
                         obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
                     ))
@@ -42,7 +42,7 @@ object VideoStore {
         if (name.isBlank() || !M3uParser.isHttpsUrl(url)) return false
         val channels = load(context).toMutableList()
         if (channels.size >= 2500 || channels.any { it.url == url }) return false
-        channels.add(VideoChannel(UUID.randomUUID().toString(), name.trim().take(160), url,
+        channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(name), url,
             group.trim().take(100).ifBlank { "Diğer" }, false))
         save(context, channels)
         return true
@@ -55,7 +55,7 @@ object VideoStore {
         for (item in items) {
             if (channels.size >= 2500) break
             if (!item.isAudio && M3uParser.isHttpsUrl(item.url) && existing.add(item.url)) {
-                channels.add(VideoChannel(UUID.randomUUID().toString(), item.name, item.url, item.group, false, item.logo))
+                channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(item.name), item.url, item.group, false, item.logo))
                 added++
             }
         }
