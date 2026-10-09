@@ -6,20 +6,38 @@ import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 object PlaylistLoader {
-    private const val MAX_BYTES = 2_000_000
+    private const val MAX_BYTES = 8_000_000
 
     fun fromHttps(url: String): String {
-        require(M3uParser.isHttpsUrl(url)) { "Yalnızca HTTPS M3U adresleri kabul edilir." }
-        val connection = (URL(url).openConnection() as HttpsURLConnection).apply {
-            connectTimeout = 10_000
-            readTimeout = 15_000
-            instanceFollowRedirects = false
-            setRequestProperty("Accept", "audio/x-mpegurl, application/x-mpegURL, text/plain")
+        require(M3uParser.isHttpsUrl(url)) { "HTTPS M3U adresi gerekli." }
+        var current = URL(url)
+        repeat(5) {
+            // Only HTTPS-to-HTTPS redirects are allowed. Never expose a token-bearing URL in the UI.
+            val connection = (current.openConnection() as HttpsURLConnection).apply {
+                connectTimeout = 10_000
+                readTimeout = 15_000
+                instanceFollowRedirects = false
+                setRequestProperty("Accept", "audio/x-mpegurl, application/x-mpegURL, text/plain, */*")
+                setRequestProperty("User-Agent", "ID4-Media-Hub/0.9")
+            }
+            try {
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val destination = connection.getHeaderField("Location")
+                        ?: error("M3U yönlendirmesi eksik")
+                    val next = URL(current, destination)
+                    require(next.protocol.equals("https", ignoreCase = true)) {
+                        "Yalnızca HTTPS yönlendirmeleri desteklenir"
+                    }
+                    require(next.userInfo == null) { "Kimlik içeren URL desteklenmez" }
+                    current = next
+                } else {
+                    require(code == 200) { "M3U sunucusu HTTP $code yanıtı döndürdü" }
+                    return connection.inputStream.use { readLimited(it) }
+                }
+            } finally { connection.disconnect() }
         }
-        return try {
-            require(connection.responseCode == 200) { "Liste sunucusu HTTP ${connection.responseCode} döndürdü." }
-            connection.inputStream.use { readLimited(it) }
-        } finally { connection.disconnect() }
+        error("M3U yönlendirme sayısı aşıldı")
     }
 
     fun readLimited(input: InputStream): String {
