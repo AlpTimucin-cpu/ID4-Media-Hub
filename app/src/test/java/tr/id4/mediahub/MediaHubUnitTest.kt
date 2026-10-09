@@ -67,4 +67,28 @@ https://video.example.org/news.m3u8
         assertEquals(StreamStatus.LOGIN_REQUIRED, StreamProbe.classify(403).status)
         assertEquals(StreamStatus.SERVER_RESPONDS, StreamProbe.classify(200).status)
     }
+    @Test fun webLinksRejectUntrustedSchemesAndCredentials() {
+        assertEquals("https://www.example.com/watch?id=15",
+            BrowserStore.safeHttps(" https://www.example.com/watch?id=15 "))
+        assertNull(BrowserStore.safeHttps("http://www.example.com/video"))
+        assertNull(BrowserStore.safeHttps("javascript:alert(1)"))
+        assertNull(BrowserStore.safeHttps("file:///etc/passwd"))
+        assertNull(BrowserStore.safeHttps("https://user:password@example.com"))
+        assertNull(BrowserStore.safeHttps("https://bad host.example"))
+        assertNull(BrowserStore.safeHttps("https://"))
+    }
+
+    @Test fun globalIptvDirectoryGeneratesOnlyCountryListUrls() {
+        assertEquals("https://iptv-org.github.io/iptv/countries/tr.m3u",
+            WorldCatalog.countryCodeUrl("TR"))
+        assertTrue(WorldCatalog.countries().any { it.url.endsWith("/tr.m3u") })
+        assertTrue(WorldCatalog.genres.size >= 6)
+        try {
+            WorldCatalog.countryCodeUrl("../../etc")
+            fail("Country codes must be exactly two ISO letters")
+        } catch (_: IllegalArgumentException) {
+            // Expected: invalid country input blocked.
+        }
+    }
+
 }
