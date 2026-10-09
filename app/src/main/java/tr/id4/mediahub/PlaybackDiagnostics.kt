@@ -12,6 +12,8 @@ class PlaybackDiagnostics {
     private var bufferingCount = 0
     private var firstFrameDelayMs = -1L
     private var droppedFrames = 0L
+    private var processedVideoFrames = 0L
+    private var decoderStartupMs = -1L
     private var decoder = "Bilinmiyor"
     private var width = 0
     private var height = 0
@@ -25,6 +27,8 @@ class PlaybackDiagnostics {
         bufferingCount = 0
         firstFrameDelayMs = -1L
         droppedFrames = 0
+        processedVideoFrames = 0
+        decoderStartupMs = -1L
         decoder = "Bilinmiyor"
         width = 0
         height = 0
@@ -50,8 +54,13 @@ class PlaybackDiagnostics {
             firstFrameDelayMs = (nowMs - startedAtMs).coerceAtLeast(0L)
     }
 
-    fun videoDecoder(value: String) {
+    fun videoDecoder(value: String, startupMs: Long = -1L) {
         decoder = value.take(90).ifBlank { "Bilinmiyor" }
+        if (startupMs >= 0L) decoderStartupMs = startupMs
+    }
+
+    fun processedFrames(count: Int) {
+        if (count > 0) processedVideoFrames += count.toLong()
     }
 
     fun videoSize(w: Int, h: Int) {
@@ -78,9 +87,17 @@ class PlaybackDiagnostics {
             appendLine("Tamponlama: " + bufferingCount + " kez, " +
                 ((bufferedMs + liveBuffer) / 1000.0) + " sn")
             appendLine("Düşen video kareleri: " + droppedFrames)
+            appendLine("Media3 işlenen kare sayısı: " + processedVideoFrames)
+            val activeMs = if (firstFrameDelayMs < 0L) 0L
+                else (runtime - firstFrameDelayMs).coerceAtLeast(0L)
+            appendLine("Ortalama kare işleme hızı: " +
+                if (activeMs < 1000L || processedVideoFrames == 0L) "Ölçülmedi"
+                else ((processedVideoFrames * 1000L) / activeMs).toString() + " kare/sn (tahmini)")
             appendLine("Çözünürlük: " + if (width == 0)
                 "Bilinmiyor" else width.toString() + " × " + height)
             appendLine("Video çözücü: " + decoder)
+            appendLine("Video çözücü başlatma: " +
+                if (decoderStartupMs < 0L) "Bilinmiyor" else decoderStartupMs.toString() + " ms")
             appendLine("Otomatik kurtarma denemeleri: " + recoveryCount)
             appendLine("Son hata türü: " + lastIssue)
             appendLine("Bu ölçümler Media3'e aittir; araçta video çalıştığını kanıtlamaz.")
