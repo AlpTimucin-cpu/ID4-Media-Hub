@@ -31,6 +31,9 @@ data class Station(
         .setMediaMetadata(MediaMetadata.Builder()
             .setTitle(name)
             .setSubtitle(group)
+            .also { metadata ->
+                if (M3uParser.isHttpsUrl(logo)) metadata.setArtworkUri(Uri.parse(logo))
+            }
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
