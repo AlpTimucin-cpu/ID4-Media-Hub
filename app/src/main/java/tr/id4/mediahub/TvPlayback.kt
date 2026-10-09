@@ -23,6 +23,7 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
@@ -115,6 +116,9 @@ class TvPlayback(
         options.addView(button("⛶  Tam ekran") { fullScreen() },
             LinearLayout.LayoutParams(0,dp(49),1f))
         root.addView(options)
+        val streams = button("🔊  Ses dili / Altyazı seçenekleri") {}
+        streams.setOnClickListener { showTrackOptions(streams) }
+        root.addView(streams, LinearLayout.LayoutParams(-1, dp(46)))
 
         catalogState = label("", 12f, true)
         root.addView(catalogState)
@@ -280,6 +284,46 @@ class TvPlayback(
         popup.show()
     }
 
+    private fun showTrackOptions(anchor: View) {
+        val playing = player
+        if (playing == null) {
+            Toast.makeText(activity, "Önce bir kanal başlat", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val popup = PopupMenu(activity, anchor)
+        val formats = playing.currentTracks.groups.flatMap { group ->
+            val type = group.type
+            if (type != C.TRACK_TYPE_AUDIO && type != C.TRACK_TYPE_TEXT) {
+                emptyList()
+            } else {
+                (0 until group.mediaTrackGroup.length).mapNotNull { index ->
+                    val value = group.mediaTrackGroup.getFormat(index).language
+                    if (value.isNullOrBlank() || value == "und") null else type to value
+                }
+            }
+        }.distinct()
+        popup.menu.add("Altyazı kapat").setOnMenuItemClickListener {
+            playing.trackSelectionParameters = playing.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+            true
+        }
+        if (formats.isEmpty()) {
+            popup.menu.add("Yayında seçilebilir dil / altyazı bulunamadı").isEnabled = false
+        }
+        formats.forEach { (type, language) ->
+            val label = if (type == C.TRACK_TYPE_AUDIO) "Ses" else "Altyazı"
+            popup.menu.add(label + " · " + language.uppercase()).setOnMenuItemClickListener {
+                val builder = playing.trackSelectionParameters.buildUpon()
+                if (type == C.TRACK_TYPE_AUDIO) builder.setPreferredAudioLanguage(language)
+                else builder.setPreferredTextLanguage(language)
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                playing.trackSelectionParameters = builder.build()
+                true
+            }
+        }
+        popup.show()
+    }
+
     private fun fullScreen() {
         if (!initialized || fullScreen != null) return
         val previousParent=playerView.parent as? ViewGroup ?: return
@@ -297,6 +341,9 @@ class TvPlayback(
         val quality=button("⚙  Kalite"){}
         quality.setOnClickListener{showQuality(quality)}
         top.addView(quality,LinearLayout.LayoutParams(0,dp(47),1f))
+        val langs=button("🔊  Dil / altyazı"){}
+        langs.setOnClickListener{showTrackOptions(langs)}
+        top.addView(langs,LinearLayout.LayoutParams(0,dp(47),1f))
         frame.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
         dialog.setContentView(frame)
         dialog.setOnDismissListener {
