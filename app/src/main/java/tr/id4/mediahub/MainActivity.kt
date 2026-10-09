@@ -161,6 +161,18 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(dp(96),dp(47)))
         sportzTv.addView(sportzRow)
         television.addView(sportzTv)
+        val mediaApps = panel().apply {
+            background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
+        }
+        mediaApps.addView(label("VİDEO UYGULAMALARI",16,true))
+        mediaApps.addView(label("Telefona kurulu uygulamalar doğrudan açılır. Android Auto ekranında video gösterilmez.",12,false))
+        val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        appActions.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
+            LinearLayout.LayoutParams(0,dp(50),1f))
+        appActions.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
+            LinearLayout.LayoutParams(0,dp(50),1f))
+        mediaApps.addView(appActions)
+        television.addView(mediaApps)
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
@@ -233,10 +245,11 @@ class MainActivity : Activity() {
             try { startActivity(launch ?: Intent(Intent.ACTION_VIEW,Uri.parse("https://music.youtube.com"))) }
             catch (_: Exception) { toast("YouTube Music açılamadı") }
         })
-        external.addView(textAction("▣  Netflix'i aç") {
-            val launch=packageManager.getLaunchIntentForPackage("com.netflix.mediaclient")
-            try { startActivity(launch ?: Intent(Intent.ACTION_VIEW,Uri.parse("https://play.google.com/store/apps/details?id=com.netflix.mediaclient"))) }
-            catch (_: Exception) { toast("Netflix açılamadı") }
+        external.addView(textAction("▶  YouTube'u telefonda aç") {
+            InstalledMediaApps.openYouTube(this)
+        })
+        external.addView(textAction("▣  Netflix'i telefonda aç") {
+            InstalledMediaApps.openNetflix(this)
         })
         external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
         external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
@@ -401,6 +414,12 @@ class MainActivity : Activity() {
         sportzHome.addView(button("◉  SportzX'i doğrudan aç") {
             SportzXLauncher.openIfInstalled(this)
         })
+        val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        appsRow.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
+            LinearLayout.LayoutParams(0,dp(49),1f))
+        appsRow.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
+            LinearLayout.LayoutParams(0,dp(49),1f))
+        sportzHome.addView(appsRow)
         homeContainer.addView(sportzHome)
         val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
