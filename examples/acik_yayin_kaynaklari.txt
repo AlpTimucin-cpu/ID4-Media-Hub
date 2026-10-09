@@ -1,0 +1,14 @@
+Herkese açık IPTV oynatma listesi kaynakları (toplulukça derlenir):
+Türkiye: https://iptv-org.github.io/iptv/countries/tr.m3u
+Haber: https://iptv-org.github.io/iptv/categories/news.m3u
+
+TRT Haber canlı HLS (erişimi bölgesel olabilir, gerçek oynatma test edilmedi):
+https://tv-trthaber.medya.trt.com.tr/master_720.m3u8
+
+Apple yayın örneği (CANLI TV DEĞİL, codec/HLS testi):
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8
+
+SportzX topluluk sayfası (APK bu projeye dahil değildir):
+https://t.me/sportzxtv
+
+Not: Listede yer almak, bütün bağlantıların çalıştığı veya yayın hakkının her ülkede bulunduğu anlamına gelmez. Bağlantı sağlayıcısının iznine, ülke/bölge kısıtına ve canlılığa dikkat edin. SportzX'in açık belgelenmiş Android entegrasyon API'si doğrulanamadı; yalnızca kurulu uygulamayı açma kısayolu var.

@@ -1,0 +1,5 @@
+#EXTM3U
+#EXTINF:-1 group-title="Radyo" radio="true",SomaFM Groove Salad
+https://ice5.somafm.com/groovesalad-128-mp3
+#EXTINF:-1 group-title="Radyo" radio="true",SomaFM GS Classic
+https://ice5.somafm.com/gsclassic-128-mp3
