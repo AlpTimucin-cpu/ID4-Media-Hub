@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private var radioPage = 0
     private var videoPage = 0
     private lateinit var homeContainer: LinearLayout
+    private lateinit var tvPlayer: TvPlayback
     private lateinit var tabPages: List<LinearLayout>
     private lateinit var navButtons: List<TextView>
     private lateinit var contentScroll: ScrollView
@@ -123,22 +124,18 @@ class MainActivity : Activity() {
         root.addView(nav)
         selectTab(0)
 
-        television.addView(section("CANLI TELEVİZYON", "Kanallar • kategoriler • favoriler"))
-        television.addView(button("＋ Kanal listesi ekle", secondary = false) { selectTab(3) })
-        searchVideos = searchInput("Kanal veya kategori ara")
-        television.addView(searchVideos)
-        searchVideos.addTextChangedListener(watch { videoPage=0;refreshVideo() })
-        val tvControls = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        val favoriteVideos = textAction("☆  Favoriler") {
-            favoritesOnly = !favoritesOnly
-            videoPage=0
-            refreshVideo()
-        }
-        tvControls.addView(favoriteVideos, LinearLayout.LayoutParams(0,dp(46),1f))
-        tvControls.addView(textAction("⟳  Yenile") { refreshVideo() },LinearLayout.LayoutParams(0,dp(46),1f))
-        television.addView(tvControls)
-        videoContainer=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        television.addView(videoContainer)
+        // Video is embedded in a single persistent player instead of a long vertical channel list.
+        tvPlayer = TvPlayback(
+            this,
+            { VideoStore.load(this) },
+            { selectTab(3) },
+            { channel ->
+                RecentStore.remember(this, channel.id, "tv")
+                renderHome()
+            }
+        )
+        television.addView(tvPlayer.view())
+        television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
         radio.addView(section("İNTERNET RADYOSU","Android Auto medya kitaplığı için ses yayını"))
         val control=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
@@ -278,6 +275,7 @@ class MainActivity : Activity() {
     }
 
     private fun selectTab(index:Int){
+        if (index != 1 && ::tvPlayer.isInitialized) tvPlayer.pause()
         currentTab=index
         if(::tabPages.isInitialized){
             tabPages.forEachIndexed { i,p -> p.visibility=if(i==index)View.VISIBLE else View.GONE }
@@ -444,11 +442,10 @@ class MainActivity : Activity() {
 
     private fun videoRow(channel:VideoChannel,compact:Boolean=false):LinearLayout =
         mediaCard(channel.name,channel.group,channel.logo,channel.favorite,true,{
-            RecentStore.remember(this,channel.id,"tv")
-            renderHome()
-            startActivity(Intent(this,PlayerActivity::class.java)
-                .putExtra(PlayerActivity.EXTRA_URL,channel.url)
-                .putExtra(PlayerActivity.EXTRA_TITLE,channel.name))
+            if (::tvPlayer.isInitialized) {
+                selectTab(1)
+                tvPlayer.play(channel)
+            } else toast("TV oynatıcı hazırlanıyor")
         },{
             VideoStore.toggleFavorite(this,channel.id);refreshVideo();renderHome()
         },{
@@ -568,27 +565,7 @@ class MainActivity : Activity() {
     }
 
     private fun refreshVideo() {
-        if(!::videoContainer.isInitialized || !::searchVideos.isInitialized)return
-        videoContainer.removeAllViews()
-        val q=searchVideos.text.toString().trim()
-        val channels=VideoStore.load(this).filter{
-            (!favoritesOnly||it.favorite) &&
-                (q.isEmpty() || it.name.contains(q,true) || it.group.contains(q,true))
-        }
-        val maxPage=((channels.size-1).coerceAtLeast(0))/PAGE_SIZE
-        videoPage=videoPage.coerceIn(0,maxPage)
-        videoContainer.addView(label("${channels.size} TV kanalı  ·  ${videoPage+1}/${maxPage+1}",13,false))
-        if(channels.isEmpty()){
-            val blank=panel()
-            blank.addView(label("Henüz gösterilecek kanal yok",18,true))
-            blank.addView(label("Kitaplığım'dan M3U listesi ekleyebilir veya test yayını deneyebilirsin.",13,false))
-            blank.addView(button("＋  Kanal listesi ekle"){selectTab(3)})
-            videoContainer.addView(blank)
-        }
-        channels.drop(videoPage*PAGE_SIZE).take(PAGE_SIZE).forEach{
-            videoContainer.addView(videoRow(it))
-        }
-        addPageButtons(videoContainer,videoPage,maxPage){videoPage=it;refreshVideo()}
+        if (::tvPlayer.isInitialized) tvPlayer.refresh()
     }
 
     /** Tests only HTTP reachability, off the UI thread. A successful HEAD is not playable-video proof. */
@@ -711,6 +688,7 @@ class MainActivity : Activity() {
     }
     private fun toast(value: String) = Toast.makeText(this, value, Toast.LENGTH_LONG).show()
     override fun onDestroy() {
+        if (::tvPlayer.isInitialized) tvPlayer.release()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         super.onDestroy()
     }
