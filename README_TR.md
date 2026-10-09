@@ -1,3 +1,41 @@
+# ID.4 Media Hub v0.16 — Fermata + AABrowser yaklaşımı (deneysel)
+
+**Hedef cihaz:** POCO F5 Android 15 + Volkswagen ID.4 Pure mevcut Android Auto ekranı.
+
+**Durum:** Kod, GitHub'daki \`feature/fermata-style-car-video\` dalında geliştirilmektedir. Android uygulaması/birim testi otomatik derlenir. **ID.4 büyük ekranda WebView videosu oynatma henüz kanıtlanmadı.** Bunun çalıştığı izlenimi verilmemelidir.
+
+## Gerçekleştirilen uygulama içi özellikler
+
+- **Fermata'dan esinlenen IPTV**: kullanıcı M3U/M3U8 bağlantısı veya dosyası içe aktarabilir, HLS akışlarını Media3 ile izleyebilir, kanal listesi ve favorileri yönetebilir, oynatıcı kalitesini değiştirebilir, tam ekrana geçebilir.
+- **AABrowser'dan esinlenen web medya**: uygulamanın **kendi içinde** YouTube ve Netflix web siteleri, 6 sekmeye kadar web görüntüleme, sekme geçişi ve uzun dokunuşla kapatma, güvenli HTTPS adres çubuğu, web favorileri/geçmiş, mobil/masaüstü modu, HTML5 video tam ekran.
+- **Dünya dizini**: ülke ve kategoriye göre arama, seçilen iptv-org topluluk listesini isteğe bağlı içe aktarma. Listenin çalışacağı veya kullanım haklarının doğruluğu garanti edilmez.
+- **Radyo/Android Auto ses**: mevcut MediaLibraryService tabanlı radyo servisi korunur.
+- **Tanılama**: Kitaplık bölümünde Android Auto ve telefon sürüm bilgilerini gösteren rapor.
+
+## Kullanım
+
+1. Ana Sayfa → **Web Medya** veya TV → **YouTube Web** ile sekmeli tarayıcıyı aç.
+2. Sekmelerin sağındaki **＋** ile yeni sekme oluştur; bir sekmeye **uzun basarak** kapat.
+3. **☆** ile web favorisi kaydet; **☷** ile favori listesini aç; **⋮** menüsünden geçmişe ve masaüstü moduna ulaş.
+4. Kitaplık → **Dünya kanalları / Kategoriye göre kanal ara** ile M3U dizininden seçim yap.
+5. TV bölümünden kanal seçip kalite/tam ekran denetimlerini kullan.
+
+## Araç ekranı ve üçüncü taraf içerikler
+
+Kullanıcının mevcut POCO F5 + ID.4 kombinasyonunda **AABrowser'ın YouTube sayfasını araç ekranında açtığı** biliniyor; Netflix sayfası görüntüleniyor fakat Netflix videosu çalışmıyor. Bu sonuç kendi uygulamamızın otomatik olarak araçta video göstereceği anlamına gelmez.
+
+Fermata Auto'nun araç entegrasyonunda eski araç SDK'sı / ayrı servis ve bazı kurulumlarda Xposed/kurulum kökeni farklılıkları bulunuyor. AABrowser, kendi Activity/WebView yapısını ve Android Auto ile ilgili intent kategorilerini kullanıyor. Sürücünün dikkatini dağıtmaya yönelik kısıtları aşan yöntemler veya uygulamayı sahte navigasyon aracı gibi kaydetme bu projeye eklenmedi.
+
+**Netflix** DRM korumalı içeriği WebView içinde oynatmayı reddedebilir. **SportzX** üçüncü taraf APK'sı kendi Activity'sini başka bir APK'nın içine gömmez; yetkili yayın/API entegrasyonu doğrulanmadı. Bu işlevler tamamlanmış değildir.
+
+## Kaynak mimarileri ve lisans
+
+- https://github.com/AndreyPavlenko/Fermata — GPL-3.0
+- https://github.com/kododake/AABrowser — GPL-3.0
+
+Yeni BrowserStore/MediaWebActivity özellikleri bu projede **bağımsız yazıldı**; referans projelerden kaynak dosyası kopyalanmadı. İleride GPL kodu alınırsa GPL-3.0 kaynak yayımlama ve atıf koşulları yerine getirilmelidir.
+
+---
 # ID.4 Media Hub v0.8 — POCO F5 + Android Auto
 
 **Durum:** Kaynak kodu ve JVM testleri kontrol edilmiş Android Studio projesi. **Henüz APK üretilmedi; Android derlemesi, telefonda kurulum ve araç testi yapılmadı.** APTV ile ilişkili veya onaylı resmî bir Android uygulaması değildir.
