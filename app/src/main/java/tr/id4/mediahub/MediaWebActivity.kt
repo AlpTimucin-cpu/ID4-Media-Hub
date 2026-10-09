@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
@@ -94,6 +95,11 @@ class MediaWebActivity : Activity() {
             visibility=View.GONE;setBackgroundColor(Color.BLACK)
         }
         setContentView(root)
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val bars = insets.getInsets(WindowInsets.Type.systemBars())
+            root.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
         root.addView(main,FrameLayout.LayoutParams(-1,-1))
         root.addView(fullLayer,FrameLayout.LayoutParams(-1,-1))
         val header=LinearLayout(this).apply {
