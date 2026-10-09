@@ -265,6 +265,17 @@ class MainActivity : Activity() {
         utilities.addView(textAction("🚗 ID.4 / Android Auto bağlantı raporu") {
             CarCompatibility.show(this)
         })
+        utilities.addView(button("🔊 Araç ses sisteminde radyo testini başlat") {
+            val station = StationStore.load(this).firstOrNull()
+            if (station == null) {
+                toast("Henüz kayıtlı radyo yok. Önce Radyo bölümünden kanal ekle.")
+                selectTab(2)
+            } else {
+                playStation(station)
+                selectTab(2)
+                toast("Radyo başlatıldı. Sesin ID.4'ten gelip gelmediğini kontrol et.")
+            }
+        })
         utilities.addView(textAction("⚙  Android Auto ayarları") {
             try { startActivity(Intent("android.settings.APPLICATION_DETAILS_SETTINGS",Uri.parse("package:com.google.android.projection.gearhead"))) }
             catch (_: Exception) { toast("Android Auto ayarları açılamadı") }
