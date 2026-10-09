@@ -5,7 +5,8 @@ data class PlaylistEntry(
     val name: String,
     val url: String,
     val group: String,
-    val isAudio: Boolean
+    val isAudio: Boolean,
+    val logo: String = ""
 )
 
 object M3uParser {
@@ -22,6 +23,7 @@ object M3uParser {
         var title: String? = null
         var group = "Diğer"
         var audioHint = false
+        var logo = ""
         var waiting = false
         for (line in text.lineSequence()) {
             val current = line.trim().removePrefix("\uFEFF")
@@ -30,6 +32,7 @@ object M3uParser {
                     it.groupValues[1].lowercase() to it.groupValues[2].trim()
                 }
                 group = attrs["group-title"].orEmpty().ifBlank { "Diğer" }.take(100)
+                logo = attrs["tvg-logo"].orEmpty().takeIf { isHttpsUrl(it) }.orEmpty()
                 val label = current.substringAfter(',', "").trim()
                 title = attrs["tvg-name"].orEmpty().ifBlank { label }.take(160)
                 audioHint = attrs["radio"].equals("true", true) || attrs["radio"] == "1" ||
@@ -47,12 +50,13 @@ object M3uParser {
                     val clearAudio = audioHint || groupIsAudio || extension in audioExtensions
                     val clearlyVideo = extension in setOf("mp4", "mkv", "mov", "avi", "webm", "ts")
                     result.add(PlaylistEntry(title.orEmpty().ifBlank { "Kanal ${result.size + 1}" },
-                        url, group, clearAudio && !clearlyVideo))
+                        url, group, clearAudio && !clearlyVideo, logo))
                 }
                 waiting = false
                 title = null
                 group = "Diğer"
                 audioHint = false
+                logo = ""
                 if (result.size >= MAX_ENTRIES) break
             }
         }
