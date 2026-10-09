@@ -73,3 +73,36 @@ Google official: https://developer.android.com/training/cars/parked/auto
 - We deliberately do not misclassify a browser as a game or navigation application, and do not claim this build implements car-display video.
 
 QA: Android 15 emulator opened our Web Media by tapping the actual TV-section YouTube Web control. No AndroidRuntime fatal error and topResumedActivity was MediaWebActivity. It is a PHONE emulator test, not a real Volkswagen ID.4 display test.
+
+## 2026-10-09: Moving-vehicle feasibility research (POCO F5 -> ID.4 Android Auto)
+
+**User's requirement:** Video on the front, driver-visible ID.4 Android Auto screen while the car is moving. This is a safety-restricted use case. Do not fake a navigation service or bypass driver-distraction restrictions.
+
+### Official Android Auto
+
+- https://developer.android.com/training/cars/platforms/android-auto — Android Auto parked activities on Android 15+ are automatically exited on vehicle motion. The only officially supported Android Auto parked category is currently games; those are parked-only.
+- https://developer.android.com/training/cars/parked/auto — Declaring CAR_LAUNCHER enables eligibility in supported parked categories but does not grant a moving-vehicle video surface.
+- https://developer.android.com/training/cars/parked — Android Auto and Android Automotive OS are distinct; video streaming and browsers are supported under Android Automotive OS parked apps, not general Android Auto video apps.
+- https://developer.android.com/training/cars/parked/video — Some Android Automotive OS vehicles support **audio while driving** from an otherwise parked-only video app, with the visual activity hidden and required MediaSession and car UX restriction handling. This is **not** an Android Auto video-in-motion entitlement on ID.4.
+- https://developer.android.com/docs/quality-guidelines/car-app-quality — Driver distraction guideline DD-2 prohibits launching/showing parked video/browser UI while driving; DD-4 is a limited audio-only exception on eligible AAOS.
+
+### AABrowser
+
+- https://github.com/kododake/AABrowser README explicitly marks the app Stationary Use Only and recommends parked/passenger usage.
+- https://github.com/kododake/AABrowser/discussions/40 — March 2026 'persistent display and audio while driving' proposal was **closed/rejected by maintainer**; author proposed identifying as navigation, but maintainer said the idea is not a reliable solution for real head units and is unsupported.
+- Our user has confirmed AABrowser shows YouTube on the ID.4 display while stationary. This **does not imply** it can remain visible during vehicle motion. Netflix web page loads, but protected Netflix video fails independently.
+
+### Fermata
+
+- https://github.com/AndreyPavlenko/Fermata — separate legacy CarActivity / car projection services; various historical sideload/root/installer conditions. Technical existence of a third-party workaround does not establish compatibility, policy compliance or driving safety.
+
+### Development decision
+
+1. Keep Media3 radio / podcast / other authorized audio available through Android Auto's MediaLibraryService in the driver-safe system UI while moving.
+2. Build a real IPTV and web video player for the phone; do not represent that phone view as vehicle projection. Video on the car front display is only a parked research target.
+3. On supported parked UX surfaces, handle motion transitions by pausing/hiding visual video and restoring controls only on return to parked.
+4. Never substitute a navigation/game category, falsify driving state/speed/parking signals, disable motion guards, or force an exposed Surface to defeat car UX rules.
+5. Passenger video while the vehicle moves belongs on an independent passenger-only display that the driver cannot see. The existing single front ID.4 infotainment display has no verified passenger-safe projection mode.
+6. Next proof test: with the car stationary, collect Android Auto launcher visibility and Media Hub audio controls; do not ask user to repeat Shizuku/Android Auto setup already performed.
+
+**Status:** Research completed; moving-video front-display functionality not implemented and not promised. No APK is produced for this research finding.
