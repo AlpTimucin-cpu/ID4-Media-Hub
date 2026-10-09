@@ -41,6 +41,12 @@ jobs:
             adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity|tr.id4.mediahub' | head -20 || true
             adb shell screencap -p /sdcard/id4_home.png
             adb pull /sdcard/id4_home.png id4_home.png
+            adb shell input tap 406 2250
+            sleep 3
+            adb shell screencap -p /sdcard/id4_tv.png
+            adb pull /sdcard/id4_tv.png id4_tv.png
+            adb shell uiautomator dump /sdcard/id4_ui.xml || true
+            adb pull /sdcard/id4_ui.xml id4_ui.xml || true
             adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
             cat android_runtime_errors.log
             if grep -q 'FATAL EXCEPTION' android_runtime_errors.log; then exit 1; fi
@@ -50,5 +56,7 @@ jobs:
           name: android-emulator-smoke
           path: |
             id4_home.png
+            id4_tv.png
+            id4_ui.xml
             android_runtime_errors.log
           retention-days: 7
