@@ -62,3 +62,14 @@ Reference (GPL-3.0 source): https://github.com/kododake/AABrowser
 - Do not blindly copy navigation intent/category labels to misrepresent a video app as a navigation app or override driver-distraction safeguards. Investigate a compliant parked-only path and actual vehicle behavior first.
 
 **Next proof target**: the phone with Shizuku already configured must launch an original, permitted video in a *genuine* ID.4 Media Hub car-display component while the car is parked. No new installer recommendations until the AA Browser car-screen architecture is proven in our own app. Netflix and SportzX must be treated as independent provider/platform constraints, not fixed by changing Android Auto registration.
+
+## 2026-10-09 official parked category check
+
+Google official: https://developer.android.com/training/cars/parked/auto
+- Android Auto runs parked Activities on Android 15+ only for approved categories. In October 2026, the only supported parked category on Android Auto is **games**; the car stops the Activity when driving resumes.
+- The CAR_LAUNCHER category by itself is NOT a guarantee that an ordinary video/browser app can project to the car.
+- AABrowser's public AndroidManifest declares appCategory=game with CAR_LAUNCHER, NAVIGATION, APP_MAPS and distractionOptimized=true. This may account for its nonstandard car presentation, but is not an approved distribution declaration for our web player: https://github.com/kododake/AABrowser/blob/main/app/src/main/AndroidManifest.xml
+- Fermata uses older com.google.android.apps.auto.sdk.CarActivity and a bundled nonstandard car SDK, separate projection services, with Xposed in some configurations: https://github.com/AndreyPavlenko/Fermata/blob/master/fermata/src/auto/java/me/aap/fermata/auto/MainCarActivity.java
+- We deliberately do not misclassify a browser as a game or navigation application, and do not claim this build implements car-display video.
+
+QA: Android 15 emulator opened our Web Media by tapping the actual TV-section YouTube Web control. No AndroidRuntime fatal error and topResumedActivity was MediaWebActivity. It is a PHONE emulator test, not a real Volkswagen ID.4 display test.
