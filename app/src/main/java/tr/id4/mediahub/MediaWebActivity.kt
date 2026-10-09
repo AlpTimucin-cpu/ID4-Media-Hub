@@ -90,7 +90,12 @@ class MediaWebActivity : Activity() {
     }
 
     private fun buildUi() {
-        val root=FrameLayout(this)
+        val root=FrameLayout(this).apply { setBackgroundColor(0xff0b1627.toInt()) }
+        window.decorView.setBackgroundColor(0xff0b1627.toInt())
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.insetsController?.setSystemBarsAppearance(0,
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+        }
         main=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff0b1627.toInt())
         }
