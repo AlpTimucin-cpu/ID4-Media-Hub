@@ -60,7 +60,7 @@ object StationStore {
                 for (i in 0 until minOf(array.length(), MAX_STATIONS)) {
                     val obj = array.getJSONObject(i)
                     val station = Station(
-                        obj.getString("id"), obj.getString("name"), obj.getString("url"),
+                        obj.getString("id"), M3uParser.displayTitle(obj.getString("name")), obj.getString("url"),
                         obj.optString("group", "Radyo"), obj.optBoolean("favorite", false),
                         obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
                     )
