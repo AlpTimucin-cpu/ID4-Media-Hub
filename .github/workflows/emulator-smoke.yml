@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/emulator-smoke.yml'
+      - 'app/**'
 permissions:
   contents: read
 jobs:
@@ -45,6 +46,10 @@ jobs:
             sleep 3
             adb shell screencap -p /sdcard/id4_tv.png
             adb pull /sdcard/id4_tv.png id4_tv.png
+            adb shell input tap 680 2250
+            sleep 6
+            adb shell screencap -p /sdcard/id4_radio.png
+            adb pull /sdcard/id4_radio.png id4_radio.png
             adb shell uiautomator dump /sdcard/id4_ui.xml || true
             adb pull /sdcard/id4_ui.xml id4_ui.xml || true
             adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
@@ -57,6 +62,7 @@ jobs:
           path: |
             id4_home.png
             id4_tv.png
+            id4_radio.png
             id4_ui.xml
             android_runtime_errors.log
           retention-days: 7
