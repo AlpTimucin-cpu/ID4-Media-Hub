@@ -414,42 +414,143 @@ class MainActivity : Activity() {
         ctrl.setMediaItem(station.toMediaItem())
         ctrl.prepare()
         ctrl.play()
-        status.text = "Çalıyor: ${station.name}"
+        RecentStore.remember(this,station.id,"radio")
+        renderHome()
+        status.text = "♫  ${station.name}"
+    }
+
+    private fun radioRow(station:Station,compact:Boolean=false):LinearLayout {
+        return mediaCard(station.name, station.group,station.logo,station.favorite,false,{
+            playStation(station)
+        },{
+            StationStore.toggleFavorite(this,station.id);refresh();renderHome()
+        },{
+            val menu=PopupMenu(this,it)
+            menu.menu.add("Bağlantıyı kontrol et").setOnMenuItemClickListener{
+                checkStream(station.name,station.url);true
+            }
+            menu.menu.add("TV listesine taşı").setOnMenuItemClickListener{
+                if(VideoStore.add(this,station.name,station.url,station.group)){
+                    StationStore.remove(this,station.id);refresh();refreshVideo();renderHome()
+                }else toast("Kanal taşınamadı")
+                true
+            }
+            menu.menu.add("Listeden kaldır").setOnMenuItemClickListener{
+                StationStore.remove(this,station.id);refresh();renderHome();true
+            }
+            menu.show()
+        },compact)
+    }
+
+    private fun videoRow(channel:VideoChannel,compact:Boolean=false):LinearLayout =
+        mediaCard(channel.name,channel.group,channel.logo,channel.favorite,true,{
+            RecentStore.remember(this,channel.id,"tv")
+            renderHome()
+            startActivity(Intent(this,PlayerActivity::class.java)
+                .putExtra(PlayerActivity.EXTRA_URL,channel.url)
+                .putExtra(PlayerActivity.EXTRA_TITLE,channel.name))
+        },{
+            VideoStore.toggleFavorite(this,channel.id);refreshVideo();renderHome()
+        },{
+            val menu=PopupMenu(this,it)
+            menu.menu.add("Bağlantıyı kontrol et").setOnMenuItemClickListener{
+                checkStream(channel.name,channel.url);true
+            }
+            menu.menu.add("Radyo listesine taşı").setOnMenuItemClickListener{
+                if(StationStore.add(this,channel.name,channel.url,channel.group)){
+                    VideoStore.remove(this,channel.id);refreshVideo();refresh();renderHome()
+                }else toast("Kanal taşınamadı")
+                true
+            }
+            menu.menu.add("Listeden kaldır").setOnMenuItemClickListener{
+                VideoStore.remove(this,channel.id);refreshVideo();renderHome();true
+            }
+            menu.show()
+        },compact)
+
+    private fun mediaCard(
+        title:String,category:String,logo:String,favorite:Boolean,video:Boolean,
+        open:()->Unit,toggle:()->Unit,menu:(View)->Unit,compact:Boolean=false
+    ):LinearLayout {
+        val card=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(10),dp(8),dp(6),dp(8))
+            background=gradient(0xff1b304c.toInt(),0xff15263b.toInt(),15)
+            val lp=LinearLayout.LayoutParams(-1,dp(if(compact)76 else 88))
+            lp.setMargins(0,dp(4),0,dp(4))
+            layoutParams=lp
+            setOnClickListener{open()}
+        }
+        val mark=FrameLayout(this).apply{
+            background=gradient(0xff326381.toInt(),0xff29405b.toInt(),12)
+        }
+        val initials=title.split(' ').filter{it.isNotBlank()}.take(2).joinToString(""){it.take(1)}.uppercase().take(2)
+        mark.addView(label(initials.ifBlank{if(video)"TV" else "♫"},18,true).apply{
+            gravity=Gravity.CENTER
+            setTextColor(0xffc3fcf0.toInt())
+            setPadding(0,0,0,0)
+        },FrameLayout.LayoutParams(-1,-1))
+        if(logo.isNotBlank()){
+            val image=ImageView(this).apply{
+                scaleType=ImageView.ScaleType.FIT_CENTER
+                alpha=0f
+                setPadding(dp(4),dp(4),dp(4),dp(4))
+            }
+            mark.addView(image,FrameLayout.LayoutParams(-1,-1))
+            ChannelLogoLoader.into(logo,image,this)
+        }
+        card.addView(mark,LinearLayout.LayoutParams(dp(56),dp(56)))
+        val texts=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(12),0,dp(4),0)
+        }
+        texts.addView(label(title,15,true).apply{
+            maxLines=2
+            ellipsize=android.text.TextUtils.TruncateAt.END
+            setPadding(0,0,0,0)
+        })
+        texts.addView(label((if(video)"●  CANLI TV  •  " else "♫  RADYO  •  ")+category,11,false).apply{
+            maxLines=1
+            ellipsize=android.text.TextUtils.TruncateAt.END
+            setPadding(0,dp(5),0,0)
+        })
+        card.addView(texts,LinearLayout.LayoutParams(0,-1,1f))
+        val star=textAction(if(favorite)"★" else "☆"){toggle()}.apply{
+            gravity=Gravity.CENTER
+            textSize=22f
+            setTextColor(if(favorite)0xffffd17c.toInt() else 0xff9fb3c9.toInt())
+        }
+        card.addView(star,LinearLayout.LayoutParams(dp(40),dp(50)))
+        val more=textAction("⋮"){}.apply{
+            gravity=Gravity.CENTER
+            textSize=26f
+            setTextColor(0xffb8c9df.toInt())
+            setOnClickListener{menu(this)}
+        }
+        card.addView(more,LinearLayout.LayoutParams(dp(26),dp(50)))
+        return card
     }
 
     private fun refresh() {
-        if (!::listContainer.isInitialized || !::searchRadios.isInitialized) return
+        if(!::listContainer.isInitialized || !::searchRadios.isInitialized)return
         listContainer.removeAllViews()
-        val q = searchRadios.text.toString().trim()
-        val stations = StationStore.load(this).filter { station ->
-            (!radioFavoritesOnly || station.favorite) && (q.isEmpty() ||
-                station.name.contains(q, ignoreCase = true) || station.group.contains(q, ignoreCase = true))
+        val q=searchRadios.text.toString().trim()
+        val stations=StationStore.load(this).filter{
+            (!radioFavoritesOnly || it.favorite) &&
+                (q.isEmpty() || it.name.contains(q,true) || it.group.contains(q,true))
         }
-        val maxPage = ((stations.size - 1).coerceAtLeast(0)) / PAGE_SIZE
-        radioPage = radioPage.coerceIn(0, maxPage)
-        listContainer.addView(label("${stations.size} radyo • sayfa ${radioPage + 1}/${maxPage + 1}", 12, false))
-        for (station in stations.drop(radioPage * PAGE_SIZE).take(PAGE_SIZE)) {
-            val item = panel()
-            item.addView(button("▶   " + station.name) { playStation(station) })
-            item.addView(label(station.group, 12, false))
-            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            fun action(title: String, work: () -> Unit) {
-                actions.addView(button(title, work), LinearLayout.LayoutParams(0, dp(48), 1f))
-            }
-            action("Kontrol") { checkStream(station.name, station.url) }
-            action(if (station.favorite) "★" else "☆") {
-                StationStore.toggleFavorite(this, station.id); refresh()
-            }
-            action("TV'ye taşı") {
-                if (VideoStore.add(this, station.name, station.url, station.group)) {
-                    StationStore.remove(this, station.id); refresh(); refreshVideo()
-                } else toast("Bu kanal zaten mevcut veya eklenemedi.")
-            }
-            action("Sil") { StationStore.remove(this, station.id); refresh() }
-            item.addView(actions)
-            listContainer.addView(item)
+        val maxPage=((stations.size-1).coerceAtLeast(0))/PAGE_SIZE
+        radioPage=radioPage.coerceIn(0,maxPage)
+        listContainer.addView(label("${stations.size} radyo  ·  ${radioPage+1}/${maxPage+1}",13,false))
+        if(stations.isEmpty()){
+            listContainer.addView(label("Radyo bulunamadı. Kitaplıktan radyo veya M3U ekleyebilirsin.",14,false))
         }
-        addPageButtons(listContainer, radioPage, maxPage) { radioPage = it; refresh() }
+        stations.drop(radioPage*PAGE_SIZE).take(PAGE_SIZE).forEach{
+            listContainer.addView(radioRow(it))
+        }
+        addPageButtons(listContainer,radioPage,maxPage){radioPage=it;refresh()}
     }
 
     private fun importPlaylist(source: String) {
@@ -463,45 +564,31 @@ class MainActivity : Activity() {
         status.text = "M3U alındı: $audio yeni radyo, $video yeni video kanalı."
         refresh()
         refreshVideo()
+        renderHome()
     }
 
     private fun refreshVideo() {
-        if (!::videoContainer.isInitialized || !::searchVideos.isInitialized) return
+        if(!::videoContainer.isInitialized || !::searchVideos.isInitialized)return
         videoContainer.removeAllViews()
-        val query = searchVideos.text.toString().trim()
-        val channels = VideoStore.load(this)
-            .filter { (!favoritesOnly || it.favorite) &&
-                (query.isEmpty() || it.name.contains(query, ignoreCase = true) ||
-                    it.group.contains(query, ignoreCase = true)) }
-        val maxPage = ((channels.size - 1).coerceAtLeast(0)) / PAGE_SIZE
-        videoPage = videoPage.coerceIn(0, maxPage)
-        videoContainer.addView(label("${channels.size} TV kanalı • sayfa ${videoPage + 1}/${maxPage + 1}", 12, false))
-        channels.drop(videoPage * PAGE_SIZE).take(PAGE_SIZE).forEach { channel ->
-            val item = panel()
-            item.addView(button("▶   " + channel.name) {
-                startActivity(Intent(this, PlayerActivity::class.java)
-                    .putExtra(PlayerActivity.EXTRA_URL, channel.url)
-                    .putExtra(PlayerActivity.EXTRA_TITLE, channel.name))
-            })
-            item.addView(label(channel.group, 12, false))
-            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            fun action(title: String, work: () -> Unit) {
-                actions.addView(button(title, work), LinearLayout.LayoutParams(0, dp(48), 1f))
-            }
-            action("Kontrol") { checkStream(channel.name, channel.url) }
-            action(if (channel.favorite) "★" else "☆") {
-                VideoStore.toggleFavorite(this, channel.id); refreshVideo()
-            }
-            action("♪ Radyo") {
-                if (StationStore.add(this, channel.name, channel.url, channel.group)) {
-                    VideoStore.remove(this, channel.id); refreshVideo(); refresh()
-                } else toast("Radyo listesine eklenemedi.")
-            }
-            action("Sil") { VideoStore.remove(this, channel.id); refreshVideo() }
-            item.addView(actions)
-            videoContainer.addView(item)
+        val q=searchVideos.text.toString().trim()
+        val channels=VideoStore.load(this).filter{
+            (!favoritesOnly||it.favorite) &&
+                (q.isEmpty() || it.name.contains(q,true) || it.group.contains(q,true))
         }
-        addPageButtons(videoContainer, videoPage, maxPage) { videoPage = it; refreshVideo() }
+        val maxPage=((channels.size-1).coerceAtLeast(0))/PAGE_SIZE
+        videoPage=videoPage.coerceIn(0,maxPage)
+        videoContainer.addView(label("${channels.size} TV kanalı  ·  ${videoPage+1}/${maxPage+1}",13,false))
+        if(channels.isEmpty()){
+            val blank=panel()
+            blank.addView(label("Henüz gösterilecek kanal yok",18,true))
+            blank.addView(label("Kitaplığım'dan M3U listesi ekleyebilir veya test yayını deneyebilirsin.",13,false))
+            blank.addView(button("＋  Kanal listesi ekle"){selectTab(3)})
+            videoContainer.addView(blank)
+        }
+        channels.drop(videoPage*PAGE_SIZE).take(PAGE_SIZE).forEach{
+            videoContainer.addView(videoRow(it))
+        }
+        addPageButtons(videoContainer,videoPage,maxPage){videoPage=it;refreshVideo()}
     }
 
     /** Tests only HTTP reachability, off the UI thread. A successful HEAD is not playable-video proof. */
@@ -592,13 +679,13 @@ class MainActivity : Activity() {
         p.setMargins(0, dp(6), 0, dp(6))
         layoutParams = p
     }
-    private fun button(title: String, action: () -> Unit) = Button(this).apply {
+    private fun button(title: String, secondary: Boolean = false, action: () -> Unit) = Button(this).apply {
         text = title
         textSize = 13f
         setTextColor(Color.WHITE)
         setAllCaps(false)
         background = android.graphics.drawable.GradientDrawable().apply {
-            setColor(Color.rgb(30, 80, 141))
+            setColor(if(secondary)0xff29435e.toInt() else 0xff126b91.toInt())
             cornerRadius = dp(12).toFloat()
         }
         setPadding(dp(8), dp(8), dp(8), dp(8))
