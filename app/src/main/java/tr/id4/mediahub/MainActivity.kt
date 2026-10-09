@@ -272,6 +272,9 @@ class MainActivity : Activity() {
                 addCategory(Intent.CATEGORY_OPENABLE);type="video/*"
             },PICK_LOCAL_VIDEO)
         })
+        utilities.addView(textAction("🚗 ID.4 / Android Auto bağlantı raporu") {
+            CarCompatibility.show(this)
+        })
         utilities.addView(textAction("⚙  Android Auto ayarları") {
             try { startActivity(Intent("android.settings.APPLICATION_DETAILS_SETTINGS",Uri.parse("package:com.google.android.projection.gearhead"))) }
             catch (_: Exception) { toast("Android Auto ayarları açılamadı") }
