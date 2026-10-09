@@ -15,6 +15,8 @@ import android.content.Context
  */
 object CarCompatibility {
     private const val AA_PACKAGE = "com.google.android.projection.gearhead"
+    private const val AABROWSER_PACKAGE = "com.kododake.aabrowser"
+    private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
 
     private fun appVersion(activity: Activity, packageName: String): String {
         return try {
@@ -33,11 +35,21 @@ object CarCompatibility {
         appendLine("Cihaz: " + Build.MANUFACTURER + " " + Build.MODEL)
         appendLine("Android Auto: " + appVersion(activity, AA_PACKAGE))
         appendLine("Media Hub: " + appVersion(activity, activity.packageName))
+        appendLine("AABrowser: " + appVersion(activity, AABROWSER_PACKAGE))
+        appendLine("Shizuku: " + appVersion(activity, SHIZUKU_PACKAGE))
+        appendLine()
+        appendLine("SES KİTAPLIĞI BAĞLANTI KAYITLARI")
+        appendLine(CarConnectionJournal.summary(activity))
+        appendLine()
         appendLine("Android Auto ses kataloğu: MediaLibraryService (uygulama içinde)")
         appendLine("Telefon video oynatıcısı: Media3 + Web Medya")
         appendLine("Android Auto park halindeki VIDEO: bu platformda onaylanmış destek yok")
         appendLine("ID.4 üzerinde gerçek video: DOĞRULANMADI")
-        appendLine("Bu rapor tek başına bağlantı veya araçtaki görünürlüğü kanıtlamaz.")
+        appendLine("Raporu yenilemek için kapatıp yeniden aç.")
+        appendLine("Araçta Media Hub'ın radyo simgesine girip kitaplığı aç;")
+        appendLine("ardından raporda yeni Android Auto isteği kaydedilip kaydedilmediğini kontrol et.")
+        appendLine("Hiçbir tarihin görünmemesi, sürüm/istemci uyumsuzluğu anlamına gelebilir.")
+        appendLine("Bu rapor tek başına bağlantı veya araçtaki video görünürlüğünü kanıtlamaz.")
     }
 
     fun show(activity: Activity) {
