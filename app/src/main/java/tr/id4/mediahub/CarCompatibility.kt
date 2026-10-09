@@ -8,6 +8,9 @@ import android.os.Build
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.media.MediaDrm
+import android.webkit.WebView
+import java.util.UUID
 
 /**
  * Clear local-only Android Auto capability report. This does not attempt to
@@ -29,6 +32,27 @@ object CarCompatibility {
         }
     }
 
+    private fun widevineStatus(): String {
+        val uuid = UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed")
+        if (!MediaDrm.isCryptoSchemeSupported(uuid)) return "Desteklenmiyor"
+        return try {
+            val drm = MediaDrm(uuid)
+            try {
+                drm.getPropertyString("securityLevel") + " (cihaz DRM)"
+            } finally {
+                drm.release()
+            }
+        } catch (_: Exception) {
+            "Şema mevcut; güvenlik seviyesi okunamadı"
+        }
+    }
+
+    private fun webEngineVersion(): String = try {
+        WebView.getCurrentWebViewPackage()?.versionName ?: "Bilinmiyor"
+    } catch (_: Exception) {
+        "Sorgulanamadı"
+    }
+
     fun report(activity: Activity): String = buildString {
         appendLine("ID.4 Media Hub • Araç bağlantı raporu")
         appendLine("Android API: " + Build.VERSION.SDK_INT)
@@ -37,6 +61,9 @@ object CarCompatibility {
         appendLine("Media Hub: " + appVersion(activity, activity.packageName))
         appendLine("AABrowser: " + appVersion(activity, AABROWSER_PACKAGE))
         appendLine("Shizuku: " + appVersion(activity, SHIZUKU_PACKAGE))
+        appendLine("Android WebView: " + webEngineVersion())
+        appendLine("Widevine: " + widevineStatus())
+        appendLine("Widevine seviyesinin yüksek olması Netflix WebView videosunu garanti etmez.")
         appendLine()
         appendLine("SES KİTAPLIĞI BAĞLANTI KAYITLARI")
         appendLine(CarConnectionJournal.summary(activity))
