@@ -49,3 +49,16 @@ This experiment MUST NOT claim that the car will show video until testing proves
 Before choosing the in-vehicle video implementation, establish whether the POCO F5 is rooted and whether the current Android Auto launcher already displays the ID.4 Media Hub as an audio app. Rooting can disrupt banking/security apps and device integrity; do not change root/system settings without explicit informed approval.
 
 Status: engineering plan and feasibility branch only; not a proven vehicle-video APK.
+
+## 2026-10-09: Verified AABrowser evidence from user's actual ID.4
+
+User has ALREADY installed/configured Shizuku. Do **not** repeat the Shizuku / developer options steps. AABrowser opens YouTube in the Volkswagen ID.4 screen; Netflix's website opens but the video does not play. That is strong evidence that this phone/vehicle already displays a third-party web browser surface, but it does not establish Netflix DRM playback or support for other apps.
+
+Reference (GPL-3.0 source): https://github.com/kododake/AABrowser
+- AABrowser's `AndroidManifest.xml` exposes an **Activity** with `android.intent.category.CAR_LAUNCHER`, `androidx.car.app.category.NAVIGATION`, and `android.intent.category.APP_MAPS` intent categories, plus app-specific metadata. This differs from our current AudioLibraryService-only vehicle-facing integration.
+- Its `MainActivity.kt` hosts Android WebView and manages native browser tabs/controls.
+- Its `BrowserTabFactory.kt` calls `configureWebView` and passes a configurable DRM L3 setting. Having an L3 setting does **not** guarantee that Netflix allows playback in this environment.
+- AABrowser v3.0 has minSdk 35/Android 15. This matches the user's POCO F5 Android 15.
+- Do not blindly copy navigation intent/category labels to misrepresent a video app as a navigation app or override driver-distraction safeguards. Investigate a compliant parked-only path and actual vehicle behavior first.
+
+**Next proof target**: the phone with Shizuku already configured must launch an original, permitted video in a *genuine* ID.4 Media Hub car-display component while the car is parked. No new installer recommendations until the AA Browser car-screen architecture is proven in our own app. Netflix and SportzX must be treated as independent provider/platform constraints, not fixed by changing Android Auto registration.
