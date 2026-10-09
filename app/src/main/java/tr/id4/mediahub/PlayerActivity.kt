@@ -20,6 +20,7 @@ class PlayerActivity : Activity() {
     private var player: ExoPlayer? = null
     private var videoView: PlayerView? = null
     private var streamUri: Uri? = null
+    private var playbackInfo: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +42,12 @@ class PlayerActivity : Activity() {
             setPadding(24, 24, 24, 12)
         }
         layout.addView(header)
+        playbackInfo = TextView(this).apply {
+            text = "Yayın hazırlanıyor…"
+            setTextColor(Color.rgb(180, 201, 226))
+            textSize = 14f
+            setPadding(24, 6, 24, 12)
+        }.also { layout.addView(it) }
         videoView = PlayerView(this).apply { useController = true }
         layout.addView(videoView, LinearLayout.LayoutParams(-1, 0, 1f))
         val warning = TextView(this).apply {
@@ -51,6 +58,14 @@ class PlayerActivity : Activity() {
             setPadding(22, 14, 22, 26)
         }
         layout.addView(warning)
+        layout.addView(android.widget.Button(this).apply {
+            text = "Yeniden dene"
+            setOnClickListener {
+                playbackInfo?.text = "Yayın yeniden deneniyor…"
+                player?.prepare()
+                player?.play()
+            }
+        })
         setContentView(layout)
     }
 
@@ -59,7 +74,16 @@ class PlayerActivity : Activity() {
         val uri = streamUri ?: return
         player = ExoPlayer.Builder(this).build().apply {
             addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    playbackInfo?.text = when (playbackState) {
+                        Player.STATE_BUFFERING -> "Yayın yükleniyor…"
+                        Player.STATE_READY -> "Yayın hazır • Oynatılıyor"
+                        Player.STATE_ENDED -> "Yayın sona erdi"
+                        else -> "Oynatıcı hazırlanıyor…"
+                    }
+                }
                 override fun onPlayerError(error: PlaybackException) {
+                    playbackInfo?.text = "Oynatma başarısız: ${error.errorCodeName}. Bağlantıyı kontrol edip Yeniden dene'ye dokun."
                     Toast.makeText(this@PlayerActivity,
                         "Video açılamadı: ${error.errorCodeName}. Yayın linkini ve formatı kontrol et.",
                         Toast.LENGTH_LONG).show()
