@@ -100,4 +100,51 @@ https://video.example.org/news.m3u8
             "com.example.some.media.client", "tr.id4.mediahub"))
     }
 
+    @Test fun playbackReportTracksBufferingAndFirstFrameWithoutUrls() {
+        val health = PlaybackDiagnostics()
+        health.start(1000L)
+        health.buffering(1020L)
+        health.buffering(1030L) // Duplicate state must not add a new stall.
+        health.ready(2520L)
+        health.firstFrame(2600L)
+        health.firstFrame(2700L) // First frame remains the first one.
+        health.videoSize(1920, 1080)
+        health.videoDecoder("c2.qti.avc.decoder")
+        health.dropped(3)
+        health.dropped(-5)
+        health.retry()
+        health.problem("ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT")
+        val report = health.report(4000L)
+        assertTrue(report.contains("1600 ms"))
+        assertTrue(report.contains("1 kez, 1.5 sn"))
+        assertTrue(report.contains("1920 × 1080"))
+        assertTrue(report.contains("Düşen video kareleri: 3"))
+        assertTrue(report.contains("Otomatik kurtarma denemeleri: 1"))
+        assertFalse(report.contains("https://"))
+        assertFalse(report.contains("Bearer"))
+    }
+
+    @Test fun playbackMetricStateResetsForNextChannel() {
+        val health = PlaybackDiagnostics()
+        health.start(1L)
+        health.dropped(11)
+        health.videoDecoder("hw.decoder")
+        health.start(20L)
+        val report = health.report(100L)
+        assertTrue(report.contains("Düşen video kareleri: 0"))
+        assertTrue(report.contains("Video çözücü: Bilinmiyor"))
+        assertTrue(report.contains("İlk görüntü: Henüz alınmadı"))
+    }
+
+    @Test fun transientRetriesAreLimitedAndNeverApplyToAuthErrors() {
+        val budget = StreamRetryBudget()
+        assertNull(budget.nextDelay(false))
+        assertEquals(1500L, budget.nextDelay(true))
+        assertEquals(4000L, budget.nextDelay(true))
+        assertNull(budget.nextDelay(true))
+        budget.reset()
+        assertEquals(1500L, budget.nextDelay(true))
+        assertEquals(1, budget.attempts)
+    }
+
 }
