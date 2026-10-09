@@ -7,6 +7,7 @@ on:
       - 'app/**'
       - '*.gradle.kts'
       - 'gradle.properties'
+      - '.github/workflows/build-apk.yml'
       - 'ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip'
 permissions:
   contents: read
@@ -37,8 +38,10 @@ jobs:
         run: |
           set -euo pipefail
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
-          command -v sdkmanager
-          sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          echo "Using $SDKMANAGER"
+          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
