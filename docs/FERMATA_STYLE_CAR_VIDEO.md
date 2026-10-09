@@ -106,3 +106,11 @@ QA: Android 15 emulator opened our Web Media by tapping the actual TV-section Yo
 6. Next proof test: with the car stationary, collect Android Auto launcher visibility and Media Hub audio controls; do not ask user to repeat Shizuku/Android Auto setup already performed.
 
 **Status:** Research completed; moving-video front-display functionality not implemented and not promised. No APK is produced for this research finding.
+
+## 2026-10-09: User-forwarded AAAD support statement and dongle suitability
+
+- AAAD support told user that AAAD and AAAD-managed apps have **Android 15 compatibility problems** and offered an **AAWireless USB dongle** as a workaround. The email itself has no verified issue-resolution date; do not generalize it as a failure of every Android 15 Android Auto app.
+- Official AAAD source: https://github.com/shmykelsa/AAAD ; AAAD is an app downloader/installer, not the projection/browser rendering engine of the Media Hub.
+- AABrowser's own source and release: https://github.com/kododake/AABrowser ; supports Android 15+ independent of AAAD and worked on the user's ID.4 for a YouTube website.
+- **AAWireless OEM compatibility**: https://www.aawireless.io/en/products/aawireless — the manufacturer explicitly states that cars which **already have built-in wireless Android Auto** are *not compatible* with the dongle. The user's ID.4 uses its native wireless Android Auto, so DO NOT recommend buying an AAWireless dongle as a generic fix.
+- Do not repeat the existing Shizuku configuration or recommend installing AAAD again. The next testable item is in-car media-library connection diagnostics, then a genuinely supported parked video surface when platform compatibility permits it.
