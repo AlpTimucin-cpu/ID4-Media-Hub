@@ -65,8 +65,8 @@ class MainActivity : Activity() {
         setContentView(root)
         // Android 15 enforces edge-to-edge drawing: keep the bottom nav above OS controls.
         root.setOnApplyWindowInsetsListener { _, insets ->
-            val bottom = insets.getInsets(WindowInsets.Type.systemBars()).bottom
-            root.setPadding(0, 0, 0, bottom)
+            val systemBars = insets.getInsets(WindowInsets.Type.systemBars())
+            root.setPadding(0, systemBars.top, 0, systemBars.bottom)
             insets
         }
         val top = LinearLayout(this).apply {
@@ -161,7 +161,6 @@ class MainActivity : Activity() {
         sportzRow.addView(button("Aç  ↗") { SportzXLauncher.openIfInstalled(this) },
             LinearLayout.LayoutParams(dp(96),dp(47)))
         sportzTv.addView(sportzRow)
-        television.addView(sportzTv)
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
@@ -177,6 +176,7 @@ class MainActivity : Activity() {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
         television.addView(mediaApps)
+        television.addView(sportzTv)
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
