@@ -145,6 +145,22 @@ class MainActivity : Activity() {
                 renderHome()
             }
         )
+        val sportzTv = panel().apply {
+            background = gradient(0xff173d58.toInt(),0xff182941.toInt(),16)
+            setPadding(dp(12),dp(9),dp(12),dp(9))
+        }
+        val sportzRow = LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+        }
+        val sportzTitle = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
+        sportzTitle.addView(label("SPORTZX",17,true))
+        sportzTitle.addView(label("Yüklü Android uygulamasını doğrudan aç",11,false))
+        sportzRow.addView(sportzTitle,LinearLayout.LayoutParams(0,-2,1f))
+        sportzRow.addView(button("Aç  ↗") { SportzXLauncher.openIfInstalled(this) },
+            LinearLayout.LayoutParams(dp(96),dp(47)))
+        sportzTv.addView(sportzRow)
+        television.addView(sportzTv)
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
@@ -222,9 +238,8 @@ class MainActivity : Activity() {
             try { startActivity(launch ?: Intent(Intent.ACTION_VIEW,Uri.parse("https://play.google.com/store/apps/details?id=com.netflix.mediaclient"))) }
             catch (_: Exception) { toast("Netflix açılamadı") }
         })
-        external.addView(textAction("◉  SportzX'i aç / durumunu incele") { SportzXLauncher.openIfInstalled(this) })
-        external.addView(textAction("↗  SportzX internet sitesi") { SportzXLauncher.openSite(this) })
-        external.addView(label("Haricî uygulamalar bağımsız çalışır. SportzX'in kimliği ve yayın izinleri doğrulanmadı.",12,false))
+        external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
+        external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
         library.addView(external)
 
         val utilities=panel()
@@ -379,6 +394,14 @@ class MainActivity : Activity() {
         quick.addView(shortcut("♫","RADYO","Müzik ve yayın"){selectTab(2)},LinearLayout.LayoutParams(0,dp(120),1f))
         quick.addView(shortcut("＋","LİSTELER","M3U ekle"){selectTab(3)},LinearLayout.LayoutParams(0,dp(120),1f))
         homeContainer.addView(quick)
+        val sportzHome=panel().apply{
+            background=gradient(0xff20344f.toInt(),0xff102d45.toInt(),16)
+        }
+        sportzHome.addView(label("SPOR & DİĞER UYGULAMALAR",13,true))
+        sportzHome.addView(button("◉  SportzX'i doğrudan aç") {
+            SportzXLauncher.openIfInstalled(this)
+        })
+        homeContainer.addView(sportzHome)
         val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
             homeContainer.addView(section("SON AÇILANLAR","Geçmişinden seç"))
