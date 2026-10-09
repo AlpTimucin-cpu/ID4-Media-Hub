@@ -1,0 +1,40 @@
+name: Import Android project source
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-source.yml'
+permissions:
+  contents: write
+jobs:
+  unpack-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and unpack source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip"
+          test -s "$archive"
+          mkdir -p /tmp/id4-src
+          unzip -q "$archive" -d /tmp/id4-src
+          src="/tmp/id4-src/ID4_Media_Hub_v0_8"
+          test -f "$src/app/build.gradle.kts"
+          test -f "$src/app/src/main/java/tr/id4/mediahub/MainActivity.kt"
+          cp -a "$src/app" .
+          cp -a "$src/settings.gradle.kts" "$src/build.gradle.kts" .
+          cp -a "$src/scripts" "$src/tests" "$src/docs" "$src/examples" .
+          cp -a "$src/README_TR.md" "$src/CHANGELOG.md" .
+          git add app settings.gradle.kts build.gradle.kts scripts tests docs examples README_TR.md CHANGELOG.md
+      - name: Commit extracted source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: import editable Android v0.8 source from archive"
+            git push origin HEAD:main
+          fi
