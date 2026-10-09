@@ -71,7 +71,7 @@ class PlayerActivity : Activity() {
             }
             setMediaItem(media.build())
             prepare()
-            playWhenReady = false // User explicitly starts phone video
+            playWhenReady = true // User tapped a channel: start playback on the phone
         }
         videoView?.player = player
     }
