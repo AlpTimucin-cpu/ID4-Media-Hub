@@ -92,6 +92,35 @@ object StationStore {
         return count
     }
 
+    /** Merge directory results without removing user-added stations or losing favourites. */
+    fun mergeDirectory(context: Context, incoming: List<Station>): Int {
+        val stations = load(context).toMutableList()
+        val indices = stations.withIndex().associate { it.value.id to it.index }
+        val urls = stations.mapTo(mutableSetOf()) { it.url }
+        var added = 0
+        var changed = false
+        for (candidate in incoming.take(400)) {
+            if (candidate.name.isBlank() || !validUrl(candidate.url)) continue
+            val knownIndex = indices[candidate.id]
+            if (knownIndex != null) {
+                val previous = stations[knownIndex]
+                val refreshed = candidate.copy(favorite = previous.favorite)
+                if (previous != refreshed && (candidate.url == previous.url || !urls.contains(candidate.url))) {
+                    urls.remove(previous.url)
+                    urls.add(candidate.url)
+                    stations[knownIndex] = refreshed
+                    changed = true
+                }
+            } else if (stations.size < MAX_STATIONS && urls.add(candidate.url)) {
+                stations.add(candidate)
+                added++
+                changed = true
+            }
+        }
+        if (changed) save(context, stations)
+        return added
+    }
+
     fun toggleFavorite(context: Context, id: String) =
         save(context, load(context).map { if (it.id == id) it.copy(favorite = !it.favorite) else it })
 
