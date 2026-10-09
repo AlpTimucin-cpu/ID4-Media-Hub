@@ -29,6 +29,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.datasource.HttpDataSource
 
 /** Phone-only IPTV. This UI never projects video into Android Auto. */
 class TvPlayback(
@@ -74,13 +75,14 @@ class TvPlayback(
 
     fun view(): View {
         val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(label("CANLI TELEVİZYON", 22f))
-        root.addView(label("Tek oynatıcı · Hızlı kanal değiştirme", 12f, true))
+        root.addView(label("CANLI TV  •  CANLI YAYIN", 19f))
+        root.addView(label("Kanal rehberi · Kalite · Tam ekran", 12f, true))
         videoHost = FrameLayout(activity).apply { setBackgroundColor(Color.BLACK) }
         val screenWidth = activity.resources.displayMetrics.widthPixels - dp(32)
         root.addView(videoHost, LinearLayout.LayoutParams(-1, screenWidth * 9 / 16))
         playerView = PlayerView(activity).apply {
-            useController = true
+            // Live streams do not have a useful VOD seek timeline. Use our TV controls instead.
+            useController = false
             controllerShowTimeoutMs = 3500
             setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
             setBackgroundColor(Color.BLACK)
@@ -92,7 +94,7 @@ class TvPlayback(
             setOnClickListener { showChannels() }
         }
         videoHost.addView(overlay, FrameLayout.LayoutParams(-1,-1))
-        title = label("Kanal seçilmedi", 18f)
+        title = label("Kanal seçilmedi", 18f).apply { maxLines = 2 }
         root.addView(title)
         playbackState = label("Kanallar düğmesiyle yayını başlatabilirsin.", 12f, true)
         root.addView(playbackState)
@@ -107,6 +109,9 @@ class TvPlayback(
         val quality = button("⚙  Görüntü kalitesi") {}
         quality.setOnClickListener { showQuality(quality) }
         options.addView(quality, LinearLayout.LayoutParams(0,dp(49),1f))
+        options.addView(button("⏯  Oynat / Duraklat") {
+            player?.let { if (it.isPlaying) it.pause() else it.play() }
+        }, LinearLayout.LayoutParams(0,dp(49),1.15f))
         options.addView(button("⛶  Tam ekran") { fullScreen() },
             LinearLayout.LayoutParams(0,dp(49),1f))
         root.addView(options)
@@ -130,18 +135,22 @@ class TvPlayback(
         instance.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (!initialized) return
+                if (state == Player.STATE_READY) overlay.visibility = View.GONE
                 playbackState.text = when(state) {
                     Player.STATE_BUFFERING -> "●  Yayın yükleniyor…"
-                    Player.STATE_READY -> "●  Yayın oynatılıyor"
+                    Player.STATE_READY -> "●  Canlı yayın oynatılıyor"
                     Player.STATE_ENDED -> "●  Yayın bitti"
                     else -> "●  Bağlanılıyor"
                 }
             }
             override fun onPlayerError(error: PlaybackException) {
-                if (initialized) playbackState.text = "Yayın hatası: " + error.errorCodeName +
-                    " · Kanalı değiştir veya yeniden dene."
-                Toast.makeText(activity, "Yayın açılamadı: " + error.errorCodeName,
-                    Toast.LENGTH_LONG).show()
+                val message = playbackErrorExplanation(error)
+                if (initialized) {
+                    playbackState.text = "●  " + message
+                    (overlay as? TextView)?.text = "YAYIN AÇILAMADI\n\n" + message +
+                        "\n\nKanalları açmak için dokun"
+                    overlay.visibility = View.VISIBLE
+                }
             }
         })
         player=instance
@@ -154,7 +163,7 @@ class TvPlayback(
         current=channel
         if (!initialized) return
         overlay.visibility=View.GONE
-        title.text=channel.name
+        title.text=M3uParser.displayTitle(channel.name)
         playbackState.text="●  Yayın başlatılıyor…"
         try {
             val address=channel.url.substringBefore('?').substringBefore('#')
@@ -207,6 +216,37 @@ class TvPlayback(
             val lp=LinearLayout.LayoutParams(dp(126),dp(94))
             lp.setMargins(0,0,dp(7),0)
             quickAccess.addView(tile,lp)
+        }
+    }
+
+    /** User-friendly playback error; no stream URL or subscriber token is logged. */
+    private fun playbackErrorExplanation(error: PlaybackException): String {
+        var currentCause: Throwable? = error.cause
+        repeat(5) {
+            val cause = currentCause ?: return@repeat
+            if (cause is HttpDataSource.InvalidResponseCodeException) {
+                return when (cause.responseCode) {
+                    401, 403 -> "Yayın sunucusu erişimi engelledi (HTTP " + cause.responseCode +
+                        "). Oturum, yayın hakkı veya bölge kısıtlaması olabilir."
+                    404, 410 -> "Bu yayın adresi kaldırılmış veya değişmiş (HTTP " +
+                        cause.responseCode + ")."
+                    429 -> "Sunucu çok fazla bağlantı nedeniyle geçici olarak reddetti (HTTP 429)."
+                    in 500..599 -> "Yayın sunucusunda hata var (HTTP " + cause.responseCode + ")."
+                    else -> "Yayın sunucusu HTTP " + cause.responseCode + " yanıtını verdi."
+                }
+            }
+            currentCause = cause.cause
+        }
+        return when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+                "Yayın sunucusuna bağlanılamadı. İnternetini ve kanal kaynağını kontrol et."
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
+                "Yayın sunucusu bu isteği kabul etmedi. Kanalın erişim izni değişmiş olabilir."
+            PlaybackException.ERROR_CODE_DECODING_FAILED ->
+                "Yayının ses/video biçimi bu telefonda çözümlenemedi."
+            else -> "Yayın başlatılamadı (" + error.errorCodeName +
+                "). Kanal başka bir bölgeye kapalı veya kaynak kullanım dışı olabilir."
         }
     }
 
