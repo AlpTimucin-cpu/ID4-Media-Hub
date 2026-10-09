@@ -44,6 +44,9 @@ class MainActivity : Activity() {
     private var videoPage = 0
     private lateinit var homeContainer: LinearLayout
     private lateinit var tvPlayer: TvPlayback
+    private lateinit var radioDashboard: RadioDashboard
+    private var radioDirectoryLoading = false
+    private var currentRadioId: String? = null
     private lateinit var tabPages: List<LinearLayout>
     private lateinit var navButtons: List<TextView>
     private lateinit var contentScroll: ScrollView
@@ -137,23 +140,20 @@ class MainActivity : Activity() {
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
-        radio.addView(section("İNTERNET RADYOSU","Android Auto medya kitaplığı için ses yayını"))
-        val control=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        control.addView(button("⏯ Oynat / Duraklat") {
-            controller?.let { if(it.isPlaying) it.pause() else it.play() }
-        },LinearLayout.LayoutParams(0,dp(54),1f))
-        control.addView(button("■ Durdur") { controller?.stop() },LinearLayout.LayoutParams(0,dp(54),1f))
-        radio.addView(control)
-        searchRadios=searchInput("Radyo adı veya kategori ara")
-        radio.addView(searchRadios)
-        searchRadios.addTextChangedListener(watch { radioPage=0;refresh() })
-        radio.addView(textAction("☆ Yalnızca favori radyolar") {
-            radioFavoritesOnly = !radioFavoritesOnly
-            radioPage=0
-            refresh()
-        })
-        listContainer=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        radio.addView(listContainer)
+        radioDashboard = RadioDashboard(
+            this,
+            { StationStore.load(this) },
+            { station -> playStation(station) },
+            { toggleRadioPlayback() },
+            { direction -> skipRadio(direction) },
+            { syncRadioCatalogue(true) },
+            { id ->
+                StationStore.toggleFavorite(this, id)
+                refresh()
+                renderHome()
+            }
+        )
+        radio.addView(radioDashboard.view())
 
         library.addView(section("KÜTÜPHANEM","Kaynaklar, oynatma ve cihaz bağlantıları"))
         val importCard=panel()
@@ -260,12 +260,71 @@ class MainActivity : Activity() {
                             if(mediaItem != null)status.text="♫   ${mediaItem.mediaMetadata.title ?: "Radyo"}"
                         }
                     })
+                    connected.addListener(object:Player.Listener{
+                        override fun onIsPlayingChanged(isPlaying:Boolean) {
+                            val selected = StationStore.load(this@MainActivity)
+                                .firstOrNull{it.id==connected.currentMediaItem?.mediaId}
+                            if(selected!=null)currentRadioId=selected.id
+                            if(::radioDashboard.isInitialized)
+                                radioDashboard.setPlaying(selected,isPlaying)
+                        }
+                    })
                     status.text="●   Ses servisi hazır"
                 }catch (_:Exception){
                     if(!isFinishing && !isDestroyed)status.text="●   Ses servisine bağlanılamadı"
                 }
             },mainExecutor)
         }
+        syncRadioCatalogue(false)
+    }
+
+    private fun toggleRadioPlayback() {
+        val ctrl=controller ?: return toast("Radyo servisi henüz hazır değil")
+        if(ctrl.isPlaying) { ctrl.pause();return }
+        if(ctrl.currentMediaItem!=null){ctrl.play();return}
+        val first=StationStore.load(this).firstOrNull()
+        if(first!=null)playStation(first) else syncRadioCatalogue(true)
+    }
+
+    private fun skipRadio(direction:Int) {
+        val stations=StationStore.load(this)
+        if(stations.isEmpty())return
+        val index=stations.indexOfFirst{it.id==currentRadioId}
+        val next=if(index<0)0 else (index+direction+stations.size)%stations.size
+        playStation(stations[next])
+    }
+
+    private fun syncRadioCatalogue(force:Boolean) {
+        if (radioDirectoryLoading) return
+        if (!force && !RadioDirectory.shouldRefresh(this)) {
+            if(::radioDashboard.isInitialized)
+                radioDashboard.message("Kayıtlı Türkiye kataloğu hazır • Güncelle ile yenileyebilirsin")
+            return
+        }
+        radioDirectoryLoading=true
+        if(::radioDashboard.isInitialized)
+            radioDashboard.message("Türkiye radyoları indiriliyor…")
+        val context=applicationContext
+        Thread {
+            val result=try{
+                RadioDirectory.loadAndMerge(context)
+            }catch (_: Exception){
+                -1
+            }
+            runOnUiThread {
+                radioDirectoryLoading=false
+                if(!isFinishing && !isDestroyed){
+                    if(::radioDashboard.isInitialized){
+                        radioDashboard.message(
+                            if(result>=0)"Katalog güncellendi • "+result+" yeni radyo eklendi"
+                            else "İnternet kataloğuna ulaşılamadı • Kayıtlı radyolar kullanılabilir"
+                        )
+                        radioDashboard.refresh()
+                    }
+                    renderHome()
+                }
+            }
+        }.start()
     }
 
     private fun watch(action:()->Unit):TextWatcher=object:TextWatcher{
@@ -412,6 +471,8 @@ class MainActivity : Activity() {
         ctrl.setMediaItem(station.toMediaItem())
         ctrl.prepare()
         ctrl.play()
+        currentRadioId = station.id
+        if (::radioDashboard.isInitialized) radioDashboard.setPlaying(station, true)
         RecentStore.remember(this,station.id,"radio")
         renderHome()
         status.text = "♫  ${station.name}"
@@ -531,23 +592,7 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
-        if(!::listContainer.isInitialized || !::searchRadios.isInitialized)return
-        listContainer.removeAllViews()
-        val q=searchRadios.text.toString().trim()
-        val stations=StationStore.load(this).filter{
-            (!radioFavoritesOnly || it.favorite) &&
-                (q.isEmpty() || it.name.contains(q,true) || it.group.contains(q,true))
-        }
-        val maxPage=((stations.size-1).coerceAtLeast(0))/PAGE_SIZE
-        radioPage=radioPage.coerceIn(0,maxPage)
-        listContainer.addView(label("${stations.size} radyo  ·  ${radioPage+1}/${maxPage+1}",13,false))
-        if(stations.isEmpty()){
-            listContainer.addView(label("Radyo bulunamadı. Kitaplıktan radyo veya M3U ekleyebilirsin.",14,false))
-        }
-        stations.drop(radioPage*PAGE_SIZE).take(PAGE_SIZE).forEach{
-            listContainer.addView(radioRow(it))
-        }
-        addPageButtons(listContainer,radioPage,maxPage){radioPage=it;refresh()}
+        if (::radioDashboard.isInitialized) radioDashboard.refresh()
     }
 
     private fun importPlaylist(source: String) {
