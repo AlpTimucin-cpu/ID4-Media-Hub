@@ -91,4 +91,13 @@ https://video.example.org/news.m3u8
         }
     }
 
+    @Test fun carLibraryClientIsClassifiedWithoutLeakingPackageNames() {
+        assertEquals("android_auto", CarConnectionJournal.classifyClient(
+            "com.google.android.projection.gearhead", "tr.id4.mediahub"))
+        assertEquals("phone", CarConnectionJournal.classifyClient(
+            "tr.id4.mediahub", "tr.id4.mediahub"))
+        assertEquals("other_browser", CarConnectionJournal.classifyClient(
+            "com.example.some.media.client", "tr.id4.mediahub"))
+    }
+
 }
