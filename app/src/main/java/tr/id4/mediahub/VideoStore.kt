@@ -10,7 +10,8 @@ data class VideoChannel(
     val name: String,
     val url: String,
     val group: String,
-    val favorite: Boolean
+    val favorite: Boolean,
+    val logo: String = ""
 )
 
 /** Private on-device catalogue. Video channels never appear in the Android Auto media tree. */
@@ -29,7 +30,8 @@ object VideoStore {
                     val url = obj.getString("url")
                     if (M3uParser.isHttpsUrl(url)) add(VideoChannel(
                         obj.getString("id"), obj.getString("name"), url,
-                        obj.optString("group", "Diğer"), obj.optBoolean("favorite", false)
+                        obj.optString("group", "Diğer"), obj.optBoolean("favorite", false),
+                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
                     ))
                 }
             }
@@ -53,7 +55,7 @@ object VideoStore {
         for (item in items) {
             if (channels.size >= 2500) break
             if (!item.isAudio && M3uParser.isHttpsUrl(item.url) && existing.add(item.url)) {
-                channels.add(VideoChannel(UUID.randomUUID().toString(), item.name, item.url, item.group, false))
+                channels.add(VideoChannel(UUID.randomUUID().toString(), item.name, item.url, item.group, false, item.logo))
                 added++
             }
         }
@@ -72,7 +74,7 @@ object VideoStore {
         channels.forEach { channel ->
             json.put(JSONObject().put("id", channel.id).put("name", channel.name)
                 .put("url", channel.url).put("group", channel.group)
-                .put("favorite", channel.favorite))
+                .put("favorite", channel.favorite).put("logo", channel.logo))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, json.toString()).apply()
     }
