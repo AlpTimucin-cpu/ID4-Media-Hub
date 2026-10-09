@@ -11,10 +11,13 @@ object TrustedSources {
     // Confirm playback on the phone; we cannot live-probe the stream from this environment.
     const val TRT_HABER = "https://tv-trthaber.medya.trt.com.tr/master_720.m3u8"
     const val APPLE_HLS_TEST = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8"
+    const val SPORTS_PUBLIC = "https://iptv-org.github.io/iptv/categories/sports.m3u"
     val playlists = listOf(
         PublicPlaylistSource("Türkiye açık yayın listesi", TURKEY_PUBLIC,
             "iptv-org topluluk listesi; tüm kanalların çalışması veya kullanım hakkı garanti edilmez"),
         PublicPlaylistSource("Açık haber kanalları", NEWS_PUBLIC,
-            "iptv-org topluluk listesi; bölge ve telif koşullarını yayın bazında kontrol edin")
+            "iptv-org topluluk listesi; bölge ve telif koşullarını yayın bazında kontrol edin"),
+        PublicPlaylistSource("Spor kategorisi", SPORTS_PUBLIC,
+            "Yalnızca iptv-org kamu listesi; yayınların çalışması veya tüm hakları doğrulanmış değildir")
     )
 }
