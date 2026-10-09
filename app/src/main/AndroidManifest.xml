@@ -30,6 +30,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".PlayerActivity" android:exported="false" />
+        <activity android:name=".MediaWebActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <service android:name=".AudioLibraryService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
