@@ -166,7 +166,13 @@ class TvPlayback(
                 eventTime: AnalyticsListener.EventTime, decoderName: String,
                 initializedTimestampMs: Long, initializationDurationMs: Long
             ) {
-                diagnostics.videoDecoder(decoderName)
+                diagnostics.videoDecoder(decoderName, initializationDurationMs)
+            }
+            override fun onVideoFrameProcessingOffset(
+                eventTime: AnalyticsListener.EventTime,
+                totalProcessingOffsetUs: Long, frameCount: Int
+            ) {
+                diagnostics.processedFrames(frameCount)
             }
         })
         instance.addListener(object : Player.Listener {
