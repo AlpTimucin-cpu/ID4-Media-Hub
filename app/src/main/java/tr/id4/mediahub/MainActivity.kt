@@ -44,24 +44,47 @@ class MainActivity : Activity() {
         val parent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 40, 28, 36)
-            setBackgroundColor(Color.rgb(246, 250, 252))
+            setBackgroundColor(Color.rgb(11, 18, 31))
         }
         scroll.addView(parent)
         setContentView(scroll)
-        parent.addView(label("ID.4 Media Hub", 25, true))
-        parent.addView(label("Android Auto: ses/radyo • Telefon: M3U/IPTV video", 14, false))
-        status = label("Medya hizmetine bağlanılıyor…", 13, false)
+        parent.addView(label("ID.4  MEDIA HUB", 28, true))
+        parent.addView(label("RADYO  •  IPTV  •  MEDYA", 13, false))
+        status = label("Bağlantı hazırlanıyor…", 13, false)
         parent.addView(status)
 
+        val radioTab = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val videoTab = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val settingsTab = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val pages = listOf(radioTab, videoTab, settingsTab)
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val tabs = mutableListOf<Button>()
+        fun switchPage(selected: Int) {
+            pages.forEachIndexed { index, view -> view.visibility = if (index == selected) View.VISIBLE else View.GONE }
+            tabs.forEachIndexed { index, tab ->
+                tab.setBackgroundColor(if (index == selected) Color.rgb(29, 119, 210) else Color.rgb(28, 45, 68))
+                tab.setTextColor(Color.WHITE)
+            }
+        }
+        listOf("RADYO", "IPTV", "AYARLAR").forEachIndexed { index, title ->
+            val tab = button(title) { switchPage(index) }
+            tabs.add(tab)
+            nav.addView(tab, LinearLayout.LayoutParams(0, dp(52), 1f))
+        }
+        parent.addView(nav)
+        pages.forEach { parent.addView(it) }
+        switchPage(0)
+        radioTab.addView(label("Canlı radyo", 23, true))
+        radioTab.addView(label("Kanala dokunarak dinlemeyi başlat. Sürüşte Android Auto ses uygulaması kullanılabilir.", 13, false))
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(button("⏯ Oynat/Duraklat") {
             controller?.let { if (it.isPlaying) it.pause() else it.play() }
         }, LinearLayout.LayoutParams(0, -2, 1f))
         row.addView(button("⏹ Durdur") { controller?.stop() }, LinearLayout.LayoutParams(0, -2, 1f))
-        parent.addView(row)
-        parent.addView(label("Radyo / ses yayınları", 19, true))
+        radioTab.addView(row)
+        radioTab.addView(label("Radyo / ses yayınları", 19, true))
         searchRadios = EditText(this).apply { hint = "Radyo adı veya grup ara"; setSingleLine(true) }
-        parent.addView(searchRadios)
+        radioTab.addView(searchRadios)
         searchRadios.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -77,9 +100,9 @@ class MainActivity : Activity() {
             radioFavoriteButton.text = if (radioFavoritesOnly) "Radyo favorileri: Açık" else "Radyo favorileri: Kapalı"
             refresh()
         }
-        parent.addView(radioFavoriteButton)
+        radioTab.addView(radioFavoriteButton)
         listContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        parent.addView(listContainer)
+        radioTab.addView(listContainer)
         refresh()
 
         val name = EditText(this).apply { hint = "Yayın adı"; setSingleLine(true) }
@@ -88,25 +111,27 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setSingleLine(true)
         }
-        parent.addView(label("Yeni yayın ekle", 19, true))
-        parent.addView(name)
-        parent.addView(url)
-        parent.addView(button("+ Yayın ekle") {
+        radioTab.addView(label("Yeni yayın ekle", 19, true))
+        radioTab.addView(name)
+        radioTab.addView(url)
+        radioTab.addView(button("+ Yayın ekle") {
             if (StationStore.add(this, name.text.toString(), url.text.toString())) {
                 name.setText(""); url.setText(""); refresh()
                 toast("Yayın eklendi. Aracın medya listesi için yeniden bağlanmak gerekebilir.")
             } else toast("Geçerli bir HTTPS yayın adresi ve benzersiz ad gir.")
         })
-        parent.addView(button("YouTube Music uygulamasını aç") {
+        radioTab.addView(button("YouTube Music uygulamasını aç") {
             val launch = packageManager.getLaunchIntentForPackage("com.google.android.apps.youtube.music")
             if (launch != null) startActivity(launch)
             else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com")))
         })
-        parent.addView(label(
+        radioTab.addView(label(
             "YouTube Music ayrı uygulamada açılır; Premium kilidi aşılmaz. " +
                 "Sürüşte yalnızca Android Auto'nun izin verdiği ses arayüzü kullanılır.", 12, false))
 
-        parent.addView(button("Netflix'i telefonda aç (park halinde)") {
+        videoTab.addView(label("IPTV ve video", 23, true))
+        videoTab.addView(label("Kendi M3U listenizi ekleyin veya önce Apple örnek HLS videosuyla oynatıcıyı test edin.", 13, false))
+        videoTab.addView(button("Netflix'i telefonda aç (park halinde)") {
             // Netflix içerikleri DRM korumalıdır; harici, resmî uygulama açılır.
             // Android Auto/araç ekranına video yansıtılmaz.
             val netflixPackage = "com.netflix.mediaclient"
@@ -123,23 +148,23 @@ class MainActivity : Activity() {
                 }
             }
         })
-        parent.addView(label(
+        videoTab.addView(label(
             "Netflix yalnızca telefondaki resmî uygulamada açılır. " +
                 "ID.4 ekranında Netflix videosu oynatılmaz; sürüş kilitleri değiştirilmez.", 12, false))
 
-        parent.addView(label("SportzX (harici uygulama)", 19, true))
-        parent.addView(button("SportzX'i telefonda aç") {
+        videoTab.addView(label("SportzX (harici uygulama)", 19, true))
+        videoTab.addView(button("SportzX'i telefonda aç") {
             SportzXLauncher.openIfInstalled(this)
         })
-        parent.addView(button("SportzX sitesini tarayıcıda incele") {
+        videoTab.addView(button("SportzX sitesini tarayıcıda incele") {
             SportzXLauncher.openSite(this)
         })
-        parent.addView(label(
+        videoTab.addView(label(
             "SportzX ayrı uygulamadır. Verdiğiniz web adresini istek üzerine açabiliriz; " +
                 "APK güvenliği ve yayın lisansları doğrulanmadı. ID.4 ön ekranına video aktarılmaz.", 12, false))
 
-        parent.addView(label("APTV benzeri IPTV / M3U (telefonda)", 19, true))
-        parent.addView(label(
+        videoTab.addView(label("APTV benzeri IPTV / M3U (telefonda)", 19, true))
+        videoTab.addView(label(
             "Kendi yasal M3U listenizi ekleyin. Radyo olarak işaretli kanallar Android Auto ses listesine, " +
                 "diğer kanallar yalnızca telefon video listesine alınır. HTTPS gereklidir.", 13, false
         ))
@@ -148,56 +173,56 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setSingleLine(true)
         }
-        parent.addView(playlistUrl)
-        parent.addView(label("Hazır açık yayın kaynakları", 17, true))
+        videoTab.addView(playlistUrl)
+        videoTab.addView(label("Hazır açık yayın kaynakları", 17, true))
         TrustedSources.playlists.forEach { source ->
-            parent.addView(button("Listeyi ekle: ${source.name}") {
+            videoTab.addView(button("Listeyi ekle: ${source.name}") {
                 playlistUrl.setText(source.url)
                 importFromHttps(source.url)
             })
-            parent.addView(label(source.description, 11, false))
+            videoTab.addView(label(source.description, 11, false))
         }
-        parent.addView(button("TRT Haber canlı yayını ekle (telefonda)") {
+        videoTab.addView(button("TRT Haber canlı yayını ekle (telefonda)") {
             if (VideoStore.add(this, "TRT Haber", TrustedSources.TRT_HABER, "Türkiye / Haber")) {
                 toast("TRT Haber eklendi; erişimi telefon üzerinden dene.")
                 refreshVideo()
             } else toast("TRT Haber zaten listede veya eklenemedi.")
         })
-        parent.addView(button("Apple örnek HLS videosunu ekle (telefonda test)") {
+        videoTab.addView(button("Apple örnek HLS videosunu ekle (telefonda test)") {
             if (VideoStore.add(this, "Apple HLS test videosu", TrustedSources.APPLE_HLS_TEST, "Test")) {
                 toast("Test videosu listeye eklendi.")
                 refreshVideo()
             } else toast("Test videosu zaten listede veya eklenemedi.")
         })
-        parent.addView(button("M3U adresinden içe aktar") {
+        videoTab.addView(button("M3U adresinden içe aktar") {
             val address = playlistUrl.text.toString().trim()
             importFromHttps(address)
         })
-        parent.addView(button("Telefondan M3U dosyası seç") {
+        videoTab.addView(button("Telefondan M3U dosyası seç") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             }, PICK_PLAYLIST)
         })
-        parent.addView(button("M3U listelerimi yedekle (.m3u)") {
+        videoTab.addView(button("M3U listelerimi yedekle (.m3u)") {
             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "application/x-mpegURL"
                 putExtra(Intent.EXTRA_TITLE, "ID4_Media_Hub_Yedek.m3u")
             }, EXPORT_PLAYLIST)
         })
-        parent.addView(button("Telefondaki video dosyasını aç") {
+        videoTab.addView(button("Telefondaki video dosyasını aç") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "video/*"
             }, PICK_LOCAL_VIDEO)
         })
-        parent.addView(label("IPTV kanallarım (telefon ekranı)", 19, true))
+        videoTab.addView(label("IPTV kanallarım (telefon ekranı)", 19, true))
         searchVideos = EditText(this).apply {
             hint = "Kanal veya grup ara"
             setSingleLine(true)
         }
-        parent.addView(searchVideos)
+        videoTab.addView(searchVideos)
         searchVideos.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -213,11 +238,22 @@ class MainActivity : Activity() {
             favoritesButton.text = if (favoritesOnly) "Yalnızca favoriler: Açık" else "Yalnızca favoriler: Kapalı"
             refreshVideo()
         }
-        parent.addView(favoritesButton)
+        videoTab.addView(favoritesButton)
         videoContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        parent.addView(videoContainer)
+        videoTab.addView(videoContainer)
         refreshVideo()
 
+
+        settingsTab.addView(label("Uygulama ve tanılama", 23, true))
+        settingsTab.addView(label("v0.9 • Android Auto'da radyo/ses; telefonda IPTV/video. Netflix ve SportzX bağımsız uygulamalardır.", 14, false))
+        settingsTab.addView(label("Araçta görünmüyorsa Android Auto uygulama başlatıcısını, telefonun Android Auto ayarlarını ve USB bağlantısını kontrol edin. Bu APK'nın ID.4 üzerinde uyumluluğu henüz doğrulanmadı.", 13, false))
+        settingsTab.addView(button("Android Auto ayarlarını aç") {
+            try {
+                startActivity(Intent("android.settings.APPLICATION_DETAILS_SETTINGS",
+                    Uri.parse("package:com.google.android.projection.gearhead")))
+            } catch (_: Exception) { toast("Android Auto ayarları açılamadı") }
+        })
+        styleInputs(parent)
         val token = SessionToken(this, ComponentName(this, AudioLibraryService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync().also { future ->
             future.addListener({
@@ -284,25 +320,25 @@ class MainActivity : Activity() {
         radioPage = radioPage.coerceIn(0, maxPage)
         listContainer.addView(label("${stations.size} radyo • sayfa ${radioPage + 1}/${maxPage + 1}", 12, false))
         for (station in stations.drop(radioPage * PAGE_SIZE).take(PAGE_SIZE)) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            row.addView(button("▶ ${station.name}") { playStation(station) }, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(button("Kontrol") { checkStream(station.name, station.url) })
-            row.addView(button(if (station.favorite) "★" else "☆") {
-                StationStore.toggleFavorite(this, station.id)
-                refresh()
-            })
-            row.addView(button("TV") {
+            val item = panel()
+            item.addView(button("▶   " + station.name) { playStation(station) })
+            item.addView(label(station.group, 12, false))
+            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            fun action(title: String, work: () -> Unit) {
+                actions.addView(button(title, work), LinearLayout.LayoutParams(0, dp(48), 1f))
+            }
+            action("Kontrol") { checkStream(station.name, station.url) }
+            action(if (station.favorite) "★" else "☆") {
+                StationStore.toggleFavorite(this, station.id); refresh()
+            }
+            action("TV'ye taşı") {
                 if (VideoStore.add(this, station.name, station.url, station.group)) {
-                    StationStore.remove(this, station.id)
-                    refresh(); refreshVideo()
-                    toast("Kanal telefon video listesine taşındı.")
-                } else toast("Video listesine eklenemedi veya zaten mevcut.")
-            })
-            row.addView(button("×") {
-                StationStore.remove(this, station.id)
-                refresh()
-            })
-            listContainer.addView(row)
+                    StationStore.remove(this, station.id); refresh(); refreshVideo()
+                } else toast("Bu kanal zaten mevcut veya eklenemedi.")
+            }
+            action("Sil") { StationStore.remove(this, station.id); refresh() }
+            item.addView(actions)
+            listContainer.addView(item)
         }
         addPageButtons(listContainer, radioPage, maxPage) { radioPage = it; refresh() }
     }
@@ -332,29 +368,29 @@ class MainActivity : Activity() {
         videoPage = videoPage.coerceIn(0, maxPage)
         videoContainer.addView(label("${channels.size} TV kanalı • sayfa ${videoPage + 1}/${maxPage + 1}", 12, false))
         channels.drop(videoPage * PAGE_SIZE).take(PAGE_SIZE).forEach { channel ->
-            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            line.addView(button("▶ ${channel.name} • ${channel.group}") {
+            val item = panel()
+            item.addView(button("▶   " + channel.name) {
                 startActivity(Intent(this, PlayerActivity::class.java)
                     .putExtra(PlayerActivity.EXTRA_URL, channel.url)
                     .putExtra(PlayerActivity.EXTRA_TITLE, channel.name))
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-            line.addView(button("Kontrol") { checkStream(channel.name, channel.url) })
-            line.addView(button(if (channel.favorite) "★" else "☆") {
-                VideoStore.toggleFavorite(this, channel.id)
-                refreshVideo()
             })
-            line.addView(button("♪") {
+            item.addView(label(channel.group, 12, false))
+            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            fun action(title: String, work: () -> Unit) {
+                actions.addView(button(title, work), LinearLayout.LayoutParams(0, dp(48), 1f))
+            }
+            action("Kontrol") { checkStream(channel.name, channel.url) }
+            action(if (channel.favorite) "★" else "☆") {
+                VideoStore.toggleFavorite(this, channel.id); refreshVideo()
+            }
+            action("♪ Radyo") {
                 if (StationStore.add(this, channel.name, channel.url, channel.group)) {
-                    VideoStore.remove(this, channel.id)
-                    refreshVideo(); refresh()
-                    toast("Kanal radyo/ses listesine taşındı.")
-                } else toast("Radyo listesine eklenemedi veya zaten mevcut.")
-            })
-            line.addView(button("×") {
-                VideoStore.remove(this, channel.id)
-                refreshVideo()
-            })
-            videoContainer.addView(line)
+                    VideoStore.remove(this, channel.id); refreshVideo(); refresh()
+                } else toast("Radyo listesine eklenemedi.")
+            }
+            action("Sil") { VideoStore.remove(this, channel.id); refreshVideo() }
+            item.addView(actions)
+            videoContainer.addView(item)
         }
         addPageButtons(videoContainer, videoPage, maxPage) { videoPage = it; refreshVideo() }
     }
@@ -435,16 +471,47 @@ class MainActivity : Activity() {
         private const val PAGE_SIZE = 20
     }
 
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun panel(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(23, 35, 55))
+            cornerRadius = dp(14).toFloat()
+        }
+        val p = LinearLayout.LayoutParams(-1, -2)
+        p.setMargins(0, dp(6), 0, dp(6))
+        layoutParams = p
+    }
     private fun button(title: String, action: () -> Unit) = Button(this).apply {
         text = title
+        textSize = 13f
+        setTextColor(Color.WHITE)
+        setAllCaps(false)
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(30, 80, 141))
+            cornerRadius = dp(12).toFloat()
+        }
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        minHeight = dp(44)
         setOnClickListener { action() }
-        isAllCaps = false
     }
     private fun label(value: String, size: Int, strong: Boolean) = TextView(this).apply {
-        text = value; textSize = size.toFloat()
-        setTextColor(Color.rgb(21, 42, 62))
-        setPadding(2, 12, 2, 12)
+        text = value
+        textSize = size.toFloat()
+        setTextColor(if (strong) Color.WHITE else Color.rgb(175, 197, 220))
+        setPadding(dp(4), dp(10), dp(4), dp(10))
         if (strong) setTypeface(null, android.graphics.Typeface.BOLD)
+    }
+    private fun styleInputs(root: View) {
+        if (root is EditText) {
+            root.setTextColor(Color.WHITE)
+            root.setHintTextColor(Color.rgb(156, 177, 202))
+            root.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(78, 131, 190))
+        }
+        if (root is android.view.ViewGroup) {
+            for (i in 0 until root.childCount) styleInputs(root.getChildAt(i))
+        }
     }
     private fun toast(value: String) = Toast.makeText(this, value, Toast.LENGTH_LONG).show()
     override fun onDestroy() {
