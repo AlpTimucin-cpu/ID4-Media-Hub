@@ -52,6 +52,14 @@ jobs:
             adb pull /sdcard/id4_radio.png id4_radio.png
             adb shell uiautomator dump /sdcard/id4_ui.xml || true
             adb pull /sdcard/id4_ui.xml id4_ui.xml || true
+            adb shell am start -W -n tr.id4.mediahub/.MediaWebActivity --es web_media_url 'https://m.youtube.com'
+            sleep 6
+            adb shell screencap -p /sdcard/id4_web_media.png
+            adb pull /sdcard/id4_web_media.png id4_web_media.png
+            adb shell input tap 500 195
+            sleep 2
+            adb shell screencap -p /sdcard/id4_web_media_tabs.png
+            adb pull /sdcard/id4_web_media_tabs.png id4_web_media_tabs.png
             adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
             cat android_runtime_errors.log
             if grep -q 'FATAL EXCEPTION' android_runtime_errors.log; then exit 1; fi
@@ -63,6 +71,8 @@ jobs:
             id4_home.png
             id4_tv.png
             id4_radio.png
+            id4_web_media.png
+            id4_web_media_tabs.png
             id4_ui.xml
             android_runtime_errors.log
           retention-days: 7
