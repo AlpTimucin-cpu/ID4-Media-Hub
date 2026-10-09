@@ -116,8 +116,12 @@ class AudioLibraryService : MediaLibraryService() {
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?
-        ): ListenableFuture<LibraryResult<MediaItem>> =
-            Futures.immediateFuture(LibraryResult.ofItem(rootItem(), params))
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            CarConnectionJournal.recordLibraryBrowse(
+                this@AudioLibraryService, browser.packageName
+            )
+            return Futures.immediateFuture(LibraryResult.ofItem(rootItem(), params))
+        }
 
         override fun onGetChildren(
             session: MediaLibrarySession,
