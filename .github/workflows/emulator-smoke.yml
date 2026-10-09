@@ -2,7 +2,7 @@ name: Android emulator launch smoke test
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, feature/fermata-style-car-video]
     paths:
       - '.github/workflows/emulator-smoke.yml'
       - 'app/**'
