@@ -1,6 +1,13 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.app.Dialog
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
@@ -25,6 +32,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -52,6 +63,11 @@ class TvPlayback(
     private lateinit var catalogState: TextView
     private lateinit var quickAccess: LinearLayout
     private var initialized = false
+    private val diagnostics = PlaybackDiagnostics()
+    private val retries = StreamRetryBudget()
+    private val retryHandler = Handler(Looper.getMainLooper())
+    private var scheduledRetry: Runnable? = null
+    private var playGeneration = 0
 
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
     private fun bg(color: Int, radius: Int = 14) = GradientDrawable().apply {
@@ -119,6 +135,9 @@ class TvPlayback(
         val streams = button("🔊  Ses dili / Altyazı seçenekleri") {}
         streams.setOnClickListener { showTrackOptions(streams) }
         root.addView(streams, LinearLayout.LayoutParams(-1, dp(46)))
+        root.addView(button("📊  Yayın performansı ve bağlantı raporu") {
+            showPlaybackDiagnostics()
+        }, LinearLayout.LayoutParams(-1, dp(48)))
 
         catalogState = label("", 12f, true)
         root.addView(catalogState)
@@ -133,13 +152,38 @@ class TvPlayback(
         return root
     }
 
+    @OptIn(UnstableApi::class)
     private fun player(): ExoPlayer {
         player?.let { return it }
         val instance = ExoPlayer.Builder(activity).build()
+        instance.addAnalyticsListener(object : AnalyticsListener {
+            override fun onDroppedVideoFrames(
+                eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long
+            ) {
+                diagnostics.dropped(droppedFrames)
+            }
+            override fun onVideoDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime, decoderName: String,
+                initializedTimestampMs: Long, initializationDurationMs: Long
+            ) {
+                diagnostics.videoDecoder(decoderName)
+            }
+        })
         instance.addListener(object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                diagnostics.firstFrame(SystemClock.elapsedRealtime())
+            }
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                diagnostics.videoSize(videoSize.width, videoSize.height)
+            }
             override fun onPlaybackStateChanged(state: Int) {
                 if (!initialized) return
-                if (state == Player.STATE_READY) overlay.visibility = View.GONE
+                if (state == Player.STATE_BUFFERING)
+                    diagnostics.buffering(SystemClock.elapsedRealtime())
+                if (state == Player.STATE_READY) {
+                    diagnostics.ready(SystemClock.elapsedRealtime())
+                    overlay.visibility = View.GONE
+                }
                 playbackState.text = when(state) {
                     Player.STATE_BUFFERING -> "●  Yayın yükleniyor…"
                     Player.STATE_READY -> "●  Canlı yayın oynatılıyor"
@@ -149,7 +193,17 @@ class TvPlayback(
             }
             override fun onPlayerError(error: PlaybackException) {
                 val message = playbackErrorExplanation(error)
-                if (initialized) {
+                diagnostics.ready(SystemClock.elapsedRealtime())
+                // Store only our own error classification, never a URL or exception text.
+                diagnostics.problem(error.errorCodeName)
+                val delay = retries.nextDelay(isTransient(error))
+                if (delay != null && initialized && current != null) {
+                    scheduleRecovery(delay)
+                    playbackState.text = "●  Geçici bağlantı sorunu · " +
+                        (delay / 1000.0) + " sn sonra yeniden denenecek (" +
+                        retries.attempts + "/2)"
+                    overlay.visibility = View.GONE
+                } else if (initialized) {
                     playbackState.text = "●  " + message
                     (overlay as? TextView)?.text = "YAYIN AÇILAMADI\n\n" + message +
                         "\n\nKanalları açmak için dokun"
@@ -164,6 +218,9 @@ class TvPlayback(
     }
 
     fun play(channel: VideoChannel) {
+        cancelRecovery()
+        retries.reset()
+        diagnostics.start(SystemClock.elapsedRealtime())
         current=channel
         if (!initialized) return
         overlay.visibility=View.GONE
@@ -184,6 +241,65 @@ class TvPlayback(
             playbackState.text="Bu kanal başlatılamadı"
         }
         refresh()
+    }
+
+    private fun isTransient(error: PlaybackException): Boolean {
+        var cause: Throwable? = error.cause
+        repeat(6) {
+            val next = cause ?: return@repeat
+            if (next is HttpDataSource.InvalidResponseCodeException) {
+                // 401/403/404/429 can mean authorization, denial or rate limiting:
+                // no automatic retries for those responses.
+                return next.responseCode in 500..599
+            }
+            cause = next.cause
+        }
+        return error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+    }
+
+    private fun cancelRecovery() {
+        scheduledRetry?.let { retryHandler.removeCallbacks(it) }
+        scheduledRetry = null
+        playGeneration++
+    }
+
+    private fun scheduleRecovery(delayMs: Long) {
+        val capturedGeneration = playGeneration
+        val item = player?.currentMediaItem ?: return
+        val task = object : Runnable {
+            override fun run() {
+                scheduledRetry = null
+                if (playGeneration != capturedGeneration || !initialized || current == null) return
+                diagnostics.retry()
+                try {
+                    player?.apply {
+                        setMediaItem(item)
+                        prepare()
+                        playWhenReady = true
+                    }
+                    playbackState.text = "●  Yayına yeniden bağlanılıyor…"
+                } catch (_: Exception) {
+                    playbackState.text = "●  Yayın yeniden başlatılamadı"
+                }
+            }
+        }
+        scheduledRetry?.let { retryHandler.removeCallbacks(it) }
+        scheduledRetry = task
+        retryHandler.postDelayed(task, delayMs)
+    }
+
+    private fun showPlaybackDiagnostics() {
+        val report = diagnostics.report(SystemClock.elapsedRealtime())
+        AlertDialog.Builder(activity)
+            .setTitle("IPTV performans raporu")
+            .setMessage(report)
+            .setNegativeButton("Kapat", null)
+            .setPositiveButton("Raporu kopyala") { _, _ ->
+                val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE)
+                    as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("ID4 IPTV tanılama", report))
+            }.show()
     }
 
     fun refresh() {
@@ -455,8 +571,13 @@ class TvPlayback(
         dialog.window?.setLayout(-1,(activity.resources.displayMetrics.heightPixels*0.86).toInt())
     }
 
-    fun pause(){player?.pause()}
+    fun pause(){
+        cancelRecovery()
+        player?.pause()
+    }
     fun release(){
+        cancelRecovery()
+        diagnostics.ready(SystemClock.elapsedRealtime())
         fullScreen?.dismiss()
         fullScreen=null
         playerView.player=null
