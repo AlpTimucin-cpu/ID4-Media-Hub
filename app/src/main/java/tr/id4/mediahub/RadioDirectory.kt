@@ -55,11 +55,15 @@ object RadioDirectory {
                         val urls = mutableSetOf<String>()
                         for (i in 0 until minOf(response.length(), 320)) {
                             val json = response.optJSONObject(i) ?: continue
-                            if (!json.optBoolean("lastcheckok", false)) continue
+                            val onlineFlag = json.opt("lastcheckok")
+                            val online = onlineFlag == true || onlineFlag?.toString() == "1" ||
+                                onlineFlag?.toString()?.equals("true", true) == true
+                            if (!online) continue
                             val uuid = json.optString("stationuuid").trim()
                             val name = json.optString("name").trim().take(110)
-                            val stream = json.optString("url_resolved")
-                                .ifBlank { json.optString("url") }.trim()
+                            val resolved = json.optString("url_resolved").trim()
+                            val stream = resolved.takeIf { M3uParser.isHttpsUrl(it) }
+                                ?: json.optString("url").trim()
                             if (uuid.length !in 8..80 || name.isBlank() ||
                                 !M3uParser.isHttpsUrl(stream) || !urls.add(stream)) continue
                             val logo = json.optString("favicon").trim()
