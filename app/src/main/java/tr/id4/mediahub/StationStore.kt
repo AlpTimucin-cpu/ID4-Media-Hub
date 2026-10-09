@@ -15,7 +15,8 @@ data class Station(
     val name: String,
     val url: String,
     val group: String = "Radyo",
-    val favorite: Boolean = false
+    val favorite: Boolean = false,
+    val logo: String = ""
 ) {
     /** Keep M3U query tokens private until the station is actually played. */
     fun toMediaItem(includeUri: Boolean = false): MediaItem = MediaItem.Builder()
@@ -57,7 +58,8 @@ object StationStore {
                     val obj = array.getJSONObject(i)
                     val station = Station(
                         obj.getString("id"), obj.getString("name"), obj.getString("url"),
-                        obj.optString("group", "Radyo"), obj.optBoolean("favorite", false)
+                        obj.optString("group", "Radyo"), obj.optBoolean("favorite", false),
+                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
                     )
                     if (validUrl(station.url)) add(station)
                 }
@@ -82,7 +84,7 @@ object StationStore {
         for (entry in entries) {
             if (stations.size >= MAX_STATIONS) break
             if (entry.isAudio && validUrl(entry.url) && used.add(entry.url)) {
-                stations.add(Station(UUID.randomUUID().toString(), entry.name, entry.url, entry.group))
+                stations.add(Station(UUID.randomUUID().toString(), entry.name, entry.url, entry.group, logo = entry.logo))
                 count++
             }
         }
@@ -100,7 +102,7 @@ object StationStore {
         val data = JSONArray()
         stations.forEach { s ->
             data.put(JSONObject().put("id", s.id).put("name", s.name).put("url", s.url)
-                .put("group", s.group).put("favorite", s.favorite))
+                .put("group", s.group).put("favorite", s.favorite).put("logo", s.logo))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, data.toString()).apply()
