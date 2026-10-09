@@ -1,0 +1,58 @@
+name: Build ID4 Media Hub APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip'
+permissions:
+  contents: read
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f settings.gradle.kts ]]; then
+            test -f ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip
+            mkdir -p /tmp/id4-src
+            unzip -q ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip -d /tmp/id4-src
+            cp -a /tmp/id4-src/ID4_Media_Hub_v0_8/. .
+          fi
+          test -f app/build.gradle.kts
+          test -f settings.gradle.kts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Run tests and build debug APK
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify APK and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          cd app/build/outputs/apk/debug
+          sha256sum app-debug.apk > APK_SHA256.txt
+          cat APK_SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ID4-Media-Hub-debug-APK
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/APK_SHA256.txt
+          if-no-files-found: error
+          retention-days: 14
