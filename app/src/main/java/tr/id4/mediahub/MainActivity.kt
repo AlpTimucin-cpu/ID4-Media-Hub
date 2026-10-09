@@ -12,6 +12,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -61,30 +62,37 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.rgb(9, 16, 28))
         }
         setContentView(root)
+        // Android 15 enforces edge-to-edge drawing: keep the bottom nav above OS controls.
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val bottom = insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            root.setPadding(0, 0, 0, bottom)
+            insets
+        }
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(12), dp(20), dp(7))
+            setPadding(dp(16), dp(2), dp(16), dp(2))
             background = gradient(0xff172c48.toInt(), 0xff0b1423.toInt(), 0)
         }
         val brandRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        brandRow.addView(label("ID⁴", 32, true).apply { setTextColor(0xff66dddb.toInt()) })
+        brandRow.addView(label("ID⁴", 26, true).apply { setTextColor(0xff66dddb.toInt()) })
         val brandTitles = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10),0,0,0)
         }
-        brandTitles.addView(label("MEDIA HUB", 23, true))
-        brandTitles.addView(label("TELEVİZYON  /  RADYO  /  MEDYA", 10, false))
+        brandTitles.addView(label("MEDIA HUB", 20, true))
+        brandTitles.addView(label("TV  ·  RADYO  ·  KİTAPLIK", 10, false))
         brandRow.addView(brandTitles, LinearLayout.LayoutParams(0,-2,1f))
         val add = textAction("＋") { selectTab(3) }
         brandRow.addView(add, LinearLayout.LayoutParams(dp(46),dp(48)))
         top.addView(brandRow)
-        status = label("●   Medya bağlantısı hazırlanıyor", 12, false).apply {
+        status = label("● Bağlantı hazırlanıyor", 11, false).apply {
             setTextColor(0xff8de1d3.toInt())
-            setPadding(dp(3), dp(2), dp(3), dp(6))
-            maxLines = 2
+            setPadding(dp(3), 0, dp(3), dp(2))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
         top.addView(status)
         root.addView(top)
