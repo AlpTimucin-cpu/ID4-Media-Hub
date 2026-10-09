@@ -146,26 +146,11 @@ class MainActivity : Activity() {
                 renderHome()
             }
         )
-        val sportzTv = panel().apply {
-            background = gradient(0xff173d58.toInt(),0xff182941.toInt(),16)
-            setPadding(dp(12),dp(9),dp(12),dp(9))
-        }
-        val sportzRow = LinearLayout(this).apply {
-            orientation=LinearLayout.HORIZONTAL
-            gravity=Gravity.CENTER_VERTICAL
-        }
-        val sportzTitle = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        sportzTitle.addView(label("SPORTZX",17,true))
-        sportzTitle.addView(label("Yüklü Android uygulamasını doğrudan aç",11,false))
-        sportzRow.addView(sportzTitle,LinearLayout.LayoutParams(0,-2,1f))
-        sportzRow.addView(button("Aç  ↗") { SportzXLauncher.openIfInstalled(this) },
-            LinearLayout.LayoutParams(dp(96),dp(47)))
-        sportzTv.addView(sportzRow)
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
         mediaApps.addView(label("WEB MEDYA • UYGULAMA İÇİNDE",16,true))
-        mediaApps.addView(label("Uygulama içi web oynatıcı: YouTube ve desteklenen HTTPS videoları. Netflix DRM ayrı uygulamada çalışır.",12,false))
+        mediaApps.addView(label("YouTube, Netflix sayfası ve HTTPS videoları uygulama içinde açılır. Netflix videoları DRM nedeniyle oynatılamayabilir.",12,false))
         val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         appActions.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
             LinearLayout.LayoutParams(0,dp(50),1f))
@@ -176,7 +161,6 @@ class MainActivity : Activity() {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
         television.addView(mediaApps)
-        television.addView(sportzTv)
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
