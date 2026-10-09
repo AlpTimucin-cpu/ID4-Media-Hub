@@ -162,8 +162,9 @@ class MediaWebActivity : Activity() {
         desktopControl.text=if(desktop)"Masaüstü ✓" else "Mobil"
     }
 
-    private fun addTab(raw:String=YOUTUBE_URL,name:String="",activate:Boolean=true) {
-        if(tabs.size>=6){toast("En fazla 6 sekme açılabilir");return}
+    private fun addTab(raw:String=YOUTUBE_URL,name:String="",activate:Boolean=true,
+                       loadImmediately:Boolean=true):WebView? {
+        if(tabs.size>=6){toast("En fazla 6 sekme açılabilir");return null}
         val url=BrowserStore.safeHttps(raw) ?: YOUTUBE_URL
         val web=WebView(this).apply {
             visibility=View.GONE;overScrollMode=View.OVER_SCROLL_NEVER
@@ -174,12 +175,13 @@ class MediaWebActivity : Activity() {
             mediaPlaybackRequiresUserGesture=true
             allowFileAccess=false;allowContentAccess=false
             javaScriptCanOpenWindowsAutomatically=false
-            setSupportMultipleWindows(false)
+            setSupportMultipleWindows(true)
             mixedContentMode=WebSettings.MIXED_CONTENT_NEVER_ALLOW
             builtInZoomControls=true;displayZoomControls=false
             safeBrowsingEnabled=true
         }
-        CookieManager.getInstance().setAcceptThirdPartyCookies(web,false)
+        // Some signed-in video sites require third-party session cookies.
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web,true)
         updateAgent(web)
         val tab=Tab(web,name.ifBlank{"Yeni sekme"},url)
         web.webViewClient=object:WebViewClient() {
@@ -221,13 +223,44 @@ class MediaWebActivity : Activity() {
                 fullLayer.systemUiVisibility=View.SYSTEM_UI_FLAG_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             }
+            override fun onCreateWindow(view:WebView?, isDialog:Boolean,
+                isUserGesture:Boolean, resultMsg:android.os.Message?):Boolean {
+                if(!isUserGesture || resultMsg==null || tabs.size>=6) return false
+                val transport=resultMsg.obj as? WebView.WebViewTransport ?: return false
+                val child=addTab(YOUTUBE_URL,"Yeni sekme",true,false) ?: return false
+                transport.webView=child
+                resultMsg.sendToTarget()
+                return true
+            }
+
+            override fun onPermissionRequest(request:android.webkit.PermissionRequest?) {
+                if(request==null)return
+                val id=android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
+                val valid=BrowserStore.safeHttps(request.origin.toString())!=null &&
+                    request.resources.size==1 && request.resources[0]==id
+                if(!valid){request.deny();return}
+                runOnUiThread {
+                    if(isFinishing || isDestroyed){request.deny();return@runOnUiThread}
+                    AlertDialog.Builder(this@MediaWebActivity)
+                        .setTitle("Korumalı medya izni")
+                        .setMessage("Bu HTTPS sitesi korumalı medya kimliği kullanmak istiyor. " +
+                            "Bu izin içeriğin lisanslı oynatılmasını sağlayabilir, " +
+                            "ancak Netflix gibi hizmetlerin görüntü vermesi garanti değildir.")
+                        .setNegativeButton("Reddet"){_,_->request.deny()}
+                        .setPositiveButton("İzin ver"){_,_->request.grant(arrayOf(id))}
+                        .setOnCancelListener{request.deny()}
+                        .show()
+                }
+            }
+
             override fun onHideCustomView(){exitVideoFullscreen()}
         }
         tabs.add(tab)
         pages.addView(web,FrameLayout.LayoutParams(-1,-1))
         if(activate) selectTab(tabs.lastIndex)
-        web.loadUrl(url)
+        if(loadImmediately)web.loadUrl(url)
         renderTabs();persist()
+        return web
     }
 
     private fun selectTab(i:Int){
