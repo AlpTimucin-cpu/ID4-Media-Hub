@@ -2,268 +2,384 @@ package tr.id4.mediahub
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.http.SslError
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
-import android.net.http.SslError
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.view.inputmethod.EditorInfo
-import android.webkit.WebSettings
 import android.widget.Toast
-import android.net.Uri
 
 /**
- * In-app HTTPS web media surface for a phone. This is NOT an Android Auto video
- * activity and does not embed other Android APKs, Netflix DRM, or bypass car locks.
+ * Independent multi-tab WebView browser inspired by the UX of AABrowser.
+ * Phone-side activity: never claims Android Auto video or bypasses driver locks.
  */
 class MediaWebActivity : Activity() {
     companion object {
         const val EXTRA_URL = "web_media_url"
         const val YOUTUBE_URL = "https://m.youtube.com"
-        const val VIDEO_DEMO_URL = "https://www.youtube.com/embed/aqz-KE-bpKQ"
+        const val NETFLIX_URL = "https://www.netflix.com"
     }
-    private lateinit var browser: WebView
-    private lateinit var urlInput: EditText
+    private data class Tab(val web: WebView, var title: String, var url: String)
+    private val tabs = mutableListOf<Tab>()
+    private var active = -1
+    private var desktop = false
+    private lateinit var main: LinearLayout
+    private lateinit var pages: FrameLayout
+    private lateinit var fullLayer: FrameLayout
+    private lateinit var tabBar: LinearLayout
+    private lateinit var address: EditText
+    private lateinit var heading: TextView
     private lateinit var progress: ProgressBar
-    private lateinit var title: TextView
-    private lateinit var mainLayout: LinearLayout
-    private lateinit var fullViewLayer: FrameLayout
-    private lateinit var toolbar: LinearLayout
-    private var fullscreenView: View? = null
-    private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
+    private lateinit var bookmark: Button
+    private lateinit var desktopControl: Button
+    private var fullView: View? = null
+    private var fullCallback: WebChromeClient.CustomViewCallback? = null
     private var oldOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-    private fun shape(bg: Int) = GradientDrawable().apply {
-        setColor(bg)
-        cornerRadius = dp(12).toFloat()
+    private fun dp(n:Int) = (n * resources.displayMetrics.density).toInt()
+    private fun bg(color:Int) = GradientDrawable().apply {
+        setColor(color);cornerRadius=dp(11).toFloat()
     }
-    private fun btn(label: String, action: () -> Unit) = Button(this).apply {
-        text = label
-        textSize = 13f
-        isAllCaps = false
-        setTextColor(Color.WHITE)
-        background = shape(0xff244d6b.toInt())
+    private fun button(value:String, action:()->Unit):Button = Button(this).apply {
+        text=value; textSize=12f; isAllCaps=false
+        setTextColor(Color.WHITE); background=bg(0xff27516a.toInt())
         setOnClickListener { action() }
     }
+    private fun toast(t:String)=Toast.makeText(this,t,Toast.LENGTH_SHORT).show()
+    private fun selected()=tabs.getOrNull(active)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = 0xff0a1323.toInt()
-        window.navigationBarColor = 0xff0a1323.toInt()
-        mainLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xff0b1526.toInt())
+        window.statusBarColor=0xff091427.toInt()
+        window.navigationBarColor=0xff091427.toInt()
+        desktop=getSharedPreferences("id4_browser_settings",MODE_PRIVATE).getBoolean("desktop",false)
+        buildUi()
+        val incoming=BrowserStore.safeHttps(intent.getStringExtra(EXTRA_URL).orEmpty())
+        val restored=BrowserStore.tabs(this)
+        if (restored.isEmpty()) {
+            addTab(incoming ?: YOUTUBE_URL)
+        } else {
+            restored.take(6).forEach { addTab(it.url,it.title,false) }
+            selectTab(0)
+            if (incoming != null && incoming != selected()?.url) {
+                if(tabs.size<6) addTab(incoming) else open(incoming)
+            }
         }
-        fullViewLayer = FrameLayout(this).apply {
+    }
+
+    private fun buildUi() {
+        val root=FrameLayout(this)
+        main=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL;setBackgroundColor(0xff0b1627.toInt())
+        }
+        fullLayer=FrameLayout(this).apply {
+            visibility=View.GONE;setBackgroundColor(Color.BLACK)
+        }
+        setContentView(root)
+        root.addView(main,FrameLayout.LayoutParams(-1,-1))
+        root.addView(fullLayer,FrameLayout.LayoutParams(-1,-1))
+        val header=LinearLayout(this).apply {
+            gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(4),dp(8),dp(4))
+        }
+        heading=TextView(this).apply {
+            text="ID.4  WEB MEDYA";textSize=16f;setTextColor(0xff75e5da.toInt())
+            maxLines=1;gravity=Gravity.CENTER_VERTICAL
+        }
+        header.addView(heading,LinearLayout.LayoutParams(0,dp(48),1f))
+        header.addView(button("▶ YouTube"){open(YOUTUBE_URL)},
+            LinearLayout.LayoutParams(dp(107),dp(48)))
+        header.addView(button("TV'ye dön"){finish()},
+            LinearLayout.LayoutParams(dp(102),dp(48)))
+        main.addView(header)
+
+        val strip=HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled=false;setBackgroundColor(0xff182941.toInt())
+        }
+        tabBar=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
+        strip.addView(tabBar)
+        main.addView(strip)
+
+        val inputRow=LinearLayout(this).apply {setPadding(dp(8),dp(6),dp(8),dp(6))}
+        address=EditText(this).apply {
+            setSingleLine(true);hint="https://..."; textSize=13f
+            inputType=android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
+            imeOptions=EditorInfo.IME_ACTION_GO
+            setTextColor(Color.WHITE);setHintTextColor(0xff9eafc4.toInt())
+            background=bg(0xff1a334e.toInt())
+            setPadding(dp(12),dp(10),dp(12),dp(10))
+            setOnEditorActionListener{_,_,_->open(text.toString());true}
+        }
+        inputRow.addView(address,LinearLayout.LayoutParams(0,dp(48),1f))
+        inputRow.addView(button("Aç"){open(address.text.toString())},
+            LinearLayout.LayoutParams(dp(61),dp(48)))
+        main.addView(inputRow)
+
+        val tools=LinearLayout(this).apply {setPadding(dp(7),0,dp(7),dp(6))}
+        fun addTool(value:String,action:()->Unit) {
+            tools.addView(button(value,action),LinearLayout.LayoutParams(0,dp(45),1f))
+        }
+        addTool("‹"){selected()?.web?.let{if(it.canGoBack())it.goBack()}}
+        addTool("›"){selected()?.web?.let{if(it.canGoForward())it.goForward()}}
+        addTool("↻"){selected()?.web?.reload()}
+        bookmark=button("☆"){toggleBookmark()}
+        tools.addView(bookmark,LinearLayout.LayoutParams(0,dp(45),1f))
+        addTool("☷"){bookmarks()}
+        addTool("⋮"){options()}
+        main.addView(tools)
+        progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=100;visibility=View.INVISIBLE
+        }
+        main.addView(progress,LinearLayout.LayoutParams(-1,dp(3)))
+        pages=FrameLayout(this).apply{setBackgroundColor(Color.BLACK)}
+        main.addView(pages,LinearLayout.LayoutParams(-1,0,1f))
+        val lower=LinearLayout(this).apply{setPadding(dp(7),dp(4),dp(7),dp(4))}
+        lower.addView(button("Netflix Web"){open(NETFLIX_URL)},
+            LinearLayout.LayoutParams(0,dp(47),1f))
+        desktopControl=button("Mobil"){toggleDesktop()}
+        lower.addView(desktopControl,LinearLayout.LayoutParams(0,dp(47),1f))
+        lower.addView(button("⛶ Tam ekran"){immersive()},
+            LinearLayout.LayoutParams(0,dp(47),1f))
+        main.addView(lower)
+        desktopControl.text=if(desktop)"Masaüstü ✓" else "Mobil"
+    }
+
+    private fun addTab(raw:String=YOUTUBE_URL,name:String="",activate:Boolean=true) {
+        if(tabs.size>=6){toast("En fazla 6 sekme açılabilir");return}
+        val url=BrowserStore.safeHttps(raw) ?: YOUTUBE_URL
+        val web=WebView(this).apply {
+            visibility=View.GONE;overScrollMode=View.OVER_SCROLL_NEVER
             setBackgroundColor(Color.BLACK)
-            visibility = View.GONE
         }
-        val frame = FrameLayout(this)
-        setContentView(frame)
-        frame.addView(mainLayout, FrameLayout.LayoutParams(-1, -1))
-        frame.addView(fullViewLayer, FrameLayout.LayoutParams(-1, -1))
-
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(9), dp(10), dp(8))
+        with(web.settings) {
+            javaScriptEnabled=true;domStorageEnabled=true
+            mediaPlaybackRequiresUserGesture=true
+            allowFileAccess=false;allowContentAccess=false
+            javaScriptCanOpenWindowsAutomatically=false
+            setSupportMultipleWindows(false)
+            mixedContentMode=WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            builtInZoomControls=true;displayZoomControls=false
+            safeBrowsingEnabled=true
         }
-        title = TextView(this).apply {
-            text = "WEB MEDYA"
-            textSize = 18f
-            setTextColor(0xff78efe3.toInt())
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-        header.addView(title, LinearLayout.LayoutParams(0, dp(48), 1f))
-        header.addView(btn("YouTube") { openUrl(YOUTUBE_URL) },
-            LinearLayout.LayoutParams(dp(101), dp(48)))
-        header.addView(btn("TV'ye dön") { finish() },
-            LinearLayout.LayoutParams(dp(108), dp(48)))
-        mainLayout.addView(header)
-
-        urlInput = EditText(this).apply {
-            setSingleLine(true)
-            hint = "https://... video bağlantısı"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
-            imeOptions = EditorInfo.IME_ACTION_GO
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            setHintTextColor(0xff91a7c0.toInt())
-            background = shape(0xff1e344e.toInt())
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            setOnEditorActionListener { _, _, _ ->
-                openUrl(text.toString())
-                true
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web,false)
+        updateAgent(web)
+        val tab=Tab(web,name.ifBlank{"Yeni sekme"},url)
+        web.webViewClient=object:WebViewClient() {
+            override fun shouldOverrideUrlLoading(view:WebView?,request:WebResourceRequest):Boolean =
+                BrowserStore.safeHttps(request.url.toString())==null
+            override fun onPageFinished(view:WebView?,rawUrl:String?) {
+                val safe=BrowserStore.safeHttps(rawUrl.orEmpty())?:return
+                tab.url=safe
+                tab.title=view?.title?.take(32)?.ifBlank{"Web"}?:"Web"
+                BrowserStore.remember(this@MediaWebActivity,tab.title,safe)
+                if(selected()===tab) updateHeader()
+                renderTabs();persist()
+            }
+            override fun onReceivedSslError(view:WebView?,handler:SslErrorHandler,error:SslError){
+                handler.cancel();toast("Sertifika hatası: sayfa engellendi")
             }
         }
-        val urlRow= LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(8),0,dp(8),0)
-        }
-        urlRow.addView(urlInput, LinearLayout.LayoutParams(0, dp(50), 1f))
-        urlRow.addView(btn("Aç") { openUrl(urlInput.text.toString()) },
-            LinearLayout.LayoutParams(dp(63),dp(50)))
-        mainLayout.addView(urlRow)
-
-        val navigation = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-        }
-        navigation.addView(btn("‹") { if (browser.canGoBack()) browser.goBack() },
-            LinearLayout.LayoutParams(0,dp(44),1f))
-        navigation.addView(btn("›") { if (browser.canGoForward()) browser.goForward() },
-            LinearLayout.LayoutParams(0,dp(44),1f))
-        navigation.addView(btn("⟳") { browser.reload() },
-            LinearLayout.LayoutParams(0,dp(44),1f))
-        navigation.addView(btn("⊞ Tam ekran") { toggleWebFullscreen() },
-            LinearLayout.LayoutParams(0,dp(44),2f))
-        mainLayout.addView(navigation)
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progress = 0
-        }
-        mainLayout.addView(progress, LinearLayout.LayoutParams(-1, dp(3)))
-        browser = WebView(this)
-        val config = browser.settings
-        config.javaScriptEnabled = true
-        config.domStorageEnabled = true
-        config.mediaPlaybackRequiresUserGesture = true
-        config.allowFileAccess = false
-        config.allowContentAccess = false
-        config.javaScriptCanOpenWindowsAutomatically = false
-        config.setSupportMultipleWindows(false)
-        config.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-        config.setSupportZoom(true)
-        config.builtInZoomControls = true
-        config.displayZoomControls = false
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            config.safeBrowsingEnabled = true
-        }
-        CookieManager.getInstance().setAcceptThirdPartyCookies(browser,false)
-        browser.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean {
-                return !allowed(request.url.toString())
+        web.webChromeClient=object:WebChromeClient(){
+            override fun onProgressChanged(view:WebView?,value:Int){
+                if(selected()===tab){
+                    progress.progress=value
+                    progress.visibility=if(value>=100)View.INVISIBLE else View.VISIBLE
+                }
             }
-            override fun onPageFinished(view: WebView?, url: String?) {
-                if (url != null && allowed(url)) urlInput.setText(url)
+            override fun onReceivedTitle(view:WebView?,title:String?){
+                if(!title.isNullOrBlank()) tab.title=title.take(32)
+                if(selected()===tab)updateHeader()
+                renderTabs()
             }
-            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler, error: SslError) {
-                handler.cancel()
-                Toast.makeText(this@MediaWebActivity, "Sertifika hatası: sayfa engellendi", Toast.LENGTH_LONG).show()
+            override fun onShowCustomView(view:View?,callback:CustomViewCallback?){
+                if(view==null||callback==null||selected()!==tab||fullView!=null){
+                    callback?.onCustomViewHidden();return
+                }
+                fullView=view;fullCallback=callback
+                fullLayer.addView(view,FrameLayout.LayoutParams(-1,-1))
+                fullLayer.visibility=View.VISIBLE;main.visibility=View.GONE
+                oldOrientation=requestedOrientation
+                requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                fullLayer.systemUiVisibility=View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             }
+            override fun onHideCustomView(){exitVideoFullscreen()}
         }
-        browser.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                progress.progress = newProgress
-                progress.visibility = if (newProgress >= 100) View.INVISIBLE else View.VISIBLE
-            }
-            override fun onReceivedTitle(view: WebView?, pageTitle: String?) {
-                if (!pageTitle.isNullOrBlank()) title.text = pageTitle.take(26)
-            }
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (view == null || callback == null) return
-                if (fullscreenView != null) { callback.onCustomViewHidden(); return }
-                fullscreenView = view
-                fullscreenCallback = callback
-                fullViewLayer.addView(view, FrameLayout.LayoutParams(-1, -1))
-                fullViewLayer.visibility = View.VISIBLE
-                mainLayout.visibility = View.GONE
-                oldOrientation = requestedOrientation
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                fullViewLayer.systemUiVisibility =
-                    View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            }
-            override fun onHideCustomView() {
-                closeCustomFullscreen()
-            }
-        }
-        mainLayout.addView(browser, LinearLayout.LayoutParams(-1, 0, 1f))
-        val caption = TextView(this).apply {
-            text = "Telefon oynatıcısı • Yalnızca HTTPS içerik • Araç ekranına video aktarımı yok"
-            setTextColor(0xff96acc6.toInt())
-            textSize = 11f
-            setPadding(dp(12), dp(7), dp(12), dp(9))
-        }
-        mainLayout.addView(caption)
-        val incoming = intent.getStringExtra(EXTRA_URL)?.takeIf { allowed(it) } ?: YOUTUBE_URL
-        openUrl(incoming)
+        tabs.add(tab)
+        pages.addView(web,FrameLayout.LayoutParams(-1,-1))
+        if(activate) selectTab(tabs.lastIndex)
+        web.loadUrl(url)
+        renderTabs();persist()
     }
 
-    private fun allowed(raw: String): Boolean = try {
-        val value = Uri.parse(raw.trim())
-        value.scheme.equals("https", ignoreCase = true) &&
-            !value.host.isNullOrBlank() &&
-            value.userInfoSafe() &&
-            value.host!!.length <= 250
-    } catch (_: Exception) { false }
-
-    private fun Uri.userInfoSafe(): Boolean {
-        // Reject credentials in input to avoid displaying tokens in page navigation.
-        return encodedAuthority?.contains("@") != true
+    private fun selectTab(i:Int){
+        if(i !in tabs.indices)return
+        if(fullView!=null)exitVideoFullscreen()
+        selected()?.web?.onPause()
+        active=i
+        tabs.forEachIndexed{index,tab->
+            tab.web.visibility=if(index==i)View.VISIBLE else View.GONE
+        }
+        selected()?.web?.onResume()
+        updateHeader();renderTabs();persist()
     }
 
-    private fun openUrl(value: String) {
-        val address = value.trim()
-        if (!allowed(address)) {
+    private fun renderTabs(){
+        if(!::tabBar.isInitialized)return
+        tabBar.removeAllViews()
+        tabs.forEachIndexed{i,tab->
+            val b=button((i+1).toString()+" "+tab.title.take(14)){selectTab(i)}
+            b.background=bg(if(i==active)0xff2a7770.toInt() else 0xff30465d.toInt())
+            val lp=LinearLayout.LayoutParams(dp(144),dp(42))
+            lp.setMargins(dp(3),dp(3),0,dp(3))
+            tabBar.addView(b,lp)
+            b.setOnLongClickListener{closeTab(i);true}
+        }
+        tabBar.addView(button("＋"){addTab()},
+            LinearLayout.LayoutParams(dp(53),dp(47)))
+    }
+
+    private fun closeTab(i:Int){
+        if(i !in tabs.indices)return
+        if(tabs.size==1){open(YOUTUBE_URL);return}
+        if(fullView!=null)exitVideoFullscreen()
+        val tab=tabs.removeAt(i)
+        pages.removeView(tab.web);tab.web.stopLoading();tab.web.destroy()
+        active=-1
+        selectTab(minOf(i,tabs.lastIndex))
+    }
+
+    private fun open(raw:String){
+        val safe=BrowserStore.safeHttps(raw)
+        if(safe==null){
             AlertDialog.Builder(this).setTitle("HTTPS bağlantısı gerekli")
-                .setMessage("Yalnızca doğrudan HTTPS bağlantıları açılır. Dosya ve özel uygulama bağlantıları desteklenmez.")
-                .setPositiveButton("Tamam", null).show()
+                .setMessage("Yalnızca güvenli HTTPS adresleri açılır.")
+                .setPositiveButton("Tamam",null).show()
             return
         }
-        if (!::browser.isInitialized) return
-        browser.loadUrl(address)
+        selected()?.web?.loadUrl(safe)?:addTab(safe)
+        address.clearFocus()
     }
 
-    private fun closeCustomFullscreen() {
-        val custom = fullscreenView ?: return
-        (custom.parent as? ViewGroup)?.removeView(custom)
-        fullscreenView = null
-        fullViewLayer.visibility = View.GONE
-        mainLayout.visibility = View.VISIBLE
-        requestedOrientation = oldOrientation
-        fullscreenCallback?.onCustomViewHidden()
-        fullscreenCallback = null
+    private fun updateHeader(){
+        val tab=selected()?:return
+        heading.text="ID.4 • "+tab.title.take(22)
+        address.setText(tab.url)
+        bookmark.text=if(BrowserStore.isBookmarked(this,tab.url))"★" else "☆"
     }
 
-    private fun toggleWebFullscreen() {
-        val flags = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        val decor = window.decorView
-        decor.systemUiVisibility = if ((decor.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN) != 0) 0 else flags
+    private fun toggleBookmark(){
+        val tab=selected()?:return
+        val added=BrowserStore.toggleBookmark(this,tab.title,tab.url)
+        toast(if(added)"Favorilere eklendi" else "Favorilerden kaldırıldı")
+        updateHeader()
     }
 
-    @Deprecated("Use OnBackPressedDispatcher in a future AndroidX migration")
-    override fun onBackPressed() {
-        when {
-            fullscreenView != null -> closeCustomFullscreen()
-            browser.canGoBack() -> browser.goBack()
-            else -> super.onBackPressed()
+    private fun bookmarks(){
+        val saved=BrowserStore.bookmarks(this)
+        if(saved.isEmpty()){
+            toast("Favori eklemek için ☆ işaretine dokun");return
+        }
+        AlertDialog.Builder(this).setTitle("Web favorileri")
+            .setItems(saved.map{it.title+" · "+it.url}.toTypedArray()){_,i->open(saved[i].url)}
+            .setNegativeButton("Kapat",null).show()
+    }
+
+    private fun history(){
+        val saved=BrowserStore.history(this)
+        AlertDialog.Builder(this).setTitle("Geçmiş")
+            .setItems(saved.map{it.title}.toTypedArray()){_,i->open(saved[i].url)}
+            .setNeutralButton("Temizle"){_,_->BrowserStore.clearHistory(this)}
+            .setNegativeButton("Kapat",null).show()
+    }
+
+    private fun options(){
+        val opts=arrayOf("Yeni sekme","Sekmeyi kapat","Favoriler","Geçmiş",
+            "Netflix Web","Masaüstü / Mobil","Tam ekran")
+        AlertDialog.Builder(this).setTitle("Web Medya")
+            .setItems(opts){_,index->when(index){
+                0->addTab()
+                1->closeTab(active)
+                2->bookmarks()
+                3->history()
+                4->open(NETFLIX_URL)
+                5->toggleDesktop()
+                6->immersive()
+            }}.setNegativeButton("Kapat",null).show()
+    }
+
+    private fun updateAgent(web:WebView){
+        web.settings.userAgentString=if(desktop)
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "+
+                "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" else null
+    }
+
+    private fun toggleDesktop(){
+        desktop=!desktop
+        getSharedPreferences("id4_browser_settings",MODE_PRIVATE).edit()
+            .putBoolean("desktop",desktop).apply()
+        tabs.forEach{updateAgent(it.web);it.web.reload()}
+        desktopControl.text=if(desktop)"Masaüstü ✓" else "Mobil"
+    }
+
+    private fun immersive(){
+        val decor=window.decorView
+        val flags=View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        decor.systemUiVisibility=if(decor.systemUiVisibility and
+            View.SYSTEM_UI_FLAG_FULLSCREEN==0)flags else View.SYSTEM_UI_FLAG_VISIBLE
+    }
+
+    private fun exitVideoFullscreen(){
+        val view=fullView?:return
+        (view.parent as? ViewGroup)?.removeView(view)
+        fullView=null;fullLayer.visibility=View.GONE;main.visibility=View.VISIBLE
+        requestedOrientation=oldOrientation
+        fullCallback?.onCustomViewHidden();fullCallback=null
+    }
+
+    private fun persist(){
+        BrowserStore.saveTabs(this,tabs.map{StoredWebTab(it.title,it.url)})
+    }
+
+    override fun onPause(){
+        persist();selected()?.web?.onPause()
+        CookieManager.getInstance().flush()
+        super.onPause()
+    }
+    override fun onResume(){super.onResume();selected()?.web?.onResume()}
+
+    @Deprecated("Activity back handling")
+    override fun onBackPressed(){
+        when{
+            fullView!=null->exitVideoFullscreen()
+            selected()?.web?.canGoBack()==true->selected()?.web?.goBack()
+            else->super.onBackPressed()
         }
     }
 
-    override fun onDestroy() {
-        closeCustomFullscreen()
-        browser.stopLoading()
-        browser.webChromeClient = null
-        browser.webViewClient = WebViewClient()
-        browser.destroy()
+    override fun onDestroy(){
+        exitVideoFullscreen();persist()
+        tabs.forEach{pages.removeView(it.web);it.web.stopLoading();it.web.destroy()}
+        tabs.clear()
         super.onDestroy()
     }
 }
