@@ -49,6 +49,10 @@ jobs:
             sleep 3
             adb shell screencap -p /sdcard/id4_tv.png
             adb pull /sdcard/id4_tv.png id4_tv.png
+            # Scroll TV so that the diagnostics button is in the viewport.
+            # On Pixel 6 emulator this control appears beneath the video fold.
+            adb shell input swipe 540 1570 540 690 450
+            sleep 2
             # UI-test the IPTV performance report through the actual button.
             adb shell uiautomator dump /sdcard/id4_tv_diagnostics_ui.xml
             adb pull /sdcard/id4_tv_diagnostics_ui.xml id4_tv_diagnostics_ui.xml
