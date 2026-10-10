@@ -49,6 +49,18 @@ jobs:
             sleep 3
             adb shell screencap -p /sdcard/id4_tv.png
             adb pull /sdcard/id4_tv.png id4_tv.png
+            # UI-test the IPTV performance report through the actual button.
+            adb shell uiautomator dump /sdcard/id4_tv_diagnostics_ui.xml
+            adb pull /sdcard/id4_tv_diagnostics_ui.xml id4_tv_diagnostics_ui.xml
+            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;root=ET.parse("id4_tv_diagnostics_ui.xml").getroot();matches=[n.attrib.get("bounds","") for n in root.iter("node") if "Yayın performansı" in n.attrib.get("text","")];assert matches,"IPTV performans raporu düğmesi bulunamadı";box=list(map(int,re.findall(r"\\d+",matches[0])));subprocess.run(["adb","shell","input","tap",str((box[0]+box[2])//2),str((box[1]+box[3])//2)],check=True)'
+            sleep 2
+            adb shell uiautomator dump /sdcard/id4_iptv_report.xml
+            adb pull /sdcard/id4_iptv_report.xml id4_iptv_report.xml
+            grep -q 'IPTV performans raporu' id4_iptv_report.xml
+            grep -q 'Tamponlama' id4_iptv_report.xml
+            adb shell screencap -p /sdcard/id4_iptv_report.png
+            adb pull /sdcard/id4_iptv_report.png id4_iptv_report.png
+            adb shell input keyevent KEYCODE_BACK
             adb shell input tap 680 2250
             sleep 6
             adb shell screencap -p /sdcard/id4_radio.png
@@ -80,6 +92,9 @@ jobs:
           path: |
             id4_home.png
             id4_tv.png
+            id4_tv_diagnostics_ui.xml
+            id4_iptv_report.xml
+            id4_iptv_report.png
             id4_radio.png
             id4_web_media.png
             id4_web_media_tabs.png
