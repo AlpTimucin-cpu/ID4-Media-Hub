@@ -1,8 +1,15 @@
-# ID.4 MEDIA HUB • v0.17 BETA
+# ID.4 MEDIA HUB • v0.18 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.18 — Video arka plan kararlılığı ve Android 15 UI testi
+
+- IPTV videosu manuel olarak durdurulunca, TV sekmesinden ayrılınca veya uygulama arka plana geçince **bekleyen otomatik yeniden bağlantılar iptal edilir**.
+- Uygulama tekrar görünür olduğunda video kendiliğinden başlamaz; kullanıcı oynat komutuyla devam eder.
+- Android 15 emülatör testine **TV → Yayın performansı ve bağlantı raporu** düğmesini gerçek kullanıcı etkileşimiyle açıp sayaçları kontrol eden senaryo eklendi.
+- **Araç ekranında video hâlâ doğrulanmış değildir**; ses/radyo hizmeti Android Auto'da ayrı tutulur.
 
 ## v0.17 — DiPlay'dan öğrendiklerimizi IPTV oynatıcısına uyguladık
 
