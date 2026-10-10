@@ -68,6 +68,7 @@ class TvPlayback(
     private val retryHandler = Handler(Looper.getMainLooper())
     private var scheduledRetry: Runnable? = null
     private var playGeneration = 0
+    private var autoRecoveryAllowed = false
 
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
     private fun bg(color: Int, radius: Int = 14) = GradientDrawable().apply {
@@ -127,7 +128,14 @@ class TvPlayback(
         quality.setOnClickListener { showQuality(quality) }
         options.addView(quality, LinearLayout.LayoutParams(0,dp(49),1f))
         options.addView(button("⏯  Oynat / Duraklat") {
-            player?.let { if (it.isPlaying) it.pause() else it.play() }
+            player?.let {
+                if (it.isPlaying || (scheduledRetry != null)) {
+                    pause()
+                } else {
+                    autoRecoveryAllowed = true
+                    it.play()
+                }
+            }
         }, LinearLayout.LayoutParams(0,dp(49),1.15f))
         options.addView(button("⛶  Tam ekran") { fullScreen() },
             LinearLayout.LayoutParams(0,dp(49),1f))
@@ -202,8 +210,10 @@ class TvPlayback(
                 diagnostics.ready(SystemClock.elapsedRealtime())
                 // Store only our own error classification, never a URL or exception text.
                 diagnostics.problem(error.errorCodeName)
-                val delay = retries.nextDelay(isTransient(error))
-                if (delay != null && initialized && current != null) {
+                val mayRetry = autoRecoveryAllowed && initialized &&
+                    !activity.isFinishing && !activity.isDestroyed && current != null
+                val delay = if (mayRetry) retries.nextDelay(isTransient(error)) else null
+                if (delay != null) {
                     scheduleRecovery(delay)
                     playbackState.text = "●  Geçici bağlantı sorunu · " +
                         (delay / 1000.0) + " sn sonra yeniden denenecek (" +
@@ -225,6 +235,7 @@ class TvPlayback(
 
     fun play(channel: VideoChannel) {
         cancelRecovery()
+        autoRecoveryAllowed = true
         retries.reset()
         diagnostics.start(SystemClock.elapsedRealtime())
         current=channel
@@ -276,7 +287,9 @@ class TvPlayback(
         val task = object : Runnable {
             override fun run() {
                 scheduledRetry = null
-                if (playGeneration != capturedGeneration || !initialized || current == null) return
+                if (playGeneration != capturedGeneration || !initialized ||
+                    !autoRecoveryAllowed || activity.isFinishing || activity.isDestroyed ||
+                    current == null) return
                 diagnostics.retry()
                 try {
                     player?.apply {
@@ -578,10 +591,14 @@ class TvPlayback(
     }
 
     fun pause(){
+        autoRecoveryAllowed = false
         cancelRecovery()
+        diagnostics.ready(SystemClock.elapsedRealtime())
         player?.pause()
     }
     fun release(){
+        autoRecoveryAllowed = false
+        initialized = false
         cancelRecovery()
         diagnostics.ready(SystemClock.elapsedRealtime())
         fullScreen?.dismiss()
