@@ -843,6 +843,13 @@ class MainActivity : Activity() {
         }
     }
     private fun toast(value: String) = Toast.makeText(this, value, Toast.LENGTH_LONG).show()
+
+    override fun onStop() {
+        // Phone activity not visible: do not keep hidden video decoding or retrying.
+        if (::tvPlayer.isInitialized) tvPlayer.pause()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         if (::tvPlayer.isInitialized) tvPlayer.release()
         controllerFuture?.let { MediaController.releaseFuture(it) }
