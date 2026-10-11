@@ -147,4 +147,11 @@ https://video.example.org/news.m3u8
         assertEquals(1, budget.attempts)
     }
 
+    @Test fun carBrowseReportUsesFolderTypeWithoutStationNames() {
+        assertEquals("Tüm radyolar", CarConnectionJournal.folderLabel("id4_audio_all"))
+        assertEquals("Favori radyolar", CarConnectionJournal.folderLabel("id4_audio_favorites"))
+        assertEquals("Radyo grubu", CarConnectionJournal.folderLabel("id4_group_Haber%20%26%20Sohbet"))
+        assertEquals("Bilinmeyen klasör", CarConnectionJournal.folderLabel("https://secret.example/token"))
+    }
+
 }
