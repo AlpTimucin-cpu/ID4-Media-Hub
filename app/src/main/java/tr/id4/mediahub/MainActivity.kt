@@ -265,6 +265,9 @@ class MainActivity : Activity() {
         utilities.addView(textAction("🚗 ID.4 / Android Auto bağlantı raporu") {
             CarCompatibility.show(this)
         })
+        utilities.addView(button("🧪 Ses kitaplığı API bağlantısını kontrol et") {
+            CarAudioSelfTest.run(this)
+        })
         utilities.addView(button("🔊 Araç ses sisteminde radyo testini başlat") {
             val station = StationStore.load(this).firstOrNull()
             if (station == null) {
