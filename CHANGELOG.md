@@ -1,3 +1,10 @@
+# v0.21 — 11 Ekim 2026
+
+- Aktif Web Medya sekmesini AABrowser'a kullanıcı komutuyla HTTPS / ACTION_VIEW üzerinden aktarma düğmesi.
+- Bağlantı hedefi kurulu değilse kontrollü uyarı; rastgele tarayıcıya yönlendirme yok.
+- Android 15 emülatöründe AABrowser kurulu değilken hata ekranı doğrulama senaryosu.
+- AABrowser'a telefon üzerinden bağlantı gönderme, gerçek araç ekranında video gösterimini kanıtlamaz.
+
 # v0.20 — 11 Ekim 2026
 
 - Media3 ses kitaplığına ek olarak Android 15 üzerinde **platform MediaBrowser** ile gerçek kök kategori taraması yapabilen yerel tanılama eklendi.
