@@ -63,7 +63,10 @@ class AudioLibraryService : MediaLibraryService() {
         receiverRegistered = true
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
+        CarConnectionJournal.recordSessionConnection(this, controllerInfo.packageName)
+        return session
+    }
 
     override fun onDestroy() {
         if (receiverRegistered) {
