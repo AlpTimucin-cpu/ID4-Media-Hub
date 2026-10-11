@@ -139,7 +139,7 @@ class AudioLibraryService : MediaLibraryService() {
             // Slice the catalogue BEFORE building Media3 objects. With 2500 IPTV/radio entries,
             // creating metadata for every item on each 20-item page wastes memory and CPU.
             val items = when (parentId) {
-                ROOT -> LibraryPage.slice(listOf(favoriteItem(), allItem(), groupsItem()), page, pageSize)
+                ROOT -> LibraryPage.slice(listOf(allItem(), favoriteItem(), groupsItem()), page, pageSize)
                 ALL -> LibraryPage.slice(StationStore.load(this@AudioLibraryService), page, pageSize)
                     .map { it.toMediaItem() }
                 FAVORITES -> LibraryPage.slice(StationStore.load(this@AudioLibraryService)
