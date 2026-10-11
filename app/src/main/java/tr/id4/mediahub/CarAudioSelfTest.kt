@@ -18,7 +18,7 @@ object CarAudioSelfTest {
         val pending = try {
             MediaBrowser.Builder(activity, token).buildAsync()
         } catch (_: Exception) {
-            show(activity, "Medya tarayıcısı başlatılamadı.")
+            finishWithLegacy(activity, "Medya tarayıcısı başlatılamadı.")
             return
         }
         pending.addListener({
@@ -30,7 +30,7 @@ object CarAudioSelfTest {
                         val root = rootFuture.get()
                         val item = root.value
                         if (item == null) {
-                            show(activity, "Ses kitaplığının kökü alınamadı (kod " +
+                            finishWithLegacy(activity, "Ses kitaplığının kökü alınamadı (kod " +
                                 root.resultCode + ").")
                             MediaController.releaseFuture(pending)
                             return@addListener
@@ -40,7 +40,7 @@ object CarAudioSelfTest {
                             try {
                                 val children = childrenFuture.get()
                                 val n = children.value?.size ?: 0
-                                show(activity,
+                                finishWithLegacy(activity,
                                     "TELEFON İÇİ SES KÜTÜPHANESİ: BAĞLANDI\n" +
                                     "Kök: " + item.mediaId + "\n" +
                                     "Bulunan ana kategori: " + n + "\n\n" +
@@ -48,18 +48,18 @@ object CarAudioSelfTest {
                                     "ID.4 Android Auto'nun bağlandığını veya video gösterdiğini " +
                                     "kanıtlamaz. Araç bağlantısını ayrı rapordan kontrol et.")
                             } catch (_: Exception) {
-                                show(activity, "Ses kitaplığı kategori isteği başarısız.")
+                                finishWithLegacy(activity, "Ses kitaplığı kategori isteği başarısız.")
                             } finally {
                                 MediaController.releaseFuture(pending)
                             }
                         }, activity.mainExecutor)
                     } catch (_: Exception) {
-                        show(activity, "Ses kitaplığı kök isteği başarısız.")
+                        finishWithLegacy(activity, "Ses kitaplığı kök isteği başarısız.")
                         MediaController.releaseFuture(pending)
                     }
                 }, activity.mainExecutor)
             } catch (_: Exception) {
-                show(activity, "Ses servisine bağlanılamadı.")
+                finishWithLegacy(activity, "Ses servisine bağlanılamadı.")
                 MediaController.releaseFuture(pending)
             }
         }, activity.mainExecutor)
@@ -67,10 +67,23 @@ object CarAudioSelfTest {
             Toast.LENGTH_SHORT).show()
     }
 
+    /**
+     * Both requests originate on the phone. The legacy probe verifies the platform
+     * MediaBrowser transport that some Android Auto versions use. Neither probe
+     * demonstrates a real head-unit connection or any car-display video surface.
+     */
+    private fun finishWithLegacy(activity: Activity, media3Result: String) {
+        CarLegacyBrowserProbe.run(activity) { legacyResult ->
+            show(activity, media3Result + "\n\n" + legacyResult +
+                "\n\nBu iki test telefon içindedir; ID.4 bağlantısını kanıtlamaz. " +
+                "Gerçek araç isteğini ayrı bağlantı raporunda ara.")
+        }
+    }
+
     private fun show(activity: Activity, message: String) {
         if (activity.isFinishing || activity.isDestroyed) return
         AlertDialog.Builder(activity)
-            .setTitle("Yerel Android Auto ses API testi")
+            .setTitle("Telefon içi iki medya API testi")
             .setMessage(message)
             .setPositiveButton("Tamam", null)
             .show()
