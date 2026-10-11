@@ -1,4 +1,4 @@
-# ID.4 Media Hub v0.17 — Araç Üzerinde Doğrulama Planı
+# ID.4 Media Hub v0.21 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
 
@@ -18,7 +18,12 @@
 5. Telefonda ID.4 Media Hub → **Kitaplık → Araç / Android Auto bağlantı raporu** menüsünü aç.
 6. Raporun **Android Auto kitaplık isteği** satırına bak. Artık zaman damgası görünüyorsa Android Auto radyo kitaplığımıza bir istek gönderdi. **Bu, video desteğinin kanıtı değildir.**
 7. Raporun **Android Auto**, **Android WebView**, **Widevine**, **AABrowser** ve **Shizuku** sürümlerini kaydet. Gerekirse raporu **kopyala**.
-8. Araç ekranındaki **uygulama listesinin görüntüsü** ile raporu paylaş. Hesap veya yayın aboneliği bilgilerini paylaşma.
+8. Telefon içindeki **Kitaplık → Ses kitaplığı API bağlantısını kontrol et** testinde hem Media3 hem eski Android MediaBrowser satırını incele. İkisinin de çalışması **telefon** API doğrulamasıdır.
+9. **Web Medya → YouTube Web** bölümünü aç ve alt bölümdeki **🚘 AABrowser** düğmesine dokun. ID.4 ekranındaki AABrowser sekmesi aynı URL'yi açıyor mu, kontrol et.
+10. Sayfa sadece telefonda açılırsa bunu ayrı sonuç olarak kaydet. AABrowser'ın bağlantıyı alması **araç ekranında video** kanıtı değildir.
+11. Araç ekranındaki **uygulama listesinin görüntüsü** ile bağlantı raporunu paylaş. Hesap veya yayın aboneliği bilgilerini paylaşma.
+
+> Video aktarımı yalnızca araç **park halindeyken** denenmelidir. Bu test Shizuku, AAAD veya Android Auto ayarlarının yeniden kurulmasını gerektirmez.
 
 ## Olası sonuçları ayırma
 
@@ -29,6 +34,8 @@
 | Simgesi var, kitaplık boş | MediaLibraryService veya katalog sorunu | Bağlantı raporu, ses servisi/istek zamanları ve katalog içeriğini denetle |
 | Ses var ancak araçta video yok | Desteklenen Android Auto ses sınıfında normal | Ses ve park video mimarilerini birbirine karıştırma |
 | AABrowser görüntü veriyor ancak Media Hub yalnızca ses | AABrowser'ın mevcut araç entegrasyonu farklı | Onaylı park video API'leri ile cihaz uyumluluğunu yeniden değerlendir; sahte kategori veya sürüş kısıtı atlatma yok |
+| Web bağlantısı AABrowser'a gönderiliyor ama ID.4 ekranı değişmiyor | Telefon `ACTION_VIEW` isteği araçtaki sekmeyi güncellememiş olabilir | AABrowser'ın yeni sekme/aktif ekran davranışı araçta doğrulanmalı |
+| AABrowser araçta yeni HTTPS sayfasını açıyor | Yalnızca sayfa/URL aktarımı doğrulanır | Ayrı bir izinli video örneğinin park halinde oynayıp oynamadığını kontrol et |
 
 ## Sınırlar
 
