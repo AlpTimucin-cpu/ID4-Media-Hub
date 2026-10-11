@@ -1,7 +1,10 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.app.ActivityNotFoundException
 import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -170,6 +173,8 @@ class MediaWebActivity : Activity() {
             LinearLayout.LayoutParams(0,dp(47),1f))
         desktopControl=button("Mobil"){toggleDesktop()}
         lower.addView(desktopControl,LinearLayout.LayoutParams(0,dp(47),1f))
+        lower.addView(button("🚘 AABrowser"){handoffToAABrowser()},
+            LinearLayout.LayoutParams(0,dp(47),1.2f))
         lower.addView(button("⛶ Tam ekran"){immersive()},
             LinearLayout.LayoutParams(0,dp(47),1f))
         main.addView(lower)
@@ -344,6 +349,36 @@ class MediaWebActivity : Activity() {
         }
         selected()?.web?.loadUrl(safe)?:addTab(safe)
         address.clearFocus()
+    }
+
+    /**
+     * User-initiated handoff of the active HTTPS web page to the separately
+     * installed AABrowser. It has an ACTION_VIEW endpoint; whether the page
+     * appears on an actual parked head unit MUST be checked on the vehicle.
+     * No driver-distraction restrictions or Android Auto app categories change.
+     */
+    private fun handoffToAABrowser() {
+        val safe = BrowserStore.safeHttps(selected()?.url.orEmpty())
+        if (safe == null) {
+            toast("Yalnızca güvenli HTTPS web sayfaları aktarılabilir.")
+            return
+        }
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse(safe)).apply {
+            setPackage("com.kododake.aabrowser")
+        }
+        try {
+            startActivity(view)
+            toast("Sayfa AABrowser'a gönderildi. ID.4 ekranını ayrıca kontrol et.")
+        } catch (_: ActivityNotFoundException) {
+            AlertDialog.Builder(this)
+                .setTitle("AABrowser bulunamadı")
+                .setMessage("AABrowser kurulu değil ya da web adresi açma isteğini kabul etmiyor. " +
+                    "Bu özellik yalnızca park halinde denenmelidir.")
+                .setPositiveButton("Tamam", null)
+                .show()
+        } catch (_: SecurityException) {
+            toast("AABrowser bağlantı isteğine Android izin vermedi.")
+        }
     }
 
     private fun updateHeader(){
