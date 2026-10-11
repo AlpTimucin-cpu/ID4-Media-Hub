@@ -91,7 +91,7 @@ jobs:
             # error rather than sending the URL to an arbitrary browser.
             adb shell uiautomator dump /sdcard/id4_handoff_ui.xml >/dev/null
             adb pull /sdcard/id4_handoff_ui.xml id4_handoff_ui.xml >/dev/null
-            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;r=ET.parse("id4_handoff_ui.xml").getroot();m=[n.attrib.get("bounds","") for n in r.iter("node") if "AABrowser" in n.attrib.get("text","")];assert m,"AABrowser handoff button missing";b=list(map(int,re.findall(r"\\d+",m[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
+            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;r=ET.parse("id4_handoff_ui.xml").getroot();m=[n.attrib.get("bounds","") for n in r.iter("node") if "AABrowser" in n.attrib.get("text","")];assert m,"AABrowser handoff button missing";b=list(map(int,re.findall(r"\d+",m[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
             sleep 2
             adb shell uiautomator dump /sdcard/id4_handoff_result.xml >/dev/null
             adb pull /sdcard/id4_handoff_result.xml id4_handoff_result.xml >/dev/null
