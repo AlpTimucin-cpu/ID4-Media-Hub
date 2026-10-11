@@ -42,6 +42,28 @@ object CarConnectionJournal {
     fun recordLibraryBrowse(context: Context, controllerPackage: String) =
         write(context, controllerPackage, "library")
 
+    /** Keep only the folder type and number of visible items, not station names. */
+    fun folderLabel(parentId: String): String = when {
+        parentId == "id4_audio_root" -> "Ana klasör"
+        parentId == "id4_audio_all" -> "Tüm radyolar"
+        parentId == "id4_audio_favorites" -> "Favori radyolar"
+        parentId == "id4_audio_groups" -> "Radyo grupları"
+        parentId.startsWith("id4_group_") -> "Radyo grubu"
+        else -> "Bilinmeyen klasör"
+    }
+
+    fun recordFolderRead(context: Context, clientPackage: String,
+                         parentId: String, returnedItems: Int) {
+        val type = classifyClient(clientPackage, context.packageName)
+        // Do not persist full package names, URLs, station IDs or group strings.
+        context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
+            .putString("last_folder", folderLabel(parentId))
+            .putInt("last_folder_items", returnedItems.coerceAtLeast(0))
+            .putString("last_folder_client", type)
+            .putLong("last_folder_at", System.currentTimeMillis())
+            .apply()
+    }
+
     private fun format(ms: Long): String =
         if (ms <= 0L) "Henüz kaydedilmedi"
         else DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date(ms))
@@ -62,6 +84,11 @@ object CarConnectionJournal {
             appendLine("Son medya oturum bağlantısı: " + format(sessionMs))
             appendLine("Oturum istemcisi: " + clientLabel(p.getString("session_last_type", "")))
             appendLine("Son kitaplık isteği: " + format(browseMs))
+            appendLine("Son açılan bölüm: " +
+                (p.getString("last_folder", "Henüz açılmadı") ?: "Henüz açılmadı"))
+            appendLine("Son sayfada gelen öğe: " + p.getInt("last_folder_items", 0))
+            appendLine("Son bölüm istemcisi: " +
+                clientLabel(p.getString("last_folder_client", "")))
             appendLine("Kitaplık istemcisi: " + clientLabel(p.getString("library_last_type", "")))
             appendLine("Android Auto oturum isteği: " + format(aaSessionMs))
             appendLine("Android Auto kitaplık isteği: " + format(aaLibraryMs))
