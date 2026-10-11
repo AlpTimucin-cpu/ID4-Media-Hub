@@ -1,8 +1,15 @@
-# ID.4 MEDIA HUB • v0.19 BETA
+# ID.4 MEDIA HUB • v0.20 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.20 — Android 15 legacy + Media3 ses tarama uyumluluğu
+
+- **Kitaplık → Ses kitaplığı API bağlantısını kontrol et** artık telefon içinde iki ayrı istemci çalıştırır: modern Media3 `MediaBrowser` ve Android'in platform `android.media.browse.MediaBrowser` (legacy) API'si.
+- Legacy istemci servis kökünü açar ve **Tüm radyolar / Favoriler / Radyo grupları** kategorilerini gerçekten listeleyip doğrular. 10 saniyelik zaman aşımı ve net hata tanılaması bulunur.
+- GitHub Android 15 emülatör testi her iki tarayıcının da başarıyla bağlandığını kontrol eder. Bunlar **telefondan başlatılmış testlerdir**, Volkswagen ekranındaki uygulama veya video kanıtı değildir.
+- AABrowser/YouTube araç ekranı referans alınmaya devam edilir; tarayıcıyı oyun ya da navigasyon uygulaması gibi yanlış kategorilendirme yapılmaz.
 
 ## v0.19 — Android Auto ses bağlantısının doğrudan teşhisi
 
