@@ -72,6 +72,8 @@ object CarCompatibility {
         appendLine("Telefon video oynatıcısı: Media3 + Web Medya")
         appendLine("Android Auto park halindeki VIDEO: bu platformda onaylanmış destek yok")
         appendLine("ID.4 üzerinde gerçek video: DOĞRULANMADI")
+        appendLine("Yerel ses API testini Kitaplık bölümünden çalıştırabilirsin.")
+        appendLine("Bu yalnızca telefon servis testidir, araç bağlantısı sayılmaz.")
         appendLine("Raporu yenilemek için kapatıp yeniden aç.")
         appendLine("Araçta Media Hub'ın radyo simgesine girip kitaplığı aç;")
         appendLine("ardından raporda yeni Android Auto isteği kaydedilip kaydedilmediğini kontrol et.")
@@ -85,6 +87,18 @@ object CarCompatibility {
             .setTitle("Android Auto / ID.4 tanılama")
             .setMessage(contents)
             .setNegativeButton("Kapat", null)
+            .setNeutralButton("Paylaş") { _, _ ->
+                val sharing = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, contents)
+                }
+                try {
+                    activity.startActivity(Intent.createChooser(sharing, "Tanılama raporunu paylaş"))
+                } catch (_: Exception) {
+                    android.widget.Toast.makeText(activity, "Paylaşım menüsü açılamadı.",
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
             .setPositiveButton("Raporu kopyala") { _, _ ->
                 val clipboard=activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("ID4 bağlantı raporu", contents))
