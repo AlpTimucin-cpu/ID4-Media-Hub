@@ -1,7 +1,7 @@
 package tr.id4.mediahub
 
 import android.app.Activity
-import android.app.ActivityNotFoundException
+import android.content.ActivityNotFoundException
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
