@@ -1,3 +1,10 @@
+# v0.20 — 11 Ekim 2026
+
+- Media3 ses kitaplığına ek olarak Android 15 üzerinde **platform MediaBrowser** ile gerçek kök kategori taraması yapabilen yerel tanılama eklendi.
+- Legacy servis kökü ve üç kategori doğrulaması; 10 saniyelik zaman aşımı; başarısızlık mesajları.
+- Android emülatör iş akışında hem Media3 hem legacy tarama kontrolü zorunlu.
+- Tanılamalar yalnızca telefon içinden yapılır; Android Auto araç ekranı video erişimi henüz doğrulanmamıştır.
+
 # v0.8 — 9 Ekim 2026
 
 - MediaLibraryService: önce liste sayfalama, sonra Media3 dönüşümü; gereksiz nesne üretiminin azaltılması.
