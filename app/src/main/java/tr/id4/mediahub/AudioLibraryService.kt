@@ -154,6 +154,9 @@ class AudioLibraryService : MediaLibraryService() {
                         .filter { it.group == group }, page, pageSize).map { it.toMediaItem() }
                 }
             }
+            CarConnectionJournal.recordFolderRead(
+                this@AudioLibraryService, browser.packageName, parentId, items.size
+            )
             return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
         }
 
