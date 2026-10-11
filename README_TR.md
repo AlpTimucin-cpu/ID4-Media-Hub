@@ -1,8 +1,16 @@
-# ID.4 MEDIA HUB • v0.20 BETA
+# ID.4 MEDIA HUB • v0.21 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.21 — AABrowser ile araç ekranına web bağlantısı gönderme denemesi
+
+- **Web Medya → 🚘 AABrowser** düğmesi, seçili sekmenin **HTTPS adresini** `com.kododake.aabrowser` paketine yöneltilmiş `ACTION_VIEW` isteğiyle gönderir.
+- Bu giriş noktası AABrowser'ın açık kaynak manifesti ve Android `onNewIntent` işleyicisinde doğrulanmıştır. Başka tarayıcıya sessiz yönlendirme yapılmaz.
+- Android 15 emülatöründe AABrowser kurulu olmadığındaki hata davranışı ve uygulamanın çökmediği test edilir.
+- **Gerçek ID.4 ekranında aktarım, URL'nin orada görünmesi ve video oynatma henüz test edilmedi.** AABrowser'ı sahte oyun/navigasyon olarak kendi APK'mıza taşımıyoruz. Deneme yalnızca araç park halindeyken yapılmalıdır.
+- Şimdilik web sekmeleri içindir: Media3 IPTV akışının AABrowser WebView'de çalıştığı ya da Netflix DRM'nin çözüldüğü iddia edilmez.
 
 ## v0.20 — Android 15 legacy + Media3 ses tarama uyumluluğu
 
