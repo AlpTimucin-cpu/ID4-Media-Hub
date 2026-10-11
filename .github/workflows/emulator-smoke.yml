@@ -86,6 +86,17 @@ jobs:
             sleep 2
             adb shell screencap -p /sdcard/id4_web_media_tabs.png
             adb pull /sdcard/id4_web_media_tabs.png id4_web_media_tabs.png
+            # Confirm that HTTPS handoff button exists; on this phone emulator
+            # AABrowser is intentionally absent, so the app must show a clear
+            # error rather than sending the URL to an arbitrary browser.
+            adb shell uiautomator dump /sdcard/id4_handoff_ui.xml >/dev/null
+            adb pull /sdcard/id4_handoff_ui.xml id4_handoff_ui.xml >/dev/null
+            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;r=ET.parse("id4_handoff_ui.xml").getroot();m=[n.attrib.get("bounds","") for n in r.iter("node") if "AABrowser" in n.attrib.get("text","")];assert m,"AABrowser handoff button missing";b=list(map(int,re.findall(r"\\d+",m[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
+            sleep 2
+            adb shell uiautomator dump /sdcard/id4_handoff_result.xml >/dev/null
+            adb pull /sdcard/id4_handoff_result.xml id4_handoff_result.xml >/dev/null
+            grep -q 'AABrowser bulunamadı' id4_handoff_result.xml
+            adb shell input keyevent KEYCODE_BACK
             # Verify Media3 audio library API through the real phone UI.
             # This does NOT represent an Android Auto vehicle connection.
             adb shell input keyevent KEYCODE_BACK
@@ -122,6 +133,8 @@ jobs:
             id4_radio.png
             id4_web_media.png
             id4_web_media_tabs.png
+            id4_handoff_ui.xml
+            id4_handoff_result.xml
             id4_tv_browser.xml
             id4_browser_activity.txt
             id4_library_probe_ui.xml
