@@ -1,4 +1,4 @@
-# ID.4 Media Hub v0.21 — Araç Üzerinde Doğrulama Planı
+# ID.4 Media Hub v0.22 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
 
@@ -8,6 +8,13 @@
 - AABrowser **ID.4 büyük ekranda** YouTube sayfasını açtı.
 - Netflix web sitesi açıldı; Netflix videosu oynatılmadı.
 - ID.4 Media Hub'ın **Web Medya** bölümü Android 15 emülatöründe çalıştı; bu, araç ekranı başarısı değildir.
+
+## Yardımcı uygulamalar (POCO F5)
+
+- **Kitaplık → Shizuku / AAAD / Fermata durumunu kontrol et**: zaten kurulu Shizuku'nun API durumunu ve AAAD/Fermata sürümlerini görüntüle. Shizuku'yu yeniden kurma.
+- Fermata kuruluysa **Fermata'yı aç** düğmesi telefondaki uygulamayı açmalı. Bu işlem Android Auto aracında video görünürlüğü anlamına gelmez.
+- İzin isteme, APK yükleme, hareket/sürüş sinyalini değiştirme veya özel sürüş kısıtlamalarını atlatma yapılmaz.
+- Gerçek araç ekranı, radyo ses testi ve park halindeki video denemeleri birbirinden ayrı raporlanır.
 
 ## Park halinde gerçek araç testi
 
