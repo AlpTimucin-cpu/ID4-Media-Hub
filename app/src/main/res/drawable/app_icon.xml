@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#102a43" android:pathData="M0,0h48v48h-48z"/>
-    <path android:strokeColor="#ffffff" android:strokeWidth="3" android:fillColor="#00000000"
-          android:pathData="M11,29l4,-12h18l4,12M10,29h28v7h-28zM16,36v4M32,36v4"/>
-    <path android:fillColor="#5ae0ac" android:pathData="M18,31h4v3h-4zM26,31h4v3h-4z"/>
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Original ID4 Drive Hub icon; no VW trademark or third-party artwork. -->
+    <path android:fillColor="#0B182D" android:pathData="M0,0h48v48h-48z" />
+    <path android:fillColor="#17354D" android:pathData="M4,4h40v40h-40z" />
+    <path android:fillColor="#00000000"
+        android:strokeColor="#77E6DC" android:strokeWidth="2.4"
+        android:pathData="M8,34v-9l4,-11h24l4,11v9" />
+    <path android:fillColor="#1F4D62"
+        android:pathData="M12,24l3,-8h18l3,8z" />
+    <path android:fillColor="#00000000"
+        android:strokeColor="#8EEAE1" android:strokeWidth="2.2"
+        android:pathData="M9,33h30" />
+    <path android:fillColor="#F4D59B"
+        android:pathData="M23,20l0,9l8,-4.5z" />
+    <path android:fillColor="#77E6DC"
+        android:pathData="M12,29h5v2h-5zM31,29h5v2h-5z" />
+    <path android:fillColor="#0B182D"
+        android:pathData="M12,34h5v5h-5zM31,34h5v5h-5z" />
 </vector>
