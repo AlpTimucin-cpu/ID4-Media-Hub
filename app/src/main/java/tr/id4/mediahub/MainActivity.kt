@@ -310,6 +310,9 @@ class MainActivity : Activity() {
             try { startActivity(Intent("android.settings.APPLICATION_DETAILS_SETTINGS",Uri.parse("package:com.google.android.projection.gearhead"))) }
             catch (_: Exception) { toast("Android Auto ayarları açılamadı") }
         })
+        utilities.addView(button("🧩 TÜM UYGULAMALAR • ORTAK ENTEGRASYON MERKEZİ") {
+            IntegrationCenter.show(this)
+        })
         utilities.addView(label("Android Auto ekranında yalnızca ses medya kataloğu hedeflenir. Araçta video oynatma desteklenmez.",12,false))
         library.addView(utilities)
 
@@ -510,6 +513,9 @@ class MainActivity : Activity() {
         sportzHome.addView(appsRow)
         sportzHome.addView(button("🌐 Web Medya • Sekmeler ve favoriler") {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
+        })
+        sportzHome.addView(button("🧩  Tüm uygulamaları ve bağlantıları yönet") {
+            IntegrationCenter.show(this)
         })
         homeContainer.addView(sportzHome)
         val history=RecentStore.ids(this)
