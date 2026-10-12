@@ -1,8 +1,19 @@
-# ID.4 MEDIA HUB • v0.26 BETA
-### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
+# ID.4 DRIVE HUB • v0.27 BETA
+### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.27 — Baştan tasarlanan ID.4 Drive Hub arayüzü
+
+- Yenilenen orijinal Android 15 telefon ana ekranı: lacivert / turkuaz / amber tema, ID⁴ simgesi, yeni uygulama adı ve özgün vektör ikonu.
+- **Media Control** kahraman paneli: gerçek kayıtlı TV, radyo ve favori sayıları; araçtan okunmayan OBD ve batarya verisi uydurulmaz.
+- **Şimdi dinleniyor:** Media3 ses servisi çalıyorsa istasyon adı, duraklatma ve radyo sayfasına geçiş. Aksi hâlde doğrulanmış son TV/radyo için tek dokunuşla devam.
+- **Canlı TV / Radyo / Web Medya / Kitaplığım** büyük ve dokunmatik medya kartları; altlarında YouTube ve Netflix hızlı bağlantıları.
+- **Son açılanlar:** eski/silinmiş içerikleri filtreleyen, tekrarsız yerel liste ve hızlı devam düğmeleri.
+- **ID.4 Bağlantı Merkezi:** araç ses tanılama ile harici uygulamalar raporuna tek noktadan erişim.
+- Uygulama kimliği `tr.id4.mediahub` korundu; önceki kanal/favori kayıtları için depolama geçişi gerekmez. Kurulum imzasının aynı olması gerekir.
+- Tasarım ve sınırlamalar: `docs/ID4_DRIVE_HUB_V027.md`. Kaynak GPL kodu veya APK ikilileri Media Hub'a kopyalanmadı.
 
 ## v0.26 — Yüklenen FermataX APK analizinden geliştirmeler
 
