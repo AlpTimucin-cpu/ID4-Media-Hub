@@ -503,6 +503,8 @@ class TvPlayback(
     fun showChannels() {
         val all=catalog()
         if(all.isEmpty()){showLibrary();return}
+        // Snapshot once per channel-picker opening; do not reload persisted EPG per grid tile.
+        val epgIndex = EpgScheduleIndex(EpgGuide.load(activity), System.currentTimeMillis())
         val dialog=Dialog(activity,android.R.style.Theme_Material_NoActionBar)
         val root=LinearLayout(activity).apply{
             orientation=LinearLayout.VERTICAL
@@ -522,7 +524,7 @@ class TvPlayback(
             setPadding(dp(14),dp(9),dp(14),dp(9))
         }
         root.addView(search,LinearLayout.LayoutParams(-1,dp(50)))
-        val categories=listOf("Tümü","★ Favoriler")+
+        val categories=listOf("Tümü","★ Favoriler","📺 Şimdi yayında")+
             all.map{it.group}.filter{it.isNotBlank()}.distinct().sorted().take(35)
         var selected="Tümü"
         val strip=HorizontalScrollView(activity).apply{isHorizontalScrollBarEnabled=false}
@@ -564,6 +566,35 @@ class TvPlayback(
                     gravity=Gravity.CENTER
                     ellipsize=android.text.TextUtils.TruncateAt.END
                 },LinearLayout.LayoutParams(-1,dp(49)))
+                val programme = epgIndex.current(channel.tvgId)
+                if(programme != null) {
+                    tile.addView(label("ŞİMDİ",10f).apply {
+                        setTextColor(0xff78dfd6.toInt())
+                        gravity=Gravity.CENTER
+                        setPadding(dp(2),dp(1),dp(2),0)
+                    })
+                    tile.addView(label(programme.title,10f,true).apply {
+                        maxLines=2
+                        gravity=Gravity.CENTER
+                        ellipsize=android.text.TextUtils.TruncateAt.END
+                        setPadding(dp(2),0,dp(2),dp(2))
+                    },LinearLayout.LayoutParams(-1,dp(37)))
+                    val progress=android.widget.ProgressBar(
+                        activity,null,android.R.attr.progressBarStyleHorizontal
+                    ).apply {
+                        max=100
+                        this.progress=epgIndex.progressPercent(channel.tvgId)
+                        progressTintList=android.content.res.ColorStateList.valueOf(0xff69dcd2.toInt())
+                    }
+                    tile.addView(progress,LinearLayout.LayoutParams(-1,dp(4)))
+                    epgIndex.next(channel.tvgId)?.let { upcoming ->
+                        tile.addView(label("SONRA · " + upcoming.title,9f,true).apply {
+                            maxLines=1
+                            ellipsize=android.text.TextUtils.TruncateAt.END
+                            gravity=Gravity.CENTER
+                        },LinearLayout.LayoutParams(-1,dp(30)))
+                    }
+                }
                 return tile
             }
         }
@@ -572,10 +603,14 @@ class TvPlayback(
             val q=search.text.toString().trim()
             shown=all.filter { channel ->
                 (selected=="Tümü" || selected=="★ Favoriler" && channel.favorite ||
+                    selected=="📺 Şimdi yayında" && epgIndex.hasCurrent(channel.tvgId) ||
                     channel.group==selected) &&
-                (q.isBlank() || channel.name.contains(q,true) || channel.group.contains(q,true))
+                (q.isBlank() || channel.name.contains(q,true) ||
+                    channel.group.contains(q,true) || epgIndex.matchingProgramme(channel.tvgId,q))
             }
-            count.text=shown.size.toString()+" kanal · Oynatmak için seç"
+            count.text=shown.size.toString()+" kanal · " +
+                shown.count { epgIndex.hasCurrent(it.tvgId) } +
+                " program eşleşmesi · Oynatmak için seç"
             adapter.notifyDataSetChanged()
         }
         categories.forEach{ category ->
