@@ -1,8 +1,17 @@
-# ID.4 MEDIA HUB • v0.25 BETA
+# ID.4 MEDIA HUB • v0.26 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.26 — Yüklenen FermataX APK analizinden geliştirmeler
+
+- Gerçek FermataX debug APK paketi `me.app.fermataX.auto.debug` olarak tespit edildi (APK 2.2.2, kod 323, target SDK 36).
+- Ortak Entegrasyon Merkezi'nde FermataX debug / kararlı varyantlarını saptama ve kullanıcının telefonundan açma desteği.
+- Media3 tabanlı yerel oynatıcıya MPEG-DASH `.mpd` desteği eklendi; HLS `.m3u8` ve varsayılan medya biçimleri korunuyor.
+- FermataX APK'sında üç ABI için LibVLC kütüphaneleri bulundu. GPL kaynak/dağıtım uyumluluğu ve APK'nin kaynak koduyla aynı sürümden gelmesi doğrulanmadığından bu ikililer Media Hub'a kopyalanmadı.
+- Kaynak bulguları ve SHA-256 değerleri `docs/FERMATAX_YUKLENEN_APK_ANALIZI.md` dosyasında.
+- YouTube bağlantısının videosu bu oturumda açılamadığı için içeriği izlenmiş olarak raporlanmaz. Video kilidi/DRM değiştirilmedi.
 
 ## v0.25 — IPTV rehberi ve APTV tarzı kanal seçici
 
