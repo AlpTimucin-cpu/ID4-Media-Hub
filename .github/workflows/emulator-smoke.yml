@@ -117,6 +117,20 @@ jobs:
             grep -q 'ESKİ ANDROID MEDIABROWSER: BAĞLANDI' id4_library_probe_result.xml
             adb shell screencap -p /sdcard/id4_library_probe_result.png
             adb pull /sdcard/id4_library_probe_result.png id4_library_probe_result.png
+            adb shell input keyevent KEYCODE_BACK
+            sleep 1
+            # The optional companion bridge is READ-ONLY: no Shizuku API grant or
+            # Android Auto bypass is attempted on the stock Android 15 emulator.
+            for i in 1 2 3 4 5; do adb shell uiautomator dump /sdcard/id4_companions_ui.xml >/dev/null; adb pull /sdcard/id4_companions_ui.xml id4_companions_ui.xml >/dev/null; if grep -q 'Shizuku / AAAD / Fermata' id4_companions_ui.xml; then break; fi; adb shell input swipe 540 610 540 1620 330; sleep 1; done
+            grep -q 'Shizuku / AAAD / Fermata' id4_companions_ui.xml
+            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;root=ET.parse("id4_companions_ui.xml").getroot();matches=[n.attrib.get("bounds","") for n in root.iter("node") if "Shizuku / AAAD / Fermata" in n.attrib.get("text","")];assert matches,"Companion diagnostics button missing";b=list(map(int,re.findall(r"\d+",matches[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
+            sleep 2
+            adb shell uiautomator dump /sdcard/id4_companions_result.xml >/dev/null
+            adb pull /sdcard/id4_companions_result.xml id4_companions_result.xml >/dev/null
+            grep -q 'SHIZUKU / AAAD / FERMATA' id4_companions_result.xml
+            grep -q 'Kurulu görünmüyor' id4_companions_result.xml
+            adb shell screencap -p /sdcard/id4_companions_result.png
+            adb pull /sdcard/id4_companions_result.png id4_companions_result.png
             adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
             cat android_runtime_errors.log
             if grep -q 'FATAL EXCEPTION' android_runtime_errors.log; then exit 1; fi
@@ -140,6 +154,9 @@ jobs:
             id4_library_probe_ui.xml
             id4_library_probe_result.xml
             id4_library_probe_result.png
+            id4_companions_ui.xml
+            id4_companions_result.xml
+            id4_companions_result.png
             id4_ui.xml
             android_runtime_errors.log
           retention-days: 7
