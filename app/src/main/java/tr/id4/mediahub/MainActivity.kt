@@ -265,6 +265,9 @@ class MainActivity : Activity() {
         utilities.addView(textAction("🚗 ID.4 / Android Auto bağlantı raporu") {
             CarCompatibility.show(this)
         })
+        utilities.addView(button("🧩 Shizuku / AAAD / Fermata durumunu kontrol et") {
+            CarCompanionApps.show(this)
+        })
         utilities.addView(button("🧪 Ses kitaplığı API bağlantısını kontrol et") {
             CarAudioSelfTest.run(this)
         })
