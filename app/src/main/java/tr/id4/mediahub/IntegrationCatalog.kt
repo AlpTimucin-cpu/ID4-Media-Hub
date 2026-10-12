@@ -43,6 +43,11 @@ object IntegrationCatalog {
             packages = listOf("me.aap.fermata.auto", "me.aap.fermata.auto.dear.google.why", "me.aap.fermata"),
             projectUrl = "https://github.com/AndreyPavlenko/Fermata"),
         IntegrationSource(
+            "fermatax", "FermataX (yüklenen debug APK)", IntegrationKind.EXTERNAL,
+            "Yüklenen APK'nin doğrulanmış paket adı me.app.fermataX.auto.debug. Telefon üzerindeki uygulamayı tanır ve açar; paket birleştirme veya sürüşte video etkinleştirme yapmaz.",
+            packages = listOf("me.app.fermataX.auto.debug", "me.app.fermataX.auto", "me.app.fermataX"),
+            projectUrl = "https://github.com/chuoinho/FermataX"),
+        IntegrationSource(
             "screen2auto", "Screen2Auto", IntegrationKind.DIAGNOSTIC,
             "Telefon üzerindeki bilinen dağıtım paketlerini algılama; gizli API, ekran hızı veya güvenlik kilidi değişimi yok.",
             packages = listOf("android.loandamaps.it", "android.loandamaps.it.aaad_157ff3")),
