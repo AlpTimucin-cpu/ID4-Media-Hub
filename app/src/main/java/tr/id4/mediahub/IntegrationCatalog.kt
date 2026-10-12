@@ -62,6 +62,17 @@ object IntegrationCatalog {
             packages = listOf("com.chiller3.mirrormobile", "com.chiller3.mirrormobile.debug"),
             projectUrl = "https://github.com/chenxiaolong/MirrorMobile"),
         IntegrationSource(
+            "carstream", "CarStream", IntegrationKind.DIAGNOSTIC,
+            "AAAD ekosistemindeki eski YouTube/web görüntüleme yöntemi; Android 15 ve ID.4 uyumu doğrulanmadı.",
+            packages = listOf("maps.jaoloonda.android")),
+        IntegrationSource(
+            "sportzx", "SportzX", IntegrationKind.EXTERNAL,
+            "Yalnızca telefonda kurulu uygulamaya kısayol. Üçüncü taraf APK, yayın veya telifli içerik entegre edilmez.",
+            packages = listOf("com.sportzx.live")),
+        IntegrationSource(
+            "diplay", "DiPlay / Screen2Auto araştırması", IntegrationKind.REFERENCE,
+            "Önceki Android Auto ekran denemelerinden mimari çıkarımlar; doğrulanmamış paket, gizli API veya sahte navigasyon servisi kullanılmaz."),
+        IntegrationSource(
             "androidauto", "Android Auto radyo", IntegrationKind.NATIVE,
             "MediaLibraryService / platform MediaBrowser ses kataloğu. Gerçek araç keşfi ve ses çıkışı ayrıca doğrulanmalı.",
             packages = listOf("com.google.android.projection.gearhead"))
