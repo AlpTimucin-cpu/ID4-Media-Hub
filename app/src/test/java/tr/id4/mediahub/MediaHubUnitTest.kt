@@ -23,6 +23,24 @@ class MediaHubUnitTest {
         assertTrue(IntegrationCatalog.byId("web")!!.packages.contains("com.kododake.aabrowser"))
     }
 
+    @Test fun driveDashboardRecentOrderDeduplicatesAndIgnoresStaleIds() {
+        val entries = DriveHomePlanner.recent(
+            listOf("tv:one", "radio:r2", "tv:one", "tv:missing", "unknown:x",
+                "radio:r1", "badentry", "tv:two"),
+            mapOf("one" to "Haber", "two" to "Sinema"),
+            mapOf("r1" to "Müzik", "r2" to "Radyo 2"),
+            4
+        )
+        assertEquals(listOf("Haber", "Radyo 2", "Müzik", "Sinema"),
+            entries.map { it.title })
+        assertEquals(listOf("tv", "radio", "radio", "tv"),
+            entries.map { it.kind })
+        assertEquals(emptyList<DriveRecentItem>(), DriveHomePlanner.recent(
+            listOf("tv:one"), mapOf("one" to "Haber"), emptyMap(), 0))
+        assertEquals(emptyList<DriveRecentItem>(), DriveHomePlanner.recent(
+            listOf("tv:unknown"), emptyMap(), emptyMap()))
+    }
+
     @Test fun m3uAdvertisedEpgRequiresHttpsAndExplicitApproval() {
         val playlist = """#EXTM3U x-tvg-url="http://unsafe.example/epg.xml,https://guide.example/epg.xml.gz"
 #EXTINF:-1 tvg-id="trt.tr" group-title="TV",TRT
