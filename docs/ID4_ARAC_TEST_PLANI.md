@@ -1,3 +1,16 @@
+# ID.4 Drive Hub v0.28 — Araç ve telefon test planı
+
+## Media Cockpit / telefon testi
+
+1. POCO F5 Android 15'te ID.4 Drive Hub'ı aç. Ana Sayfa'da **MEDIA COCKPIT**, **SES OTURUMU** ve altı medya/kontrol kutusu görünmeli.
+2. Ses Oturumu → Oynat: bir radyo çalınmalı veya seçmen istenmeli. Duraklat düğmesi gerçek oynatma durumunu takip etmeli.
+3. TV kanalı izleyip ana sayfaya dön; **Kaldığın Yerden** içinden aynı kanalı açabilmelisin.
+4. Favorilere radyo/TV ekle: Ana Sayfa'daki Favoriler bölümünde belirmeli; bilinmeyen/silinmiş kayıt gösterilmemeli.
+5. XMLTV yükle: TV kartında mevcut program ve ilerleme çubuğu varsa görünmeli, yoksa boş kalmalı.
+6. **UYGULAMALAR** kutusu entegrasyon raporunu açmalı; **ID.4 DURUM** ayrı tanılama raporu göstermeli.
+7. Android Auto/ID.4 gerçek bağlantısında yalnızca ses kataloğu ve oynatmayı kontrol et; park halindeki video ayrıca cihaz üzerinde doğrulanmalıdır.
+
+
 # ID.4 Media Hub v0.25 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
