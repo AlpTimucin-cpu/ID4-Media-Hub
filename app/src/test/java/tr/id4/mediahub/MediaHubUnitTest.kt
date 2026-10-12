@@ -5,6 +5,24 @@ import org.junit.Test
 
 /** Runs as part of :app:testDebugUnitTest on a proper Android/Gradle builder. */
 class MediaHubUnitTest {
+    @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
+        val sources = IntegrationCatalog.sources
+        val ids = sources.map { it.id }
+        assertEquals(ids.size, ids.distinct().size)
+        assertTrue(ids.size >= 12)
+        val required = listOf("aptv", "media3", "web", "screenonauto", "fermata",
+            "screen2auto", "shizuku", "aaad", "mirrormobile", "carstream", "sportzx", "diplay", "androidauto")
+        required.forEach { assertNotNull("Missing source: " + it, IntegrationCatalog.byId(it)) }
+        assertEquals(IntegrationKind.NATIVE, IntegrationCatalog.byId("aptv")?.kind)
+        assertEquals(IntegrationKind.EXTERNAL, IntegrationCatalog.byId("screenonauto")?.kind)
+        assertEquals(IntegrationKind.REFERENCE, IntegrationCatalog.byId("mirrormobile")?.kind)
+        assertTrue(IntegrationCatalog.byId("screen2auto")!!.packages.contains(
+            "android.loandamaps.it.aaad_157ff3"))
+        assertTrue(IntegrationCatalog.byId("screenonauto")!!.packages.contains(
+            "idv.lzn.screenonauto"))
+        assertTrue(IntegrationCatalog.byId("web")!!.packages.contains("com.kododake.aabrowser"))
+    }
+
     @Test fun pagesAreBoundedAndOverflowSafe() {
         val items = (0 until 2500).toList()
         assertEquals((40 until 60).toList(), LibraryPage.slice(items, 2, 20))
