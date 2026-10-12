@@ -16,6 +16,11 @@
         <package android:name="me.aap.fermata" />
         <package android:name="me.aap.fermata.auto" />
         <package android:name="me.aap.fermata.auto.dear.google.why" />
+        <package android:name="android.loandamaps.it" />
+        <package android:name="android.loandamaps.it.aaad_157ff3" />
+        <package android:name="maps.jaoloonda.android" />
+        <package android:name="com.chiller3.mirrormobile" />
+        <package android:name="com.chiller3.mirrormobile.debug" />
         <package android:name="com.sportzx.live" />
         <!-- Inspect only installed launchable apps for the optional SportzX shortcut. -->
         <intent>
