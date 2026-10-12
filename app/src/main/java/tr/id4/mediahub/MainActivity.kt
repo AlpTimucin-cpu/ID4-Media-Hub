@@ -84,8 +84,8 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10),0,0,0)
         }
-        brandTitles.addView(label("MEDIA HUB", 20, true))
-        brandTitles.addView(label("TV  ·  RADYO  ·  KİTAPLIK", 10, false))
+        brandTitles.addView(label("DRIVE HUB", 20, true))
+        brandTitles.addView(label("ID.4  •  MEDIA COMMAND", 10, false))
         brandRow.addView(brandTitles, LinearLayout.LayoutParams(0,-2,1f))
         val add = textAction("＋") { selectTab(3) }
         brandRow.addView(add, LinearLayout.LayoutParams(dp(46),dp(48)))
@@ -125,7 +125,7 @@ class MainActivity : Activity() {
             setPadding(dp(8),dp(7),dp(8),dp(9))
             setBackgroundColor(0xff102137.toInt())
         }
-        navButtons = listOf("⌂\nAna Sayfa","▣\nTV","♫\nRadyo","☷\nKitaplık").mapIndexed { index, name ->
+        navButtons = listOf("⌂\nAna Sayfa","▣\nCanlı TV","♫\nRadyo","☷\nKaynaklar").mapIndexed { index, name ->
             textAction(name) { selectTab(index) }.apply {
                 textSize = 12f
                 gravity = Gravity.CENTER
@@ -336,6 +336,7 @@ class MainActivity : Activity() {
                             mediaItem: androidx.media3.common.MediaItem?,reason:Int
                         ) {
                             if(mediaItem != null)status.text="♫   ${mediaItem.mediaMetadata.title ?: "Radyo"}"
+                            if(::homeContainer.isInitialized) renderHome()
                         }
                     })
                     connected.addListener(object:Player.Listener{
@@ -345,6 +346,7 @@ class MainActivity : Activity() {
                             if(selected!=null)currentRadioId=selected.id
                             if(::radioDashboard.isInitialized)
                                 radioDashboard.setPlaying(selected,isPlaying)
+                            if(::homeContainer.isInitialized) renderHome()
                         }
                     })
                     status.text="●   Ses servisi hazır"
@@ -477,101 +479,34 @@ class MainActivity : Activity() {
         if(::contentScroll.isInitialized)contentScroll.post{contentScroll.scrollTo(0,0)}
     }
 
-    private fun renderHome(){
-        if(!::homeContainer.isInitialized)return
-        homeContainer.removeAllViews()
-        val tv=VideoStore.load(this)
-        val radio=StationStore.load(this)
-        val hero=panel().apply{
-            background=gradient(0xff1b5763.toInt(),0xff13263f.toInt(),23)
-            setPadding(dp(20),dp(19),dp(20),dp(20))
-        }
-        hero.addView(label("TEKRAR HOŞ GELDİN",11,false).apply{setTextColor(0xff82efe3.toInt())})
-        hero.addView(label("Ne izlemek veya\ndinlemek istersin?",26,true))
-        hero.addView(label("${tv.size} TV kanalı  •  ${radio.size} radyo",14,false))
-        val actions=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        actions.addView(button("▶ TV Kanalları") { selectTab(1) },LinearLayout.LayoutParams(0,dp(48),1f))
-        actions.addView(button("♫ Radyo") { selectTab(2) },LinearLayout.LayoutParams(0,dp(48),1f))
-        hero.addView(actions)
-        homeContainer.addView(hero)
-        // Original, phone-only quick resume card inspired by FermataX's dashboard UX.
-        // The card deliberately preserves the user's latest TV/radio playback choice.
-        val history = RecentStore.ids(this)
-        val lastPlayable = history.firstNotNullOfOrNull { entry ->
-            val id = entry.substringAfter(':',"")
-            when (entry.substringBefore(':')) {
-                "tv" -> tv.find { it.id == id }?.let { Triple("tv", id, it.name) }
-                "radio" -> radio.find { it.id == id }?.let { Triple("radio", id, it.name) }
-                else -> null
-            }
-        }
-        if (lastPlayable != null) {
-            val (kind, id, name) = lastPlayable
-            val resume = panel().apply {
-                background = gradient(0xff25525d.toInt(), 0xff15344a.toInt(), 16)
-            }
-            resume.addView(label("KALDIĞIN YERDEN DEVAM ET", 12, true))
-            resume.addView(label(name.take(80), 19, true))
-            resume.addView(label(
-                if (kind == "tv") "Son izlenen TV kanalı" else "Son dinlenen radyo", 12, false))
-            resume.addView(button(if (kind == "tv") "▶ Kanalı aç" else "♫ Radyoyu başlat") {
-                if (kind == "tv") {
-                    tv.find { it.id == id }?.let { tvPlayer.play(it); selectTab(1) }
-                } else {
-                    radio.find { it.id == id }?.let { playStation(it); selectTab(2) }
-                }
-            })
-            homeContainer.addView(resume)
-        }
-        homeContainer.addView(section("HIZLI ERİŞİM","Kaldığın yerden devam et"))
-        val quick=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        quick.addView(shortcut("▣","TV","Kanal listesi"){selectTab(1)},LinearLayout.LayoutParams(0,dp(120),1f))
-        quick.addView(shortcut("♫","RADYO","Müzik ve yayın"){selectTab(2)},LinearLayout.LayoutParams(0,dp(120),1f))
-        quick.addView(shortcut("＋","LİSTELER","M3U ekle"){selectTab(3)},LinearLayout.LayoutParams(0,dp(120),1f))
-        homeContainer.addView(quick)
-        val sportzHome=panel().apply{
-            background=gradient(0xff20344f.toInt(),0xff102d45.toInt(),16)
-        }
-        sportzHome.addView(label("SPOR & DİĞER UYGULAMALAR",13,true))
-        sportzHome.addView(button("◉  SportzX'i doğrudan aç") {
-            SportzXLauncher.openIfInstalled(this)
-        })
-        val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        appsRow.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
-            LinearLayout.LayoutParams(0,dp(49),1f))
-        appsRow.addView(button("▣ Netflix Web") { openWebMedia(MediaWebActivity.NETFLIX_URL) },
-            LinearLayout.LayoutParams(0,dp(49),1f))
-        sportzHome.addView(appsRow)
-        sportzHome.addView(button("🌐 Web Medya • Sekmeler ve favoriler") {
-            openWebMedia(MediaWebActivity.YOUTUBE_URL)
-        })
-        sportzHome.addView(button("🧩  Tüm uygulamaları ve bağlantıları yönet") {
-            IntegrationCenter.show(this)
-        })
-        homeContainer.addView(sportzHome)
-        if(history.isNotEmpty()){
-            homeContainer.addView(section("SON AÇILANLAR","Geçmişinden seç"))
-            history.take(8).forEach { value ->
-                val id=value.substringAfter(':',"")
-                when(value.substringBefore(':')){
-                    "tv"->tv.find{it.id==id}?.let{homeContainer.addView(videoRow(it,true))}
-                    "radio"->radio.find{it.id==id}?.let{homeContainer.addView(radioRow(it,true))}
-                }
-            }
-        }
-        val favorites=tv.filter{it.favorite}.take(3)
-        if(favorites.isNotEmpty()){
-            homeContainer.addView(section("FAVORİ TV KANALLARIN","Tek dokunuşla aç"))
-            favorites.forEach{homeContainer.addView(videoRow(it,true))}
-        }
-        if(tv.isEmpty()){
-            homeContainer.addView(section("İLK ADIM","Bir kanal listesi ekle"))
-            val onboarding=panel()
-            onboarding.addView(label("IPTV kitaplığın henüz boş.",18,true))
-            onboarding.addView(label("Kendi M3U bağlantını ekleyebilir veya açık yayın listelerini deneyebilirsin.",13,false))
-            onboarding.addView(button("＋  Kanal listesi ekle"){selectTab(3)})
-            homeContainer.addView(onboarding)
-        }
+    /** ID.4 Drive Hub phone dashboard. Keeps existing package/storage/player services. */
+    private fun renderHome() {
+        if (!::homeContainer.isInitialized) return
+        val stations = StationStore.load(this)
+        val tv = VideoStore.load(this)
+        val activeId = controller?.currentMediaItem?.mediaId ?: currentRadioId
+        DriveDashboard(this, DriveDashboard.Actions(
+            openTv = { selectTab(1) },
+            openRadio = { selectTab(2) },
+            openLibrary = { selectTab(3) },
+            openWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
+            openYoutube = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
+            openNetflix = { InstalledMediaApps.openNetflix(this) },
+            openIntegrations = { IntegrationCenter.show(this) },
+            openCarReport = { CarCompatibility.show(this) },
+            playTv = { channel ->
+                selectTab(1)
+                tvPlayer.play(channel)
+            },
+            playRadio = { station ->
+                playStation(station)
+                selectTab(2)
+            },
+            toggleRadio = { toggleRadioPlayback() }
+        )).render(
+            homeContainer, tv, stations, RecentStore.ids(this),
+            activeId, controller?.isPlaying == true
+        )
     }
 
     private fun shortcut(icon:String,title:String,description:String,action:()->Unit):LinearLayout{
