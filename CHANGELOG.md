@@ -1,3 +1,11 @@
+# v0.23 — 12 Ekim 2026
+
+- APTV esinli M3U + XMLTV (EPG) program rehberi: HTTPS XMLTV/XMLTV.GZ indirme, güvenli XML ayrıştırma, yerel sınırlı önbellek.
+- M3U tvg-id ve tvg-logo içe/dışa aktarma, kanal kaydında saklama ve TV oynatıcısında Şimdi / Sonra gösterimi.
+- ScreenOnAuto resmi belgelenmiş kullanıcı tetikli başlat/durdur komutları ile isteğe bağlı birlikte çalışma.
+- XMLTV ile EPG kimlik eşleştirme, DTD ve dış XML entity reddi için JUnit testleri.
+- APTV'nin Apple/CarPlay kodları ve uygulama markası kopyalanmadı; Android Auto'da sürüş esnasında video atlatma işlevi yok.
+
 # v0.22 — 12 Ekim 2026
 
 - Resmî Shizuku 13.1.5 API ile bağlantı/izin durumunu salt okunur kontrol.
