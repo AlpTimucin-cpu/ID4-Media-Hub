@@ -31,7 +31,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
     </queries>
-    <application android:label="ID.4 Media Hub"
+    <application android:label="ID.4 Drive Hub"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
