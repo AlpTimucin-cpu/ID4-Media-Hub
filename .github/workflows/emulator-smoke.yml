@@ -45,6 +45,10 @@ jobs:
             adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity|tr.id4.mediahub' | head -20 || true
             adb shell screencap -p /sdcard/id4_home.png
             adb pull /sdcard/id4_home.png id4_home.png
+            # New ID4 Drive Hub must actually render, not merely compile.
+            for i in 1 2 3; do adb shell uiautomator dump /sdcard/id4_drive_home.xml >/dev/null 2>&1 && adb pull /sdcard/id4_drive_home.xml id4_drive_home.xml >/dev/null 2>&1 && break; sleep 2; done
+            grep -q 'DRIVE HUB' id4_drive_home.xml
+            grep -q 'TV KANALI' id4_drive_home.xml
             # Navigate the real home UI and validate the unified companion center.
             for i in 1 2 3 4 5 6; do adb shell uiautomator dump /sdcard/id4_integration_button.xml >/dev/null 2>&1 && adb pull /sdcard/id4_integration_button.xml id4_integration_button.xml >/dev/null 2>&1; if [ -s id4_integration_button.xml ] && grep -q 'Tüm uygulamaları ve bağlantıları yönet' id4_integration_button.xml; then break; fi; adb shell input swipe 540 1570 540 700 390; sleep 1; done
             grep -q 'Tüm uygulamaları ve bağlantıları yönet' id4_integration_button.xml
@@ -150,6 +154,7 @@ jobs:
           name: android-emulator-smoke
           path: |
             id4_home.png
+            id4_drive_home.xml
             id4_integration_button.xml
             id4_integration_result.xml
             id4_integration_result.png
