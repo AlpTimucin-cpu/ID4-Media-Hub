@@ -1,8 +1,18 @@
-# ID.4 DRIVE HUB • v0.27 BETA
+# ID.4 DRIVE HUB • v0.28 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.28 — Media Cockpit ana ekranı
+
+- **Yeni gerçek Ana Sayfa:** Ekran genişliğine göre değişen 1/2/3 sütunlu altı işlev kutusu (TV, Radyo, Web Medya, Kitaplık, ID.4 Durum, Uygulamalar).
+- **Ses Oturumu** gerçek Media3 radyo durumu ve oynat/duraklat eylemini gösterir; telefon araç bağlantısı varmış gibi davranmaz.
+- **Kaldığın Yerden ve Favoriler** son açılan radyo/TV kayıtlarını kayıpsız kullanır; IPTV URL/tokenları görünüm modeline alınmaz.
+- **TV programı** mevcut XMLTV önbelleğinden ŞİMDİ ve yayın ilerlemesini gösterir.
+- **Kurulum:** TV listesi boşsa kaynak ekleme düğmesiyle yönlendirir. Depolama ve Android Auto ses API'si korunur.
+- Özgün tasarım: `CockpitDashboard.kt`; model: `CockpitPlanner.kt`. Detay: `docs/ID4_MEDIA_COCKPIT_V028.md`.
+- Android 15 emülatör testi araç ekranındaki video işlevinin kanıtı değildir.
 
 ## v0.27 — Baştan tasarlanan ID.4 Drive Hub arayüzü
 
