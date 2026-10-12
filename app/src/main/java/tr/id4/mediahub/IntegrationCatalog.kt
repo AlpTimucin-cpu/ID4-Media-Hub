@@ -44,7 +44,7 @@ object IntegrationCatalog {
             projectUrl = "https://github.com/AndreyPavlenko/Fermata"),
         IntegrationSource(
             "fermatax", "FermataX (yüklenen debug APK)", IntegrationKind.EXTERNAL,
-            "Yüklenen APK'nin doğrulanmış paket adı me.app.fermataX.auto.debug. Telefon üzerindeki uygulamayı tanır ve açar; paket birleştirme veya sürüşte video etkinleştirme yapmaz.",
+            "Kullanıcının APK dosyasında 2.2.2 (323), Android API 28–36, VLC + ExoPlayer, TV, radyo, podcast, web ve medya hizmeti doğrulandı. Debug paketi telefonda kuruluysa açılır. APK kopyalanmaz; araç ekranı ayrı testtir.",
             packages = listOf("me.app.fermataX.auto.debug", "me.app.fermataX.auto", "me.app.fermataX"),
             projectUrl = "https://github.com/chuoinho/FermataX"),
         IntegrationSource(
