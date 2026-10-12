@@ -60,6 +60,7 @@ class TvPlayback(
     private lateinit var overlay: View
     private lateinit var title: TextView
     private lateinit var playbackState: TextView
+    private lateinit var epgStatus: TextView
     private lateinit var catalogState: TextView
     private lateinit var quickAccess: LinearLayout
     private var initialized = false
@@ -116,6 +117,8 @@ class TvPlayback(
         root.addView(title)
         playbackState = label("Kanallar düğmesiyle yayını başlatabilirsin.", 12f, true)
         root.addView(playbackState)
+        epgStatus = label("EPG: Program bilgisi için XMLTV kaynağı ekleyebilirsin.",12f,true)
+        root.addView(epgStatus)
 
         val navigation = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
         navigation.addView(button("◀") { next(-1) }, LinearLayout.LayoutParams(0, dp(48), 1f))
@@ -242,6 +245,7 @@ class TvPlayback(
         if (!initialized) return
         overlay.visibility=View.GONE
         title.text=M3uParser.displayTitle(channel.name)
+        epgStatus.text = EpgGuide.currentLabel(activity, channel.tvgId)
         playbackState.text="●  Yayın başlatılıyor…"
         try {
             val address=channel.url.substringBefore('?').substringBefore('#')
@@ -324,6 +328,7 @@ class TvPlayback(
     fun refresh() {
         if (!initialized) return
         val channels=catalog()
+        current?.let { epgStatus.text = EpgGuide.currentLabel(activity, it.tvgId) }
         catalogState.text=channels.size.toString() + " kanal · " +
             channels.count { it.favorite }.toString() + " favori"
         quickAccess.removeAllViews()
