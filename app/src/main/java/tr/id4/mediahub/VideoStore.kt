@@ -11,7 +11,8 @@ data class VideoChannel(
     val url: String,
     val group: String,
     val favorite: Boolean,
-    val logo: String = ""
+    val logo: String = "",
+    val tvgId: String = ""
 )
 
 /** Private on-device catalogue. Video channels never appear in the Android Auto media tree. */
@@ -31,7 +32,8 @@ object VideoStore {
                     if (M3uParser.isHttpsUrl(url)) add(VideoChannel(
                         obj.getString("id"), M3uParser.displayTitle(obj.getString("name")), url,
                         obj.optString("group", "Diğer"), obj.optBoolean("favorite", false),
-                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
+                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty(),
+                        obj.optString("tvgId", "").take(160)
                     ))
                 }
             }
@@ -55,7 +57,7 @@ object VideoStore {
         for (item in items) {
             if (channels.size >= 2500) break
             if (!item.isAudio && M3uParser.isHttpsUrl(item.url) && existing.add(item.url)) {
-                channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(item.name), item.url, item.group, false, item.logo))
+                channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(item.name), item.url, item.group, false, item.logo, item.tvgId))
                 added++
             }
         }
@@ -74,7 +76,8 @@ object VideoStore {
         channels.forEach { channel ->
             json.put(JSONObject().put("id", channel.id).put("name", channel.name)
                 .put("url", channel.url).put("group", channel.group)
-                .put("favorite", channel.favorite).put("logo", channel.logo))
+                .put("favorite", channel.favorite).put("logo", channel.logo)
+                .put("tvgId", channel.tvgId))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, json.toString()).apply()
     }
