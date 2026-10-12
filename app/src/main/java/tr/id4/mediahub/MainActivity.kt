@@ -214,6 +214,20 @@ class MainActivity : Activity() {
         })
         library.addView(ready)
 
+        val epgCard=panel()
+        epgCard.addView(label("TV PROGRAM REHBERİ • XMLTV / APTV TARZI",18,true))
+        epgCard.addView(label("M3U tvg-id alanı ile eşleşen programları Şimdi / Sonra olarak gösterir. HTTPS XMLTV veya XMLTV.GZ rehberi ekleyebilirsin.",12,false))
+        val epgUrlInput=searchInput("https://.../epg.xml veya epg.xml.gz")
+        epgUrlInput.setText(EpgGuide.source(this))
+        epgCard.addView(epgUrlInput)
+        epgCard.addView(button("📅 EPG rehberini indir ve güncelle") {
+            importEpgFromHttps(epgUrlInput.text.toString().trim())
+        })
+        epgCard.addView(button("▦ Bugünkü programları göster",secondary=true) {
+            showEpgSchedule()
+        })
+        library.addView(epgCard)
+
         val radioCard=panel()
         radioCard.addView(label("YENİ RADYO",18,true))
         val radioName=searchInput("Radyo adı")
@@ -245,6 +259,16 @@ class MainActivity : Activity() {
             InstalledMediaApps.openNetflix(this)
         })
         external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
+        external.addView(label("EKRAN YANSITMA • SCREENONAUTO",15,true))
+        external.addView(label("Kurulu ScreenOnAuto uygulamasına kendi belgelenmiş komutlarıyla istek gönderir. Gerçek araç ekranındaki video ayrıca doğrulanmalıdır.",12,false))
+        val mirrorActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        mirrorActions.addView(button("🖥 Yansıtmayı başlat") {
+            ScreenOnAutoBridge.send(this,true)
+        }, LinearLayout.LayoutParams(0,dp(50),1f))
+        mirrorActions.addView(button("■ Durdur",secondary=true) {
+            ScreenOnAutoBridge.send(this,false)
+        }, LinearLayout.LayoutParams(0,dp(50),1f))
+        external.addView(mirrorActions)
         external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
         library.addView(external)
 
@@ -562,6 +586,60 @@ class MainActivity : Activity() {
             cornerRadius=dp(radius).toFloat()
         }
 
+    private fun importEpgFromHttps(address: String) {
+        if (!M3uParser.isHttpsUrl(address)) {
+            toast("EPG için geçerli HTTPS XMLTV adresi gir.")
+            return
+        }
+        status.text = "Program rehberi indiriliyor…"
+        Thread {
+            try {
+                val bytes = EpgGuide.downloadHttps(address)
+                val parsed = EpgGuide.parse(bytes)
+                require(parsed.isNotEmpty()) { "Kullanılabilir program bulunamadı" }
+                val count = EpgGuide.save(applicationContext, address, parsed)
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        status.text = "EPG rehberi hazır: " + count + " program"
+                        if (::tvPlayer.isInitialized) tvPlayer.refresh()
+                        toast("TV program rehberi güncellendi.")
+                    }
+                }
+            } catch (_: Exception) {
+                // The URL might contain an IPTV account token: don't log or display exceptions.
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed)
+                        status.text = "EPG yüklenemedi. HTTPS adresini, XMLTV biçimini ve erişim iznini kontrol et."
+                }
+            }
+        }.start()
+    }
+
+    private fun showEpgSchedule() {
+        val guide = EpgGuide.load(this)
+        val now = System.currentTimeMillis()
+        val channels = VideoStore.load(this)
+        val rows = channels.asSequence().mapNotNull { channel ->
+            val programme = EpgGuide.current(guide, channel.tvgId, channel.name, now)
+                ?: return@mapNotNull null
+            channel to programme
+        }.take(35).toList()
+        val text = if (rows.isEmpty()) {
+            "Eşleşen güncel program bulunamadı.\n\nÖnce XMLTV rehberini yükle. " +
+                "M3U kanallarında tvg-id alanları ile XMLTV channel id alanlarının aynı olması gerekir."
+        } else buildString {
+            append("Güncel programı bulunan ").append(rows.size).append(" kanal\n\n")
+            rows.forEach { (channel, item) ->
+                append(channel.name).append("\n")
+                append(EpgGuide.clock(item.startMs)).append("–")
+                    .append(EpgGuide.clock(item.stopMs)).append("  ")
+                    .append(item.title).append("\n\n")
+            }
+        }
+        AlertDialog.Builder(this).setTitle("TV Program Rehberi")
+            .setMessage(text).setPositiveButton("Kapat", null).show()
+    }
+
     private fun importFromHttps(address: String) {
         if (!M3uParser.isHttpsUrl(address)) {
             toast("HTTPS ile başlayan geçerli bir M3U bağlantısı gir.")
@@ -776,7 +854,7 @@ class MainActivity : Activity() {
             }
             EXPORT_PLAYLIST -> {
                 val entries = StationStore.load(this).map { PlaylistEntry(it.name, it.url, it.group, true) } +
-                    VideoStore.load(this).map { PlaylistEntry(it.name, it.url, it.group, false) }
+                    VideoStore.load(this).map { PlaylistEntry(it.name, it.url, it.group, false, it.logo, it.tvgId) }
                 val contents = M3uExporter.export(entries)
                 Thread {
                     try {
