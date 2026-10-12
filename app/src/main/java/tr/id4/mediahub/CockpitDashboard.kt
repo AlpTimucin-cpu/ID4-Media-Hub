@@ -285,8 +285,7 @@ object CockpitDashboard {
             })
             // Radio never includes a TV programme status or fake progress.
             if(item.kind=="tv") {
-                val tv = VideoStore.load(activity).firstOrNull { it.id==item.id }
-                val programme = tv?.let { epg.current(it.tvgId) }
+                val programme = epg.current(item.tvgId)
                 if(programme != null) {
                     tile.addView(vSpace(activity, 7))
                     tile.addView(text(activity, "ŞİMDİ • " + programme.title.take(42),
@@ -297,7 +296,7 @@ object CockpitDashboard {
                     tile.addView(ProgressBar(activity,null,
                         android.R.attr.progressBarStyleHorizontal).apply {
                         max=100
-                        progress=epg.progressPercent(tv.tvgId)
+                        progress=epg.progressPercent(item.tvgId)
                         progressTintList=android.content.res.ColorStateList.valueOf(ACCENT)
                     },LinearLayout.LayoutParams(-1,dp(activity,4)))
                 }
