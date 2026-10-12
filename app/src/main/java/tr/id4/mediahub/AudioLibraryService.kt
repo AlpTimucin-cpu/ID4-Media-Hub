@@ -106,7 +106,7 @@ class AudioLibraryService : MediaLibraryService() {
             .build())
         .build()
 
-    private fun rootItem() = folder(ROOT, "ID.4 Media Hub")
+    private fun rootItem() = folder(ROOT, "ID.4 Drive Hub")
     private fun allItem() = folder(ALL, "Tüm radyolar")
     private fun favoriteItem() = folder(FAVORITES, "Favori radyolar")
     private fun groupsItem() = folder(GROUPS, "Radyo grupları")
