@@ -5,6 +5,35 @@ import org.junit.Test
 
 /** Runs as part of :app:testDebugUnitTest on a proper Android/Gradle builder. */
 class MediaHubUnitTest {
+    @Test fun cockpitPlannerKeepsRecentOrderDropsMissingAndNeverExposesUrls() {
+        val tv = listOf(
+            VideoChannel("v1", "Haber HD", "https://example.org/private?key=x", "Haber",
+                true, "", "haber.tr"),
+            VideoChannel("v2", "Belgesel", "https://example.org/doc.m3u8", "Kultur",
+                false, "", "doc.tr")
+        )
+        val radio = listOf(
+            Station("r1", "Caz FM", "https://radio.example/aac?token=secret",
+                "Muzik", true),
+            Station("r2", "Pop Radyo", "https://radio.example/mp3",
+                "Muzik", false)
+        )
+        val summary = CockpitPlanner.build(
+            listOf("tv:deleted", "radio:r1", "tv:v1", "radio:r1", "unknown:id",
+                "tv:v2", "radio:r2"), tv, radio)
+        assertEquals(listOf("r1", "v1", "v2", "r2"), summary.recents.map { it.id })
+        assertEquals(listOf("v1", "r1"), summary.favourites.map { it.id })
+        assertEquals("haber.tr", summary.recents.first { it.id == "v1" }.tvgId)
+        assertEquals(2, summary.tvCount)
+        assertEquals(2, summary.radioCount)
+        assertFalse(summary.toString().contains("secret"))
+        assertFalse(summary.toString().contains("private?key"))
+        assertTrue(CockpitPlanner.build(emptyList(), tv, radio, recentLimit = 0).recents.isEmpty())
+        assertEquals(1, CockpitPlanner.build(
+            listOf("radio:r1", "tv:v1"), tv, radio, recentLimit = 1
+        ).recents.size)
+    }
+
     @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
         val sources = IntegrationCatalog.sources
         val ids = sources.map { it.id }
