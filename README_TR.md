@@ -1,8 +1,16 @@
-# ID.4 MEDIA HUB • v0.23 BETA
+# ID.4 MEDIA HUB • v0.24 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.24 — Tüm uygulamaları tek ekranda harmanlama
+
+- Ana Sayfa ve Kitaplık üzerinden **🧩 Ortak Entegrasyon Merkezi**: Fermata, Screen2Auto, AABrowser, ScreenOnAuto, Shizuku, AAAD, MirrorMobile, CarStream, DiPlay, SportzX, Media3, APTV-esinli EPG ve Android Auto ses kataloglarının teknik durumu.
+- Kurulu APK sürümleri, güvenli başlatma seçenekleri, ScreenOnAuto'nun belgelenmiş yansıtma komutları ve gizli URL içermeyen kopyalanabilir cihaz raporu.
+- Harici uygulamalar otomatik yüklenmez; kapalı APK'lar başka uygulamanın içine kopyalanmaz. Tüm işlemler kullanıcı tarafından başlatılır.
+- Kaynak/özellik matrisi: docs/ENTEGRE_UYGULAMALAR_V024.md.
+- Yeni durum modeli için JUnit doğrulamaları; gerçek Volkswagen ekranında video desteklendiği iddia edilmez.
 
 ## v0.23 — APTV esinli IPTV deneyimi + ScreenOnAuto
 
