@@ -1,3 +1,12 @@
+# v0.25 — 12 Ekim 2026
+
+- IPTV kanal listesindeki XMLTV programları için APTV esinli ŞİMDİ/SONRA kartları, süre ilerleme çubuğu ve yayın adına göre arama.
+- TV kanal seçim ekranına "📺 Şimdi yayında" kategorisi; EPG verileri her kart için tekrarlı depolama okuması olmadan tek indeksle eşleştiriliyor.
+- M3U başlık bilgisinden x-tvg-url / url-tvg / tvg-url kaynaklarını ayıklama; yalnızca geçerli HTTPS kabul ediliyor.
+- M3U dosyası EPG kaynağı önerirse otomatik indirme yerine kullanıcı onayı isteyen rehber yükleme penceresi.
+- EPG indeks sınır koşulları, program adı araması ve HTTPS rehber keşfi için yeni JUnit testleri.
+- Harici APK birleşimi, hız/vites değişikliği, Android Auto sürüş kısıtı atlatma veya Netflix DRM kırma bulunmaz.
+
 # v0.24 — 12 Ekim 2026
 
 - Tek menü: Ortak Entegrasyon Merkezi. Uygulama türü, kurulu sürüm, dahili/harici/diagnostic/referans sınıfı ve gerçekleştirebildiği eylemleri tek ekranda gösterir.
