@@ -10,7 +10,8 @@ data class CockpitEntry(
     val title: String,
     val subtitle: String,
     val favourite: Boolean = false,
-    val logo: String = ""
+    val logo: String = "",
+    val tvgId: String = ""
 )
 
 data class CockpitOverview(
@@ -37,7 +38,7 @@ object CockpitPlanner {
             val id = key.substring(separator + 1)
             return when (kind) {
                 "tv" -> channels[id]?.let {
-                    CockpitEntry(kind, it.id, it.name, it.group, it.favorite, it.logo)
+                    CockpitEntry(kind, it.id, it.name, it.group, it.favorite, it.logo, it.tvgId)
                 }
                 "radio" -> stations[id]?.let {
                     CockpitEntry(kind, it.id, it.name, it.group, it.favorite, it.logo)
