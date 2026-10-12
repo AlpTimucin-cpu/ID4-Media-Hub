@@ -46,6 +46,7 @@ class MainActivity : Activity() {
     private var videoPage = 0
     private lateinit var homeContainer: LinearLayout
     private lateinit var tvPlayer: TvPlayback
+    private var epgUrlField: EditText? = null
     private lateinit var radioDashboard: RadioDashboard
     private var radioDirectoryLoading = false
     private var currentRadioId: String? = null
@@ -219,6 +220,7 @@ class MainActivity : Activity() {
         epgCard.addView(label("M3U tvg-id alanı ile eşleşen programları Şimdi / Sonra olarak gösterir. HTTPS XMLTV veya XMLTV.GZ rehberi ekleyebilirsin.",12,false))
         val epgUrlInput=searchInput("https://.../epg.xml veya epg.xml.gz")
         epgUrlInput.setText(EpgGuide.source(this))
+        epgUrlField = epgUrlInput
         epgCard.addView(epgUrlInput)
         epgCard.addView(button("📅 EPG rehberini indir ve güncelle") {
             importEpgFromHttps(epgUrlInput.text.toString().trim())
@@ -808,6 +810,20 @@ class MainActivity : Activity() {
         refresh()
         refreshVideo()
         renderHome()
+        val proposedGuide = M3uParser.suggestedGuideUrl(source)
+        if (proposedGuide != null && proposedGuide != EpgGuide.source(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("M3U program rehberi bulundu")
+                .setMessage("Kanal listesi XMLTV program rehberi de öneriyor. " +
+                    "Rehberi ayrıca HTTPS üzerinden indirmek ister misin? " +
+                    "Kaynak adresi paylaşılmayacak ve yalnızca onay verirsen indirilecek.")
+                .setNegativeButton("Şimdi değil",null)
+                .setPositiveButton("EPG rehberini yükle") { _, _ ->
+                    epgUrlField?.setText(proposedGuide)
+                    importEpgFromHttps(proposedGuide)
+                }
+                .show()
+        }
     }
 
     private fun refreshVideo() {
