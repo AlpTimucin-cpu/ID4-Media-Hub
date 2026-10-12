@@ -1,3 +1,11 @@
+# v0.22 — 12 Ekim 2026
+
+- Resmî Shizuku 13.1.5 API ile bağlantı/izin durumunu salt okunur kontrol.
+- AAAD ve Fermata Mobile/Auto uygulamalarının yüklü sürümünü tespit.
+- Fermata yüklüyse yalnızca telefonda manuel açma; Android Auto video projeksiyonu veya sürüş kısıtını atlatma uygulanmaz.
+- Kitaplık ekranına yardımcı uygulama durum testi, araç bağlantı raporuna aynı tanılama.
+- Android 15 emülatöründe yardımcı uygulamalar bulunmadığında güvenli hata yönetimi ve arayüz kontrolü.
+
 # v0.21 — 11 Ekim 2026
 
 - Aktif Web Medya sekmesini AABrowser'a kullanıcı komutuyla HTTPS / ACTION_VIEW üzerinden aktarma düğmesi.
