@@ -65,6 +65,8 @@ object CarCompatibility {
         appendLine("Widevine: " + widevineStatus())
         appendLine("Widevine seviyesinin yüksek olması Netflix WebView videosunu garanti etmez.")
         appendLine()
+        appendLine(CarCompanionApps.statusReport(activity))
+        appendLine()
         appendLine("SES KİTAPLIĞI BAĞLANTI KAYITLARI")
         appendLine(CarConnectionJournal.summary(activity))
         appendLine()
