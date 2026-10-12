@@ -1,6 +1,14 @@
-# ID.4 Media Hub v0.23 — Araç Üzerinde Doğrulama Planı
+# ID.4 Media Hub v0.24 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
+
+## v0.24 — Ortak Entegrasyon Merkezi
+
+1. Media Hub → Ana Sayfa → **Tüm uygulamaları ve bağlantıları yönet** ekranına gir.
+2. Her kaynak için **Dahili**, **Harici Bağlantı**, **Durum Kontrolü** veya **Teknik Referans** sınıfını incele.
+3. Kurulu olan AABrowser/Fermata/Screen2Auto/ScreenOnAuto sürümlerinin durumunu kontrol et; bulunmayanlar için yeni kurulum gerekmez.
+4. **Raporu kopyala**: içinde yayın adresi, kullanıcı adı, şifre ve API anahtarı olmamalı.
+5. Aracın ekranını park halinde test et; uygulamanın telefonda başlatılmasını gerçek ID.4 videosu olarak değerlendirme.
 
 ## Önceden doğrulananlar (tekrar kurma)
 
