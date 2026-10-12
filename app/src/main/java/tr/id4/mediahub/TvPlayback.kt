@@ -248,9 +248,12 @@ class TvPlayback(
         epgStatus.text = EpgGuide.currentLabel(activity, channel.tvgId)
         playbackState.text="●  Yayın başlatılıyor…"
         try {
-            val address=channel.url.substringBefore('?').substringBefore('#')
             val item=MediaItem.Builder().setUri(Uri.parse(channel.url)).apply {
-                if (address.endsWith(".m3u8", true)) setMimeType(MimeTypes.APPLICATION_M3U8)
+                when (StreamFormatDetector.detect(channel.url)) {
+                    StreamFormat.HLS -> setMimeType(MimeTypes.APPLICATION_M3U8)
+                    StreamFormat.DASH -> setMimeType(MimeTypes.APPLICATION_MPD)
+                    StreamFormat.AUTO -> { /* Media3 infers the type from the response. */ }
+                }
             }.build()
             player().apply {
                 setMediaItem(item)
