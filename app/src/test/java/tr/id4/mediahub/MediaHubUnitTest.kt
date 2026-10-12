@@ -59,6 +59,25 @@ https://tv.example/stream.m3u8
         assertEquals(0, index.progressPercent("missing"))
     }
 
+    @Test fun uploadedFermataXDebugPackageIsRecognized() {
+        val source = IntegrationCatalog.byId("fermatax")
+        assertNotNull(source)
+        assertEquals(IntegrationKind.EXTERNAL, source!!.kind)
+        assertTrue(source.packages.contains("me.app.fermataX.auto.debug"))
+        assertTrue(source.packages.contains("me.app.fermataX.auto"))
+    }
+
+    @Test fun explicitHlsDashAndUnknownFormatsAreClassified() {
+        assertEquals(StreamFormat.HLS, StreamFormatDetector.detect(
+            "https://example.org/live.m3u8?token=not-logged"))
+        assertEquals(StreamFormat.DASH, StreamFormatDetector.detect(
+            "https://example.org/manifest.MPD?quality=hd"))
+        assertEquals(StreamFormat.AUTO, StreamFormatDetector.detect(
+            "https://example.org/video.mp4"))
+        assertEquals(StreamFormat.AUTO, StreamFormatDetector.detect(
+            "https://example.org/opaque-stream"))
+    }
+
     @Test fun pagesAreBoundedAndOverflowSafe() {
         val items = (0 until 2500).toList()
         assertEquals((40 until 60).toList(), LibraryPage.slice(items, 2, 20))
