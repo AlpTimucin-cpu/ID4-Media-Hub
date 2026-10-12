@@ -107,8 +107,6 @@ object EpgGuide {
             setFeature("http://xml.org/sax/features/external-general-entities", false)
             setFeature("http://xml.org/sax/features/external-parameter-entities", false)
             setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-            setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
-            setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
         }
         val root = factory.newDocumentBuilder().parse(ByteArrayInputStream(bytes)).documentElement
         require(root.tagName == "tv") { "XMLTV kök öğesi bulunamadı" }
