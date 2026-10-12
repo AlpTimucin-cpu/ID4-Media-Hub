@@ -24,6 +24,36 @@ class MediaHubUnitTest {
         assertEquals("radio-2400", plan.ids[plan.index])
     }
 
+    @Test fun xmltvEpgMatchesM3uTvgId() {
+        val playlist = "#EXTM3U\n#EXTINF:-1 tvg-id=\"trt1.tr\" group-title=\"Ulusal\",TRT 1\nhttps://example.org/tv.m3u8"
+        val entry = M3uParser.parse(playlist).single()
+        assertEquals("trt1.tr", entry.tvgId)
+        val exported = M3uExporter.export(listOf(entry))
+        assertTrue(exported.contains("tvg-id=\"trt1.tr\""))
+        val imported = M3uParser.parse(exported).single()
+        assertEquals(entry.tvgId, imported.tvgId)
+        val xml = """<tv><programme channel="trt1.tr" start="20261012090000 +0000" stop="20261012120000 +0000"><title>Sabah Haberleri</title></programme></tv>"""
+        val now = 1_760_000_000_000L
+        val shows = EpgGuide.parse(xml.toByteArray(Charsets.UTF_8), now)
+        // The input is outside this synthetic clock's 3-day window and must be rejected.
+        assertTrue(shows.isEmpty())
+        val validNow = java.text.SimpleDateFormat("yyyyMMddHHmmss Z", java.util.Locale.US)
+            .parse("20261012100000 +0000")!!.time
+        val valid = EpgGuide.parse(xml.toByteArray(Charsets.UTF_8), validNow)
+        assertEquals(1, valid.size)
+        assertEquals("Sabah Haberleri", EpgGuide.current(valid, imported.tvgId, imported.name, validNow)?.title)
+        assertNull(EpgGuide.current(valid, "wrong-id", imported.name, validNow))
+        assertNull(EpgGuide.current(valid, "", imported.name, validNow))
+    }
+
+    @Test fun xmltvRejectsDocTypeAndExternalEntities() {
+        val unsafe = """<!DOCTYPE tv [<!ENTITY secret SYSTEM "file:///etc/passwd">]><tv><programme channel="x" start="20261012090000 +0000" stop="20261012120000 +0000"><title>&secret;</title></programme></tv>"""
+        try {
+            EpgGuide.parse(unsafe.toByteArray(Charsets.UTF_8))
+            fail("DTD must not be parsed")
+        } catch (_: Exception) { /* Expected */ }
+    }
+
     @Test fun m3uRejectsNonHttpsAndVideoDoesNotBecomeAudio() {
         val playlist = """#EXTM3U
 #EXTINF:-1 group-title="Radio" radio="true",Music
