@@ -1,4 +1,4 @@
-# ID.4 Media Hub v0.22 — Araç Üzerinde Doğrulama Planı
+# ID.4 Media Hub v0.23 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
 
@@ -15,6 +15,15 @@
 - Fermata kuruluysa **Fermata'yı aç** düğmesi telefondaki uygulamayı açmalı. Bu işlem Android Auto aracında video görünürlüğü anlamına gelmez.
 - İzin isteme, APK yükleme, hareket/sürüş sinyalini değiştirme veya özel sürüş kısıtlamalarını atlatma yapılmaz.
 - Gerçek araç ekranı, radyo ses testi ve park halindeki video denemeleri birbirinden ayrı raporlanır.
+
+## APTV benzeri IPTV ve ScreenOnAuto (yalnızca park halinde)
+
+1. ID.4 Media Hub → Kitaplık → TV Program Rehberi bölümüne kullanıcıya ait HTTPS XMLTV ya da XMLTV.GZ kaynak adresi ekle.
+2. EPG yüklendiğinde TV kanalının M3U tvg-id alanının XMLTV channel id ile eşleştiğini kontrol et; TV oynatıcısı Şimdi / Sonra satırını göstermeli.
+3. Kayıtlı kanalların M3U yedeğini dışa aktar; tvg-id bilgisinin korunduğunu kontrol et.
+4. ScreenOnAuto telefonda resmî Android 15 kurulumuyla yüklüyse Kitaplık'tan Başlat ve Durdur komutlarını yalnızca araç park halindeyken dene.
+5. Ekran yansıtma açılmazsa raporda kurulu paket durumu incelenir. Komutun gönderilmesi Android Auto ekranında video oynadığını kanıtlamaz.
+6. APTV sadece Apple/CarPlay içindir; bu Android uygulamasında APTV bağlantısı veya kendi CarPlay kodunun kullanımı yoktur.
 
 ## Park halinde gerçek araç testi
 
