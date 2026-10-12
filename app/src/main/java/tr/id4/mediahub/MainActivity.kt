@@ -500,19 +500,13 @@ class MainActivity : Activity() {
         val lastPlayable = history.firstNotNullOfOrNull { entry ->
             val id = entry.substringAfter(':',"")
             when (entry.substringBefore(':')) {
-                "tv" -> tv.find { it.id == id }?.let { "tv" to it.name }
-                "radio" -> radio.find { it.id == id }?.let { "radio" to it.name }
+                "tv" -> tv.find { it.id == id }?.let { Triple("tv", id, it.name) }
+                "radio" -> radio.find { it.id == id }?.let { Triple("radio", id, it.name) }
                 else -> null
             }
         }
         if (lastPlayable != null) {
-            val (kind, name) = lastPlayable
-            val id = history.firstOrNull { entry ->
-                entry.startsWith(kind + ":") && when (kind) {
-                    "tv" -> tv.any { it.id == entry.substringAfter(':') && it.name == name }
-                    else -> radio.any { it.id == entry.substringAfter(':') && it.name == name }
-                }
-            }?.substringAfter(':').orEmpty()
+            val (kind, id, name) = lastPlayable
             val resume = panel().apply {
                 background = gradient(0xff25525d.toInt(), 0xff15344a.toInt(), 16)
             }
