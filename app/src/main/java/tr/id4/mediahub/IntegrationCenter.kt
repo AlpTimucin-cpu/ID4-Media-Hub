@@ -116,6 +116,9 @@ object IntegrationCenter {
                 "fermata" -> card.addView(button("Fermata'yı telefonda aç") {
                     launch(activity,item.packages,"Fermata")
                 },LinearLayout.LayoutParams(-1,dp(44)))
+                "fermatax" -> card.addView(button("FermataX'i telefonda aç") {
+                    launch(activity,item.packages,"FermataX")
+                },LinearLayout.LayoutParams(-1,dp(44)))
                 "screen2auto" -> card.addView(button("Screen2Auto'yu telefonda aç") {
                     launch(activity,item.packages,"Screen2Auto")
                 },LinearLayout.LayoutParams(-1,dp(44)))
