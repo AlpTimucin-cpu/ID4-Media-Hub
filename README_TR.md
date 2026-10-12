@@ -1,8 +1,16 @@
-# ID.4 MEDIA HUB • v0.24 BETA
+# ID.4 MEDIA HUB • v0.25 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.25 — IPTV rehberi ve APTV tarzı kanal seçici
+
+- **TV → Kanallar**: XMLTV kaynağı yüklüyse her eşleşen kanalın **Şimdi** program başlığı, sıradaki program ve ilerleme çubuğu gösterilir.
+- **📺 Şimdi yayında** filtresi ve kanal adı yerine program adıyla arama (ör. haber programı) eklendi.
+- M3U listesinin `#EXTM3U` satırında `x-tvg-url`, `url-tvg` veya `tvg-url` varsa kaynak HTTPS ise önerilir. **İndirme sadece onay verirsen gerçekleşir.**
+- Rehberin ön bellekte saklanması, IPTV kaynak bağlantılarının raporlarda gizlenmesi ve kullanıcı kontrolü korunur.
+- Gerçek ID.4 ekranında video hâlâ doğrulanmadı; bu video özellikleri öncelikle POCO F5 telefon ekranı içindir.
 
 ## v0.24 — Tüm uygulamaları tek ekranda harmanlama
 
