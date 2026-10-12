@@ -1,3 +1,11 @@
+# v0.24 — 12 Ekim 2026
+
+- Tek menü: Ortak Entegrasyon Merkezi. Uygulama türü, kurulu sürüm, dahili/harici/diagnostic/referans sınıfı ve gerçekleştirebildiği eylemleri tek ekranda gösterir.
+- Fermata, Screen2Auto, ScreenOnAuto, AABrowser, Shizuku, AAAD, CarStream, SportzX, MirrorMobile, DiPlay, Android Auto, Media3 ve APTV-esinli EPG kaynaklarını belgeli envanterde harmanlama.
+- Kullanıcı başlatmalı harici uygulama açılışı ve ScreenOnAuto resmî Intent başlat/durdur düğmeleri; ek APK indirmesi yapılmaz.
+- Paket görünürlüğü yalnızca belirli isimlerle sınırlandırıldı. Durum raporu IPTV URL'si veya giriş anahtarı içermez.
+- Tüm kaynaklar için JUnit doğrulaması ve entegrasyon matrisi eklendi.
+
 # v0.23 — 12 Ekim 2026
 
 - APTV esinli M3U + XMLTV (EPG) program rehberi: HTTPS XMLTV/XMLTV.GZ indirme, güvenli XML ayrıştırma, yerel sınırlı önbellek.
