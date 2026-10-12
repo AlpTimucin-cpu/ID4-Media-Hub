@@ -1,8 +1,16 @@
-# ID.4 MEDIA HUB • v0.21 BETA
+# ID.4 MEDIA HUB • v0.22 BETA
 ### Fermata IPTV + AABrowser benzeri web medya yaklaşımı
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.22 — Shizuku / AAAD / Fermata yardımcı entegrasyonu
+
+- **Kitaplık → Shizuku / AAAD / Fermata durumunu kontrol et**: yüklenmiş paket sürümleri, Shizuku API'nin canlılığı ve Media Hub'ın mevcut izin durumu görüntülenir.
+- Shizuku 13.1.5 resmî API kullanılır: yalnızca `pingBinder()` ve `checkSelfPermission()` çağrıları; yeni izin, ayrıcalıklı komut veya kurulum değişikliği yok.
+- AAAD (`sksa.aa.customapps`) ve Fermata Mobile/Auto varyantları tanınır. **Fermata'yı aç** yalnızca telefon üzerindeki Fermata etkinliğini başlatır.
+- Sürüşte ekran videosu etkinleştirme, hız/vites/park sinyali değiştirme veya sahte oyun/navigasyon bildirimi uygulanmaz. Araçta video doğrulanmış değildir.
+- Daha önceki Shizuku kurulumu tekrarlanmaz; emülatör testinde yardımcı uygulamalar kurulu değilken kontrollü durum raporu aranır.
 
 ## v0.21 — AABrowser ile araç ekranına web bağlantısı gönderme denemesi
 
