@@ -1,6 +1,14 @@
-# ID.4 Media Hub v0.24 — Araç Üzerinde Doğrulama Planı
+# ID.4 Media Hub v0.25 — Araç Üzerinde Doğrulama Planı
 
 **Hedef:** 2024 VW ID.4 Pure + kablosuz Android Auto + POCO F5 Android 15. Ek cihaz veya root gerektirmez.
+
+## v0.25 — Kanal rehberi kullanımı
+
+1. Kitaplık → M3U listesini içe aktar. Başlıkta XMLTV kaynak adresi varsa **M3U program rehberi bulundu** bildirimi çıkmalı; onay vermeden ekstra ağ isteği yapılmamalı.
+2. Kaynak kendi rehberini bildirmiyorsa Kitaplık → TV Program Rehberi bölümüne HTTPS XMLTV/XMLTV.GZ adresini elle gir.
+3. TV → Kanallar → 📺 Şimdi yayında kategorisi: sadece geçerli program eşlemesi olan kanalları göster.
+4. Program başlığının yanı sıra önce/sonra ve ilerleme çubuğunu kontrol et. Arama kutusuna program başlığını yaz.
+5. Uygulama ekranı, video akışı ve Android Auto radyo sesini birbirinden bağımsız doğrula. Gerçek ID.4 ekranında video çalıştığı iddia edilmez.
 
 ## v0.24 — Ortak Entegrasyon Merkezi
 
