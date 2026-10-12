@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.mediahub"
         minSdk = 28
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.21"
+        versionCode = 23
+        versionName = "0.22"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -29,5 +29,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("com.google.guava:guava:33.4.8-android")
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     testImplementation("junit:junit:4.13.2")
 }
