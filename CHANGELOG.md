@@ -1,3 +1,12 @@
+# v0.27 — 12 Ekim 2026
+
+- ID.4 Drive Hub: özgün lacivert/turkuaz/amber arayüz; uyarlanabilir ana sayfa, büyük medya kartları ve yeni uygulama simgesi.
+- Yerel TV/radyo/favori sayaçları, canlı radyo oynatma durumuyla senkronize devam kartı ve eski ID'leri filtreleyen DriveHomePlanner.
+- Canlı TV, radyo, Web Medya, Kitaplık, YouTube/Netflix ve Android Auto ses tanılama tek arayüzde.
+- Aynı uygulama kimliği ve depolama; mevcut IPTV/radyo oynatıcıları ve Ortak Entegrasyon Merkezi yeniden kullanılır.
+- DriveHomePlanner JUnit testleri ve Android 15 emülatöründe Drive Hub ana ekran doğrulaması eklendi.
+- Gerçek araç video ekranı, hareket halinde video veya sahte OBD statüsü iddia edilmez.
+
 # v0.26 — 12 Ekim 2026
 
 - Kullanıcının FermataX 2.2.2 debug APK dosyasına salt okunur ZIP ve AndroidManifest analizi uygulandı; kaynak ile sürüm farkı belirtildi.
