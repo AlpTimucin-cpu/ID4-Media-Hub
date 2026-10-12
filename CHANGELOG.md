@@ -3,6 +3,7 @@
 - Kullanıcının FermataX 2.2.2 debug APK dosyasına salt okunur ZIP ve AndroidManifest analizi uygulandı; kaynak ile sürüm farkı belirtildi.
 - Ortak Entegrasyon Merkezi'nde doğrulanmış `me.app.fermataX.auto.debug`, stable `me.app.fermataX.auto` paketleri ve açma kısayolu.
 - Media3 oynatıcıya `media3-exoplayer-dash` modülü; `.mpd` dosyaları DASH, `.m3u8` HLS olarak tanınır.
+- Telefon Ana Sayfa'sında son TV/radyo içeriği için özgün hızlı devam kartı.
 - Yeni JUnit format ve paket tespiti testleri. LibVLC ikilileri lisans/provenans sebebiyle dahil edilmedi.
 
 # v0.25 — 12 Ekim 2026
