@@ -482,31 +482,46 @@ class MainActivity : Activity() {
     /** ID.4 Drive Hub phone dashboard. Keeps existing package/storage/player services. */
     private fun renderHome() {
         if (!::homeContainer.isInitialized) return
+        val channels = VideoStore.load(this)
         val stations = StationStore.load(this)
-        val tv = VideoStore.load(this)
+        val state = CockpitPlanner.build(RecentStore.ids(this), channels, stations)
         val activeId = controller?.currentMediaItem?.mediaId ?: currentRadioId
-        DriveDashboard(this, DriveDashboard.Actions(
-            openTv = { selectTab(1) },
-            openRadio = { selectTab(2) },
-            openLibrary = { selectTab(3) },
-            openWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
-            openYoutube = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
-            openNetflix = { InstalledMediaApps.openNetflix(this) },
-            openIntegrations = { IntegrationCenter.show(this) },
-            openCarReport = { CarCompatibility.show(this) },
-            playTv = { channel ->
-                selectTab(1)
-                tvPlayer.play(channel)
-            },
-            playRadio = { station ->
-                playStation(station)
-                selectTab(2)
-            },
-            toggleRadio = { toggleRadioPlayback() }
-        )).render(
-            homeContainer, tv, stations, RecentStore.ids(this),
-            activeId, controller?.isPlaying == true
+        val currentTitle = stations.firstOrNull { it.id == activeId }?.name
+        val epg = EpgScheduleIndex(EpgGuide.load(this), System.currentTimeMillis())
+        val cockpit = CockpitDashboard.render(
+            activity = this,
+            overview = state,
+            epg = epg,
+            activeRadio = currentTitle,
+            isRadioPlaying = controller?.isPlaying == true,
+            actions = CockpitActions(
+                onTv = { selectTab(1) },
+                onRadio = { selectTab(2) },
+                onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
+                onLibrary = { selectTab(3) },
+                onGuide = { showEpgSchedule() },
+                onCarStatus = { CarCompatibility.show(this) },
+                onCompanions = { IntegrationCenter.show(this) },
+                onPlay = { entry ->
+                    when (entry.kind) {
+                        "tv" -> channels.firstOrNull { it.id == entry.id }?.let {
+                            selectTab(1)
+                            tvPlayer.play(it)
+                        }
+                        "radio" -> stations.firstOrNull { it.id == entry.id }?.let {
+                            playStation(it)
+                            selectTab(2)
+                        }
+                    }
+                },
+                onRadioPauseResume = {
+                    toggleRadioPlayback()
+                    renderHome()
+                }
+            )
         )
+        homeContainer.removeAllViews()
+        homeContainer.addView(cockpit)
     }
 
     private fun shortcut(icon:String,title:String,description:String,action:()->Unit):LinearLayout{
