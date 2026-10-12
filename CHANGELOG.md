@@ -1,3 +1,12 @@
+# v0.28 — 12 Ekim 2026
+
+- Media Cockpit, eski ana ekranı değiştirir: uyarlanabilir 6 işlev kutusu, gerçek Media3 oturumu, hızlı geçmiş ve favoriler.
+- Kaldığın yerden oynatma ve EPG durum bilgisi, URL/token içermeyen ortak model üzerinden çalışır.
+- EPG kanal ID eşleştirme ve ilerleme çubuğu; favori ve geçmiş kartlarında tekrar tekrar depolama okuması kaldırıldı.
+- Android 15 UI smoke testi artık Ana Sayfa'daki Media Cockpit oturumu ve Entegrasyon Merkezi kısayolunu doğrular.
+- Başarılı Android Auto video/sürüş oynatımı iddia edilmez; yalnızca belgeli entegrasyonlar kullanılır.
+
+
 # v0.27 — 12 Ekim 2026
 
 - ID.4 Drive Hub: özgün lacivert/turkuaz/amber arayüz; uyarlanabilir ana sayfa, büyük medya kartları ve yeni uygulama simgesi.
