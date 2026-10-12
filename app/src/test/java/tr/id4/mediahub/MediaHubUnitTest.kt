@@ -23,6 +23,42 @@ class MediaHubUnitTest {
         assertTrue(IntegrationCatalog.byId("web")!!.packages.contains("com.kododake.aabrowser"))
     }
 
+    @Test fun m3uAdvertisedEpgRequiresHttpsAndExplicitApproval() {
+        val playlist = """#EXTM3U x-tvg-url="http://unsafe.example/epg.xml,https://guide.example/epg.xml.gz"
+#EXTINF:-1 tvg-id="trt.tr" group-title="TV",TRT
+https://tv.example/stream.m3u8
+"""
+        assertEquals("https://guide.example/epg.xml.gz",
+            M3uParser.suggestedGuideUrl(playlist))
+        assertNull(M3uParser.suggestedGuideUrl(
+            "#EXTM3U url-tvg=\"http://insecure.example/guide.xml\""))
+        assertEquals("https://example.org/guide.xml",
+            M3uParser.suggestedGuideUrl(
+                "\uFEFF#EXTM3U url-tvg=\"https://example.org/guide.xml\"\n#EXTINF:-1,A"))
+        assertNull(M3uParser.suggestedGuideUrl("#EXTINF:-1,Missing header"))
+    }
+
+    @Test fun epgIndexNormalizesIdsFindsNowNextAndProgress() {
+        val now = 10_000L
+        val programmes = listOf(
+            EpgProgramme(" TRT1.TR ", "Eski", 7_000L, 9_000L),
+            EpgProgramme(" TRT1.TR ", "Gündem", 9_000L, 11_000L),
+            EpgProgramme("trt1.tr", "Yeni Haberler", 11_000L, 13_000L),
+            EpgProgramme("OTHER.TR", "Sinema", 8_000L, 12_000L),
+            EpgProgramme("TRT1.TR", "Hatalı", 8_000L, 7_000L)
+        )
+        val index = EpgScheduleIndex(programmes, now)
+        assertEquals("Gündem", index.current("trt1.tr")?.title)
+        assertEquals("Yeni Haberler", index.next(" TRT1.TR ")?.title)
+        assertEquals(50, index.progressPercent("trt1.tr"))
+        assertTrue(index.hasCurrent("trt1.tr"))
+        assertTrue(index.matchingProgramme("trt1.tr", "gündem"))
+        assertTrue(index.matchingProgramme("trt1.tr", "yeni haberler"))
+        assertFalse(index.matchingProgramme("trt1.tr", "spor"))
+        assertFalse(index.hasCurrent("missing"))
+        assertEquals(0, index.progressPercent("missing"))
+    }
+
     @Test fun pagesAreBoundedAndOverflowSafe() {
         val items = (0 until 2500).toList()
         assertEquals((40 until 60).toList(), LibraryPage.slice(items, 2, 20))
