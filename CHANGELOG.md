@@ -1,3 +1,10 @@
+# v0.26 — 12 Ekim 2026
+
+- Kullanıcının FermataX 2.2.2 debug APK dosyasına salt okunur ZIP ve AndroidManifest analizi uygulandı; kaynak ile sürüm farkı belirtildi.
+- Ortak Entegrasyon Merkezi'nde doğrulanmış `me.app.fermataX.auto.debug`, stable `me.app.fermataX.auto` paketleri ve açma kısayolu.
+- Media3 oynatıcıya `media3-exoplayer-dash` modülü; `.mpd` dosyaları DASH, `.m3u8` HLS olarak tanınır.
+- Yeni JUnit format ve paket tespiti testleri. LibVLC ikilileri lisans/provenans sebebiyle dahil edilmedi.
+
 # v0.25 — 12 Ekim 2026
 
 - IPTV kanal listesindeki XMLTV programları için APTV esinli ŞİMDİ/SONRA kartları, süre ilerleme çubuğu ve yayın adına göre arama.
