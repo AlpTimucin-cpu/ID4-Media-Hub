@@ -53,6 +53,27 @@ object M3uParser {
             .replace(Regex("\\s+"), " ").trim().take(100).ifBlank { fallback }
 
 
+    /**
+     * Discover a playlist-advertised XMLTV guide without fetching it or sending credentials.
+     * Common providers embed x-tvg-url/url-tvg/tvg-url in the #EXTM3U header.
+     * This is a SUGGESTION only; a user must approve the HTTPS download.
+     */
+    fun suggestedGuideUrl(text: String): String? {
+        val header = text.lineSequence().take(6)
+            .map { it.trim().removePrefix("\uFEFF") }
+            .firstOrNull { it.startsWith("#EXTM3U", ignoreCase = true) }
+            ?.take(4096) ?: return null
+        val attributes = attribute.findAll(header).associate {
+            it.groupValues[1].lowercase() to it.groupValues[2].trim()
+        }
+        return listOf("x-tvg-url", "url-tvg", "tvg-url")
+            .asSequence()
+            .mapNotNull { attributes[it] }
+            .flatMap { it.split(',').asSequence() }
+            .map { it.trim() }
+            .firstOrNull(::isHttpsUrl)
+    }
+
     fun parse(text: String): List<PlaylistEntry> {
         // HLS manifests describe stream segments, not an IPTV channel catalogue.
         if (text.lineSequence().any { it.trim().startsWith("#EXT-X-", ignoreCase = true) }) return emptyList()
