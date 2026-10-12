@@ -494,6 +494,41 @@ class MainActivity : Activity() {
         actions.addView(button("♫ Radyo") { selectTab(2) },LinearLayout.LayoutParams(0,dp(48),1f))
         hero.addView(actions)
         homeContainer.addView(hero)
+        // Original, phone-only quick resume card inspired by FermataX's dashboard UX.
+        // The card deliberately preserves the user's latest TV/radio playback choice.
+        val history = RecentStore.ids(this)
+        val lastPlayable = history.firstNotNullOfOrNull { entry ->
+            val id = entry.substringAfter(':',"")
+            when (entry.substringBefore(':')) {
+                "tv" -> tv.find { it.id == id }?.let { "tv" to it.name }
+                "radio" -> radio.find { it.id == id }?.let { "radio" to it.name }
+                else -> null
+            }
+        }
+        if (lastPlayable != null) {
+            val (kind, name) = lastPlayable
+            val id = history.firstOrNull { entry ->
+                entry.startsWith(kind + ":") && when (kind) {
+                    "tv" -> tv.any { it.id == entry.substringAfter(':') && it.name == name }
+                    else -> radio.any { it.id == entry.substringAfter(':') && it.name == name }
+                }
+            }?.substringAfter(':').orEmpty()
+            val resume = panel().apply {
+                background = gradient(0xff25525d.toInt(), 0xff15344a.toInt(), 16)
+            }
+            resume.addView(label("KALDIĞIN YERDEN DEVAM ET", 12, true))
+            resume.addView(label(name.take(80), 19, true))
+            resume.addView(label(
+                if (kind == "tv") "Son izlenen TV kanalı" else "Son dinlenen radyo", 12, false))
+            resume.addView(button(if (kind == "tv") "▶ Kanalı aç" else "♫ Radyoyu başlat") {
+                if (kind == "tv") {
+                    tv.find { it.id == id }?.let { tvPlayer.play(it); selectTab(1) }
+                } else {
+                    radio.find { it.id == id }?.let { playStation(it); selectTab(2) }
+                }
+            })
+            homeContainer.addView(resume)
+        }
         homeContainer.addView(section("HIZLI ERİŞİM","Kaldığın yerden devam et"))
         val quick=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         quick.addView(shortcut("▣","TV","Kanal listesi"){selectTab(1)},LinearLayout.LayoutParams(0,dp(120),1f))
@@ -520,7 +555,6 @@ class MainActivity : Activity() {
             IntegrationCenter.show(this)
         })
         homeContainer.addView(sportzHome)
-        val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
             homeContainer.addView(section("SON AÇILANLAR","Geçmişinden seç"))
             history.take(8).forEach { value ->
