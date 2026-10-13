@@ -59,8 +59,17 @@ object PodcastSources {
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,true)
         factory.isXIncludeAware=false
         factory.isExpandEntityReferences=false
-        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD,"")
-        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA,"")
+        // Android's XMLConstants lacks the Java 9 property constants.
+        // The parser already forbids DTDs and both external entity types.
+        // Apply optional JAXP access restrictions when its provider supports them.
+        try {
+            factory.setAttribute(
+                "http://javax.xml.XMLConstants/property/accessExternalDTD", "")
+            factory.setAttribute(
+                "http://javax.xml.XMLConstants/property/accessExternalSchema", "")
+        } catch (_: IllegalArgumentException) {
+            // Android parser versions can reject these optional attributes.
+        }
         return factory.newDocumentBuilder().parse(ByteArrayInputStream(bytes))
     }
 
