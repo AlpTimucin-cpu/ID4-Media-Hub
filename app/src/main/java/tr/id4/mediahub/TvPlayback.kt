@@ -146,6 +146,9 @@ class TvPlayback(
         val streams = button("🔊  Ses dili / Altyazı seçenekleri") {}
         streams.setOnClickListener { showTrackOptions(streams) }
         root.addView(streams, LinearLayout.LayoutParams(-1, dp(46)))
+        root.addView(button("↗  FermataX 2.2.6 ile telefonda aç") {
+            FermataXInterop.offerVideo(activity, current)
+        }, LinearLayout.LayoutParams(-1, dp(46)))
         root.addView(button("📊  Yayın performansı ve bağlantı raporu") {
             showPlaybackDiagnostics()
         }, LinearLayout.LayoutParams(-1, dp(48)))
