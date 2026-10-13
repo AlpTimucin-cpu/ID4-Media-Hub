@@ -1,3 +1,11 @@
+# v0.34 — 14 Ekim 2026
+
+- REC TV 22.0.2 (161) kullanıcı APK'sının manifest/Flutter bileşenleri teknik incelendi.
+- Telefon kurulumunda bulunursa Uygulamalar ekranından `REC TV'yi telefonda aç` kısayolu eklendi.
+- REC TV uygulama kimliği `com.rectv.shot` için Android paket görünürlüğü desteği.
+- Kaynak kodu, uygulama ikonları, telifli film/TV içeriği veya özel sunucu bağlantıları kopyalanmadı.
+- YouTube/Netflix/Prime Video kartları resmî uygulamaları açmaya devam ediyor.
+
 # v0.33 — 13 Ekim 2026
 
 - Uygulamanın başlatıcı ve görünür ana ekran adı **ID.4 Yol Arkadaşım** oldu.
