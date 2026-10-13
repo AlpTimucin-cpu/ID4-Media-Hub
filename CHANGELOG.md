@@ -1,3 +1,11 @@
+# v0.29 — 13 Ekim 2026
+
+- FermataX 2.2.6 (332) kullanıcı manifestindeki açık `ACTION_VIEW` medya etkinliği üzerinden kullanıcı onaylı, HTTPS IPTV telefon aktarımı.
+- TV oynatıcısına **FermataX 2.2.6 ile telefonda aç** seçeneği; eksik uygulama, hatalı URL ve reddedilen Android Intent için açıklayıcı hatalar.
+- Uygulama bağlantısının erişim anahtarı taşıyabileceği onaydan önce uyarılır. M3U listeleri, şifreler ve URL'ler raporlara yazılmaz.
+- Emulator runner disk yetersizliği için `-partition-size 2048` ve Media Cockpit ekran kontrolü düzeltildi.
+- FermataX proje kodu/kapalı APK kopyalanmadı ve Android Auto video kısıtları değiştirilmedi.
+
 # v0.28 — 12 Ekim 2026
 
 - Media Cockpit, eski ana ekranı değiştirir: uyarlanabilir 6 işlev kutusu, gerçek Media3 oturumu, hızlı geçmiş ve favoriler.
