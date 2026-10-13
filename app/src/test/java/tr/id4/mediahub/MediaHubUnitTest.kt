@@ -322,6 +322,13 @@ https://video.example.org/news.m3u8
         assertFalse(StreamingPagePolicy.isSubscriptionHost("https://www.netflix.com.evil.example/"))
     }
 
+    @Test fun recTvIsAnExternalAppNeverPartOfNativeVideoStack() {
+        val source = IntegrationCatalog.byId("rectv")
+        assertEquals(IntegrationKind.EXTERNAL, source?.kind)
+        assertEquals(listOf("com.rectv.shot"), source?.packages)
+        assertTrue(IntegrationCatalog.byId("media3")?.kind == IntegrationKind.NATIVE)
+    }
+
     @Test fun webLinksRejectUntrustedSchemesAndCredentials() {
         assertEquals("https://www.example.com/watch?id=15",
             BrowserStore.safeHttps(" https://www.example.com/watch?id=15 "))
