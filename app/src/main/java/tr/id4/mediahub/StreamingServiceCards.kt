@@ -60,6 +60,18 @@ object StreamingServiceCards {
         }
     }
 
+    /** A single service card, used to preserve the video demo's TV → YouTube order. */
+    fun youtube(activity: Activity, launch: () -> Unit): LinearLayout =
+        createCard(activity, Platform.YOUTUBE, launch)
+
+    fun subscriptions(activity: Activity, netflix: () -> Unit,
+                      prime: () -> Unit): LinearLayout = LinearLayout(activity).apply {
+        orientation=LinearLayout.VERTICAL
+        addView(createCard(activity,Platform.NETFLIX,netflix),
+            LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dp(activity,12) })
+        addView(createCard(activity,Platform.PRIME,prime))
+    }
+
     private fun createCard(
         activity: Activity, platform: Platform, launch: () -> Unit
     ): LinearLayout {
