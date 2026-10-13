@@ -1,8 +1,15 @@
-# ID.4 YOL ARKADAŞIM • v0.33 BETA
+# ID.4 YOL ARKADAŞIM • v0.34 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.34 — REC TV APK inceleme ve uygulamalar bağlantısı
+
+- Sağlanan `rectv22.0.2-161mobilbox.apk` incelendi: paket adı `com.rectv.shot`, Flutter AOT, BetterPlayer, YouTube IFrame, reklam ve indirme bileşenleri tespit edildi.
+- **Uygulamalar → REC TV'yi telefonda aç:** REC TV yüklüyse normal Android başlatıcısı ile açılır; yüklenmemişse uyarı gösterilir. APK otomatik kurulmaz veya içeriği kopyalanmaz.
+- YouTube / Netflix / Prime Video büyük kartları, `v0.33` sürümünde olduğu gibi **resmî kurulu Android uygulamalarını açar**, web tarayıcısı değil.
+- APK içeriği Mola uygulaması değildir; orijinal Dart kaynak kodu, gizli sunucular ve telifli varlıklar kopyalanmaz. Ayrıntılar `docs/REC_TV_2202_APK_INCELEME.md`.
 
 ## v0.33 — Doğrudan uygulamaları aç (A seçeneği)
 
