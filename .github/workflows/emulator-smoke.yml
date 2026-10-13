@@ -36,7 +36,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -partition-size 2048
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
@@ -48,7 +48,7 @@ jobs:
             # New ID4 Drive Hub must actually render, not merely compile.
             for i in 1 2 3; do adb shell uiautomator dump /sdcard/id4_drive_home.xml >/dev/null 2>&1 && adb pull /sdcard/id4_drive_home.xml id4_drive_home.xml >/dev/null 2>&1 && break; sleep 2; done
             grep -q 'DRIVE HUB' id4_drive_home.xml
-            grep -q 'TV KANALI' id4_drive_home.xml
+            grep -q 'TV kanalı' id4_drive_home.xml
             # Verify the brand-new responsive dashboard and companion entry.
             # Scroll until the real clickable UI label appears; no fixed HOME tap coordinates.
             for i in 1 2 3; do adb shell uiautomator dump /sdcard/id4_cockpit_ui.xml >/dev/null 2>&1 && adb pull /sdcard/id4_cockpit_ui.xml id4_cockpit_ui.xml >/dev/null 2>&1 && break; sleep 2; done
