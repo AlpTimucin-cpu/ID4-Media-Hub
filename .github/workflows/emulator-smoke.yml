@@ -68,13 +68,10 @@ jobs:
             sleep 3
             adb shell screencap -p /sdcard/id4_tv.png
             adb pull /sdcard/id4_tv.png id4_tv.png
-            # Scroll TV so that the diagnostics button is in the viewport.
-            # On Pixel 6 emulator this control appears beneath the video fold.
-            adb shell input swipe 540 1570 540 690 450
-            sleep 2
-            # UI-test the IPTV performance report through the actual button.
-            adb shell uiautomator dump /sdcard/id4_tv_diagnostics_ui.xml
-            adb pull /sdcard/id4_tv_diagnostics_ui.xml id4_tv_diagnostics_ui.xml
+            # TV controls can be beneath the video, web shortcuts and fold.
+            # Search the actual visible hierarchy instead of assuming one swipe.
+            for i in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/id4_tv_diagnostics_ui.xml >/dev/null; adb pull /sdcard/id4_tv_diagnostics_ui.xml id4_tv_diagnostics_ui.xml >/dev/null; if grep -q 'Yayın performansı' id4_tv_diagnostics_ui.xml; then break; fi; adb shell input swipe 540 1670 540 520 380; sleep 1; done
+            grep -q 'Yayın performansı' id4_tv_diagnostics_ui.xml
             python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;root=ET.parse("id4_tv_diagnostics_ui.xml").getroot();matches=[n.attrib.get("bounds","") for n in root.iter("node") if "Yayın performansı" in n.attrib.get("text","")];assert matches,"IPTV performans raporu düğmesi bulunamadı";box=list(map(int,re.findall(r"\d+",matches[0])));subprocess.run(["adb","shell","input","tap",str((box[0]+box[2])//2),str((box[1]+box[3])//2)],check=True)'
             sleep 2
             adb shell uiautomator dump /sdcard/id4_iptv_report.xml
@@ -99,6 +96,10 @@ jobs:
             sleep 6
             adb shell dumpsys activity activities > id4_browser_activity.txt
             grep -q 'MediaWebActivity' id4_browser_activity.txt
+            # Confirm new YouTube-only local history UI is reachable on Android 15.
+            adb shell uiautomator dump /sdcard/id4_youtube_history_button.xml >/dev/null
+            adb pull /sdcard/id4_youtube_history_button.xml id4_youtube_history_button.xml >/dev/null
+            grep -q 'YT◷' id4_youtube_history_button.xml
             adb shell screencap -p /sdcard/id4_web_media.png
             adb pull /sdcard/id4_web_media.png id4_web_media.png
             adb shell input tap 500 195
@@ -159,6 +160,7 @@ jobs:
           name: android-emulator-smoke
           path: |
             id4_home.png
+            id4_youtube_history_button.xml
             id4_cockpit_ui.xml
             id4_drive_home.xml
             id4_integration_button.xml
