@@ -22,6 +22,7 @@ data class CockpitActions(
     val onTv: () -> Unit,
     val onRadio: () -> Unit,
     val onWeb: () -> Unit,
+    val onYoutube: () -> Unit,
     val onNetflix: () -> Unit,
     val onPrimeVideo: () -> Unit,
     val onLibrary: () -> Unit,
@@ -118,7 +119,7 @@ object CockpitDashboard {
         }
 
         val hero = card(activity, true)
-        hero.addView(text(activity, "ID⁴   /   MEDIA COCKPIT", 12f, ACCENT, true))
+        hero.addView(text(activity, "ID⁴   /   YOL ARKADAŞIM", 12f, ACCENT, true))
         hero.addView(vSpace(activity, 8))
         hero.addView(text(activity, "Yolculuğunun\nmedya merkezi.", 26f, INK, true))
         hero.addView(vSpace(activity, 5))
@@ -159,13 +160,13 @@ object CockpitDashboard {
         root.addView(vSpace(activity, 19))
 
         // Mola-inspired, artwork-first cards on the PHONE dashboard.
-        // Official streaming-site playback limits remain unchanged.
+        // These cards open installed official phone apps only; no WebView fallback.
         root.addView(sectionTitle(activity, "VİDEO PLATFORMLARI",
             "Büyük görsel kartlarla hızlı erişim"))
         root.addView(vSpace(activity, 10))
         root.addView(StreamingServiceCards.render(
             activity = activity,
-            youtube = actions.onWeb,
+            youtube = actions.onYoutube,
             netflix = actions.onNetflix,
             prime = actions.onPrimeVideo
         ))
