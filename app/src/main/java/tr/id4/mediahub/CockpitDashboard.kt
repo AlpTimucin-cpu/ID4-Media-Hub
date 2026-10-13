@@ -158,6 +158,19 @@ object CockpitDashboard {
         root.addView(audio)
         root.addView(vSpace(activity, 19))
 
+        // Mola-inspired, artwork-first cards on the PHONE dashboard.
+        // Official streaming-site playback limits remain unchanged.
+        root.addView(sectionTitle(activity, "VİDEO PLATFORMLARI",
+            "Büyük görsel kartlarla hızlı erişim"))
+        root.addView(vSpace(activity, 10))
+        root.addView(StreamingServiceCards.render(
+            activity = activity,
+            youtube = actions.onWeb,
+            netflix = actions.onNetflix,
+            prime = actions.onPrimeVideo
+        ))
+        root.addView(vSpace(activity, 7))
+
         root.addView(sectionTitle(activity, "HIZLI ERİŞİM", "İhtiyacın olan her şey burada"))
         root.addView(vSpace(activity, 9))
         val items = listOf(
@@ -191,15 +204,6 @@ object CockpitDashboard {
             root.addView(vSpace(activity, 8))
         }
 
-        val streamRow = row(activity)
-        streamRow.addView(actionButton(activity, "Netflix Web", actions.onNetflix),
-            LinearLayout.LayoutParams(0,dp(activity,48),1f))
-        streamRow.addView(actionButton(activity, "Prime Video", actions.onPrimeVideo),
-            LinearLayout.LayoutParams(0,dp(activity,48),1f).apply {
-                leftMargin=dp(activity,6)
-            })
-        root.addView(vSpace(activity, 12))
-        root.addView(streamRow)
         if (overview.recents.isNotEmpty()) {
             root.addView(vSpace(activity, 12))
             root.addView(sectionTitle(activity, "KALDIĞIN YERDEN", "En son açtığın kanallar ve radyolar"))
