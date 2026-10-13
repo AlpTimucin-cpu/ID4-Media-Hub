@@ -1,8 +1,17 @@
-# ID.4 DRIVE HUB • v0.29 BETA
+# ID.4 DRIVE HUB • v0.30 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.30 — YouTube videolarım
+
+- FermataX'in 653 satırlık sınıf/metot envanterinden esinlenen, tamamen **özgün** YouTube video geçmişi ve oturum gezinmesi eklendi.
+- Web Medya → **YT◷** üzerinden son 30 YouTube videosu açılabilir, geçmiş istenildiğinde silinebilir.
+- YouTube Watch, Shorts, Live, Embed ve youtu.be bağlantıları tek video kimliğine çevrilir; `si`, `t`, `feature` gibi takip parametreleri ayrı video geçmişine alınmaz.
+- YouTube'un SPA sayfa geçişleri ve video başlığı değişimleri izlenir. URL'ler yalnızca telefonda saklanır; Android Auto ile paylaşılmaz.
+- YouTube URL güvenliği için JUnit testleri ve Android 15 Web Medya düğmesi kontrolü. Teknik not: `docs/YOUTUBE_SESSION_V030.md`.
+- Herhangi bir YouTube kodu/APK ikilisi kopyalanmaz; reklam veya DRM atlatma, hareket halinde araç videosu bulunmaz.
 
 ## v0.29 — FermataX 2.2.6 telefon bağlantısı
 
