@@ -1,8 +1,16 @@
-# ID.4 DRIVE HUB • v0.32 BETA
+# ID.4 YOL ARKADAŞIM • v0.33 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.33 — Doğrudan uygulamaları aç (A seçeneği)
+
+- Görünen uygulama adı ve ana başlık **ID.4 Yol Arkadaşım** olarak değiştirildi. Paket kimliği `tr.id4.mediahub` değişmedi; mevcut veriler korunur (aynı imzayla güncelleme gerekir).
+- Mola tarzı büyük **YouTube / Netflix / Prime Video** kartları yalnızca **telefonunda kurulu resmî uygulamayı** açar. Kartın tamamına veya ok düğmesine basmak aynı işlemi yapar.
+- Uygulama bulunmuyorsa anlaşılır uyarı gösterilir. **Web'e otomatik geçiş yoktur.**
+- Bu tercih yalnızca video platform kartları ve ana ekrandaki platform kısayolları içindir. Ayrı **Web Medya** aracı, isteyenler için HTTPS tarayıcı olarak kalır.
+- Android Auto sürüş sırasında video oynatma kısıtları aşılmaz; bu kartlar normal Android telefon uygulamalarını açar.
 
 ## v0.32 — Mola tarzı görselli akış platformları
 
