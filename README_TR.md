@@ -1,8 +1,17 @@
-# ID.4 DRIVE HUB • v0.30 BETA
+# ID.4 DRIVE HUB • v0.31 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.31 — Netflix ve Prime Video içerik geçmişi
+
+- Web Medya'da **V◷ Netflix** ve **P◷ Prime Video** geçmiş kısayolları; YouTube **YT◷** yerinde kalır.
+- İki hizmetin kendi son 30 içerik sayfası, isteğe bağlı temizleme, ziyaret edilen sayfanın tekrar açılması.
+- Media Cockpit ana ekranında Netflix ve Prime Video web kısayolları; uygulama içinden resmî telefon uygulamasını açma.
+- HTTPS içerik bağlantıları sabit kimlikle normalleştirilir; yeni hizmet geçmişlerinde sorgu parametreleri/çerezler/kullanıcı bilgileri saklanmaz.
+- **Gerçek oynatma konumu takibi veya DRM çözümü değildir.** Bazı sayfalar WebView içinde çalışmayabilir; araç ekranında video desteği iddia edilmez.
+- Ayrıntılar: `docs/NETFLIX_PRIME_HISTORY_V031.md`.
 
 ## v0.30 — YouTube videolarım
 
