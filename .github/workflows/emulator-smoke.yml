@@ -26,9 +26,13 @@ jobs:
           gradle-version: '8.13'
       - name: Build application
         run: gradle --no-daemon :app:assembleDebug
-      - name: Enable KVM
+      - name: Enable KVM and reclaim runner disk space
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+          # Android 15 emulator requires ~7.4 GB free for userdata creation.
+          # The hosted image contains tools unrelated to this Android build.
+          sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache/CodeQL /usr/local/share/powershell
+          df -h "$HOME"
       - name: Boot emulator and open app
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -52,6 +56,8 @@ jobs:
             for i in 1 2 3; do adb shell uiautomator dump /sdcard/id4_drive_home.xml >/dev/null 2>&1 && adb pull /sdcard/id4_drive_home.xml id4_drive_home.xml >/dev/null 2>&1 && break; sleep 2; done
             grep -q 'DRIVE HUB' id4_drive_home.xml
             grep -q 'TV kanalı' id4_drive_home.xml
+            # Mola-inspired graphic entry points in the real phone dashboard.
+            grep -q 'YouTube' id4_drive_home.xml
             # Verify the brand-new responsive dashboard and companion entry.
             # Scroll until the real clickable UI label appears; no fixed HOME tap coordinates.
             for i in 1 2 3; do adb shell uiautomator dump /sdcard/id4_cockpit_ui.xml >/dev/null 2>&1 && adb pull /sdcard/id4_cockpit_ui.xml id4_cockpit_ui.xml >/dev/null 2>&1 && break; sleep 2; done
