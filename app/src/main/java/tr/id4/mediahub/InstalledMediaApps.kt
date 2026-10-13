@@ -28,7 +28,7 @@ object InstalledMediaApps {
             AlertDialog.Builder(activity)
                 .setTitle("$title yüklü değil")
                 .setMessage("Bu telefonda $title uygulaması yüklü görünmüyor. " +
-                    "Media Hub siteye yönlendirme yapmayacak. " +
+                    "ID.4 Yol Arkadaşım tarayıcıya yönlendirme yapmayacak. " +
                     "Lütfen kurulum ve hesap durumunu cihaz üzerinden kontrol et.")
                 .setPositiveButton("Tamam", null)
                 .show()
