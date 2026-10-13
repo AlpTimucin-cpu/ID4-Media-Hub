@@ -268,6 +268,60 @@ https://video.example.org/news.m3u8
         ).forEach { assertNull(it, YoutubePagePolicy.canonicalWatchUrl(it)) }
     }
 
+    @Test fun streamingHistoryRecognizesNetflixPagesAndStripsTracking() {
+        val cases = listOf(
+            "https://www.netflix.com/watch/80192098?trackId=123&jbv=80192098" to
+                "https://www.netflix.com/watch/80192098",
+            "https://netflix.com/title/70143836?fromSearch=true#details" to
+                "https://www.netflix.com/title/70143836"
+        )
+        for ((input, expected) in cases) {
+            val parsed = StreamingPagePolicy.canonical(input)
+            assertEquals(StreamingService.NETFLIX, parsed?.service)
+            assertEquals(expected, parsed?.url)
+        }
+    }
+
+    @Test fun streamingHistoryRecognizesPrimeVideoAndRegionalAmazonDetail() {
+        val cases = listOf(
+            "https://www.primevideo.com/detail/0QXYZABC12345?ref_=atv_dp" to
+                "https://www.primevideo.com/detail/0QXYZABC12345",
+            "https://primevideo.com/-/tr/detail/B0XYZABCDE?language=tr_TR" to
+                "https://www.primevideo.com/detail/B0XYZABCDE",
+            "https://www.amazon.com/gp/video/detail/B012345678?ref_=abc" to
+                "https://www.amazon.com/gp/video/detail/B012345678",
+            "https://www.amazon.com.tr/gp/video/detail/B012345678?tag=sample" to
+                "https://www.amazon.com.tr/gp/video/detail/B012345678"
+        )
+        for ((input, expected) in cases) {
+            val parsed = StreamingPagePolicy.canonical(input)
+            assertEquals(StreamingService.PRIME_VIDEO, parsed?.service)
+            assertEquals(expected, parsed?.url)
+        }
+    }
+
+    @Test fun streamingHistoryRejectsCredentialLinksAndOtherSites() {
+        val invalid = listOf(
+            "https://www.netflix.com.evil.example/watch/80192098",
+            "https://www.primevideo.com.evil.example/detail/0QXYZABC12345",
+            "https://user:pass@www.netflix.com/watch/80192098",
+            "https://www.netflix.com@evil.example/watch/80192098",
+            "https://www.primevideo.com:444/detail/0QXYZABC12345",
+            "http://www.netflix.com/watch/80192098",
+            "file:///android_asset/private",
+            "https://www.netflix.com/login?auth=secret",
+            "https://www.primevideo.com/region?token=secret",
+            "https://www.netflix.com/watch/80192098%0A",
+            "https://www.primevideo.com/detail/abcd\nxyz",
+            "https://www.amazon.com/gp/video/detail/x",
+            "https://www.primevideo.com/detail/zz?token=secret"
+        )
+        invalid.forEach { assertNull("Should reject: " + it, StreamingPagePolicy.canonical(it)) }
+        assertTrue(StreamingPagePolicy.isSubscriptionHost("https://www.netflix.com/login"))
+        assertTrue(StreamingPagePolicy.isSubscriptionHost("https://www.primevideo.com/"))
+        assertFalse(StreamingPagePolicy.isSubscriptionHost("https://www.netflix.com.evil.example/"))
+    }
+
     @Test fun webLinksRejectUntrustedSchemesAndCredentials() {
         assertEquals("https://www.example.com/watch?id=15",
             BrowserStore.safeHttps(" https://www.example.com/watch?id=15 "))
