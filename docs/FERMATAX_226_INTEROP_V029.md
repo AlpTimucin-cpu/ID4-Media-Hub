@@ -10,7 +10,7 @@
 
 ## Yeni çalışan bağlama (kaynak düzeyi)
 
-1. Media Hub → **Canlı TV** → kanal seç.
+1. Drive Hub → **Canlı TV** → kanal seç veya **Radyo** bölümünde bir istasyon başlat.
 2. Oynatıcının altında **FermataX 2.2.6 ile telefonda aç** düğmesine dokun.
 3. Uygulama `me.app.fermataX.auto.debug` paketini kontrol eder. Kurulu değilse başka APK kurmaz.
 4. Aktarılacak bağlantı HTTPS değilse reddedilir. Şifreyi URL'nin `username:password@` bölümünde taşıyan adres reddedilir.
