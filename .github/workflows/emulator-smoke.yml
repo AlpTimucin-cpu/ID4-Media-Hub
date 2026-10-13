@@ -101,7 +101,7 @@ jobs:
             sleep 3
             adb shell uiautomator dump /sdcard/id4_tv_browser.xml
             adb pull /sdcard/id4_tv_browser.xml id4_tv_browser.xml
-            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;root=ET.parse("id4_tv_browser.xml").getroot();matches=[n.attrib.get("bounds","") for n in root.iter("node") if "YouTube uygulaması" in n.attrib.get("text","")];assert matches,"TV ekranında YouTube Web düğmesi bulunamadı";m=list(map(int,re.findall(r"\d+",matches[0])));subprocess.run(["adb","shell","input","tap",str((m[0]+m[2])//2),str((m[1]+m[3])//2)],check=True)'
+            python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;root=ET.parse("id4_tv_browser.xml").getroot();matches=[n.attrib.get("bounds","") for n in root.iter("node") if "Web Medya" in n.attrib.get("text","")];assert matches,"TV ekranında Web Medya düğmesi bulunamadı";m=list(map(int,re.findall(r"\d+",matches[0])));subprocess.run(["adb","shell","input","tap",str((m[0]+m[2])//2),str((m[1]+m[3])//2)],check=True)'
             sleep 6
             adb shell dumpsys activity activities > id4_browser_activity.txt
             grep -q 'MediaWebActivity' id4_browser_activity.txt
