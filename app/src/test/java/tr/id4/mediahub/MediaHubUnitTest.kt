@@ -233,6 +233,41 @@ https://video.example.org/news.m3u8
         assertEquals(StreamStatus.LOGIN_REQUIRED, StreamProbe.classify(403).status)
         assertEquals(StreamStatus.SERVER_RESPONDS, StreamProbe.classify(200).status)
     }
+    @Test fun youtubeHistoryCanonicalizesVideoIdentityWithoutTrackingParams() {
+        val video = "dQw4w9WgXcQ"
+        val canonical = "https://www.youtube.com/watch?v=" + video
+        listOf(
+            "https://www.youtube.com/watch?v=$video&t=85s&si=TRACK",
+            "https://m.youtube.com/watch?v=$video&feature=share",
+            "https://youtu.be/$video?si=TRACK",
+            "https://www.youtube.com/shorts/$video?feature=share",
+            "https://youtube.com/live/$video?si=TRACK",
+            "https://www.youtube.com/embed/$video?autoplay=1",
+            "https://YOUTUBE.COM/watch?v=$video&list=LIST"
+        ).forEach {
+            assertEquals("Unexpected YouTube normalization: " + it,
+                canonical, YoutubePagePolicy.canonicalWatchUrl(it))
+        }
+    }
+
+    @Test fun youtubeHistoryRejectsWrongHostsCredentialsAndOtherSchemes() {
+        listOf(
+            "https://www.youtube.com.evil.example/watch?v=dQw4w9WgXcQ",
+            "https://youtube.com@evil.example/watch?v=dQw4w9WgXcQ",
+            "https://user:pass@www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "javascript:alert(1)",
+            "https://www.youtube.com/watch?v=short",
+            "https://www.youtube.com/results?search_query=car",
+            "https://youtu.be/not-a-video",
+            "https://www.youtube.com:444/watch?v=dQw4w9WgXcQ",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ%0A",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ\n",
+            "https://youtu.be/dQw4w9WgXcQ/extra",
+            ""
+        ).forEach { assertNull(it, YoutubePagePolicy.canonicalWatchUrl(it)) }
+    }
+
     @Test fun webLinksRejectUntrustedSchemesAndCredentials() {
         assertEquals("https://www.example.com/watch?id=15",
             BrowserStore.safeHttps(" https://www.example.com/watch?id=15 "))
