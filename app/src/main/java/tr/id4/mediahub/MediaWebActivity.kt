@@ -43,6 +43,7 @@ class MediaWebActivity : Activity() {
         const val EXTRA_URL = "web_media_url"
         const val YOUTUBE_URL = "https://m.youtube.com"
         const val NETFLIX_URL = "https://www.netflix.com"
+        const val PRIME_VIDEO_URL = "https://www.primevideo.com"
     }
     private data class Tab(val web: WebView, var title: String, var url: String)
     private val tabs = mutableListOf<Tab>()
@@ -161,6 +162,8 @@ class MediaWebActivity : Activity() {
         tools.addView(bookmark,LinearLayout.LayoutParams(0,dp(45),1f))
         addTool("☷"){bookmarks()}
         addTool("YT◷"){youtubeHistory()}
+        addTool("V◷"){streamingHistory(StreamingService.NETFLIX)}
+        addTool("P◷"){streamingHistory(StreamingService.PRIME_VIDEO)}
         addTool("⋮"){options()}
         main.addView(tools)
         progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
@@ -179,6 +182,15 @@ class MediaWebActivity : Activity() {
         lower.addView(button("⛶ Tam ekran"){immersive()},
             LinearLayout.LayoutParams(0,dp(47),1f))
         main.addView(lower)
+        val streamServices = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(7), dp(2), dp(7), dp(4))
+        }
+        streamServices.addView(button("Netflix"){open(NETFLIX_URL)},
+            LinearLayout.LayoutParams(0,dp(43),1f))
+        streamServices.addView(button("Prime Video"){open(PRIME_VIDEO_URL)},
+            LinearLayout.LayoutParams(0,dp(43),1f).apply { leftMargin = dp(6) })
+        main.addView(streamServices)
         desktopControl.text=if(desktop)"Masaüstü ✓" else "Mobil"
     }
 
@@ -212,17 +224,25 @@ class MediaWebActivity : Activity() {
                 super.doUpdateVisitedHistory(view,url,isReload)
                 val safe=BrowserStore.safeHttps(url.orEmpty()) ?: return
                 tab.url=safe
-                if (!isReload) YoutubeVideoStore.remember(
-                    this@MediaWebActivity,tab.title,safe)
+                if (!isReload) {
+                    YoutubeVideoStore.remember(this@MediaWebActivity,tab.title,safe)
+                    StreamingHistoryStore.remember(this@MediaWebActivity,tab.title,safe)
+                }
                 if (selected()===tab) updateHeader()
             }
             override fun onPageFinished(view:WebView?,rawUrl:String?) {
                 val safe=BrowserStore.safeHttps(rawUrl.orEmpty())?:return
                 tab.url=safe
                 tab.title=view?.title?.take(32)?.ifBlank{"Web"}?:"Web"
-                BrowserStore.remember(this@MediaWebActivity,tab.title,
-                    YoutubePagePolicy.canonicalWatchUrl(safe) ?: safe)
+                val canonical = StreamingPagePolicy.canonical(safe)?.url
+                    ?: YoutubePagePolicy.canonicalWatchUrl(safe)
+                // Do not store login, search or authentication pages from
+                // paid streaming services in the general browser history.
+                if (canonical != null || !StreamingPagePolicy.isSubscriptionHost(safe)) {
+                    BrowserStore.remember(this@MediaWebActivity,tab.title,canonical ?: safe)
+                }
                 YoutubeVideoStore.remember(this@MediaWebActivity,tab.title,safe)
+                StreamingHistoryStore.remember(this@MediaWebActivity,tab.title,safe)
                 if(selected()===tab) updateHeader()
                 renderTabs();persist()
             }
@@ -261,6 +281,7 @@ class MediaWebActivity : Activity() {
                 if(!title.isNullOrBlank()) tab.title=title.take(32)
                 // Update saved video titles when YouTube finishes SPA metadata updates.
                 YoutubeVideoStore.remember(this@MediaWebActivity,tab.title,tab.url)
+                StreamingHistoryStore.remember(this@MediaWebActivity,tab.title,tab.url)
                 if(selected()===tab)updateHeader()
                 renderTabs()
             }
@@ -456,10 +477,48 @@ class MediaWebActivity : Activity() {
             .setNegativeButton("Kapat", null).show()
     }
 
+    private fun streamingHistory(service: StreamingService) {
+        val saved = StreamingHistoryStore.load(this, service)
+        val appName = service.displayName
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(appName + " • Son içerikler")
+            .setMessage(if (saved.isEmpty())
+                "İçerik sayfaları açıldığında geçmiş burada görünür. " +
+                    "Oynatma süresi veya hesap bilgileri izlenmez. " +
+                    "DRM korumalı videolar WebView içinde oynatılamayabilir."
+                else null)
+        if (saved.isNotEmpty()) {
+            dialog.setItems(saved.map { it.title }.toTypedArray()) { _, index ->
+                open(saved[index].url)
+            }
+        }
+        dialog.setPositiveButton("Resmî uygulamayı aç") { _, _ ->
+            when (service) {
+                StreamingService.NETFLIX -> InstalledMediaApps.openNetflix(this)
+                StreamingService.PRIME_VIDEO -> InstalledMediaApps.openPrimeVideo(this)
+            }
+        }
+        if (saved.isNotEmpty()) {
+            dialog.setNeutralButton("Geçmişi temizle") { _, _ ->
+                AlertDialog.Builder(this)
+                    .setTitle(appName + " geçmişi silinsin mi?")
+                    .setMessage("Yalnızca bu hizmete ait yerel içerik bağlantıları silinir.")
+                    .setNegativeButton("Vazgeç",null)
+                    .setPositiveButton("Temizle") { _, _ ->
+                        StreamingHistoryStore.clear(this,service)
+                        toast(appName + " geçmişi temizlendi")
+                    }.show()
+            }
+        }
+        dialog.setNegativeButton("Kapat",null).show()
+    }
+
     private fun options(){
         val opts=arrayOf("Yeni sekme","Sekmeyi kapat","Favoriler","Geçmiş",
-            "YouTube • Son videolar","Netflix Web","Masaüstü / Mobil",
-            "Tam ekran","Site verilerini temizle")
+            "YouTube • Son videolar", "Netflix • Son içerikler",
+            "Prime Video • Son içerikler", "Netflix Web","Prime Video Web",
+            "Netflix uygulamasını aç", "Prime Video uygulamasını aç",
+            "Masaüstü / Mobil","Tam ekran","Site verilerini temizle")
         AlertDialog.Builder(this).setTitle("Web Medya")
             .setItems(opts){_,index->when(index){
                 0->addTab()
@@ -467,10 +526,15 @@ class MediaWebActivity : Activity() {
                 2->bookmarks()
                 3->history()
                 4->youtubeHistory()
-                5->open(NETFLIX_URL)
-                6->toggleDesktop()
-                7->immersive()
-                8->clearSiteData()
+                5->streamingHistory(StreamingService.NETFLIX)
+                6->streamingHistory(StreamingService.PRIME_VIDEO)
+                7->open(NETFLIX_URL)
+                8->open(PRIME_VIDEO_URL)
+                9->InstalledMediaApps.openNetflix(this)
+                10->InstalledMediaApps.openPrimeVideo(this)
+                11->toggleDesktop()
+                12->immersive()
+                13->clearSiteData()
             }}.setNegativeButton("Kapat",null).show()
     }
 
