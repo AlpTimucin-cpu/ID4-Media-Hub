@@ -199,9 +199,17 @@ class PodcastBrowserActivity: Activity() {
         val uri=data?.data?:return
         try {
             if(requestCode==42){
-                val bytes=contentResolver.openInputStream(uri)?.use{it.readNBytes(1_000_001)}
-                    ?:return
-                if(bytes.size>1_000_000)throw IllegalArgumentException()
+                val bytes=contentResolver.openInputStream(uri)?.use{input->
+                    val output=java.io.ByteArrayOutputStream()
+                    val chunk=ByteArray(4096)
+                    while(true){
+                        val n=input.read(chunk)
+                        if(n<0)break
+                        if(output.size()+n>1_000_000)throw IllegalArgumentException()
+                        output.write(chunk,0,n)
+                    }
+                    output.toByteArray()
+                }?:return
                 var count=0
                 PodcastSources.parseOpml(bytes).forEach{
                     if(PodcastSources.add(this,it.title,it.url))count++
