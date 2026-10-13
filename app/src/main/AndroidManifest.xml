@@ -55,6 +55,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".PlayerActivity" android:exported="false" />
+        <activity android:name=".MolaTvBrowseActivity"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".PodcastBrowserActivity"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".MediaLibraryHubActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
