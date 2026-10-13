@@ -1,8 +1,17 @@
-# ID.4 DRIVE HUB • v0.31 BETA
+# ID.4 DRIVE HUB • v0.32 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.32 — Mola tarzı görselli akış platformları
+
+- YouTube, Netflix ve Prime Video için **büyük, dikey sıralı medya kartları**: üstte poster tarzı özgün grafik, altta platform adı, açıklama ve yuvarlak açma oku.
+- Üç kart, **Media Cockpit → Video Platformları** altında yer alır. Önceki küçük Netflix/Prime butonlarının yerini alır.
+- Her kart doğrudan kendi Web Medya girişini açar; ayrı geçmişler (YT◷ / V◷ / P◷) ve resmî uygulama kısayolları korunur.
+- Afişler Android Canvas ile **orijinal vektör tasarım** olarak oluşturulmuştur: indirme, takip, API anahtarı veya telifli film posteri gerekmez.
+- Referans alınan ekranın genel **görsel hiyerarşisi** uyarlanmıştır; Mola'nın özgün görselleri, logosu veya kodu kopyalanmamıştır.
+- Android Auto'nun sürüş halindeki video kısıtlamaları aşılmaz; kartlar telefon arayüzü içindir.
 
 ## v0.31 — Netflix ve Prime Video içerik geçmişi
 
