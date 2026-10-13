@@ -34,6 +34,42 @@ class MediaHubUnitTest {
         ).recents.size)
     }
 
+    @Test fun videoCatalogSeparatesMoviesSeriesSportsAndLiveTv() {
+        val videos = listOf(
+            VideoChannel("film","Uzun Film","https://media.example/film.m3u8",
+                "Filmler / Aksiyon",true),
+            VideoChannel("dizi","Örnek Dizi S01E05","https://media.example/episode.mp4",
+                "Diziler / Dram",false),
+            VideoChannel("mac","Canlı karşılaşma","https://media.example/live.m3u8",
+                "Spor / Maçlar",true),
+            VideoChannel("tv","Haber","https://media.example/news.m3u8",
+                "Haber",false),
+            VideoChannel("episode","Öykü S02E11","https://media.example/ep.mp4",
+                "Diğer",false)
+        )
+        assertEquals(VideoLibraryKind.MOVIE,VideoLibraryClassifier.classify(videos[0]))
+        assertEquals(VideoLibraryKind.SERIES,VideoLibraryClassifier.classify(videos[1]))
+        assertEquals(VideoLibraryKind.SPORT,VideoLibraryClassifier.classify(videos[2]))
+        assertEquals(VideoLibraryKind.OTHER,VideoLibraryClassifier.classify(videos[3]))
+        assertEquals(VideoLibraryKind.SERIES,VideoLibraryClassifier.classify(videos[4]))
+        assertEquals(listOf("mac"),VideoLibraryClassifier.filtered(
+            videos,VideoLibraryKind.SPORT,"KARŞILAŞMA",true).map { it.id })
+        assertEquals(0,VideoLibraryClassifier.filtered(
+            videos,VideoLibraryKind.MOVIE,"not-found").size)
+        assertEquals(listOf("film"),VideoLibraryClassifier.filtered(
+            videos,VideoLibraryKind.MOVIE,"aksiyon",true).map { it.id })
+    }
+
+    @Test fun videoCategoryDoesNotLeakIntoUnrelatedWords() {
+        val normal = VideoChannel("v","Transport Haber","https://media.example/news.m3u8",
+            "Transportation",false)
+        assertEquals(VideoLibraryKind.OTHER,VideoLibraryClassifier.classify(normal))
+        assertEquals(VideoLibraryKind.SPORT,
+            VideoLibraryClassifier.classify(normal.copy(group="FUTBOL / Süper Lig")))
+        assertEquals(VideoLibraryKind.MOVIE,
+            VideoLibraryClassifier.classify(normal.copy(group="Sinema")))
+    }
+
     @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
         val sources = IntegrationCatalog.sources
         val ids = sources.map { it.id }
