@@ -1,3 +1,11 @@
+# v0.35 — 14 Ekim 2026
+
+- Mola görsel hiyerarşisinden esinlenerek Film, Dizi, Maçlar için yeni yerel medya ekranı.
+- M3U kategori ayrıştırma, kullanıcı kontrollü HTTPS kaynak ekleme, arama, favoriler.
+- Telefonun Media3 oynatıcısında film/dizi ilerleme kaydı ve DASH medya türü tanıma.
+- REC TV'nin telifli yayınları, APK kaynak kodu veya özel API erişimi kopyalanmadı.
+- Sürüşte araç ekranı video güvenlik kısıtlamaları değişmedi.
+
 # v0.34 — 14 Ekim 2026
 
 - REC TV 22.0.2 (161) kullanıcı APK'sının manifest/Flutter bileşenleri teknik incelendi.
