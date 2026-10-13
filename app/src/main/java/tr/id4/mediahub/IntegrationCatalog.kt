@@ -71,6 +71,12 @@ object IntegrationCatalog {
             "AAAD ekosistemindeki eski YouTube/web görüntüleme yöntemi; Android 15 ve ID.4 uyumu doğrulanmadı.",
             packages = listOf("maps.jaoloonda.android")),
         IntegrationSource(
+            "rectv", "REC TV (telefondaki uygulama)", IntegrationKind.EXTERNAL,
+            "Kullanıcının sağladığı REC TV 22.0.2 (161) APK'sındaki com.rectv.shot " +
+                "paketi yüklüyse yalnızca telefon uygulaması başlatılır. " +
+                "Flutter kodu, telifli medya ve üçüncü taraf sunucular kopyalanmaz.",
+            packages = listOf("com.rectv.shot")),
+        IntegrationSource(
             "sportzx", "SportzX", IntegrationKind.EXTERNAL,
             "Yalnızca telefonda kurulu uygulamaya kısayol. Üçüncü taraf APK, yayın veya telifli içerik entegre edilmez.",
             packages = listOf("com.sportzx.live")),
