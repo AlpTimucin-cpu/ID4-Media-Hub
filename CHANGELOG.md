@@ -1,3 +1,11 @@
+# v0.30 — 13 Ekim 2026
+
+- FermataX derlenmiş uygulamasındaki YouTube sınıf isimleri referans alındı; özgün YouTube URL kanonikleştirme ve gizliliği koruyan video geçmişi geliştirildi.
+- Web Medya'da YT◷ menüsü ile yerel son 30 videoyu açma ve ayrıca temizleme.
+- YouTube WebView SPA gezinmesindeki video geçişleri, başlık yenileme ve yalnızca video kimliğini saklama desteği.
+- HTTPS/alan adı/11 karakterli video kimliği kontrolü ve takip parametrelerini atma üzerine JUnit testleri.
+- Emülatör smoke testinde kaydırmalı TV kontrol araması ve YouTube geçmiş düğmesi denetimi.
+
 # v0.29 — 13 Ekim 2026
 
 - FermataX 2.2.6 (332) kullanıcı manifestindeki açık `ACTION_VIEW` medya etkinliği üzerinden kullanıcı onaylı, HTTPS TV/radyo telefon aktarımı.
