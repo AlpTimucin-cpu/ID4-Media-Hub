@@ -503,6 +503,8 @@ class MainActivity : Activity() {
                 onTv = { selectTab(1) },
                 onRadio = { selectTab(2) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
+                onNetflix = { openWebMedia(MediaWebActivity.NETFLIX_URL) },
+                onPrimeVideo = { openWebMedia(MediaWebActivity.PRIME_VIDEO_URL) },
                 onLibrary = { selectTab(3) },
                 onGuide = { showEpgSchedule() },
                 onCarStatus = { CarCompatibility.show(this) },
