@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private var controller: MediaController? = null
     private lateinit var listContainer: LinearLayout
     private lateinit var status: TextView
+    private lateinit var miniHeader: MolaAudioHeader
     private lateinit var videoContainer: LinearLayout
     private lateinit var searchVideos: EditText
     private lateinit var searchRadios: EditText
@@ -70,34 +71,15 @@ class MainActivity : Activity() {
             root.setPadding(0, systemBars.top, 0, systemBars.bottom)
             insets
         }
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(2), dp(16), dp(2))
-            background = gradient(0xff172c48.toInt(), 0xff0b1423.toInt(), 0)
-        }
-        val brandRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        brandRow.addView(label("ID⁴", 26, true).apply { setTextColor(0xff66dddb.toInt()) })
-        val brandTitles = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(10),0,0,0)
-        }
-        brandTitles.addView(label("YOL ARKADAŞIM", 20, true))
-        brandTitles.addView(label("ID.4  •  MEDYA VE YOLCULUK", 10, false))
-        brandRow.addView(brandTitles, LinearLayout.LayoutParams(0,-2,1f))
-        val add = textAction("＋") { selectTab(3) }
-        brandRow.addView(add, LinearLayout.LayoutParams(dp(46),dp(48)))
-        top.addView(brandRow)
-        status = label("● Bağlantı hazırlanıyor", 11, false).apply {
-            setTextColor(0xff8de1d3.toInt())
-            setPadding(dp(3), 0, dp(3), dp(2))
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        top.addView(status)
-        root.addView(top)
+        miniHeader = MolaAudioHeader(
+            this,
+            { skipRadio(-1) },
+            { toggleRadioPlayback() },
+            { skipRadio(1) },
+            { CarCompatibility.show(this) }
+        )
+        status = miniHeader.status
+        root.addView(miniHeader.view)
 
         contentScroll = ScrollView(this).apply {
             isFillViewport = true
@@ -326,6 +308,7 @@ class MainActivity : Activity() {
         refresh()
         refreshVideo()
         renderHome()
+        selectTab(intent.getIntExtra(EXTRA_SELECT_TAB,0).coerceIn(0,3))
         val token = SessionToken(this, ComponentName(this, AudioLibraryService::class.java))
         controllerFuture = MediaController.Builder(this,token).buildAsync().also { future ->
             future.addListener({
@@ -341,7 +324,8 @@ class MainActivity : Activity() {
                             mediaItem: androidx.media3.common.MediaItem?,reason:Int
                         ) {
                             if(mediaItem != null)status.text="♫   ${mediaItem.mediaMetadata.title ?: "Radyo"}"
-                            if(::homeContainer.isInitialized) renderHome()
+                            refreshMiniHeader()
+                             if(::homeContainer.isInitialized) renderHome()
                         }
                     })
                     connected.addListener(object:Player.Listener{
@@ -351,7 +335,8 @@ class MainActivity : Activity() {
                             if(selected!=null)currentRadioId=selected.id
                             if(::radioDashboard.isInitialized)
                                 radioDashboard.setPlaying(selected,isPlaying)
-                            if(::homeContainer.isInitialized) renderHome()
+                            refreshMiniHeader()
+                             if(::homeContainer.isInitialized) renderHome()
                         }
                     })
                     status.text="●   Ses servisi hazır"
@@ -493,15 +478,20 @@ class MainActivity : Activity() {
         val activeId = controller?.currentMediaItem?.mediaId ?: currentRadioId
         val currentTitle = stations.firstOrNull { it.id == activeId }?.name
         val epg = EpgScheduleIndex(EpgGuide.load(this), System.currentTimeMillis())
-        val cockpit = CockpitDashboard.render(
+        val cockpit = MolaHomeDashboard.render(
             activity = this,
             overview = state,
             epg = epg,
-            activeRadio = currentTitle,
-            isRadioPlaying = controller?.isPlaying == true,
+            shortcuts = UserQuickLinks.load(this),
+            onOpenShortcut = { url -> openWebMedia(url) },
+            onAddShortcut = { addPersonalShortcut() },
+            onRemoveShortcut = { url -> removePersonalShortcut(url) },
             actions = CockpitActions(
-                onTv = { selectTab(1) },
+                onTv = {
+                    startActivity(Intent(this,MolaTvBrowseActivity::class.java))
+                },
                 onRadio = { selectTab(2) },
+                onPodcast = { startActivity(Intent(this,PodcastBrowserActivity::class.java)) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
                 onYoutube = { InstalledMediaApps.openYouTube(this) },
                 onMovies = { openLibraryHub(VideoLibraryKind.MOVIE) },
@@ -533,6 +523,59 @@ class MainActivity : Activity() {
         )
         homeContainer.removeAllViews()
         homeContainer.addView(cockpit)
+    }
+
+    private fun refreshMiniHeader() {
+        if(!::miniHeader.isInitialized)return
+        val item=controller?.currentMediaItem
+        val id=item?.mediaId ?: currentRadioId
+        val station=StationStore.load(this).firstOrNull { it.id == id }
+        miniHeader.render(station?.name,controller?.isPlaying==true)
+    }
+
+    private fun addPersonalShortcut() {
+        val form=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(16),dp(9),dp(16),dp(8))
+        }
+        val name=EditText(this).apply{hint="Kısayol adı";setSingleLine(true)}
+        val url=EditText(this).apply{
+            hint="https://...";setSingleLine(true)
+            inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        form.addView(name);form.addView(url)
+        AlertDialog.Builder(this).setTitle("Kısayol ekle")
+            .setMessage("Yalnızca HTTPS bağlantısı kaydedilir.")
+            .setView(form).setNegativeButton("Vazgeç",null)
+            .setPositiveButton("Kaydet"){_,_->
+                if(UserQuickLinks.add(this,name.text.toString(),url.text.toString()))
+                    renderHome()
+                else toast("Kısayol eklenemedi: adres geçersiz veya zaten kayıtlı.")
+            }.show()
+    }
+
+    private fun removePersonalShortcut(url:String) {
+        AlertDialog.Builder(this).setTitle("Kısayolu sil")
+            .setMessage("Kişisel bağlantı kaldırılacak.")
+            .setNegativeButton("Vazgeç",null)
+            .setPositiveButton("Sil"){_,_->
+                UserQuickLinks.remove(this,url)
+                renderHome()
+            }.show()
+    }
+
+    override fun onNewIntent(intent:Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if(::tabPages.isInitialized)
+            selectTab(intent.getIntExtra(EXTRA_SELECT_TAB,0).coerceIn(0,3))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshMiniHeader()
+        refreshMiniHeader()
+                             if(::homeContainer.isInitialized) renderHome()
     }
 
     private fun openLibraryHub(kind: VideoLibraryKind) {
@@ -895,6 +938,7 @@ class MainActivity : Activity() {
     }
 
     companion object {
+        const val EXTRA_SELECT_TAB="mola_select_tab"
         private const val PICK_PLAYLIST = 701
         private const val PICK_LOCAL_VIDEO = 702
         private const val EXPORT_PLAYLIST = 703
