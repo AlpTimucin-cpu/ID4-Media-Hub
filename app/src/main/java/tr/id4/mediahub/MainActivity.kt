@@ -179,6 +179,11 @@ class MainActivity : Activity() {
             }
         )
         radio.addView(radioDashboard.view())
+        radio.addView(button("↗ FermataX 2.2.6 ile radyoyu telefonda aç") {
+            val chosenId = controller?.currentMediaItem?.mediaId ?: currentRadioId
+            val chosen = StationStore.load(this).firstOrNull { it.id == chosenId }
+            FermataXInterop.offerRadio(this, chosen)
+        })
 
         library.addView(section("KÜTÜPHANEM","Kaynaklar, oynatma ve cihaz bağlantıları"))
         val importCard=panel()
