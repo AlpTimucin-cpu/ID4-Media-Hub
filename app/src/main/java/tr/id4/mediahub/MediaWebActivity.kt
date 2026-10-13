@@ -160,6 +160,7 @@ class MediaWebActivity : Activity() {
         bookmark=button("☆"){toggleBookmark()}
         tools.addView(bookmark,LinearLayout.LayoutParams(0,dp(45),1f))
         addTool("☷"){bookmarks()}
+        addTool("YT◷"){youtubeHistory()}
         addTool("⋮"){options()}
         main.addView(tools)
         progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
@@ -206,11 +207,22 @@ class MediaWebActivity : Activity() {
         web.webViewClient=object:WebViewClient() {
             override fun shouldOverrideUrlLoading(view:WebView?,request:WebResourceRequest):Boolean =
                 BrowserStore.safeHttps(request.url.toString())==null
+            // YouTube uses in-page (SPA) navigation: onPageFinished alone misses videos.
+            override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                super.doUpdateVisitedHistory(view,url,isReload)
+                val safe=BrowserStore.safeHttps(url.orEmpty()) ?: return
+                tab.url=safe
+                if (!isReload) YoutubeVideoStore.remember(
+                    this@MediaWebActivity,tab.title,safe)
+                if (selected()===tab) updateHeader()
+            }
             override fun onPageFinished(view:WebView?,rawUrl:String?) {
                 val safe=BrowserStore.safeHttps(rawUrl.orEmpty())?:return
                 tab.url=safe
                 tab.title=view?.title?.take(32)?.ifBlank{"Web"}?:"Web"
-                BrowserStore.remember(this@MediaWebActivity,tab.title,safe)
+                BrowserStore.remember(this@MediaWebActivity,tab.title,
+                    YoutubePagePolicy.canonicalWatchUrl(safe) ?: safe)
+                YoutubeVideoStore.remember(this@MediaWebActivity,tab.title,safe)
                 if(selected()===tab) updateHeader()
                 renderTabs();persist()
             }
@@ -247,6 +259,8 @@ class MediaWebActivity : Activity() {
             }
             override fun onReceivedTitle(view:WebView?,title:String?){
                 if(!title.isNullOrBlank()) tab.title=title.take(32)
+                // Update saved video titles when YouTube finishes SPA metadata updates.
+                YoutubeVideoStore.remember(this@MediaWebActivity,tab.title,tab.url)
                 if(selected()===tab)updateHeader()
                 renderTabs()
             }
@@ -413,19 +427,50 @@ class MediaWebActivity : Activity() {
             .setNegativeButton("Kapat",null).show()
     }
 
+    private fun youtubeHistory() {
+        val saved = YoutubeVideoStore.load(this)
+        if (saved.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("YouTube • Son videolar")
+                .setMessage("İzlediğin YouTube video sayfaları burada görünecek. " +
+                    "Yalnızca video kimliği kaydedilir; takip parametreleri saklanmaz.")
+                .setPositiveButton("Tamam", null).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("YouTube • Son videolar")
+            .setItems(saved.map { it.title }.toTypedArray()) { _, index ->
+                open(saved[index].url)
+            }
+            .setNeutralButton("Listeyi temizle") { _, _ ->
+                AlertDialog.Builder(this)
+                    .setTitle("YouTube geçmişini temizle")
+                    .setMessage("Kaydedilen video geçmişi silinsin mi? " +
+                        "Web favorilerin ve TV/radyo listelerin değişmeyecek.")
+                    .setNegativeButton("İptal", null)
+                    .setPositiveButton("Temizle") { _, _ ->
+                        YoutubeVideoStore.clear(this)
+                        toast("YouTube video geçmişi temizlendi")
+                    }.show()
+            }
+            .setNegativeButton("Kapat", null).show()
+    }
+
     private fun options(){
         val opts=arrayOf("Yeni sekme","Sekmeyi kapat","Favoriler","Geçmiş",
-            "Netflix Web","Masaüstü / Mobil","Tam ekran","Site verilerini temizle")
+            "YouTube • Son videolar","Netflix Web","Masaüstü / Mobil",
+            "Tam ekran","Site verilerini temizle")
         AlertDialog.Builder(this).setTitle("Web Medya")
             .setItems(opts){_,index->when(index){
                 0->addTab()
                 1->closeTab(active)
                 2->bookmarks()
                 3->history()
-                4->open(NETFLIX_URL)
-                5->toggleDesktop()
-                6->immersive()
-                7->clearSiteData()
+                4->youtubeHistory()
+                5->open(NETFLIX_URL)
+                6->toggleDesktop()
+                7->immersive()
+                8->clearSiteData()
             }}.setNegativeButton("Kapat",null).show()
     }
 
