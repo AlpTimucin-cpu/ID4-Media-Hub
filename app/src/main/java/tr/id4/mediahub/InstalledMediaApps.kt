@@ -11,10 +11,12 @@ object InstalledMediaApps {
     const val YOUTUBE_PACKAGE = "com.google.android.youtube"
     const val NETFLIX_PACKAGE = "com.netflix.mediaclient"
     const val PRIME_VIDEO_PACKAGE = "com.amazon.avod.thirdpartyclient"
+    const val REC_TV_PACKAGE = "com.rectv.shot"
 
     fun openYouTube(activity: Activity) = open(activity, "YouTube", YOUTUBE_PACKAGE)
     fun openNetflix(activity: Activity) = open(activity, "Netflix", NETFLIX_PACKAGE)
     fun openPrimeVideo(activity: Activity) = open(activity, "Prime Video", PRIME_VIDEO_PACKAGE)
+    fun openRecTv(activity: Activity) = open(activity, "REC TV", REC_TV_PACKAGE)
 
     fun open(activity: Activity, title: String, packageName: String) {
         val pm = activity.packageManager
