@@ -7,6 +7,7 @@
     <queries>
         <package android:name="com.google.android.apps.youtube.music" />
         <package android:name="com.netflix.mediaclient" />
+        <package android:name="com.amazon.avod.thirdpartyclient" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.projection.gearhead" />
         <package android:name="com.kododake.aabrowser" />
