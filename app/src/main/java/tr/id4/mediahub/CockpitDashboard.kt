@@ -23,6 +23,9 @@ data class CockpitActions(
     val onRadio: () -> Unit,
     val onWeb: () -> Unit,
     val onYoutube: () -> Unit,
+    val onMovies: () -> Unit,
+    val onSeries: () -> Unit,
+    val onSports: () -> Unit,
     val onNetflix: () -> Unit,
     val onPrimeVideo: () -> Unit,
     val onLibrary: () -> Unit,
@@ -158,6 +161,37 @@ object CockpitDashboard {
         audio.addView(header)
         root.addView(audio)
         root.addView(vSpace(activity, 19))
+
+        // Three native library destinations: user-owned sources, not REC TV feeds.
+        root.addView(sectionTitle(activity, "FİLM • DİZİ • MAÇ",
+            "Kendi yayın kaynaklarının Mola tarzı medya kütüphanesi"))
+        root.addView(vSpace(activity, 10))
+        val libraryRow = row(activity)
+        listOf(
+            Triple("▣", "FİLMLER", actions.onMovies),
+            Triple("▤", "DİZİLER", actions.onSeries),
+            Triple("⚽", "MAÇLAR", actions.onSports)
+        ).forEachIndexed { index, item ->
+            val tile = card(activity)
+            tile.gravity=Gravity.CENTER
+            tile.isClickable=true
+            tile.isFocusable=true
+            tile.contentDescription=item.second + " bölümünü aç"
+            tile.setOnClickListener { item.third() }
+            tile.background=when(index) {
+                0 -> background(activity,0xff632d46.toInt(),0xff241b35.toInt(),18)
+                1 -> background(activity,0xff4a3a71.toInt(),0xff221b3c.toInt(),18)
+                else -> background(activity,0xff1d665d.toInt(),0xff152d35.toInt(),18)
+            }
+            tile.addView(text(activity,item.first,29f,Color.WHITE,true))
+            tile.addView(vSpace(activity,8))
+            tile.addView(text(activity,item.second,12f,Color.WHITE,true))
+            libraryRow.addView(tile,LinearLayout.LayoutParams(0,dp(activity,120),1f).apply{
+                rightMargin=dp(activity,5)
+            })
+        }
+        root.addView(libraryRow)
+        root.addView(vSpace(activity,20))
 
         // Mola-inspired, artwork-first cards on the PHONE dashboard.
         // These cards open installed official phone apps only; no WebView fallback.
