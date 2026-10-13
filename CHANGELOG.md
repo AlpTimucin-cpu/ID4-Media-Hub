@@ -1,3 +1,12 @@
+# v0.31 — 13 Ekim 2026
+
+- Netflix ve Prime Video için telefon içinde ayrı içerik geçmişi ve tekrar açma.
+- Platforma özel güvenli URL tanıma: Netflix watch/title, Prime Video detail, Amazon gp/video/detail.
+- Web Medya geçmiş düğmeleri, kendi kısayolları ve isteğe bağlı resmî uygulama açma.
+- Media Cockpit ana ekranında Netflix ve Prime Video erişimi.
+- Takip parametrelerini kaydetmeyen ayrıştırma testi; Android 15 emülatör kontrolleri.
+- DRM çözme, otomatik içerik indirme ve araç hareketinde video kısıtı aşma yok.
+
 # v0.30 — 13 Ekim 2026
 
 - FermataX derlenmiş uygulamasındaki YouTube sınıf isimleri referans alındı; özgün YouTube URL kanonikleştirme ve gizliliği koruyan video geçmişi geliştirildi.
