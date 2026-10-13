@@ -1,3 +1,10 @@
+# v0.32 — 13 Ekim 2026
+
+- Media Cockpit üzerinde Mola ekranından esinlenen, orijinal büyük YouTube / Netflix / Prime Video poster kartları.
+- Sinema görsel alanı, yuvarlatılmış koyu servis kartı, renkli çerçeve, büyük başlık ve yuvarlak açma düğmesi.
+- Kartlar eski küçük Netflix/Prime web butonlarının yerini aldı; telefon içi oynatıcı ve ayrı geçmişler korundu.
+- Android Auto'nun sürücü video kısıtları veya DRM sistemi değişmedi.
+
 # v0.31 — 13 Ekim 2026
 
 - Netflix ve Prime Video için telefon içinde ayrı içerik geçmişi ve tekrar açma.
