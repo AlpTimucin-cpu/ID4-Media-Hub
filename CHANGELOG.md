@@ -1,6 +1,6 @@
 # v0.29 — 13 Ekim 2026
 
-- FermataX 2.2.6 (332) kullanıcı manifestindeki açık `ACTION_VIEW` medya etkinliği üzerinden kullanıcı onaylı, HTTPS IPTV telefon aktarımı.
+- FermataX 2.2.6 (332) kullanıcı manifestindeki açık `ACTION_VIEW` medya etkinliği üzerinden kullanıcı onaylı, HTTPS TV/radyo telefon aktarımı.
 - TV oynatıcısına **FermataX 2.2.6 ile telefonda aç** seçeneği; eksik uygulama, hatalı URL ve reddedilen Android Intent için açıklayıcı hatalar.
 - Uygulama bağlantısının erişim anahtarı taşıyabileceği onaydan önce uyarılır. M3U listeleri, şifreler ve URL'ler raporlara yazılmaz.
 - Emulator runner disk yetersizliği için `-partition-size 2048` ve Media Cockpit ekran kontrolü düzeltildi.
