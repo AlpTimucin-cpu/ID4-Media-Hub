@@ -55,6 +55,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".PlayerActivity" android:exported="false" />
+        <activity android:name=".MediaLibraryHubActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity android:name=".MediaWebActivity" android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
         <service android:name=".AudioLibraryService"
