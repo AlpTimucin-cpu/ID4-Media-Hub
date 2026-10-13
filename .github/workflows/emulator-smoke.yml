@@ -96,10 +96,13 @@ jobs:
             sleep 6
             adb shell dumpsys activity activities > id4_browser_activity.txt
             grep -q 'MediaWebActivity' id4_browser_activity.txt
-            # Confirm new YouTube-only local history UI is reachable on Android 15.
+            # Verify the three distinct on-device streaming history entry points.
             adb shell uiautomator dump /sdcard/id4_youtube_history_button.xml >/dev/null
             adb pull /sdcard/id4_youtube_history_button.xml id4_youtube_history_button.xml >/dev/null
             grep -q 'YT◷' id4_youtube_history_button.xml
+            grep -q 'V◷' id4_youtube_history_button.xml
+            grep -q 'P◷' id4_youtube_history_button.xml
+            grep -q 'Prime Video' id4_youtube_history_button.xml
             adb shell screencap -p /sdcard/id4_web_media.png
             adb pull /sdcard/id4_web_media.png id4_web_media.png
             adb shell input tap 500 195
