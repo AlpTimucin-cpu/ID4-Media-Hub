@@ -84,8 +84,8 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10),0,0,0)
         }
-        brandTitles.addView(label("DRIVE HUB", 20, true))
-        brandTitles.addView(label("ID.4  •  MEDIA COMMAND", 10, false))
+        brandTitles.addView(label("YOL ARKADAŞIM", 20, true))
+        brandTitles.addView(label("ID.4  •  MEDYA VE YOLCULUK", 10, false))
         brandRow.addView(brandTitles, LinearLayout.LayoutParams(0,-2,1f))
         val add = textAction("＋") { selectTab(3) }
         brandRow.addView(add, LinearLayout.LayoutParams(dp(46),dp(48)))
@@ -150,12 +150,12 @@ class MainActivity : Activity() {
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
-        mediaApps.addView(label("WEB MEDYA • UYGULAMA İÇİNDE",16,true))
-        mediaApps.addView(label("YouTube, Netflix sayfası ve HTTPS videoları uygulama içinde açılır. Netflix videoları DRM nedeniyle oynatılamayabilir.",12,false))
+        mediaApps.addView(label("VİDEO UYGULAMALARI",16,true))
+        mediaApps.addView(label("YouTube ve Netflix kartları resmî telefon uygulamalarını açar. Bağımsız HTTPS tarayıcısı aşağıda yer alır.",12,false))
         val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        appActions.addView(button("▶ YouTube Web") { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
+        appActions.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
             LinearLayout.LayoutParams(0,dp(50),1f))
-        appActions.addView(button("▣ Netflix Web") { openWebMedia(MediaWebActivity.NETFLIX_URL) },
+        appActions.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
             LinearLayout.LayoutParams(0,dp(50),1f))
         mediaApps.addView(appActions)
         mediaApps.addView(button("🌐 Web Medya • HTTPS video bağlantısı aç") {
@@ -256,11 +256,11 @@ class MainActivity : Activity() {
             try { startActivity(launch ?: Intent(Intent.ACTION_VIEW,Uri.parse("https://music.youtube.com"))) }
             catch (_: Exception) { toast("YouTube Music açılamadı") }
         })
-        external.addView(textAction("▶  YouTube'u uygulama içinde aç") {
-            openWebMedia(MediaWebActivity.YOUTUBE_URL)
+        external.addView(textAction("▶  YouTube uygulamasını aç") {
+            InstalledMediaApps.openYouTube(this)
         })
-        external.addView(textAction("▣  Netflix Web • Media Hub içinde") {
-            openWebMedia(MediaWebActivity.NETFLIX_URL)
+        external.addView(textAction("▣  Prime Video uygulamasını aç") {
+            InstalledMediaApps.openPrimeVideo(this)
         })
         external.addView(textAction("▣  Netflix uygulamasına geç") {
             InstalledMediaApps.openNetflix(this)
@@ -503,8 +503,9 @@ class MainActivity : Activity() {
                 onTv = { selectTab(1) },
                 onRadio = { selectTab(2) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
-                onNetflix = { openWebMedia(MediaWebActivity.NETFLIX_URL) },
-                onPrimeVideo = { openWebMedia(MediaWebActivity.PRIME_VIDEO_URL) },
+                onYoutube = { InstalledMediaApps.openYouTube(this) },
+                onNetflix = { InstalledMediaApps.openNetflix(this) },
+                onPrimeVideo = { InstalledMediaApps.openPrimeVideo(this) },
                 onLibrary = { selectTab(3) },
                 onGuide = { showEpgSchedule() },
                 onCarStatus = { CarCompatibility.show(this) },
