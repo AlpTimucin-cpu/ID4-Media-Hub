@@ -1,3 +1,12 @@
+# v0.36 — 14 Ekim 2026
+
+- Mola 68,8 saniyelik video kaydından ayrı ekran gezinme ve tasarım envanteri.
+- Kalıcı Media3 radyo oturumu paneli, Mola tarzı ana sayfa kart dizisi.
+- Kategorilere ayrılmış TV kanal listesi: arama, favoriler, ızgara/liste ve oynatma.
+- Kullanıcının kendi RSS podcast kaynakları, OPML içe/dışa aktarma ve bölüm oynatma.
+- Kişisel HTTPS kısayolları; önceki M3U/EPG/YouTube/Netflix/Prime Video korunur.
+- Telifli Mola/REC TV kodu, kapalı akışlar ve sürüşte video kısıtlarının aşılması yoktur.
+
 # v0.35 — 14 Ekim 2026
 
 - Mola görsel hiyerarşisinden esinlenerek Film, Dizi, Maçlar için yeni yerel medya ekranı.
