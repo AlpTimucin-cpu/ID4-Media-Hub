@@ -107,8 +107,8 @@ class MainActivity : Activity() {
             setPadding(dp(8),dp(7),dp(8),dp(9))
             setBackgroundColor(0xff102137.toInt())
         }
-        navButtons = listOf("⌂\nAna Sayfa","▣\nCanlı TV","♫\nRadyo","☷\nKaynaklar").mapIndexed { index, name ->
-            textAction(name) { selectTab(index) }.apply {
+        navButtons = listOf("⌂\nAna sayfa","⚙\nAyarlar").mapIndexed { index, name ->
+            textAction(name) { selectTab(if(index==0)0 else 3) }.apply {
                 textSize = 12f
                 gravity = Gravity.CENTER
                 setPadding(dp(3), dp(6), dp(3), dp(6))
@@ -462,8 +462,10 @@ class MainActivity : Activity() {
         }
         if(::navButtons.isInitialized){
             navButtons.forEachIndexed { i,v ->
-                v.setTextColor(if(i==index)0xff68e1d5.toInt() else 0xffaabbd0.toInt())
-                v.background=if(i==index)gradient(0xff214a62.toInt(),0xff14283d.toInt(),15)else null
+                val highlighted=(i==0 && index!=3)||(i==1 && index==3)
+                v.setTextColor(if(highlighted)0xff68e1d5.toInt() else 0xffaabbd0.toInt())
+                v.background=if(highlighted)
+                    gradient(0xff214a62.toInt(),0xff14283d.toInt(),15)else null
             }
         }
         if(::contentScroll.isInitialized)contentScroll.post{contentScroll.scrollTo(0,0)}
