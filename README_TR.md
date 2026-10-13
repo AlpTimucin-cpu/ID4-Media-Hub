@@ -1,8 +1,16 @@
-# ID.4 DRIVE HUB • v0.28 BETA
+# ID.4 DRIVE HUB • v0.29 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.29 — FermataX 2.2.6 telefon bağlantısı
+
+- **TV → FermataX 2.2.6 ile telefonda aç:** seçili HTTPS IPTV bağlantısını **yalnızca kullanıcı onayından sonra** telefonda yüklü FermataX Debug uygulamasının manifestte ilan edilmiş dışarıya açık medya etkinliğine gönderir.
+- Kurulum/izin otomatik değiştirilmez; FermataX kurulu değilse açıklayıcı uyarı gösterilir. Abonelik anahtarı içeren URL'lerin üçüncü taraf uygulama ile paylaşılabileceği önceden açıklanır.
+- **Yeni sürüm 2.2.6 / kod 332** manifestinden doğrulanan entegrasyon; önceki 2.2.2 APK analiziyle karıştırılmaz. Kaynak: `docs/FERMATAX_226_INTEROP_V029.md`.
+- Daha önce Android 15 emülatörü disk alanı yüzünden başlamamıştı; CI emülatörü için userdata boyutu sınırlandı ve pano metin kontrolü güncellendi.
+- FermataX'in araçta çalışması veya yayın açması **henüz cihazla doğrulanmadı**. Android Auto hareket halinde sürücü videosu etkinleştirilmedi.
 
 ## v0.28 — Media Cockpit ana ekranı
 
