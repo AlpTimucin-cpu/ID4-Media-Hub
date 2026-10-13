@@ -22,6 +22,8 @@ data class CockpitActions(
     val onTv: () -> Unit,
     val onRadio: () -> Unit,
     val onWeb: () -> Unit,
+    val onNetflix: () -> Unit,
+    val onPrimeVideo: () -> Unit,
     val onLibrary: () -> Unit,
     val onGuide: () -> Unit,
     val onCarStatus: () -> Unit,
@@ -189,6 +191,15 @@ object CockpitDashboard {
             root.addView(vSpace(activity, 8))
         }
 
+        val streamRow = row(activity)
+        streamRow.addView(actionButton(activity, "Netflix Web", actions.onNetflix),
+            LinearLayout.LayoutParams(0,dp(activity,48),1f))
+        streamRow.addView(actionButton(activity, "Prime Video", actions.onPrimeVideo),
+            LinearLayout.LayoutParams(0,dp(activity,48),1f).apply {
+                leftMargin=dp(activity,6)
+            })
+        root.addView(vSpace(activity, 12))
+        root.addView(streamRow)
         if (overview.recents.isNotEmpty()) {
             root.addView(vSpace(activity, 12))
             root.addView(sectionTitle(activity, "KALDIĞIN YERDEN", "En son açtığın kanallar ve radyolar"))
