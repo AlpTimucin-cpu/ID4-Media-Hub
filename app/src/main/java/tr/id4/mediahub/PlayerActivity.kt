@@ -21,6 +21,9 @@ class PlayerActivity : Activity() {
     private var videoView: PlayerView? = null
     private var streamUri: Uri? = null
     private var playbackInfo: TextView? = null
+    private var channelId: String = ""
+    private var isVod = false
+    private var ended = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +34,8 @@ class PlayerActivity : Activity() {
             return
         }
         streamUri = parsed
+        channelId = intent.getStringExtra(EXTRA_ID).orEmpty()
+        isVod = intent.getBooleanExtra(EXTRA_IS_VOD, false) && channelId.isNotBlank()
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.rgb(10, 16, 27))
@@ -78,7 +83,11 @@ class PlayerActivity : Activity() {
                     playbackInfo?.text = when (playbackState) {
                         Player.STATE_BUFFERING -> "Yayın yükleniyor…"
                         Player.STATE_READY -> "Yayın hazır • Oynatılıyor"
-                        Player.STATE_ENDED -> "Yayın sona erdi"
+                        Player.STATE_ENDED -> {
+                            ended = true
+                            if (isVod) VodProgressStore.clear(this@PlayerActivity, channelId)
+                            "Video sona erdi"
+                        }
                         else -> "Oynatıcı hazırlanıyor…"
                     }
                 }
@@ -90,17 +99,30 @@ class PlayerActivity : Activity() {
                 }
             })
             val media = MediaItem.Builder().setUri(uri)
-            if (uri.toString().substringBefore('?').endsWith(".m3u8", true)) {
-                media.setMimeType(MimeTypes.APPLICATION_M3U8)
+            when (StreamFormatDetector.detect(uri.toString())) {
+                StreamFormat.HLS -> media.setMimeType(MimeTypes.APPLICATION_M3U8)
+                StreamFormat.DASH -> media.setMimeType(MimeTypes.APPLICATION_MPD)
+                StreamFormat.AUTO -> { }
             }
             setMediaItem(media.build())
             prepare()
+            if (isVod) {
+                val saved=VodProgressStore.position(this@PlayerActivity,channelId)
+                if(saved>0L) {
+                    seekTo(saved)
+                    playbackInfo?.text = "Kaldığın yerden devam ediliyor: " +
+                        (saved/60_000L) + ". dakika"
+                }
+            }
             playWhenReady = true // User tapped a channel: start playback on the phone
         }
         videoView?.player = player
     }
 
     override fun onStop() {
+        if (isVod && !ended) player?.let {
+            VodProgressStore.save(this,channelId,it.currentPosition,it.duration)
+        }
         videoView?.player = null
         player?.release()
         player = null
@@ -110,5 +132,7 @@ class PlayerActivity : Activity() {
     companion object {
         const val EXTRA_URL = "source_url"
         const val EXTRA_TITLE = "source_title"
+        const val EXTRA_ID = "source_channel_id"
+        const val EXTRA_IS_VOD = "source_is_vod"
     }
 }
