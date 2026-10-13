@@ -36,6 +36,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # Pixel 6 profile otherwise asks for ~7.4GB userdata while the
+          # hosted runner may have only ~7.1GB free (FATAL during AVD boot).
+          disk-size: 2048M
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -partition-size 2048
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
