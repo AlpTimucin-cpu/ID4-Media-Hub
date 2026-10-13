@@ -13,9 +13,9 @@ enum class VideoLibraryKind(val title: String, val sourceGroup: String, val subt
 
 object VideoLibraryClassifier {
     private val seasonEpisode = Regex("(?i)(?:s\\d{1,2}\\s*e\\d{1,3}|\\d{1,2}x\\d{1,3}|\\b\\d+\\.\\s*sezon\\b)")
-    private val movieWords = listOf("film", "movie", "cinema", "sinema", "vod", "movies")
-    private val seriesWords = listOf("dizi", "series", "serial", "sezon", "episode", "bolum")
-    private val sportsWords = listOf("spor", "sport", "mac", "futbol", "football", "basketbol",
+    private val movieWords = listOf("film", "filmler", "movie", "cinema", "sinema", "vod", "movies")
+    private val seriesWords = listOf("dizi", "diziler", "series", "serial", "sezon", "episode", "bolum", "bolumler")
+    private val sportsWords = listOf("spor", "sport", "mac", "maclar", "futbol", "football", "basketbol",
         "tenis", "tennis", "voleybol", "super lig", "premier league", "champions league")
 
     private fun fold(s: String): String {
