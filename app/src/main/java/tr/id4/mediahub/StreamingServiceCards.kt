@@ -27,9 +27,9 @@ object StreamingServiceCards {
         val title: String, val subtitle: String,
         val tint: Int, val dark: Int
     ) {
-        YOUTUBE("YouTube", "Video izle · Son videolar", 0xfff23a57.toInt(), 0xff270d1b.toInt()),
-        NETFLIX("Netflix", "Film ve diziler · Son içerikler", 0xffdf333d.toInt(), 0xff1f101d.toInt()),
-        PRIME("Prime Video", "Amazon Prime · Son içerikler", 0xff34b9e9.toInt(), 0xff092536.toInt())
+        YOUTUBE("YouTube", "Uygulamayı aç · Videolar", 0xfff23a57.toInt(), 0xff270d1b.toInt()),
+        NETFLIX("Netflix", "Uygulamayı aç · Film ve diziler", 0xffdf333d.toInt(), 0xff1f101d.toInt()),
+        PRIME("Prime Video", "Uygulamayı aç · Amazon Prime", 0xff34b9e9.toInt(), 0xff092536.toInt())
     }
 
     private fun dp(activity: Activity, n: Int) =
