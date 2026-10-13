@@ -1,8 +1,17 @@
-# ID.4 YOL ARKADAŞIM • v0.34 BETA
+# ID.4 YOL ARKADAŞIM • v0.35 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.35 — Mola tarzı film, dizi ve maç merkezi
+
+- Ana sayfada özgün Mola benzeri **FİLMLER, DİZİLER, MAÇLAR** kartları; telefon içinde kategori ekranları.
+- Kendi M3U listenin grup adlarına göre otomatik ayrılan film, dizi ve spor yayınları; arama ve favoriler.
+- Her kategoriye kendi HTTPS kaynağını ekleme; uygulama içinde Media3 oynatımı. Film/dizide kaldığın dakikadan devam.
+- Mevcut YouTube/Netflix/Prime Video kısayolları kurulu resmî Android uygulamaları açar.
+- REC TV'den telifli video, yayın akışı, Flutter kodu veya özel sunucu bağlantıları kopyalanmaz. Katalog erişim hakkı bulunan kaynaklarla dolar.
+- Android Auto sürüş sırasında video kilitleri değiştirilmez. Teknik not: `docs/MOLA_FILM_DIZI_MAC_V035.md`.
 
 ## v0.34 — REC TV APK inceleme ve uygulamalar bağlantısı
 
