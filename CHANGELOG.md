@@ -1,3 +1,10 @@
+# v0.33 — 13 Ekim 2026
+
+- Uygulamanın başlatıcı ve görünür ana ekran adı **ID.4 Yol Arkadaşım** oldu.
+- YouTube, Netflix ve Prime Video büyük kartları ve ilgili telefon kısayolları doğrudan kurulu resmî Android uygulamasını açar; WebView'a otomatik geçiş yoktur.
+- Paket kimliği, kullanıcı kayıtları ve ayrı Web Medya özelliği korunur.
+- Android Auto sürüş halinde video kısıtlarına müdahale edilmedi.
+
 # v0.32 — 13 Ekim 2026
 
 - Media Cockpit üzerinde Mola ekranından esinlenen, orijinal büyük YouTube / Netflix / Prime Video poster kartları.
