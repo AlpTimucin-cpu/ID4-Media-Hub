@@ -106,6 +106,22 @@ https://tv.example/stream.m3u8
         assertEquals(0, index.progressPercent("missing"))
     }
 
+    @Test fun fermataXManifestInteropIsStrictlyHttpsAndExplicitlyScoped() {
+        assertEquals("me.app.fermataX.auto.debug", FermataXInterop.DEBUG_PACKAGE)
+        assertEquals("me.aap.fermata.ui.activity.MainActivity",
+            FermataXInterop.EXPORTED_ACTIVITY)
+        assertTrue(FermataXInterop.canShare("https://media.example.org/live/channel.m3u8"))
+        assertTrue(FermataXInterop.canShare(
+            "https://media.example.org/stream?access_token=not-logged"))
+        assertFalse(FermataXInterop.canShare("http://media.example.org/live.mp4"))
+        assertFalse(FermataXInterop.canShare("file:///storage/emulated/0/video.mp4"))
+        assertFalse(FermataXInterop.canShare("content://provider/movie"))
+        assertFalse(FermataXInterop.canShare(
+            "https://user:password@media.example.org/live.m3u8"))
+        assertFalse(FermataXInterop.canShare("fermata://play"))
+        assertFalse(FermataXInterop.canShare(""))
+    }
+
     @Test fun uploadedFermataXDebugPackageIsRecognized() {
         val source = IntegrationCatalog.byId("fermatax")
         assertNotNull(source)
