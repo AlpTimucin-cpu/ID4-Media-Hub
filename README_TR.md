@@ -1,8 +1,17 @@
-# ID.4 YOL ARKADAŞIM • v0.35 BETA
+# ID.4 YOL ARKADAŞIM • v0.36 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.36 — Mola videosundaki kullanım akışı
+
+- Mola ekran videosundaki düzen temel alınarak **kalıcı oynatıcı başlığı, TV/YouTube/Ekran Yansıtma/Radyo/Podcastlar ana sayfa kartları** yerleştirildi.
+- TV kategori listesi, grup bazında gerçek kanal sayıları, arama, favoriler ve ızgara/liste görünümü uygulama içinde çalışır.
+- Podcastlarda RSS URL ekleme, bölüm listeleme ve OPML içe/dışa aktarma desteklendi.
+- Kişisel HTTPS kısayolları, ana sayfada son içerikler ve favoriler korunur.
+- YouTube/Netflix/Prime Video kartları tarayıcı yerine kurulu resmî telefon uygulamasını başlatır. Referans Mola'nın iç YouTube görünümü ile bu davranış **birebir aynı değildir**.
+- Gerçek araç ön ekranında video ve DRM kısıtları kaldırılmaz. Teknik rapor: `docs/MOLA_VIDEO_UI_V036.md`.
 
 ## v0.35 — Mola tarzı film, dizi ve maç merkezi
 
