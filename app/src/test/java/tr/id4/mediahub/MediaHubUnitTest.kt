@@ -70,6 +70,46 @@ class MediaHubUnitTest {
             VideoLibraryClassifier.classify(normal.copy(group="Sinema")))
     }
 
+    @Test fun molaTvGroupsRespectRealPlaylistCountsAndFavoriteFiltering() {
+        val entries=listOf(
+            VideoChannel("1","TRT 1","https://example.com/1.m3u8","ULUSAL",true),
+            VideoChannel("2","TRT Haber","https://example.com/2.m3u8","HABER",false),
+            VideoChannel("3","Haber 24","https://example.com/3.m3u8","HABER",true),
+            VideoChannel("4","NT","https://example.com/4.m3u8","",false)
+        )
+        assertEquals(listOf("HABER","Diğer","ULUSAL"),
+            MolaTvPlanner.categories(entries).map{it.title})
+        assertEquals(2,MolaTvPlanner.categories(entries).first().count)
+        assertEquals(listOf("3"),MolaTvPlanner.list(entries,"HABER","haber",true).map{it.id})
+        assertEquals(listOf("1"),MolaTvPlanner.list(entries,null,"TRT 1",false).map{it.id})
+        assertTrue(MolaTvPlanner.categories(emptyList()).isEmpty())
+    }
+
+    @Test fun userPodcastRssAndOpmlParseOnlyHttpsEnclosures() {
+        val rss = """
+            <rss><channel><item><title>Birinci Bölüm</title>
+            <enclosure url="https://audio.example/part1.mp3" type="audio/mpeg"/>
+            </item><item><title>Geçersiz</title>
+            <enclosure url="http://example.com/part2.mp3" /></item></channel></rss>
+        """.trimIndent().toByteArray()
+        val episodes=PodcastSources.parseRss(rss,"Örnek")
+        assertEquals(1,episodes.size)
+        assertEquals("Birinci Bölüm",episodes[0].title)
+        val opml = """
+            <opml version="2.0"><body>
+            <outline text="Örnek RSS" xmlUrl="https://rss.example/feed.xml"/>
+            <outline text="HTTP" xmlUrl="http://rss.example/feed.xml"/>
+            </body></opml>
+        """.trimIndent().toByteArray()
+        assertEquals(listOf("Örnek RSS"),PodcastSources.parseOpml(opml).map{it.title})
+        val exported=PodcastSources.exportOpml(listOf(PodcastFeed("News &amp;", "https://pod.example/a?x=1&amp;y=2")))
+        assertTrue(exported.contains("&amp;"))
+        assertFalse(exported.contains("http://"))
+        assertTrue(PodcastSources.parseRss(
+            "<!DOCTYPE rss [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><rss>&x;</rss>"
+                .toByteArray(), "X").isEmpty())
+    }
+
     @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
         val sources = IntegrationCatalog.sources
         val ids = sources.map { it.id }
