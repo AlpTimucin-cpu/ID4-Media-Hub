@@ -259,7 +259,7 @@ https://video.example.org/news.m3u8
             "javascript:alert(1)",
             "https://www.youtube.com/watch?v=short",
             "https://www.youtube.com/results?search_query=car",
-            "https://youtu.be/not-a-video",
+            "https://youtu.be/invalid",
             "https://www.youtube.com:444/watch?v=dQw4w9WgXcQ",
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ%0A",
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ\n",
