@@ -21,6 +21,7 @@ import android.widget.TextView
 data class CockpitActions(
     val onTv: () -> Unit,
     val onRadio: () -> Unit,
+    val onPodcast: () -> Unit,
     val onWeb: () -> Unit,
     val onYoutube: () -> Unit,
     val onMovies: () -> Unit,
