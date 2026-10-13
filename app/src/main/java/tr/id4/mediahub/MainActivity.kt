@@ -504,6 +504,9 @@ class MainActivity : Activity() {
                 onRadio = { selectTab(2) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
                 onYoutube = { InstalledMediaApps.openYouTube(this) },
+                onMovies = { openLibraryHub(VideoLibraryKind.MOVIE) },
+                onSeries = { openLibraryHub(VideoLibraryKind.SERIES) },
+                onSports = { openLibraryHub(VideoLibraryKind.SPORT) },
                 onNetflix = { InstalledMediaApps.openNetflix(this) },
                 onPrimeVideo = { InstalledMediaApps.openPrimeVideo(this) },
                 onLibrary = { selectTab(3) },
@@ -530,6 +533,12 @@ class MainActivity : Activity() {
         )
         homeContainer.removeAllViews()
         homeContainer.addView(cockpit)
+    }
+
+    private fun openLibraryHub(kind: VideoLibraryKind) {
+        startActivity(Intent(this, MediaLibraryHubActivity::class.java).apply {
+            putExtra(MediaLibraryHubActivity.EXTRA_KIND, kind.name)
+        })
     }
 
     private fun shortcut(icon:String,title:String,description:String,action:()->Unit):LinearLayout{
