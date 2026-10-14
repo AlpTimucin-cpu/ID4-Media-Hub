@@ -1,3 +1,11 @@
+# v0.49 — 14 Ekim 2026
+
+- **Tam filmler_full.m3u** derleme anında kullanıcının Google Drive bağlantısından indirilip checksum/7.232 kayıt kontrolüyle APK içine asset olarak paketlenir (public GitHub koduna medya akışı tokenları yazılmaz).
+- Film başlıklarına dokunulduğunda paketlenmiş M3U kaydından HTTPS bağlantısı çözülür; eski tms parametresi varsa "Oynatmayı dene" ve "M3U seç" seçenekleri gösterilir.
+- 7.223 benzersiz video adresinin çoğunda 29 Ağustos 2026 tarihli zaman parametresi vardır; gerçek bağlantı süreleri doğrulanmadı.
+- M3U, SharedPreferences'a topluca import edilmez; RAM'de tutulur. Lisans, sunucu ve DRM erişimi garanti edilmez.
+- Android 15 emülatöründe Film kartı tıklamasına odaklanan yeni test yazıldı; kaynak tüketen uzun testler ayrıldı.
+
 # v0.48 — 14 Ekim 2026
 
 - Film kartına tıklayınca lisanslanmamış video oynatmayı denemek yerine, gerçek içerik durumunu açıklayan ayrıntılar penceresi gösterilir.
