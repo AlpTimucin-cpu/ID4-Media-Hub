@@ -501,6 +501,7 @@ class MainActivity : Activity() {
                 onPodcast = { startActivity(Intent(this,PodcastBrowserActivity::class.java)) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
                 onYoutube = { startActivity(Intent(this, MolaYoutubeActivity::class.java)) },
+                onDiscover = { startActivity(Intent(this,TmdbDiscoverActivity::class.java)) },
                 onMovies = { openLibraryHub(VideoLibraryKind.MOVIE) },
                 onSeries = { openLibraryHub(VideoLibraryKind.SERIES) },
                 onSports = { openLibraryHub(VideoLibraryKind.SPORT) },
