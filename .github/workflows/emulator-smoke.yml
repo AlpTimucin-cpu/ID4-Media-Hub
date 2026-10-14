@@ -57,5 +57,9 @@ jobs:
             id4_mola_scroll.xml
             id4_podcast_ui.xml
             id4_podcast.png
+            id4_youtube_card.xml
+            id4_youtube_hub.xml
+            id4_youtube_activity.txt
+            id4_youtube_hub.png
             android_runtime_errors.log
           retention-days: 7
