@@ -25,7 +25,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import java.net.URI
 
 /**
  * Mola-like phone-side SportzX website view.
@@ -210,12 +209,7 @@ class SportzXHubActivity : Activity() {
         page.loadUrl(URL)
     }
 
-    private fun allowed(candidate: String): Boolean = try {
-        val url = URI(candidate)
-        url.scheme.equals("https", true) &&
-            url.rawUserInfo == null &&
-            url.host?.lowercase() in setOf("sportzxlive.com", "www.sportzxlive.com")
-    } catch (_: Exception) { false }
+    private fun allowed(candidate: String): Boolean = SportzXSitePolicy.allow(candidate)
 
     private fun searchInPage() {
         val phrase = search.text.toString().trim().take(80)
@@ -261,5 +255,5 @@ class SportzXHubActivity : Activity() {
         if (::mediaHeader.isInitialized) mediaHeader.release()
         super.onDestroy()
     }
-    companion object { const val URL = "https://sportzxlive.com/" }
+    companion object { const val URL = SportzXSitePolicy.HOME }
 }
