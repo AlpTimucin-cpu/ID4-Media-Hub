@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Always retain Android errors and ANR diagnostics when a UI assertion fails.
+trap 'adb logcat -d -s AndroidRuntime:E ActivityManager:E > android_runtime_errors.log 2>/dev/null || true' EXIT
 
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb logcat -c
@@ -36,6 +38,10 @@ for i in 1 2 3 4 5; do
   sleep 2
 done
 test -s id4_movie.xml
+if grep -q "isn't responding" id4_movie.xml; then
+  echo "ANR: Movies screen stopped responding"
+  exit 1
+fi
 grep -q 'TAM M3U PAKETTE' id4_movie.xml
 grep -q 'GÖMÜLÜ FİLM KATALOĞU' id4_movie.xml
 grep -q '7232 BAŞLIK' id4_movie.xml
@@ -61,6 +67,10 @@ for i in 1 2 3 4 5; do
   sleep 2
 done
 test -s id4_movie_detail.xml
+if grep -q "isn't responding" id4_movie_detail.xml; then
+  echo "ANR: Movie detail stopped responding"
+  exit 1
+fi
 grep -q 'Oynatmayı dene' id4_movie_detail.xml
 grep -q 'M3U seç' id4_movie_detail.xml
 adb shell screencap -p /sdcard/id4_movie_detail.png
