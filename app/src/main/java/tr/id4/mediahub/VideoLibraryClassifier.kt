@@ -37,6 +37,7 @@ object VideoLibraryClassifier {
         }
 
     fun classify(item: VideoChannel): VideoLibraryKind {
+        item.kindOverride?.let { return it }
         val group = fold(item.group)
         val title = fold(item.name)
         // Explicit groups take precedence over ambiguous titles (e.g. a movie named "Match").
