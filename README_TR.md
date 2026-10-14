@@ -1,7 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.46 BETA
+# ID.4 YOL ARKADAŞIM • v0.47 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.47 — Gönderilen M3U'dan 7.232 filmin bilgisi APK içinde hazır
+
+- Google Drive'dan kullanıcı tarafından gönderilen `filmler_full.m3u` ayrıştırıldı. **7.232 başlığın film adı ve orijinal kategori metni** temiz UTF-8 katalog dosyalarına dönüştürülerek `app/src/main/assets/filmler_catalog_01..04.tsv` içinde gömüldü.
+- APK ilk kez açıldığında **Filmler → Gömülü Film Kataloğu • 7232 Başlık** gösterilir. İnternet / TMDB anahtarı / Drive seçimi olmadan başlık araması, Türkçe karakter toleranslı arama ve ayrı tür filtreleri çalışır.
+- Kaynak M3U'daki REC TV üçüncü taraf film akışı URL'leri, oynatıcı Referer/User-Agent başlıkları, tokenlar ve görsel hostları **APK'ya/GitHub'a eklenmedi**. Bu nedenle gömülü başlıklar tek başına oynatılabilir değildir; oynatma için kullanıcının yetkili medya bağlantısını içe aktarması gerekir.
+- Her kart ayrıntıda bu ayrımı açıklar ve kullanıcıyı kendi M3U dosyasını seçmeye yönlendirir. Kullanıcı tarafından yetkili M3U içe aktarılırsa aynı başlığa karşılık gelen yerel oynatma kaydı kullanılır; çift görünüm engellenir.
+- 7.232 satırlık katalog dört varlık dosyasında, 36 kartlık sayfalama ile sunulur; 7.232 ImageView aynı anda oluşturulmaz.
+- YouTube, SportzX, Netflix, Prime Video ve Android Auto ses menüleri korunur. Sürüş video kısıtları veya DRM değiştirilmedi.
 
 ## v0.46 — Film/Dizi ekranları görünür, SportzX Mola tarzı dahili bölüm
 
