@@ -1,3 +1,11 @@
+# v0.44 — 14 Ekim 2026
+
+- Film/Dizi/Maç ekranında M3U / Google Drive dosya seçicisi en üstte ve seçili bölüme göre dinamik isimle gösterilir.
+- İçe aktarılmamış bir film listesi için açık durum mesajı, tek dokunuşla dosya seçici sunulur.
+- Kişisel filmler resmî servis kartlarından önce gelir; aynı anda en çok 36 katalog kartı oluşturulur ve sayfayla artırılır.
+- REC tarzı EXTINF + EXTVLCOPT + HTTPS M3U video kaydı, afiş ve tür ayrıştırıcısına birim testi eklendi.
+- Telifli/izinsiz akış adresleri APK'ya gömülmedi; internet/DRM oynatma ve gerçek araç ekranı video gösterimi garantisi yok.
+
 # v0.43 — 14 Ekim 2026
 
 - Film/Dizi/Maç ekranından Android sistem dosya seçicisiyle M3U film listesi içe aktarma eklendi (yerel dosya / Drive sağlayıcısı).
