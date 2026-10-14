@@ -30,6 +30,7 @@ class AudioLibraryService : MediaLibraryService() {
     private var player: ExoPlayer? = null
     private var receiverRegistered = false
     private var knownGroups = emptySet<String>()
+    private var knownPodcastFeeds = emptySet<String>()
     private val catalogReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == ACTION_CATALOG_UPDATED) notifyCatalogueChanged()
@@ -53,6 +54,7 @@ class AudioLibraryService : MediaLibraryService() {
         }
         session = MediaLibrarySession.Builder(this, player!!, LibraryCallback()).build()
         knownGroups = StationStore.load(this).map { it.group }.toSet()
+        knownPodcastFeeds = PodcastCarLibrary.feeds(this).map { PodcastCarLibrary.feedId(it) }.toSet()
         val filter = IntentFilter(ACTION_CATALOG_UPDATED)
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(catalogReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -85,10 +87,22 @@ class AudioLibraryService : MediaLibraryService() {
         val library = session ?: return
         val radios = StationStore.load(this)
         val groups = radios.map { it.group }.toSet()
-        library.notifyChildrenChanged(ROOT, 3, null)
+        val feeds = PodcastCarLibrary.feeds(this)
+        library.notifyChildrenChanged(ROOT, 5, null)
         library.notifyChildrenChanged(ALL, radios.size, null)
         library.notifyChildrenChanged(FAVORITES, radios.count { it.favorite }, null)
+        library.notifyChildrenChanged(RECENTS, recentRadios().size, null)
         library.notifyChildrenChanged(GROUPS, groups.size, null)
+        library.notifyChildrenChanged(PodcastCarLibrary.ROOT, feeds.size, null)
+        for (feed in feeds) {
+            library.notifyChildrenChanged(PodcastCarLibrary.feedId(feed),
+                PodcastCarLibrary.episodes(this, feed).size, null)
+        }
+        for (id in knownPodcastFeeds) {
+            if (feeds.none { PodcastCarLibrary.feedId(it) == id })
+                library.notifyChildrenChanged(id, 0, null)
+        }
+        knownPodcastFeeds = feeds.map { PodcastCarLibrary.feedId(it) }.toSet()
         for (name in knownGroups + groups) {
             library.notifyChildrenChanged(GROUP_PREFIX + Uri.encode(name),
                 radios.count { it.group == name }, null)
@@ -106,7 +120,16 @@ class AudioLibraryService : MediaLibraryService() {
             .build())
         .build()
 
-    private fun rootItem() = folder(ROOT, "ID.4 Drive Hub")
+    private fun rootItem() = folder(ROOT, "ID.4 Yol Arkadaşım")
+    private fun recentItem() = folder(RECENTS, "Son dinlenen radyolar")
+    private fun recentRadios(): List<Station> {
+        val stations = StationStore.load(this)
+        val byId = stations.associateBy { it.id }
+        return RecentStore.ids(this).mapNotNull { key ->
+            if (!key.startsWith("radio:")) null
+            else byId[key.removePrefix("radio:")]
+        }.distinctBy { it.id }
+    }
     private fun allItem() = folder(ALL, "Tüm radyolar")
     private fun favoriteItem() = folder(FAVORITES, "Favori radyolar")
     private fun groupsItem() = folder(GROUPS, "Radyo grupları")
@@ -139,19 +162,34 @@ class AudioLibraryService : MediaLibraryService() {
             // Slice the catalogue BEFORE building Media3 objects. With 2500 IPTV/radio entries,
             // creating metadata for every item on each 20-item page wastes memory and CPU.
             val items = when (parentId) {
-                ROOT -> LibraryPage.slice(listOf(allItem(), favoriteItem(), groupsItem()), page, pageSize)
+                ROOT -> LibraryPage.slice(listOf(allItem(), favoriteItem(), recentItem(),
+                    groupsItem(), PodcastCarLibrary.rootItem()), page, pageSize)
                 ALL -> LibraryPage.slice(StationStore.load(this@AudioLibraryService), page, pageSize)
                     .map { it.toMediaItem() }
                 FAVORITES -> LibraryPage.slice(StationStore.load(this@AudioLibraryService)
                     .filter { it.favorite }, page, pageSize).map { it.toMediaItem() }
+                RECENTS -> LibraryPage.slice(recentRadios(), page, pageSize)
+                    .map { it.toMediaItem() }
+                PodcastCarLibrary.ROOT -> LibraryPage.slice(
+                    PodcastCarLibrary.feeds(this@AudioLibraryService), page, pageSize)
+                    .map { PodcastCarLibrary.feedItem(it) }
                 GROUPS -> LibraryPage.slice(StationStore.load(this@AudioLibraryService)
                     .map { it.group }.distinct().sorted(), page, pageSize).map { groupItem(it) }
-                else -> {
-                    if (!parentId.startsWith(GROUP_PREFIX))
-                        return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
-                    val group = Uri.decode(parentId.removePrefix(GROUP_PREFIX))
-                    LibraryPage.slice(StationStore.load(this@AudioLibraryService)
-                        .filter { it.group == group }, page, pageSize).map { it.toMediaItem() }
+                else -> when {
+                    parentId.startsWith(PodcastCarLibrary.FEED_PREFIX) -> {
+                        val feed = PodcastCarLibrary.findFeed(this@AudioLibraryService, parentId)
+                            ?: return Futures.immediateFuture(
+                                LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
+                        LibraryPage.slice(PodcastCarLibrary.episodes(this@AudioLibraryService, feed),
+                            page, pageSize).map { PodcastCarLibrary.episodeItem(it) }
+                    }
+                    parentId.startsWith(GROUP_PREFIX) -> {
+                        val group = Uri.decode(parentId.removePrefix(GROUP_PREFIX))
+                        LibraryPage.slice(StationStore.load(this@AudioLibraryService)
+                            .filter { it.group == group }, page, pageSize).map { it.toMediaItem() }
+                    }
+                    else -> return Futures.immediateFuture(
+                        LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
                 }
             }
             CarConnectionJournal.recordFolderRead(
@@ -169,13 +207,24 @@ class AudioLibraryService : MediaLibraryService() {
                 ROOT -> rootItem()
                 ALL -> allItem()
                 FAVORITES -> favoriteItem()
+                RECENTS -> recentItem()
                 GROUPS -> groupsItem()
-                else -> if (mediaId.startsWith(GROUP_PREFIX)) {
-                    val group = Uri.decode(mediaId.removePrefix(GROUP_PREFIX))
-                    if (StationStore.load(this@AudioLibraryService).any { it.group == group }) groupItem(group)
-                    else null
-                } else StationStore.load(this@AudioLibraryService)
-                    .find { it.id == mediaId }?.toMediaItem()
+                PodcastCarLibrary.ROOT -> PodcastCarLibrary.rootItem()
+                else -> when {
+                    mediaId.startsWith(PodcastCarLibrary.FEED_PREFIX) ->
+                        PodcastCarLibrary.findFeed(this@AudioLibraryService, mediaId)
+                            ?.let { PodcastCarLibrary.feedItem(it) }
+                    mediaId.startsWith(PodcastCarLibrary.EPISODE_PREFIX) ->
+                        PodcastCarLibrary.findEpisode(this@AudioLibraryService, mediaId)
+                            ?.let { PodcastCarLibrary.episodeItem(it) }
+                    mediaId.startsWith(GROUP_PREFIX) -> {
+                        val group = Uri.decode(mediaId.removePrefix(GROUP_PREFIX))
+                        if (StationStore.load(this@AudioLibraryService)
+                                .any { it.group == group }) groupItem(group) else null
+                    }
+                    else -> StationStore.load(this@AudioLibraryService)
+                        .find { it.id == mediaId }?.toMediaItem()
+                }
             }
             return Futures.immediateFuture(
                 if (item == null) LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
@@ -188,7 +237,7 @@ class AudioLibraryService : MediaLibraryService() {
             query: String,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<Void>> {
-            val count = matches(query).size
+            val count = matches(query).size + podcastMatches(query).size
             session.notifySearchResultChanged(browser, query, count, params)
             return Futures.immediateFuture(LibraryResult.ofVoid(params))
         }
@@ -203,7 +252,10 @@ class AudioLibraryService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             if (page < 0 || pageSize <= 0)
                 return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
-            val found = LibraryPage.slice(matches(query), page, pageSize).map { it.toMediaItem() }
+            val found = LibraryPage.slice(
+                matches(query).map { it.toMediaItem() } +
+                    podcastMatches(query).map { PodcastCarLibrary.episodeItem(it) },
+                page, pageSize)
             return Futures.immediateFuture(LibraryResult.ofItemList(found, params))
         }
 
@@ -211,6 +263,16 @@ class AudioLibraryService : MediaLibraryService() {
             StationStore.load(this@AudioLibraryService).filter {
                 it.name.contains(query, ignoreCase = true) || it.group.contains(query, ignoreCase = true)
             }
+
+        private fun podcastMatches(query: String): List<PodcastEpisode> {
+            if (query.isBlank()) return emptyList()
+            return PodcastCarLibrary.feeds(this@AudioLibraryService)
+                .flatMap { PodcastCarLibrary.episodes(this@AudioLibraryService, it) }
+                .filter { it.title.contains(query, ignoreCase = true) ||
+                    it.source.contains(query, ignoreCase = true) }
+                .distinctBy { PodcastCarLibrary.episodeId(it) }
+                .take(100)
+        }
 
         /** Browser metadata deliberately omits streaming URLs. Resolve only for playback. */
         override fun onAddMediaItems(
@@ -221,6 +283,8 @@ class AudioLibraryService : MediaLibraryService() {
             val stations = StationStore.load(this@AudioLibraryService)
             val resolved = mediaItems.mapNotNull { requested ->
                 matchStation(stations, requested)?.toMediaItem(includeUri = true)
+                    ?: PodcastCarLibrary.findEpisode(this@AudioLibraryService, requested.mediaId)
+                        ?.let { PodcastCarLibrary.episodeItem(it, includeUri = true) }
             }
             return if (resolved.isEmpty()) {
                 Futures.immediateFailedFuture(IllegalArgumentException("No audio station matched"))
@@ -236,6 +300,35 @@ class AudioLibraryService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            // Car browsing selects audio-only podcast episode IDs from our local cache.
+            // Do not accept arbitrary caller-supplied URLs or video titles.
+            val requested = mediaItems.getOrNull(if (startIndex < 0) 0 else startIndex)
+                ?: mediaItems.firstOrNull()
+            val selectedPodcast = requested?.let {
+                PodcastCarLibrary.findEpisode(this@AudioLibraryService, it.mediaId)
+            }
+            if (selectedPodcast != null) {
+                val available = PodcastCarLibrary.feeds(this@AudioLibraryService)
+                    .flatMap { PodcastCarLibrary.episodes(this@AudioLibraryService, it) }
+                    .distinctBy { PodcastCarLibrary.episodeId(it) }
+                val index = available.indexOfFirst {
+                    PodcastCarLibrary.episodeId(it) == PodcastCarLibrary.episodeId(selectedPodcast)
+                }
+                if (index < 0) return Futures.immediateFailedFuture(
+                    IllegalArgumentException("Podcast episode not found"))
+                val count = minOf(41, available.size)
+                val from = (index - count / 2).coerceIn(0, available.size - count)
+                val playable = available.subList(from, from + count).map {
+                    PodcastCarLibrary.episodeItem(it, includeUri = true)
+                }
+                RecentStore.remember(this@AudioLibraryService,
+                    PodcastCarLibrary.episodeId(selectedPodcast), "podcast")
+                return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(
+                    playable, index - from,
+                    if (startPositionMs == C.TIME_UNSET) C.TIME_UNSET
+                    else startPositionMs.coerceAtLeast(0L)
+                ))
+            }
             val stations = StationStore.load(this@AudioLibraryService)
             val sources = stations.map { RadioSource(it.id, it.name, it.url) }
             val requests = mediaItems.map {
@@ -243,6 +336,8 @@ class AudioLibraryService : MediaLibraryService() {
             }
             val plan = RadioQueuePlanner.plan(sources, requests, startIndex)
                 ?: return Futures.immediateFailedFuture(IllegalArgumentException("No playable radio matched"))
+            RecentStore.remember(this@AudioLibraryService,
+                plan.ids[plan.index], "radio")
             val byId = stations.associateBy { it.id }
             val playable = plan.ids.mapNotNull { byId[it]?.toMediaItem(includeUri = true) }
             return Futures.immediateFuture(
@@ -268,6 +363,7 @@ class AudioLibraryService : MediaLibraryService() {
         const val ALL = "id4_audio_all"
         const val FAVORITES = "id4_audio_favorites"
         const val GROUPS = "id4_audio_groups"
+        const val RECENTS = "id4_audio_recents"
         const val GROUP_PREFIX = "id4_group_"
     }
 }
