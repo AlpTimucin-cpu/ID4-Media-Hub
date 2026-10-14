@@ -211,12 +211,62 @@ class MolaTvBrowseActivity : Activity() {
     }
     private fun empty(isEmpty:Boolean){
         content.addView(label(if(isEmpty)
-            "Henüz TV listen yok.\n\nKaynaklar bölümünden kendi M3U listeni "+
-                "veya izinli açık yayınları ekleyebilirsin."
+            "Henüz TV listen yok.\n\nAşağıdan resmî TV uygulamalarına "+
+                "geçebilir veya izinli açık yayınları ekleyebilirsin."
             else "Filtreye uyan kanal bulunamadı.",15f,muted).apply{
-            setPadding(dp(12),dp(32),dp(12),dp(30))
+            setPadding(dp(12),dp(23),dp(12),dp(16))
         })
+        if(isEmpty){
+            content.addView(click("▶ TRT Haber • açık yayını ekle"){
+                VideoStore.add(this,"TRT Haber",TrustedSources.TRT_HABER,"TRT / Haber")
+                renderList()
+            },LinearLayout.LayoutParams(-1,dp(52)))
+            content.addView(click("⚽ TRT Spor • resmî uygulama"){
+                InstalledMediaApps.open(this,"TRT Spor",
+                    OfficialMediaDirectory.TRT_SPOR_PACKAGE)
+            },LinearLayout.LayoutParams(-1,dp(52)))
+            content.addView(click("▣ tabii • TV ve spor yayınları"){
+                InstalledMediaApps.open(this,"tabii",
+                    OfficialMediaDirectory.TABII_PACKAGE)
+            },LinearLayout.LayoutParams(-1,dp(52)))
+            content.addView(click("＋ Açık spor kanalları listesini getir"){
+                addPublicSportsSources()
+            },LinearLayout.LayoutParams(-1,dp(52)))
+        }
     }
+    private fun addPublicSportsSources() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Açık spor kanallarını getir")
+            .setMessage("iptv-org topluluk listesindeki kaynaklar değişebilir ve "+
+                "her yayın için erişim hakkı doğrulanmış değildir. "+
+                "Yalnızca kullanım izni bulunan açık yayınları kullan. "+
+                "Liste otomatik oynatılmaz, önce içeri aktarılır.")
+            .setNegativeButton("İptal",null)
+            .setPositiveButton("Listeyi içe aktar"){_,_->
+                val waiting=android.app.AlertDialog.Builder(this)
+                    .setMessage("Açık spor kanalları indiriliyor…")
+                    .setCancelable(false).create()
+                waiting.show()
+                Thread{
+                    val imported=try{
+                        val data=PlaylistLoader.fromHttps(TrustedSources.SPORTS_PUBLIC)
+                        val items=M3uParser.parse(data).filter{!it.isAudio}
+                        VideoStore.addAll(this,items)
+                    }catch(_:Exception){-1}
+                    runOnUiThread{
+                        waiting.dismiss()
+                        if(!isFinishing && !isDestroyed){
+                            android.widget.Toast.makeText(this,
+                                if(imported<0)"Listeye erişilemedi."
+                                else imported.toString()+" kanal eklendi. Yayınlar tek tek denenmeli.",
+                                android.widget.Toast.LENGTH_LONG).show()
+                            renderList()
+                        }
+                    }
+                }.start()
+            }.show()
+    }
+
     private fun play(ch:VideoChannel){
         RecentStore.remember(this,ch.id,"tv")
         startActivity(Intent(this,PlayerActivity::class.java).apply{
