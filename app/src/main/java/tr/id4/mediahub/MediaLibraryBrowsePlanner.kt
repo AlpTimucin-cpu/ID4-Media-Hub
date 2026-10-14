@@ -21,13 +21,17 @@ object MediaLibraryBrowsePlanner {
     ): MediaLibraryBrowseResult {
         val matches = VideoLibraryClassifier.filtered(sources, kind, query, favoritesOnly)
         val categories = matches
-            .groupingBy { it.group.trim().ifBlank { "Diğer" } }
+            .flatMap { item ->
+                item.group.split('|').map { it.trim().ifBlank { "Diğer" } }
+                    .distinctBy { it.lowercase() }
+            }
+            .groupingBy { it }
             .eachCount()
             .map { MediaLibraryGroup(it.key, it.value) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
 
         val visible = if (category.isNullOrBlank()) matches else matches.filter {
-            it.group.trim().ifBlank { "Diğer" }.equals(category, ignoreCase = true)
+            it.group.split('|').any { label -> label.trim().equals(category, ignoreCase = true) }
         }
         if (kind == VideoLibraryKind.SPORT || resumableIds.isEmpty()) {
             return MediaLibraryBrowseResult(categories, emptyList(), visible, visible.size)
