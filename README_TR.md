@@ -1,7 +1,17 @@
-# ID.4 YOL ARKADAŞIM • v0.50 BETA
+# ID.4 YOL ARKADAŞIM • v0.51 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.51 — Film ekranında ANR düzeltmesi ve kapsamlı JSON/.api içe aktarma
+
+- Android 15 otomatik test görüntüsünde `ID.4 Yol Arkadaşım isn't responding` ANR penceresi bulundu. Katalog/dosya okumaları ve 7.232 film filtreleme artık **UI thread dışında tek sıralı işçi üzerinde** çalışır.
+- Arama 280 ms gecikmeyle başlar, eski arama sonuçları nesil numarasıyla geçersiz kılınır. İlk onResume'de gereksiz ikinci yeniden yükleme kaldırıldı. Kategori değişirken önceki sekmenin kartları geçici olarak gösterilmez.
+- Tam `filmler_full.m3u` dosyasının APK içerisine SHA-256 kontrolüyle dahil edilmesi devam eder; 7.232 film adı ve 7.223 benzersiz bağlantı vardır. Bu URL'lerin geçerli olduğu garanti edilmez; sunucudaki tarihlenmiş parametreler yenilenmez.
+- Kullanıcı tarafından seçilen HTTPS `.json` / `.api` API bağlantılarıyla birlikte Android dosya seçicisi üzerinden yerel `.json`, NDJSON/`.jsonl`, `.api` ve M3U belge içe aktarma eklendi.
+- JSON ayrıştırıcı, düz dizi, iç içe `data/items/series/episodes/sources` gibi farklı alanlarda dolaşır; JSONL satırlarını okur. Tarama derinliği, düğüm ve medya sayısı sınırlıdır; yalnız geçerli HTTPS medya adresi içeren isimli kayıtlar eklenir.
+- `.api` tek bir evrensel standart değildir: yalnızca açık ya da kullanma izni bulunan, JSON veya M3U şeklinde veri döndüren servisler desteklenebilir. Özel sağlayıcı kimlik doğrulaması, şifre çözme, lisans veya DRM bypass desteklenmez.
+- Android 15 smoke testi artık donma/ANR penceresini yakalar ve hata kayıtlarını başarısız testte de saklar.
 
 ## v0.50 — HTTPS .api / JSON / M3U medya içe aktarma
 
