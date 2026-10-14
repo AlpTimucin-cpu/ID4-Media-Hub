@@ -110,6 +110,38 @@ class MediaHubUnitTest {
                 .toByteArray(), "X").isEmpty())
     }
 
+    @Test fun officialDiscoveryIsNonEmptyForFilmsShowsAndSports() {
+        listOf(VideoLibraryKind.MOVIE,VideoLibraryKind.SERIES,VideoLibraryKind.SPORT)
+            .forEach { type ->
+                assertTrue("Missing official provider choices for " + type,
+                    OfficialMediaDirectory.list(type).isNotEmpty())
+            }
+        val movies=OfficialMediaDirectory.list(VideoLibraryKind.MOVIE)
+        assertTrue(movies.any { it.mode == OfficialMediaMode.OPEN_MOVIE &&
+            it.provider == "Blender Open Movies" })
+        val shows=OfficialMediaDirectory.list(VideoLibraryKind.SERIES)
+        assertTrue(shows.any { it.mode == OfficialMediaMode.PROVIDER_APP &&
+            it.target == OfficialMediaDirectory.TABII_PACKAGE })
+        val sports=OfficialMediaDirectory.list(VideoLibraryKind.SPORT)
+        assertTrue(sports.any { it.target == OfficialMediaDirectory.TRT_SPOR_PACKAGE })
+        assertFalse(sports.any { it.mode == OfficialMediaMode.OPEN_MOVIE })
+        assertEquals(1,OfficialMediaDirectory.list(VideoLibraryKind.MOVIE,
+            "Big Buck").size)
+        assertEquals(0,OfficialMediaDirectory.list(VideoLibraryKind.SPORT,
+            "Big Buck").size)
+    }
+
+    @Test fun paidProvidersHaveNoFakeDirectPremiumVideoLinks() {
+        OfficialMediaDirectory.cards.forEach { provider ->
+            assertFalse(provider.target.startsWith("http://"))
+            if(provider.provider == "tabii" || provider.provider == "TRT") {
+                assertNotEquals(OfficialMediaMode.OPEN_MOVIE,provider.mode)
+                assertFalse(provider.target.endsWith(".m3u8"))
+                assertFalse(provider.target.endsWith(".mpd"))
+            }
+        }
+    }
+
     @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
         val sources = IntegrationCatalog.sources
         val ids = sources.map { it.id }
