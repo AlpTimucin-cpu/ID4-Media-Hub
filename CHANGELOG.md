@@ -1,3 +1,11 @@
+# v0.39 — 14 Ekim 2026
+
+- REC TV'nin Flutter AOT metin izlerinde TMDB poster/trending URL'leri, özel movie/series API yolları ve Firebase `rectv_api_url_enc` uzak ayarı tespit edildi.
+- Açık, resmî TMDB API'sinden Türkçe film/dizi afiş, özet, puan ve trend içerikleri keşfetme ekranı eklendi.
+- Kullanıcıya ait API Read Access Token yalnızca bellekte saklanır; gizli kod/stream kaynakları aktarılmaz.
+- TMDB sonuçları yalnızca özel M3U/HTTPS film/dizi kütüphanesindeki lisanslı kaynaklarla eşleşirse oynatma seçeneği sunulur.
+- REC TV, Netflix veya Prime Video korumalı yayınları otomatik olarak açıldığı iddia edilmez.
+
 # v0.38 — 14 Ekim 2026
 
 - Netflix ve Prime Video: YouTube ile aynı Mola temalı in-app platform ekranı, arama, ana sayfa, yerel geçmiş, geri/yenile kontrolleri.
