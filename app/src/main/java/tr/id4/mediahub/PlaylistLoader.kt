@@ -17,7 +17,7 @@ object PlaylistLoader {
                 connectTimeout = 10_000
                 readTimeout = 15_000
                 instanceFollowRedirects = false
-                setRequestProperty("Accept", "audio/x-mpegurl, application/x-mpegURL, text/plain, */*")
+                setRequestProperty("Accept", "application/json, audio/x-mpegurl, application/x-mpegURL, text/plain, */*")
                 setRequestProperty("User-Agent", "ID4-Media-Hub/0.9")
             }
             try {
