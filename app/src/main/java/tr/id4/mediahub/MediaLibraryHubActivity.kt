@@ -97,7 +97,7 @@ class MediaLibraryHubActivity : Activity() {
         root.addView(tabs)
         val categoryScroll=HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled=false
-            fillViewport=false
+            isFillViewport=false
         }
         categoryChips=LinearLayout(this).apply {
             orientation=LinearLayout.HORIZONTAL
