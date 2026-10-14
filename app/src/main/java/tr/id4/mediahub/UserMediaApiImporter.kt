@@ -43,17 +43,20 @@ object UserMediaApiImporter {
         if (text.startsWith("#EXTM3U",ignoreCase=true))
             return M3uParser.parse(text).filterNot { it.isAudio }
         if (text.startsWith("#EXT-X-",ignoreCase=true)) return emptyList()
+        fun ndjson(): JSONArray = JSONArray().apply {
+            text.lineSequence().take(MAX_ITEMS).forEach { item ->
+                val line=item.trim()
+                if(line.isNotBlank()) put(JSONObject(line))
+            }
+        }
         val root = when {
-            text.startsWith("{") -> JSONObject(text)
             text.startsWith("[") -> JSONArray(text)
-            // Newline-delimited JSON (.jsonl / NDJSON) from an authorized API.
-            text.lineSequence().take(2).all { it.trim().startsWith("{") } ->
-                JSONArray().apply {
-                    text.lineSequence().take(MAX_ITEMS).forEach {
-                        val line=it.trim()
-                        if(line.isNotEmpty())put(JSONObject(line))
-                    }
-                }
+            text.startsWith("{") -> try {
+                JSONObject(text)
+            } catch (_: org.json.JSONException) {
+                // A stream of distinct JSON objects rather than one object.
+                ndjson()
+            }
             else -> return emptyList()
         }
         return extract(root)
