@@ -219,6 +219,8 @@ class MolaYoutubeActivity : Activity() {
         }
         footer.addView(control("‹ Geri"){if(web.canGoBack())web.goBack() else finish()},
             LinearLayout.LayoutParams(0,dp(46),1f))
+        footer.addView(control("◷ Geçmiş"){showHistory()},
+            LinearLayout.LayoutParams(0,dp(46),1f).apply{leftMargin=dp(7)})
         footer.addView(control("⟳ Yenile"){web.reload()},
             LinearLayout.LayoutParams(0,dp(46),1f).apply{leftMargin=dp(7)})
         main.addView(footer)
@@ -253,6 +255,28 @@ class MolaYoutubeActivity : Activity() {
     private fun remember(url:String?,title:String?){
         if(url.isNullOrBlank())return
         YoutubeVideoStore.remember(this,title.orEmpty().take(80),url)
+    }
+    private fun showHistory(){
+        val items=YoutubeVideoStore.load(this)
+        if(items.isEmpty()){
+            AlertDialog.Builder(this).setTitle("Son YouTube videoları")
+                .setMessage("İzlediğin video sayfalarının bağlantıları burada görünecek. " +
+                    "Kayıtlar yalnızca bu telefondadır.")
+                .setPositiveButton("Tamam",null).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Son YouTube videoları")
+            .setItems(items.map{it.title}.toTypedArray()){_,i->
+                navigate(items[i].url)
+            }
+            .setNeutralButton("Temizle"){_,_->
+                AlertDialog.Builder(this).setTitle("YouTube geçmişi silinsin mi?")
+                    .setNegativeButton("Vazgeç",null)
+                    .setPositiveButton("Sil"){_,_->
+                        YoutubeVideoStore.clear(this)
+                    }.show()
+            }
+            .setNegativeButton("Kapat",null).show()
     }
     private fun exitFullscreen(){
         if(custom==null)return
