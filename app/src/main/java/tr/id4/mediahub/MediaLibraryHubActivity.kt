@@ -33,6 +33,7 @@ class MediaLibraryHubActivity : Activity() {
     private var favoritesOnly=false
     private var visibleLimit=36
     private lateinit var importButton: Button
+    private lateinit var sportzXButton: Button
     private var activeCategory:String?=null
     private lateinit var categoryChips:LinearLayout
     private lateinit var content: LinearLayout
@@ -97,6 +98,10 @@ class MediaLibraryHubActivity : Activity() {
         root.addView(space(16))
         tabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         root.addView(tabs)
+        sportzXButton=button("◉ SportzX • Uygulama içi web") {
+            startActivity(Intent(this,SportzXHubActivity::class.java))
+        }
+        root.addView(sportzXButton,LinearLayout.LayoutParams(-1,dp(49)))
         root.addView(space(6))
         importButton=button("＋ M3U dosyası seç / Google Drive'dan film ekle") { pickM3uFile() }
         root.addView(importButton,LinearLayout.LayoutParams(-1,dp(52)))
@@ -213,6 +218,7 @@ class MediaLibraryHubActivity : Activity() {
     private fun refresh(){
         updateTabs()
         importButton.text="＋ M3U / Google Drive'dan " + selected.title + " ekle"
+        sportzXButton.visibility=if(selected==VideoLibraryKind.SPORT)View.VISIBLE else View.GONE
         val imported=VideoStore.load(this)
         val recentIds=RecentStore.ids(this).mapNotNull {
             if(it.startsWith("tv:"))it.removePrefix("tv:") else null
@@ -234,6 +240,23 @@ class MediaLibraryHubActivity : Activity() {
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
 
+        // Display known open movies and official provider choices even when no
+        // personal M3U was imported. Avoid an apparently empty Movie/Series page.
+        if(official.isNotEmpty()){
+            content.addView(text(when(selected){
+                VideoLibraryKind.MOVIE -> "AÇIK FİLMLER VE RESMÎ FİLM KATALOĞU"
+                VideoLibraryKind.SERIES -> "DİZİLER • RESMÎ SAĞLAYICILAR"
+                VideoLibraryKind.SPORT -> "SPOR • RESMÎ YAYIN SAĞLAYICILARI"
+                else -> "KEŞFET"
+            },13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(9)) })
+            official.forEach{source ->
+                content.addView(officialCard(source),LinearLayout.LayoutParams(-1,-2).apply{
+                    bottomMargin=dp(9)
+                })
+            }
+            content.addView(space(10))
+        }
+
         if(library.continueWatching.isNotEmpty()){
             content.addView(text("↻ KALDIĞIN YERDEN DEVAM ET",12f,mint,true).apply{
                 setPadding(dp(7),dp(11),0,dp(10))
@@ -249,7 +272,7 @@ class MediaLibraryHubActivity : Activity() {
         // Personal imports are the primary reason for opening this screen.
         // A 7,000-entry M3U must not create 500 ImageViews and network image
         // requests at once: show only 36 rows, then add more on user demand.
-        content.addView(text("KÜTÜPHANEM • "+library.total+" KAYIT",
+        content.addView(text("KENDİ M3U KÜTÜPHANEM • "+library.total+" KAYIT",
             12f,mint,true).apply{setPadding(dp(7),dp(10),0,dp(9))})
         val channels=library.entries
         if(channels.isEmpty() && library.continueWatching.isEmpty()){
@@ -283,18 +306,6 @@ class MediaLibraryHubActivity : Activity() {
                     refresh()
                 },LinearLayout.LayoutParams(-1,dp(54)))
             }
-        }
-        if(official.isNotEmpty()){
-            content.addView(space(13))
-            content.addView(text("KEŞFET • RESMÎ SAĞLAYICILAR",12f,mint,true).apply{
-                setPadding(dp(7),dp(11),0,dp(10))
-            })
-            official.forEach{source->
-                content.addView(officialCard(source),LinearLayout.LayoutParams(-1,-2).apply{
-                    bottomMargin=dp(9)
-                })
-            }
-            content.addView(space(8))
         }
     }
 
