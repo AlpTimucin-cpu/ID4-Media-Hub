@@ -1,7 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.44 BETA
+# ID.4 YOL ARKADAŞIM • v0.45 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.45 — Araç ekranında podcast ses kütüphanesi ve film listesi onarımı
+
+- Android Auto ses ağacı artık **Tüm radyolar**, **Favori radyolar**, **Son dinlenen radyolar**, **Radyo grupları**, **Podcastlar** olmak üzere 5 bölümdür.
+- Telefondaki Podcastlar bölümünde kullanıcı RSS kaynağına girip bölümleri yüklediğinde, ses formatlı HTTPS bölümler sınırlı biçimde cihazda önbelleğe alınır ve Android Auto Podcastlar bölümünde dinlenebilir. Podcast RSS bağlantıları araç menüsünde veya oturum metadatasında paylaşılmaz.
+- Podcast RSS hesabı / kaynağı telefondan eklenir; Android Auto uygulama içinden RSS kaynağı tanımlama desteklenmez. İlk açılışta araçtaki Podcastlar boşsa önce telefondan kaynak ekleyip bir kez bölümleri yüklemek gerekir.
+- Araç ses oynatma kuyruğunda rastgele video adresleri kabul edilmez. Netflix, Prime, YouTube ve Film ekranları Android Auto'ya yansıtılmaz; sürüş video engeli kaldırılmadı.
+- Daha önce genel IPTV bölümünden içe alınan M3U filmleri, Film bölümünden aynı liste seçildiğinde tekrarlanmak yerine **Film** olarak yeniden sınıflandırılır; favori ve kaldığın yerden devam verileri korunur.
+- Telefon tarafındaki 36-kartlı katalog sayfalaması ve üstteki M3U/Drive dosya seçicisi v0.44'ten devam eder.
 
 ## v0.44 — Boş film ekranı ve büyük M3U kataloğu düzeltmesi
 
