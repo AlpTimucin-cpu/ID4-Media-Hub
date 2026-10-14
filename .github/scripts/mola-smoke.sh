@@ -76,12 +76,12 @@ sleep 2
 for i in 1 2 3 4 5 6; do
   adb shell uiautomator dump /sdcard/id4_official_film_button.xml >/dev/null 2>&1 || true
   adb pull /sdcard/id4_official_film_button.xml id4_official_film_button.xml >/dev/null 2>&1 || true
-  if [ -s id4_official_film_button.xml ] && grep -q 'Filmler bölümünü aç' id4_official_film_button.xml; then break; fi
+  if [ -s id4_official_film_button.xml ] && grep -q 'Filmler' id4_official_film_button.xml; then break; fi
   adb shell input swipe 540 1680 540 750 370
   sleep 1
 done
 test -s id4_official_film_button.xml
-python3 -c 'import re,subprocess,xml.etree.ElementTree as ET; root=ET.parse("id4_official_film_button.xml").getroot(); a=[n.attrib.get("bounds","") for n in root.iter("node") if "Filmler bölümünü aç" in n.attrib.get("content-desc","")];assert a,"Film category missing";b=list(map(int,re.findall(r"\d+",a[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
+python3 -c 'import re,subprocess,xml.etree.ElementTree as ET; root=ET.parse("id4_official_film_button.xml").getroot(); a=[n.attrib.get("bounds","") for n in root.iter("node") if "▣ Filmler" in n.attrib.get("content-desc","")];assert a,"Film category missing";b=list(map(int,re.findall(r"\d+",a[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
 sleep 3
 adb shell uiautomator dump /sdcard/id4_official_film_sources.xml >/dev/null
 adb pull /sdcard/id4_official_film_sources.xml id4_official_film_sources.xml
@@ -89,6 +89,10 @@ grep -q 'Big Buck Bunny' id4_official_film_sources.xml
 grep -q 'resmî seçenek' id4_official_film_sources.xml
 adb shell screencap -p /sdcard/id4_official_film_sources.png
 adb pull /sdcard/id4_official_film_sources.png id4_official_film_sources.png
+# Both the public film options and the local M3U chooser are always visible.
+grep -q 'Big Buck Bunny' id4_official_film_sources.xml
+grep -q 'M3U' id4_official_film_sources.xml
+
 adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
 if grep -q 'FATAL EXCEPTION' android_runtime_errors.log; then
   cat android_runtime_errors.log
