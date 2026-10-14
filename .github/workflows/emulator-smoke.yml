@@ -9,6 +9,8 @@ on:
     paths:
       - '.github/workflows/emulator-smoke.yml'
       - 'app/**'
+      - '.github/scripts/mola-smoke.sh'
+      - '.github/scripts/prepare-bundled-m3u.sh'
 permissions:
   contents: read
 jobs:
@@ -54,20 +56,10 @@ jobs:
           name: android-emulator-smoke
           path: |
             id4_home.png
-            id4_drive_home.xml
-            id4_tv.png
-            id4_tv_groups.xml
-            id4_mola_scroll.xml
-            id4_podcast_ui.xml
-            id4_podcast.png
-            id4_youtube_card.xml
-            id4_youtube_hub.xml
-            id4_youtube_activity.txt
-            id4_youtube_hub.png
+            id4_home_movie.xml
             id4_movie.xml
             id4_movie.png
             id4_movie_detail.xml
             id4_movie_detail.png
-            id4_series.xml
             android_runtime_errors.log
           retention-days: 7
