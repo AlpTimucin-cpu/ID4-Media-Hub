@@ -15,6 +15,7 @@ import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -30,6 +31,8 @@ class MediaLibraryHubActivity : Activity() {
     private val black=0xff0b1316.toInt()
     private var selected=VideoLibraryKind.MOVIE
     private var favoritesOnly=false
+    private var activeCategory:String?=null
+    private lateinit var categoryChips:LinearLayout
     private lateinit var content: LinearLayout
     private lateinit var search: EditText
     private lateinit var counter: TextView
@@ -92,6 +95,16 @@ class MediaLibraryHubActivity : Activity() {
         root.addView(space(16))
         tabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         root.addView(tabs)
+        val categoryScroll=HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled=false
+            fillViewport=false
+        }
+        categoryChips=LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            setPadding(0,dp(6),0,dp(6))
+        }
+        categoryScroll.addView(categoryChips)
+        root.addView(categoryScroll)
         root.addView(space(7))
         root.addView(button("◈ TMDB film / dizi keşfet (afiş ve bilgiler)") {
             startActivity(Intent(this,TmdbCatalogActivity::class.java).apply {
@@ -155,7 +168,7 @@ class MediaLibraryHubActivity : Activity() {
         tabs.removeAllViews()
         listOf(VideoLibraryKind.MOVIE,VideoLibraryKind.SERIES,VideoLibraryKind.SPORT)
             .forEach{kind->
-                val b=button(kind.title){selected=kind;refresh()}
+                val b=button(kind.title){selected=kind;activeCategory=null;refresh()}
                 b.background=if(kind==selected)
                     background(0xff25796b.toInt(),0xff155a54.toInt())
                     else background(0xff1f3033.toInt(),0xff142124.toInt())
@@ -166,19 +179,67 @@ class MediaLibraryHubActivity : Activity() {
             }
     }
 
+    private fun updateCategories(groups:List<MediaLibraryGroup>){
+        categoryChips.removeAllViews()
+        if(groups.isEmpty())return
+        val names=listOf<String?>(null)+groups.take(30).map{it.name}
+        names.forEach{category->
+            val active=category==activeCategory
+            val title=if(category==null)"Tümü" else
+                category.take(22)+(if(category.length>22)"…" else "")
+            val name=if(category==null)title else
+                title+" ("+groups.first{it.name==category}.count+")"
+            val chip=button(name){
+                activeCategory=category
+                refresh()
+            }.apply {
+                textSize=12f
+                contentDescription=category ?: "Tüm kategoriler"
+                background=if(active)
+                    background(0xff247868.toInt(),0xff155a54.toInt())
+                else background(0xff1c3437.toInt(),0xff15262a.toInt())
+            }
+            categoryChips.addView(chip,LinearLayout.LayoutParams(
+                -2,dp(43)).apply{rightMargin=dp(7)})
+        }
+    }
+
     private fun refresh(){
         updateTabs()
-        val channels=VideoLibraryClassifier.filtered(VideoStore.load(this),selected,
-            search.text.toString(),favoritesOnly)
+        val imported=VideoStore.load(this)
+        val recentIds=RecentStore.ids(this).mapNotNull {
+            if(it.startsWith("tv:"))it.removePrefix("tv:") else null
+        }
+        // Only title IDs are persisted. No private playlist or URL in recent history.
+        val resumable=if(selected==VideoLibraryKind.SPORT)emptySet()
+            else recentIds.filter{VodProgressStore.position(this,it)>0L}.toSet()
+        val library=MediaLibraryBrowsePlanner.plan(
+            imported,selected,search.text.toString(),favoritesOnly,
+            activeCategory,recentIds,resumable
+        )
+        updateCategories(library.categories)
         val official=(OfficialMediaDirectory.list(selected,search.text.toString()) +
             dynamicOpenMovies.filter{it.kind==selected &&
                 (search.text.isBlank() || it.title.contains(search.text.toString(),true))})
             .distinctBy{if(it.mode==OfficialMediaMode.OPEN_MOVIE)it.target else it.id}
-        counter.text=selected.title+" · "+channels.size+" kendi yayın • "+official.size+" resmî seçenek"
+            .filter{!favoritesOnly || OfficialMediaFavorites.contains(this,it.id)}
+        counter.text=selected.title+" · "+library.total+" kendi yayın • "+
+            official.size+" resmî seçenek"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
-        if(!favoritesOnly && official.isNotEmpty()){
-            content.addView(text("KEŞFET • DOĞRULANMIŞ SAĞLAYICILAR",12f,mint,true).apply{
+        if(library.continueWatching.isNotEmpty()){
+            content.addView(text("↻ KALDIĞIN YERDEN DEVAM ET",12f,mint,true).apply{
+                setPadding(dp(7),dp(11),0,dp(10))
+            })
+            library.continueWatching.forEach{ch->
+                content.addView(itemCard(ch),LinearLayout.LayoutParams(-1,-2).apply{
+                    bottomMargin=dp(9)
+                })
+            }
+            content.addView(space(6))
+        }
+        if(official.isNotEmpty()){
+            content.addView(text("KEŞFET • RESMÎ SAĞLAYICILAR",12f,mint,true).apply{
                 setPadding(dp(7),dp(11),0,dp(10))
             })
             official.forEach{source->
@@ -188,22 +249,22 @@ class MediaLibraryHubActivity : Activity() {
             }
             content.addView(space(8))
         }
-        content.addView(text("KENDİ KÜTÜPHANEM • "+channels.size+" KAYIT",12f,mint,true).apply{
-            setPadding(dp(7),dp(8),0,dp(8))
-        })
-        if(channels.isEmpty()){
+        content.addView(text("KENDİ KÜTÜPHANEM • "+library.total+" KAYIT",
+            12f,mint,true).apply{setPadding(dp(7),dp(8),0,dp(8))})
+        val channels=library.entries
+        if(channels.isEmpty() && library.continueWatching.isEmpty()){
             content.addView(text(if(favoritesOnly)"Henüz favori içerik yok."
-                else "Yukarıda açık videolar ve resmî platformlar var.\n\n"+
-                    "KENDİ KÜTÜPHANEM bölümüne yayın eklemek için "+
-                    "erişim hakkın olan HTTPS bağlantısını veya M3U listeni kullan.",
-                15f,muted).apply{setPadding(dp(12),dp(45),dp(12),dp(15))})
+                else "Yukarıdaki resmî seçenekleri kullanabilir veya erişim hakkın olan "+
+                    "HTTPS/M3U kaynağını kendi kütüphanene ekleyebilirsin.",
+                15f,muted).apply{setPadding(dp(12),dp(30),dp(12),dp(15))})
         }else{
             channels.take(500).forEach{ch->
                 content.addView(itemCard(ch),LinearLayout.LayoutParams(-1,-2).apply{
                     bottomMargin=dp(12)
                 })
             }
-            if(channels.size>500)content.addView(text("İlk 500 kayıt gösteriliyor. Aramayla daralt.",12f,muted))
+            if(channels.size>500)content.addView(text(
+                "İlk 500 kayıt gösteriliyor. Arama veya kategoriyle daralt.",12f,muted))
         }
     }
 
@@ -254,12 +315,21 @@ class MediaLibraryHubActivity : Activity() {
         labels.addView(text(src.detail,12f,muted))
         labels.addView(space(5))
         labels.addView(text(when(src.mode){
-            OfficialMediaMode.OPEN_MOVIE->"▶ Açık filmi oynat"
+            OfficialMediaMode.OPEN_MOVIE->if(VodProgressStore.position(this,src.id)>0L)
+                "↻ "+(VodProgressStore.position(this,src.id)/60_000L)+". dakikadan devam"
+                else "▶ Açık filmi oynat"
             OfficialMediaMode.PROVIDER_APP->"↗ Resmî uygulamayı aç"
             OfficialMediaMode.PROVIDER_WEB->"↗ Resmî yayın bilgisini aç"
             OfficialMediaMode.TV_CHANNEL->"▶ Canlı yayını dene"
         },12f,mint,true))
         tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
+        val isFav=OfficialMediaFavorites.contains(this,src.id)
+        tile.addView(button(if(isFav)"★" else "☆"){
+            OfficialMediaFavorites.toggle(this,src.id)
+            refresh()
+        }.apply{contentDescription=if(isFav)
+            src.title+" favorilerden çıkar" else src.title+" favorilere ekle"},
+            LinearLayout.LayoutParams(dp(47),dp(48)))
         tile.addView(text("›",28f,accent,true))
         return tile
     }
@@ -293,6 +363,7 @@ class MediaLibraryHubActivity : Activity() {
                     dialog.dismiss()
                     if(isFinishing || isDestroyed)return@resolve
                     outcome.fold(onSuccess={url->
+                        RecentStore.remember(this,src.id,"tv")
                         startActivity(Intent(this,PlayerActivity::class.java).apply{
                             putExtra(PlayerActivity.EXTRA_TITLE,src.title)
                             putExtra(PlayerActivity.EXTRA_URL,url)
