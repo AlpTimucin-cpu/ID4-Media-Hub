@@ -1,7 +1,18 @@
-# ID.4 YOL ARKADAŞIM • v0.45 BETA
+# ID.4 YOL ARKADAŞIM • v0.46 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.46 — Film/Dizi ekranları görünür, SportzX Mola tarzı dahili bölüm
+
+- Ana sayfada Filmler, Diziler, Maçlar ve SportzX daha üstte ve **büyük, bağımsız kartlar** halinde.
+- Film/Dizi kütüphanesi ekranında resmî sağlayıcılar ve açık Blender filmleri, henüz M3U içe aktarılmamış olsa bile **en üstte görünür**; kişisel M3U kütüphanesi ve sayısı ayrı bölümde.
+- Resmî Blender açık film kataloğu ve WING IT! kısa filmi eklendi; canlı Blender API değişir veya çevrimdışı kalırsa akış oynatılamayabilir.
+- SportzX uygulama içinde **Mola tarzı ekran**, arama (sayfada metin arama), ana sayfa, geri, yenileme, tam ekran web video desteği ve kurulu native SportzX APK'sını başlatma düğmesiyle açılır.
+- SportzX'in `sportzxlive.com` sayfası bir APK tanıtım sitesidir. Native SportzX uygulama içeriğini Media Hub WebView'ine gömmek veya buradan spor yayınını oynatmak **gerçekleştirilmedi ve garanti edilmez**. Site dışı yönlendirmeler engellenir.
+- Google Drive'da bağlantısı verilen REC TV M3U'daki telifli/özel oynatma adresleri APK'ya eklenmez. M3U'nun telefon veya Drive dosya seçicisinden içe alınması gerekir.
+- Arabanın Android Auto ses medya menüsünde film, YouTube veya SportzX görüntüsü görünmez. Sürüş video kısıtlamaları değiştirilmedi.
+- GitHub debug APK imzası her sürümde değişebileceğinden `INSTALL_FAILED_UPDATE_INCOMPATIBLE` oluşabilir; mevcut verileri silmeden önce M3U yedeği alın.
 
 ## v0.45 — Araç ekranında podcast ses kütüphanesi ve film listesi onarımı
 
