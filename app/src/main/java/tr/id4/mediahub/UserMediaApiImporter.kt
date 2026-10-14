@@ -2,76 +2,106 @@ package tr.id4.mediahub
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.ArrayDeque
 
 /**
- * Explicitly user-authorized HTTPS API importer. Supports documented common
- * JSON catalogue structures and M3U, not arbitrary proprietary provider APIs.
- * No provider keys, cookies, tokens or server data are hard-coded in the APK.
+ * User-authorized HTTPS API / JSON / NDJSON / M3U adapter.
+ *
+ * File extensions (.json / .api) are not API protocols. Only readable and
+ * public/documented media responses can be imported without provider-specific
+ * credentials, authorization bypass, DRM circumvention or scraping.
  */
 object UserMediaApiImporter {
     private const val MAX_ITEMS = 15000
-    private val rootFields = listOf("items", "data", "results", "channels", "streams", "videos", "movies", "series", "entries")
-    private val nameFields = listOf("title", "name", "label", "stream_name", "streamName")
-    private val urlFields = listOf("url", "stream_url", "streamUrl", "play_url", "playUrl", "media_url", "mediaUrl", "source")
-    private val groupFields = listOf("group", "group_title", "groupTitle", "category", "genre")
-    private val logoFields = listOf("logo", "tvg_logo", "tvgLogo", "poster", "image", "thumbnail")
+    private const val MAX_NODES = 80000
+    private const val MAX_DEPTH = 12
+    private val nameFields = listOf("title", "name", "label", "stream_name",
+        "streamName", "movie_name", "episode_name", "display_name")
+    private val urlFields = listOf("url", "stream_url", "streamUrl", "play_url",
+        "playUrl", "media_url", "mediaUrl", "source", "file", "video_url",
+        "videoUrl", "src", "hls", "mp4", "link", "playbackUrl")
+    private val groupFields = listOf("group", "group_title", "groupTitle",
+        "category", "category_name", "genre", "type")
+    private val logoFields = listOf("logo", "tvg_logo", "tvgLogo", "poster",
+        "poster_url", "image", "thumbnail", "cover")
+    private data class Node(val value: Any, val title: String, val group: String, val depth: Int)
 
-    private fun firstString(json: JSONObject, keys: List<String>): String =
-        keys.firstNotNullOfOrNull { key ->
-            val value = json.optString(key, "").trim()
-            value.takeIf { it.isNotEmpty() && it != "null" }
-        }.orEmpty()
-
-    private fun root(value: Any?): JSONArray? {
-        return when (value) {
-            is JSONArray -> value
-            is JSONObject -> {
-                var found: JSONArray? = null
-                for (key in rootFields) {
-                    val nested = value.opt(key)
-                    found = when (nested) {
-                        is JSONArray -> nested
-                        is JSONObject -> root(nested)
-                        else -> null
-                    }
-                    if (found != null) break
-                }
-                found
+    private fun field(json: JSONObject, keys: List<String>): String {
+        for(key in keys) {
+            val value=json.opt(key)
+            if (value is String && value.isNotBlank()) return value.trim()
+            if (value is JSONObject && keys===groupFields) {
+                val name=value.optString("name", "").trim()
+                if (name.isNotBlank()) return name
             }
-            else -> null
         }
+        return ""
     }
 
-    /** Parse format automatically; all candidate media URLs must be HTTPS. */
-    fun parse(text: String): List<PlaylistEntry> {
-        val trimmed = text.trimStart('\uFEFF','\r','\n',' ','\t')
-        if (trimmed.startsWith("#EXTM3U",true))
+    fun parse(input: String): List<PlaylistEntry> {
+        val text=input.trimStart('\uFEFF','\r','\n',' ','\t')
+        if (text.startsWith("#EXTM3U",ignoreCase=true))
             return M3uParser.parse(text).filterNot { it.isAudio }
+        if (text.startsWith("#EXT-X-",ignoreCase=true)) return emptyList()
+        val root = when {
+            text.startsWith("{") -> JSONObject(text)
+            text.startsWith("[") -> JSONArray(text)
+            // Newline-delimited JSON (.jsonl / NDJSON) from an authorized API.
+            text.lineSequence().take(2).all { it.trim().startsWith("{") } ->
+                JSONArray().apply {
+                    text.lineSequence().take(MAX_ITEMS).forEach {
+                        val line=it.trim()
+                        if(line.isNotEmpty())put(JSONObject(line))
+                    }
+                }
+            else -> return emptyList()
+        }
+        return extract(root)
+    }
 
-        if (!trimmed.startsWith("[") && !trimmed.startsWith("{"))
-            return emptyList()
-
-        val json: Any = if(trimmed.startsWith("[")) JSONArray(trimmed)
-                        else JSONObject(trimmed)
-        val rows = root(json) ?: if(json is JSONObject) JSONArray().put(json)
-                               else return emptyList()
-        val found = ArrayList<PlaylistEntry>(minOf(rows.length(), MAX_ITEMS))
-        val seen = HashSet<String>()
-        for (i in 0 until minOf(rows.length(), MAX_ITEMS)) {
-            val obj = rows.optJSONObject(i) ?: continue
-            val title = firstString(obj, nameFields).take(100)
-            val url = firstString(obj, urlFields)
-            if (title.isBlank() || !M3uParser.isHttpsUrl(url) || !seen.add(url)) continue
-            val group = firstString(obj, groupFields).take(100).ifBlank { "API" }
-            val logo = firstString(obj, logoFields).takeIf(M3uParser::isHttpsUrl).orEmpty()
-            val tvgId = obj.optString("tvg-id", "").take(160)
-            found.add(PlaylistEntry(title,url,group,false,logo,tvgId))
+    /** Bounded iterative walk accepts common nested catalogue, season and source arrays. */
+    fun extract(root: Any): List<PlaylistEntry> {
+        val pending=ArrayDeque<Node>()
+        pending.addLast(Node(root,"","API",0))
+        val found=ArrayList<PlaylistEntry>()
+        val seen=HashSet<String>()
+        var visited=0
+        while(!pending.isEmpty() && visited++ < MAX_NODES && found.size < MAX_ITEMS) {
+            val node=pending.removeLast()
+            if(node.depth>MAX_DEPTH)continue
+            when(val value=node.value) {
+                is JSONArray -> {
+                    for(i=value.length()-1 downTo 0) {
+                        val child=value.opt(i)
+                        if(child is JSONObject || child is JSONArray)
+                            pending.addLast(Node(child,node.title,node.group,node.depth+1))
+                    }
+                }
+                is JSONObject -> {
+                    val ownTitle=field(value,nameFields).ifBlank { node.title }.take(100)
+                    val group=field(value,groupFields).ifBlank { node.group }.take(100)
+                    val raw=field(value,urlFields)
+                    // A video record must have both a name (or inherited movie
+                    // title) AND a directly supplied HTTPS playback URL.
+                    if(ownTitle.isNotBlank() && M3uParser.isHttpsUrl(raw) && seen.add(raw)) {
+                        val logo=field(value,logoFields).takeIf(M3uParser::isHttpsUrl).orEmpty()
+                        found.add(PlaylistEntry(ownTitle,raw,group,false,logo,
+                            value.optString("tvg-id","").take(160)))
+                    }
+                    val keys=value.keys().asSequence().toList()
+                    for(i in keys.indices.reversed()) {
+                        val child=value.opt(keys[i])
+                        if(child is JSONObject || child is JSONArray)
+                            pending.addLast(Node(child,ownTitle,group,node.depth+1))
+                    }
+                }
+            }
         }
         return found
     }
 
-    /** Load on a background thread from an HTTPS URL entered by the user. */
-    fun fetch(url: String): List<PlaylistEntry> {
+    /** Caller runs from an IO thread; exceptions never expose signed URLs to UI. */
+    fun fetch(url:String):List<PlaylistEntry> {
         require(M3uParser.isHttpsUrl(url)) { "HTTPS API adresi gerekli" }
         return parse(PlaylistLoader.fromHttps(url))
     }
