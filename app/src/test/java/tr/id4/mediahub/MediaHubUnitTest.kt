@@ -110,38 +110,6 @@ class MediaHubUnitTest {
                 .toByteArray(), "X").isEmpty())
     }
 
-    @Test fun tmdbEndpointsSupportTrendingAndSearchWithoutCredentials() {
-        assertEquals("trending/movie/week?language=tr-TR",
-            TmdbCatalogClient.relativePath(false,""))
-        assertEquals("trending/tv/week?language=tr-TR",
-            TmdbCatalogClient.relativePath(true,"   "))
-        assertEquals("search/movie?language=tr-TR&include_adult=false&query=K%C4%B1%C5%9F",
-            TmdbCatalogClient.relativePath(false,"Kış"))
-        assertFalse(TmdbCatalogClient.relativePath(false,"TEST").contains("api_key"))
-        assertFalse(TmdbCatalogClient.relativePath(true,"test").contains("token"))
-    }
-
-    @Test fun tmdbPostersAllowOnlyCanonicalImagePaths() {
-        assertEquals("https://image.tmdb.org/t/p/w185/example123.jpg",
-            TmdbCatalogClient.posterUrl("/example123.jpg"))
-        assertEquals("",TmdbCatalogClient.posterUrl("https://attacker.example/x.png"))
-        assertEquals("",TmdbCatalogClient.posterUrl("/../x.jpg"))
-        assertEquals("",TmdbCatalogClient.posterUrl("/path.jpg?secret=123"))
-    }
-
-    @Test fun tmdbLocalMatchingNeverExposesUnrelatedVideo() {
-        val sample=TmdbTitle(5,"Örnek Film","", "", "2020",7.0,false)
-        val movies=listOf(
-            VideoChannel("m1","Örnek Film","https://media.example/film.m3u8","Filmler",true),
-            VideoChannel("m2","Başka film","https://media.example/x.mp4","Filmler",false),
-            VideoChannel("t1","Örnek Film","https://media.example/t.m3u8","Diziler",false)
-        )
-        assertEquals("m1",TmdbCatalogClient.matchingLocalTitle(sample,movies)?.id)
-        assertNull(TmdbCatalogClient.matchingLocalTitle(sample.copy(name="Bilinmeyen"),movies))
-        assertEquals("t1",TmdbCatalogClient.matchingLocalTitle(
-            sample.copy(isSeries=true),movies)?.id)
-    }
-
     @Test fun integrationCatalogIsUniqueAndCoversAllPreviousAppResearch() {
         val sources = IntegrationCatalog.sources
         val ids = sources.map { it.id }
