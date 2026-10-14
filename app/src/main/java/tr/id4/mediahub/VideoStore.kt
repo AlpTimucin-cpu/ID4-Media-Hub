@@ -62,16 +62,31 @@ object VideoStore {
     fun addAll(context: Context, items: List<PlaylistEntry>,
                kindOverride: VideoLibraryKind? = null): Int {
         val channels = load(context).toMutableList()
-        val existing = channels.mapTo(mutableSetOf()) { it.url }
+        val existing = channels.withIndex().associate { it.value.url to it.index }.toMutableMap()
         var added = 0
+        var reclassified = false
         for (item in items) {
-            if (channels.size >= MAX_CHANNELS) break
-            if (!item.isAudio && M3uParser.isHttpsUrl(item.url) && existing.add(item.url)) {
-                channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(item.name), item.url, item.group, false, item.logo, item.tvgId, kindOverride))
-                added++
+            if (item.isAudio || !M3uParser.isHttpsUrl(item.url)) continue
+            val savedIndex = existing[item.url]
+            if (savedIndex != null) {
+                // The same M3U may have been imported via generic IPTV before.
+                // Keep the stable ID, favorite and playback progress, but allow
+                // explicit user selection to move it into Movies/Series/Sports.
+                if (kindOverride != null && channels[savedIndex].kindOverride != kindOverride) {
+                    channels[savedIndex] = channels[savedIndex].copy(kindOverride = kindOverride)
+                    reclassified = true
+                }
+                continue
             }
+            if (channels.size >= MAX_CHANNELS) break
+            val channel = VideoChannel(UUID.randomUUID().toString(),
+                M3uParser.displayTitle(item.name), item.url, item.group,
+                false, item.logo, item.tvgId, kindOverride)
+            existing[item.url] = channels.size
+            channels.add(channel)
+            added++
         }
-        if (added > 0) save(context, channels)
+        if (added > 0 || reclassified) save(context, channels)
         return added
     }
 
