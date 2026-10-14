@@ -1,7 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.47 BETA
+# ID.4 YOL ARKADAŞIM • v0.48 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.48 — Filmlere dokunma düzeltmesi + ID.4 araç simgesi
+
+- **Filme dokununca** yalnızca oynatılabilir içerik varmış gibi davranan uyarı yerine net bir **film ayrıntıları** penceresi açılır. Katalogda 7.232 film adı/türü vardır fakat REC TV yayın URL'leri APK içinde yoktur.
+- **Yayın bağlantısı ekle**: Kullanım hakkı olan HTTPS HLS/MP4 video adresi, seçilen filmin adı ve kategorisiyle cihazda kaydedilir; **Kaydet ve oynat** bağlantıyı telefon oynatıcısında dener. **M3U içe aktar** seçeneği de film ayrıntılarındadır.
+- Kaynağın CDN/DRM/ağ hatası varsa her denemede açılan Android hata Toast'ları kaldırıldı; oynatıcı hata türünü tek satırda açıklıyor.
+- **Simge:** jenerik oynat simgesi yerine ID.4'ün ön görünüşü, uzun LED far şeridi ve `ID.4` yazan plaka; Android 8+ adaptive launcher icon.
+- **Android 15 emülatör smoke**: doğrudan Film ekranını açıp gömülü film kartına dokunan; ayrıntı diyaloğunu ve dizi ekranını kontrol eden test eklendi.
+- Kullanıcıya ait ve telifli olabilecek REC TV akışları APK içine yerleştirilmedi. Android Auto sürüş esnasında video gösterimi desteklenmez.
 
 ## v0.47 — Gönderilen M3U'dan 7.232 filmin bilgisi APK içinde hazır
 
