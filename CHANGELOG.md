@@ -1,3 +1,11 @@
+# v0.45 — 14 Ekim 2026
+
+- Android Auto için 5 ses kategorisi: tüm radyolar, favoriler, son dinlenen radyolar, radyo grupları, podcastlar.
+- Telefonun Podcastlar ekranında açılan RSS ses bölümleri yerel güvenli önbelleğe alınır, Android Auto üzerinden başlık olarak taranır ve Media3 ses oturumunda oynatılabilir.
+- Bireysel podcast/radyo yayın URL'leri Android Auto katalog metadatasına veya medya kimliklerine eklenmez; yalnız oynatma sırasında çözülür.
+- Genel IPTV'de önceden kayıtlı filmler yeniden M3U Film içe aktarmasında sınıflandırılır; kopyalanmaz ve favoriler korunur.
+- YouTube, Netflix, Prime Video, Film/Dizi görselleri sürüş ekranında açılmaz; video güvenliği, DRM ve üçüncü taraf yayın kaynakları değiştirilmedi.
+
 # v0.44 — 14 Ekim 2026
 
 - Film/Dizi/Maç ekranında M3U / Google Drive dosya seçicisi en üstte ve seçili bölüme göre dinamik isimle gösterilir.
