@@ -214,6 +214,7 @@ object CockpitDashboard {
             Destination("CANLI TV", "Kanallar ve yayınlar", "▣", actions.onTv),
             Destination("RADYO", "Ses ve favoriler", "♫", actions.onRadio),
             Destination("WEB MEDYA", "Sekmeli tarayıcı", "◎", actions.onWeb),
+            Destination("FİLM/DİZİ KEŞFET", "TMDB bilgi ve afiş kataloğu", "◉", actions.onDiscover),
             Destination("KÜTÜPHANE", "M3U / XMLTV listeleri", "☷", actions.onLibrary),
             Destination("ID.4 DURUM", "Bağlantı raporu", "⌁", actions.onCarStatus),
             Destination("UYGULAMALAR", "FermataX ve diğerleri", "✧", actions.onCompanions)
