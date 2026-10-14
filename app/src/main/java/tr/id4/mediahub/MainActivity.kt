@@ -135,10 +135,15 @@ class MainActivity : Activity() {
         mediaApps.addView(label("VİDEO UYGULAMALARI",16,true))
         mediaApps.addView(label("YouTube ve Netflix kartları resmî telefon uygulamalarını açar. Bağımsız HTTPS tarayıcısı aşağıda yer alır.",12,false))
         val appActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        appActions.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
-            LinearLayout.LayoutParams(0,dp(50),1f))
-        appActions.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
-            LinearLayout.LayoutParams(0,dp(50),1f))
+        appActions.addView(button("▶ YouTube") {
+            startActivity(Intent(this, MolaYoutubeActivity::class.java))
+        }, LinearLayout.LayoutParams(0,dp(50),1f))
+        appActions.addView(button("▣ Netflix") {
+            openSubscriptionPortal(StreamingService.NETFLIX)
+        }, LinearLayout.LayoutParams(0,dp(50),1f))
+        appActions.addView(button("▶ Prime Video") {
+            openSubscriptionPortal(StreamingService.PRIME_VIDEO)
+        }, LinearLayout.LayoutParams(0,dp(50),1f))
         mediaApps.addView(appActions)
         mediaApps.addView(button("🌐 Web Medya • HTTPS video bağlantısı aç") {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
@@ -499,8 +504,8 @@ class MainActivity : Activity() {
                 onMovies = { openLibraryHub(VideoLibraryKind.MOVIE) },
                 onSeries = { openLibraryHub(VideoLibraryKind.SERIES) },
                 onSports = { openLibraryHub(VideoLibraryKind.SPORT) },
-                onNetflix = { InstalledMediaApps.openNetflix(this) },
-                onPrimeVideo = { InstalledMediaApps.openPrimeVideo(this) },
+                onNetflix = { openSubscriptionPortal(StreamingService.NETFLIX) },
+                onPrimeVideo = { openSubscriptionPortal(StreamingService.PRIME_VIDEO) },
                 onLibrary = { selectTab(3) },
                 onGuide = { showEpgSchedule() },
                 onCarStatus = { CarCompatibility.show(this) },
@@ -578,6 +583,12 @@ class MainActivity : Activity() {
         refreshMiniHeader()
         refreshMiniHeader()
                              if(::homeContainer.isInitialized) renderHome()
+    }
+
+    private fun openSubscriptionPortal(service: StreamingService) {
+        startActivity(Intent(this, MolaSubscriptionActivity::class.java).apply {
+            putExtra(MolaSubscriptionActivity.EXTRA_SERVICE, service.name)
+        })
     }
 
     private fun openLibraryHub(kind: VideoLibraryKind) {
