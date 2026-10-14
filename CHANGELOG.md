@@ -1,3 +1,11 @@
+# v0.50 — 14 Ekim 2026
+
+- M3U'da .api uzantılı URL olmadığı doğrulandı; 7.229 .m3u8, 2 .mp4 ve 1 uzantısız bağlantı mevcut.
+- Film/Dizi/Maç için **API ekle** kullanıcı kontrollü HTTPS JSON/M3U URL içe aktarma eklendi.
+- Yaygın JSON biçimlerinden title/name + stream_url/url ve kategori/poster alanları algılanır; HTTPS dışı akışlar veya tekrarlar atlanır.
+- Özel korumalı servis API'leri, yetkilendirme atlatma ve DRM çözme sunulmaz.
+- Orijinal filmler_full.m3u derleme sırasındaki sha256 doğrulamasıyla APK'da saklanır.
+
 # v0.49 — 14 Ekim 2026
 
 - **Tam filmler_full.m3u** derleme anında kullanıcının Google Drive bağlantısından indirilip checksum/7.232 kayıt kontrolüyle APK içine asset olarak paketlenir (public GitHub koduna medya akışı tokenları yazılmaz).
