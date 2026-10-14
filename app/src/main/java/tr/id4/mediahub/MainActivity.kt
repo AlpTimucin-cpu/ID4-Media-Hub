@@ -252,7 +252,12 @@ class MainActivity : Activity() {
         external.addView(textAction("▣  Netflix uygulamasına geç") {
             InstalledMediaApps.openNetflix(this)
         })
-        external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
+        external.addView(textAction("◉  SportzX bölümünü uygulama içinde aç") {
+            startActivity(Intent(this,SportzXHubActivity::class.java))
+        })
+        external.addView(textAction("↗  Kurulu SportzX Android uygulamasını aç") {
+            SportzXLauncher.openIfInstalled(this)
+        })
         external.addView(label("EKRAN YANSITMA • SCREENONAUTO",15,true))
         external.addView(label("Kurulu ScreenOnAuto uygulamasına kendi belgelenmiş komutlarıyla istek gönderir. Gerçek araç ekranındaki video ayrıca doğrulanmalıdır.",12,false))
         val mirrorActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
@@ -263,7 +268,7 @@ class MainActivity : Activity() {
             ScreenOnAutoBridge.send(this,false)
         }, LinearLayout.LayoutParams(0,dp(50),1f))
         external.addView(mirrorActions)
-        external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
+        external.addView(label("SportzX sitesi dahili bölümde açılır. SportzX Android uygulamasının yayınları, ayrı uygulamada çalışır.",12,false))
         library.addView(external)
 
         val utilities=panel()
