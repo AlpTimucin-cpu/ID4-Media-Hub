@@ -24,6 +24,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
+      - name: Bundle the exact owner-provided filmler_full.m3u
+        shell: bash
+        run: bash .github/scripts/prepare-bundled-m3u.sh
       - name: Build application
         run: gradle --no-daemon :app:assembleDebug
       - name: Enable KVM and reclaim runner disk space
