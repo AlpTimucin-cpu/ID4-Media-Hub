@@ -74,7 +74,7 @@ object UserMediaApiImporter {
             if(node.depth>MAX_DEPTH)continue
             when(val value=node.value) {
                 is JSONArray -> {
-                    for(i=value.length()-1 downTo 0) {
+                    for(i in value.length()-1 downTo 0) {
                         val child=value.opt(i)
                         if(child is JSONObject || child is JSONArray)
                             pending.addLast(Node(child,node.title,node.group,node.depth+1))
