@@ -548,7 +548,7 @@ class MediaLibraryHubActivity : Activity() {
                             "$total geçerli video kaydı bulundu.\n" +
                             "$added yeni kayıt " + targetKind.title.lowercase() +
                             " bölümüne kaydedildi.\n\n" +
-                            "Listede daha önce kayıtlı bağlantılar yeniden eklenmedi. " +
+                            "Daha önce eklenmiş bağlantılar seçilen bölüme taşındı; yeniden çoğaltılmadı. " +
                             "Yayınların erişim hakkını ve çalışabilirliğini tek tek kontrol et."
                         )
                         .setPositiveButton("Tamam", null).show()
