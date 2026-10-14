@@ -1,8 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.38 BETA
+# ID.4 YOL ARKADAŞIM • v0.39 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.39 — REC TV film/dizi kaynak araştırması ve TMDB keşfi
+
+- REC TV 22.0.2 (161) Flutter derlemesinin içeriği incelendi. `api.themoviedb.org` içerik/afiş metaverisi sağlıyor; özel yayın kataloğu yolları ve `rectv_api_url_enc` Firebase ayarı farklı bir katmanda.
+- **Filmler / Diziler → TMDB film / dizi keşfet** üzerinden Türkçe film/dizi bilgileri, afiş, popülerler ve isimle arama (kullanıcının TMDB API Read Access Token'ı gerekir).
+- Bulunan filmin, **sadece kullanıcının kendi yerel M3U/HTTPS kütüphanesindeki** olası kaynağı aranır; varsa mevcut Media3 oynatıcısına bağlanır.
+- TMDB anahtarı uygulama dosyasına/APK'ya yazılmaz, yalnızca açık işlem süresince bellekte tutulur.
+- REC TV'nin şifreli/özel yayın kaynakları, gömülü kimlikleri, kodu veya telifli akışları aktarılmadı. Ayrıntılar: `docs/REC_TV_MOVIE_API_STATIC_ANALYSIS_V039.md`.
 
 ## v0.38 — Netflix ve Prime Video için YouTube ile aynı Mola gezinmesi
 
