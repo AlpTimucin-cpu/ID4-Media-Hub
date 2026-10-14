@@ -149,6 +149,28 @@ object MolaHomeDashboard {
         root.addView(tvCard(activity,overview.tvCount,actions.onTv))
         root.addView(vspace(activity,12))
         root.addView(StreamingServiceCards.youtube(activity,actions.onYoutube))
+        root.addView(vspace(activity,11))
+        root.addView(section(activity,"FİLM · DİZİ · MAÇ",
+            "Açık filmler ve resmî diziler; kendi M3U kitaplığını da ekle"))
+        root.addView(vspace(activity,8))
+        root.addView(flatCard(activity,"▣ Filmler",
+            "Açık filmler ve kişisel film kitaplığım","▶",
+            0xffde769d.toInt(),actions.onMovies))
+        root.addView(vspace(activity,7))
+        root.addView(flatCard(activity,"▤ Diziler",
+            "Resmî diziler, bölüm ve kişisel kütüphane","▤",
+            0xffb7a1f4.toInt(),actions.onSeries))
+        root.addView(vspace(activity,7))
+        root.addView(flatCard(activity,"⚽ Maçlar",
+            "Resmî spor yayınları ve erişim hakkın olan kaynaklar","⚽",
+            0xff65d4bd.toInt(),actions.onSports))
+        root.addView(vspace(activity,7))
+        root.addView(flatCard(activity,"SportzX",
+            "Uygulama içi web sayfası ve SportzX uygulamasına geçiş","◉",
+            0xff72d8ab.toInt()) {
+            activity.startActivity(android.content.Intent(activity,
+                SportzXHubActivity::class.java))
+        })
         root.addView(vspace(activity,12))
         root.addView(flatCard(activity,"Ekran Yansıtma",
             "Bağlantı ve park halinde ekran seçenekleri","▣",
@@ -160,27 +182,6 @@ object MolaHomeDashboard {
         root.addView(flatCard(activity,"Podcastlar","RSS ve podcast bölümleri","◉",
             0xffbd82f3.toInt(),actions.onPodcast))
         root.addView(vspace(activity,9))
-        root.addView(section(activity,"FİLM · DİZİ · MAÇ",
-            "Açık filmler, resmî sağlayıcılar ve kendi yayınların"))
-        root.addView(vspace(activity,8))
-        val library=horizontal(activity)
-        listOf(
-            Triple("▣ Filmler",0xffde769d.toInt(),actions.onMovies),
-            Triple("▤ Diziler",0xffb7a1f4.toInt(),actions.onSeries),
-            Triple("⚽ Maçlar",0xff65d4bd.toInt(),actions.onSports)
-        ).forEach{(label,color,action)->
-            val tile=text(activity,label,13f,color,true).apply {
-                gravity=Gravity.CENTER
-                background=gradient(activity,0xff28333f.toInt(),0xff151d2d.toInt(),14)
-                isClickable=true;isFocusable=true;setOnClickListener{action()}
-                contentDescription=label+" bölümünü aç"
-            }
-            library.addView(tile,LinearLayout.LayoutParams(0,dp(activity,65),1f).apply{
-                rightMargin=dp(activity,5)
-            })
-        }
-        root.addView(library)
-        root.addView(vspace(activity,15))
         root.addView(section(activity,"YAYIN PLATFORMLARI",
             "Kurulu resmî Android uygulamalarını aç"))
         root.addView(vspace(activity,8))
