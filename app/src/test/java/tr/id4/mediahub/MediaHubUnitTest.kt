@@ -344,6 +344,51 @@ https://video.example.org/news.m3u8
         ).forEach { assertNull(it, YoutubePagePolicy.canonicalWatchUrl(it)) }
     }
 
+    @Test fun molaSubscriptionsSupportBothSitesWithoutAllowingPhishingOrHttp() {
+        for (service in StreamingService.values()) {
+            assertTrue(SubscriptionPortalPolicy.isAllowed(service,
+                SubscriptionPortalPolicy.homepage(service)))
+            assertTrue(SubscriptionPortalPolicy.isAllowed(service,
+                SubscriptionPortalPolicy.search(service, "Dizi adı").orEmpty()))
+            assertNull(SubscriptionPortalPolicy.search(service, "  "))
+            assertFalse(SubscriptionPortalPolicy.isAllowed(service,
+                "http://www.netflix.com/title/80192098"))
+            assertFalse(SubscriptionPortalPolicy.isAllowed(service,
+                "https://evil.example.com/?url=www.netflix.com"))
+            assertFalse(SubscriptionPortalPolicy.isAllowed(service,
+                "https://user:secret@www.primevideo.com/"))
+            assertFalse(SubscriptionPortalPolicy.isAllowed(service,
+                "https://www.netflix.com.evil.example/title/80192098"))
+            assertFalse(SubscriptionPortalPolicy.isAllowed(service, "javascript:alert(1)"))
+        }
+        assertTrue(SubscriptionPortalPolicy.isAllowed(
+            StreamingService.NETFLIX, "https://www.netflix.com/tr/title/80192098"))
+        assertTrue(SubscriptionPortalPolicy.isAllowed(
+            StreamingService.PRIME_VIDEO, "https://www.amazon.com.tr/ap/signin"))
+        assertTrue(SubscriptionPortalPolicy.isAllowed(
+            StreamingService.PRIME_VIDEO,
+            "https://www.primevideo.com/-/tr/detail/B0XYZABCDE"))
+        assertFalse(SubscriptionPortalPolicy.isAllowed(
+            StreamingService.NETFLIX, "https://www.primevideo.com/"))
+        assertFalse(SubscriptionPortalPolicy.isAllowed(
+            StreamingService.PRIME_VIDEO, "https://www.netflix.com/"))
+        assertTrue(SubscriptionPortalPolicy.search(
+            StreamingService.NETFLIX,"film ismi")!!.contains("film+ismi"))
+    }
+
+    @Test fun netflixLocalePageHistoryAvoidsSearchQueryAndTracking() {
+        assertEquals("https://www.netflix.com/title/80192098",
+            StreamingPagePolicy.canonical(
+                "https://www.netflix.com/tr/title/80192098?trackId=987")?.url)
+        assertEquals("https://www.netflix.com/watch/80192098",
+            StreamingPagePolicy.canonical(
+                "https://netflix.com/tr-TR/watch/80192098?auth=bad")?.url)
+        assertNull(StreamingPagePolicy.canonical(
+            "https://www.netflix.com/tr/login?email=private"))
+        assertNull(StreamingPagePolicy.canonical(
+            "https://www.netflix.com/search?q=private"))
+    }
+
     @Test fun streamingHistoryRecognizesNetflixPagesAndStripsTracking() {
         val cases = listOf(
             "https://www.netflix.com/watch/80192098?trackId=123&jbv=80192098" to
