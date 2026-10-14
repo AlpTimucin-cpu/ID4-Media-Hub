@@ -354,7 +354,7 @@ class MediaLibraryHubActivity : Activity() {
             setPadding(dp(12),dp(11),dp(11),dp(11))
             background=background(0xff243037.toInt(),0xff131e27.toInt(),16)
             isClickable=true;isFocusable=true
-            contentDescription=film.title+" • Film künyesini görüntüle"
+            contentDescription=film.title+" • Film ayrıntılarını aç"
             setOnClickListener { openEmbeddedFilm(film) }
         }
         tile.addView(text("▣",30f,0xffd6a4c5.toInt(),true).apply {
@@ -373,27 +373,84 @@ class MediaLibraryHubActivity : Activity() {
             maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END
         })
         labels.addView(space(5))
-        labels.addView(text("Katalog bilgisi • İzleme kaynağı gerek",11f,mint,true))
+        labels.addView(text("Film bilgisi • Oynatmak için kaynak ekle",11f,mint,true))
         tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
         tile.addView(text("›",27f,mint,true))
         return tile
     }
 
+    /** Film catalogue cards are descriptive until the user connects an authorized URL. */
     private fun openEmbeddedFilm(film: EmbeddedFilm) {
+        val normalizedTitle = EmbeddedFilmCatalog.normalized(film.title)
         val own = VideoStore.load(this).firstOrNull { channel ->
             VideoLibraryClassifier.classify(channel) == VideoLibraryKind.MOVIE &&
-                EmbeddedFilmCatalog.normalized(channel.name) ==
-                    EmbeddedFilmCatalog.normalized(film.title)
+                EmbeddedFilmCatalog.normalized(channel.name) == normalizedTitle
         }
-        if (own != null) { play(own); return }
+        if (own != null) {
+            play(own)
+            return
+        }
         AlertDialog.Builder(this)
             .setTitle(film.title)
-            .setMessage(film.group+"\\n\\nBu filmin adı ve kategorisi APK'nın çevrimdışı " +
-                "kataloğunda bulunuyor. Yayın bağlantısı pakete eklenmedi. " +
-                "Erişim hakkın olan bir M3U kaynağı eklersen mevcut oynatıcıdan açabilirsin.")
-            .setNegativeButton("Kapat",null)
-            .setPositiveButton("Kendi M3U dosyamı seç") { _, _ -> pickM3uFile() }
+            .setMessage(
+                film.group + "\n\n" +
+                "Bu kayıt çevrimdışı film kataloğundan geliyor; APK'nın içinde " +
+                "filmin videosu bulunmuyor.\n\n" +
+                "Sahip olduğun veya kullanım iznin bulunan HTTPS yayın adresini " +
+                "bu filme bağlayabilir ya da M3U dosyası içe aktarabilirsin."
+            )
+            .setNegativeButton("Kapat", null)
+            .setNeutralButton("M3U içe aktar") { _, _ -> pickM3uFile() }
+            .setPositiveButton("Yayın bağlantısı ekle") { _, _ ->
+                addStreamForFilm(film)
+            }
             .show()
+    }
+
+    private fun addStreamForFilm(film: EmbeddedFilm) {
+        val input = EditText(this).apply {
+            hint = "https://.../film.m3u8 veya film.mp4"
+            setSingleLine(true)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
+            setPadding(dp(14), dp(15), dp(14), dp(15))
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(6), dp(15), 0)
+            addView(input)
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(film.title)
+            .setMessage("Yalnızca erişim veya yayın hakkın olan HTTPS video adresini gir. " +
+                "Süreli/DRM korumalı bağlantılar oynatılamayabilir.")
+            .setView(container)
+            .setNegativeButton("Vazgeç", null)
+            .setPositiveButton("Kaydet ve oynat", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val url = input.text.toString().trim()
+                if (!M3uParser.isHttpsUrl(url)) {
+                    input.error = "Geçerli bir HTTPS video adresi gir"
+                    return@setOnClickListener
+                }
+                VideoStore.addAll(this, listOf(
+                    PlaylistEntry(film.title, url, film.group, false)
+                ), VideoLibraryKind.MOVIE)
+                val saved = VideoStore.load(this).firstOrNull { it.url == url }
+                if (saved == null) {
+                    input.error = "Kaydedilemedi. Kütüphane dolu olabilir."
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                activeCategory = null
+                visibleLimit = 36
+                refresh()
+                play(saved)
+            }
+        }
+        dialog.show()
     }
 
     private fun officialCard(src:OfficialMediaCard):LinearLayout{
