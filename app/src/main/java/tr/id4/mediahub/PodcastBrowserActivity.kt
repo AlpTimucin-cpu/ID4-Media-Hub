@@ -164,6 +164,7 @@ class PodcastBrowserActivity: Activity() {
         Thread{
             try {
                 val list=PodcastSources.parseRss(PodcastSources.fetch(feed.url),feed.title)
+                PodcastCarLibrary.cache(applicationContext, feed, list)
                 runOnUiThread{
                     if(isFinishing||isDestroyed||selected?.url!=feed.url)return@runOnUiThread
                     episodes=list;render()
