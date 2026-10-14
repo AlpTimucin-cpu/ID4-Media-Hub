@@ -95,6 +95,8 @@ class MolaYoutubeActivity : Activity() {
         title.addView(label("YouTube",19f,Color.WHITE,true).apply{
             gravity=Gravity.CENTER_VERTICAL
         },LinearLayout.LayoutParams(0,dp(45),1f))
+        title.addView(control("↗"){InstalledMediaApps.openYouTube(this)},
+            LinearLayout.LayoutParams(dp(48),dp(46)).apply{rightMargin=dp(6)})
         title.addView(control("⌂"){finish()},LinearLayout.LayoutParams(dp(49),dp(46)))
         main.addView(title)
 
@@ -142,8 +144,10 @@ class MolaYoutubeActivity : Activity() {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false)
         web.webViewClient=object:WebViewClient(){
             override fun shouldOverrideUrlLoading(view:WebView?,request:WebResourceRequest):Boolean{
+                // Subresource frames can legitimately use video delivery / authentication
+                // endpoints. Only constrain the main navigation, not video assets.
+                if(!request.isForMainFrame)return false
                 val url=request.url.toString()
-                // Restrict embedded browsing to YouTube; no account interception.
                 return !allowed(url)
             }
             override fun doUpdateVisitedHistory(view:WebView?,url:String?,isReload:Boolean){
