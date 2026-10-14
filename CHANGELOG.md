@@ -1,3 +1,11 @@
+# v0.37 — 14 Ekim 2026
+
+- Mola tarzı uygulama içi YouTube ekranı: arama, ana sayfa, Shorts, kişisel sekme, geri/yenile ve yerel video geçmişi.
+- Sayfa gösterimi YouTube mobil sitesi üzerinden WebView; resmî YouTube istemci/hesap/DRM kodu içermez.
+- TV, podcast, film ve dizi ekranlarında gerçek Media3 radyo oturumu üzerinden ortak üst oynatıcı.
+- İstenirse resmî YouTube uygulamasına geçiş.
+- Araç hareketinde video kilidini değiştiren özellik eklenmedi.
+
 # v0.36 — 14 Ekim 2026
 
 - Mola 68,8 saniyelik video kaydından ayrı ekran gezinme ve tasarım envanteri.
