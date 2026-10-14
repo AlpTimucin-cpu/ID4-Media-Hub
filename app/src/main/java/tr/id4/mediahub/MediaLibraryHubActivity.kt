@@ -249,7 +249,7 @@ class MediaLibraryHubActivity : Activity() {
         // Personal imports are the primary reason for opening this screen.
         // A 7,000-entry M3U must not create 500 ImageViews and network image
         // requests at once: show only 36 rows, then add more on user demand.
-        content.addView(text("FİLM / MEDYA KÜTÜPHANEM • "+library.total+" KAYIT",
+        content.addView(text("KÜTÜPHANEM • "+library.total+" KAYIT",
             12f,mint,true).apply{setPadding(dp(7),dp(10),0,dp(9))})
         val channels=library.entries
         if(channels.isEmpty() && library.continueWatching.isEmpty()){
@@ -278,7 +278,7 @@ class MediaLibraryHubActivity : Activity() {
             }
             if(channels.size>visibleLimit){
                 val current=minOf(visibleLimit,channels.size)
-                content.addView(button("▼ Daha fazla film göster • $current/${channels.size}"){
+                content.addView(button("▼ Daha fazla göster • $current/${channels.size}"){
                     visibleLimit=(visibleLimit+36).coerceAtMost(channels.size)
                     refresh()
                 },LinearLayout.LayoutParams(-1,dp(54)))
