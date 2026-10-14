@@ -46,6 +46,7 @@ class MediaLibraryHubActivity : Activity() {
     private lateinit var tabs: LinearLayout
     private var dynamicOpenMovies: List<OfficialMediaCard> = emptyList()
     private val browseExecutor = Executors.newSingleThreadExecutor()
+    private val bundledExecutor = Executors.newSingleThreadExecutor()
     private val browseHandler = Handler(Looper.getMainLooper())
     private var queryTask: Runnable? = null
     private var browseGeneration = 0
@@ -189,6 +190,13 @@ class MediaLibraryHubActivity : Activity() {
             })
         root.addView(footer)
         refresh()
+        bundledExecutor.execute {
+            BundledMovieLibrary.load(applicationContext)
+            browseHandler.post {
+                if(!isFinishing && !isDestroyed && selected==VideoLibraryKind.MOVIE)
+                    refresh()
+            }
+        }
         BlenderMovieFeed.load{list->
             if(!isFinishing && !isDestroyed){
                 dynamicOpenMovies=list
@@ -280,8 +288,8 @@ class MediaLibraryHubActivity : Activity() {
                 )
                 val embedded=if(kind==VideoLibraryKind.MOVIE && !onlyFavorites)
                     EmbeddedFilmCatalog.load(applicationContext) else emptyList()
-                if(kind==VideoLibraryKind.MOVIE)
-                    BundledMovieLibrary.load(applicationContext)
+                // Bundled 3.1MB M3U loads on a SEPARATE worker so catalogue
+                // titles appear without waiting for signed URL parsing.
                 val groups=if(embedded.isNotEmpty())
                     EmbeddedFilmCatalog.groups(embedded,query) else emptyList()
                 val categories=if(groups.isNotEmpty())
@@ -980,6 +988,7 @@ class MediaLibraryHubActivity : Activity() {
         browseGeneration++
         queryTask?.let { browseHandler.removeCallbacks(it) }
         browseExecutor.shutdownNow()
+        bundledExecutor.shutdownNow()
         if(::sessionHeader.isInitialized)sessionHeader.release()
         super.onDestroy()
     }
