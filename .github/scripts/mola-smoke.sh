@@ -31,7 +31,19 @@ subprocess.run(["adb","shell","input","tap",
     str((box[0]+box[2])//2),str((box[1]+box[3])//2)],check=True)
 PY
 sleep 4
-for i in 1 2 3 4 5; do
+# The offline titles must render immediately, before the separate
+# 3MB/7,232-stream M3U indexing worker finishes.
+for i in $(seq 1 12); do
+  adb shell uiautomator dump /sdcard/id4_movie.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/id4_movie.xml id4_movie.xml >/dev/null 2>&1 || true
+  if [ -s id4_movie.xml ] && grep -q 'GÖMÜLÜ FİLM KATALOĞU' id4_movie.xml; then break; fi
+  sleep 2
+done
+test -s id4_movie.xml
+grep -q 'GÖMÜLÜ FİLM KATALOĞU' id4_movie.xml
+grep -q '7232 BAŞLIK' id4_movie.xml
+# Source indexing may take longer on the constrained Android 15 emulator.
+for i in $(seq 1 24); do
   adb shell uiautomator dump /sdcard/id4_movie.xml >/dev/null 2>&1 || true
   adb pull /sdcard/id4_movie.xml id4_movie.xml >/dev/null 2>&1 || true
   if [ -s id4_movie.xml ] && grep -q 'TAM M3U PAKETTE' id4_movie.xml; then break; fi
