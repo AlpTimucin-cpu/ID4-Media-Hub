@@ -220,6 +220,9 @@ class TmdbCatalogActivity : Activity() {
             .setTitle(entry.title+" ("+entry.releaseYear+")")
             .setMessage(entry.description.ifBlank{"Özet bulunmuyor."}+
                 "\n\nTMDB yalnızca film/dizi verilerini sağlar. İzlemek için kendi yasal yayın kaynağın gerekli.")
+            .setNeutralButton("Türkiye'de nerede izlenir?"){_,_->
+                showWatchProviders(entry)
+            }
             .setPositiveButton("Kütüphanemde ara"){_,_->
                 val title=fold(entry.title)
                 val matches=VideoStore.load(this).filter{
@@ -249,6 +252,43 @@ class TmdbCatalogActivity : Activity() {
                 }
             }
             .setNegativeButton("Kapat",null).show()
+    }
+
+    private fun showWatchProviders(entry: TmdbEntry) {
+        val kind = selected
+        Toast.makeText(this,
+            "Türkiye'deki resmî yayın seçenekleri sorgulanıyor…",
+            Toast.LENGTH_SHORT).show()
+        TmdbMetadata.loadWatchProviders(kind, entry.id) { response ->
+            if (isDestroyed || isFinishing) return@loadWatchProviders
+            response.fold(onSuccess={ options ->
+                fun line(title: String, entries: List<String>): String =
+                    title + ": " + if (entries.isEmpty()) "Bildirilmedi"
+                    else entries.joinToString(", ")
+                val content = listOf(
+                    line("Abonelik", options.subscriptions),
+                    line("Ücretsiz / reklamlı", options.freeOrAds),
+                    line("Kirala", options.rental),
+                    line("Satın al", options.purchase)
+                ).joinToString("\n\n")
+                AlertDialog.Builder(this)
+                    .setTitle(entry.title + " • Türkiye'de izleme")
+                    .setMessage(content +
+                        "\n\nVeri: TMDB / JustWatch. Güncel abonelik, ücret, " +
+                        "ülke ve yayın hakkı sağlayıcıya bağlıdır. " +
+                        "Bu liste video yayını değildir.")
+                    .setPositiveButton("İzleme seçeneklerini aç"){_,_->
+                        startActivity(Intent(Intent.ACTION_VIEW,
+                            Uri.parse(options.watchPage)))
+                    }
+                    .setNegativeButton("Kapat",null).show()
+            },onFailure={error->
+                AlertDialog.Builder(this)
+                    .setTitle("Sağlayıcı bilgisi getirilemedi")
+                    .setMessage(error.message.orEmpty().take(160))
+                    .setPositiveButton("Tamam",null).show()
+            })
+        }
     }
 
     private fun openTmdbAbout(){
