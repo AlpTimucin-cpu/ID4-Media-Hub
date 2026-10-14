@@ -1,3 +1,11 @@
+# v0.51 — 14 Ekim 2026
+
+- v0.50 Android emülatör kanıtlarında film ekranının `isn't responding` (ANR) hatasına düştüğü tespit edildi. Film ve M3U katalog işleme tek arka plan worker'ına alındı.
+- Arama 280ms debounce ile güncellenir; eski sonuçlar atılır; UI yalnız son sorguyu çizer ve ilk açılışta tekrar yükleme yapılmaz.
+- JSON / .api içe aktarma düz ve iç içe listeler ile NDJSON destekler. API düğmesinden yerel .api/.json dosyası da seçilebilir.
+- Android 15 testleri ANR penceresini açıkça yakalar ve başarısızlıkta logcat kaydını korur.
+- Tam 7.232 kayıtlı user playlist pakette kalır; oynatıcıda server/DRM/tarihi token sınırlamaları sürer.
+
 # v0.50 — 14 Ekim 2026
 
 - M3U'da .api uzantılı URL olmadığı doğrulandı; 7.229 .m3u8, 2 .mp4 ve 1 uzantısız bağlantı mevcut.
