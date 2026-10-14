@@ -1,7 +1,17 @@
-# ID.4 YOL ARKADAŞIM • v0.48 BETA
+# ID.4 YOL ARKADAŞIM • v0.49 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.49 — Tam filmler_full.m3u APK içinde, film kartından bağlantı çözümü
+
+- Önceki v0.47/v0.48 yalnızca 7.232 film adı/türünü paketliyordu. **v0.49 derlemesi** ayrıca Google Drive üzerinden sağlanan tam 3.145.596 baytlık `filmler_full.m3u` dosyasını build sırasında indirip `assets/filmler_full.m3u` içine ekler. CI SHA-256 değerini ve 7.232 `#EXTINF` kaydını doğrular; başarısızsa APK oluşturmaz. Yayın URL'leri GitHub source'a commit edilmez.
+- Film başlıklarından film kartına dokunulduğunda paketlenen M3U'daki başlığı bulur ve ExoPlayer'da açmayı dener. 7.232 M3U kaydının 7.223 tanesi benzersiz bağlantıdır. Oynatıcı bir URI bulunduğu için **yayının çalışacağını garanti etmez**.
+- Orijinal dosyadaki 7.222 URL'de 29 Ağustos 2026 döneminden `tms` zaman parametresi görülmektedir. Uygulama eski `tms` kaydını kesinlikle bitmiş sanmak yerine kullanıcıya eski bağlantı olabileceği uyarısını ve oynatmayı deneme seçeneğini verir.
+- Kullanıcının tam M3U dosyası Android'in özel paket varlığıdır, açılışta topluca SharedPreferences'a ve GitHub kaynak koduna yazılmaz; tek defa arka planda parse edilip RAM'e alınır.
+- Film başlığı eşleşmeyen kayıtlar için yetkili kaynak ekleme ve M3U içe aktarma seçenekleri korunur.
+- Android 15 emülatör testi Film ana sayfasından açılarak `TAM M3U PAKETTE` başlığını ve film tıklamasından açılan oynatma uyarısını doğrular. Daha önceki uzun YouTube/WebView test yolunun kaynak tükenmesi bu film testinden çıkarıldı.
+- Bu liste REC TV ve diğer üçüncü taraf alan adları içerir. Yayın hakkı, medya erişimi ve oynatma garantisi verilmez; DRM veya Android Auto sürüş video kısıtlamaları değiştirilmedi.
 
 ## v0.48 — Filmlere dokunma düzeltmesi + ID.4 araç simgesi
 
