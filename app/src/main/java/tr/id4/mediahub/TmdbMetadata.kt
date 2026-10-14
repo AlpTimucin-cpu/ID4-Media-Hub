@@ -68,15 +68,11 @@ object TmdbMetadata {
     }
 
     /** Official TMDB/JustWatch endpoint for watch availability in Türkiye. */
-    fun watchProviderPath(kind: TmdbKind, id: Long): String {
-        require(id in 1..2_147_483_647L) { "Geçersiz TMDB içerik kimliği" }
-        return kind.route + "/" + id + "/watch/providers"
-    }
+    fun watchProviderPath(kind: TmdbKind, id: Long): String =
+        TmdbWatchPolicy.apiPath(kind,id)
 
-    fun officialWatchPage(kind: TmdbKind, id: Long): String {
-        watchProviderPath(kind, id) // validate ID before interpolation
-        return "https://www.themoviedb.org/" + kind.route + "/" + id + "/watch?locale=TR"
-    }
+    fun officialWatchPage(kind: TmdbKind, id: Long): String =
+        TmdbWatchPolicy.watchPage(kind,id)
 
     fun loadWatchProviders(
         kind: TmdbKind, id: Long,
