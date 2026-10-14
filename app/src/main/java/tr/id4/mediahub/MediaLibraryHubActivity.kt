@@ -130,6 +130,12 @@ class MediaLibraryHubActivity : Activity() {
         scroll.addView(content)
         root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+        footer.addView(button("◉ TMDB Keşfet") {
+            startActivity(Intent(this,TmdbDiscoverActivity::class.java).apply {
+                putExtra(TmdbDiscoverActivity.EXTRA_SERIES,
+                    selected==VideoLibraryKind.SERIES)
+            })
+        },LinearLayout.LayoutParams(0,dp(52),1f))
         footer.addView(button("＋ Kaynak ekle"){addSource()},
             LinearLayout.LayoutParams(0,dp(52),1f))
         footer.addView(button("⟳ Yenile"){refresh()},
