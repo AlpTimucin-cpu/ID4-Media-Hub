@@ -421,6 +421,23 @@ https://video.example.org/news.m3u8
             "https://www.netflix.com/search?q=private"))
     }
 
+    @Test fun tmdbWatchProviderRoutesStayOnOfficialPathsAndTrRegion() {
+        assertEquals("movie/550/watch/providers",
+            TmdbWatchPolicy.apiPath(TmdbKind.MOVIE,550L))
+        assertEquals("tv/1396/watch/providers",
+            TmdbWatchPolicy.apiPath(TmdbKind.SERIES,1396L))
+        assertEquals("https://www.themoviedb.org/movie/550/watch?locale=TR",
+            TmdbWatchPolicy.watchPage(TmdbKind.MOVIE,550L))
+        assertEquals("https://www.themoviedb.org/tv/1396/watch?locale=TR",
+            TmdbWatchPolicy.watchPage(TmdbKind.SERIES,1396L))
+        listOf(-1L,0L,2147483648L).forEach { invalid ->
+            try {
+                TmdbWatchPolicy.apiPath(TmdbKind.MOVIE,invalid)
+                fail("Invalid id must fail: " + invalid)
+            } catch (_: IllegalArgumentException) { }
+        }
+    }
+
     @Test fun streamingHistoryRecognizesNetflixPagesAndStripsTracking() {
         val cases = listOf(
             "https://www.netflix.com/watch/80192098?trackId=123&jbv=80192098" to
