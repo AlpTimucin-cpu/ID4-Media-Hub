@@ -23,28 +23,25 @@ data class TmdbTitle(
 )
 
 object TmdbCatalogClient {
-    private const val PREFS = "id4_tmdb_api_read_token"
+    // User's bearer token remains in memory; never written as plain text on disk.
+    @Volatile private var sessionToken: String = ""
     private const val API = "https://api.themoviedb.org/3/"
     private const val MAX_JSON = 1_500_000
     private val posterPattern = Regex("^/[A-Za-z0-9_-]{5,60}\\.(?:jpg|png|webp)$")
     private val tokenPattern = Regex("^[A-Za-z0-9._-]{24,700}$")
 
     fun hasToken(context: Context): Boolean = token(context).isNotBlank()
-    private fun token(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString("token","").orEmpty()
+    private fun token(context: Context): String = sessionToken
 
     fun setToken(context: Context, value: String): Boolean {
         val clean=value.trim().removePrefix("Bearer ").trim()
         if (!tokenPattern.matches(clean)) return false
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("token",clean).apply()
+        sessionToken = clean
         return true
     }
 
     fun removeToken(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .remove("token").apply()
+        sessionToken = ""
     }
 
     fun posterUrl(path: String?): String {
