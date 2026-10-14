@@ -1,3 +1,12 @@
+# v0.48 — 14 Ekim 2026
+
+- Film kartına tıklayınca lisanslanmamış video oynatmayı denemek yerine, gerçek içerik durumunu açıklayan ayrıntılar penceresi gösterilir.
+- Gömülü film başlığına kullanıcı tarafından verilen yetkili HTTPS bağlantı kaydedilebilir ve telefon oynatıcısında başlatılır; M3U içe aktarma seçeneği aynı pencerede.
+- Hata kodu Toast tekrarları kaldırıldı, oynatıcıda açıklayıcı ağ/DRM/adres hatası durumları gösterilir.
+- Uygulama simgesi ID.4 önden elektrikli SUV tasarımlı özgün Android vektör simge ve Android adaptive icon olarak değiştirildi.
+- Android 15 smoke testine 7.232 film başlığı, film kartı tıklama, ayrıntı düğmesi ve dizi kontrolü eklendi.
+- REC TV oynatma sunucuları/tokenları APK'ya eklenmedi; video akışlarının oynatımı garanti edilmez.
+
 # v0.47 — 14 Ekim 2026
 
 - Kullanıcının `filmler_full.m3u` dosyasındaki 7.232 film başlığı ve kategori bilgisi, güvenli bağlantı metaverisi şeklinde dört UTF-8 asset dosyasına gömüldü.
