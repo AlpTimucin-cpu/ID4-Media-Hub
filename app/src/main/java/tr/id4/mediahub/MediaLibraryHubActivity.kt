@@ -7,6 +7,9 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.Executors
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -42,6 +45,19 @@ class MediaLibraryHubActivity : Activity() {
     private lateinit var favorites: Button
     private lateinit var tabs: LinearLayout
     private var dynamicOpenMovies: List<OfficialMediaCard> = emptyList()
+    private val browseExecutor = Executors.newSingleThreadExecutor()
+    private val browseHandler = Handler(Looper.getMainLooper())
+    private var queryTask: Runnable? = null
+    private var browseGeneration = 0
+    private var skipInitialResume = true
+
+    private data class BrowseSnapshot(
+        val library: MediaLibraryBrowseResult,
+        val allEmbedded: List<EmbeddedFilm>,
+        val embeddedMatches: List<EmbeddedFilm>,
+        val categories: List<MediaLibraryGroup>,
+        val official: List<OfficialMediaCard>
+    )
 
     private fun dp(n:Int)=(resources.displayMetrics.density*n).toInt()
     private fun background(a:Int,b:Int,r:Int=16)=
@@ -133,7 +149,13 @@ class MediaLibraryHubActivity : Activity() {
             addTextChangedListener(object:TextWatcher{
                 override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
                 override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){
-                    if(::content.isInitialized){visibleLimit=36;refresh()}
+                    if(::content.isInitialized){
+                        visibleLimit=36
+                        queryTask?.let { browseHandler.removeCallbacks(it) }
+                        queryTask=Runnable { refresh() }.also {
+                            browseHandler.postDelayed(it,280L)
+                        }
+                    }
                 }
                 override fun afterTextChanged(s:Editable?){}
             })
@@ -166,10 +188,6 @@ class MediaLibraryHubActivity : Activity() {
             })
         root.addView(footer)
         refresh()
-        Thread {
-            BundledMovieLibrary.load(applicationContext)
-            runOnUiThread { if (!isFinishing && !isDestroyed) refresh() }
-        }.start()
         BlenderMovieFeed.load{list->
             if(!isFinishing && !isDestroyed){
                 dynamicOpenMovies=list
@@ -179,7 +197,9 @@ class MediaLibraryHubActivity : Activity() {
     }
     override fun onResume(){
         super.onResume()
-        if(::content.isInitialized)refresh()
+        if (skipInitialResume) {
+            skipInitialResume=false
+        } else if(::content.isInitialized) refresh()
     }
 
     private fun updateTabs(){
@@ -223,42 +243,84 @@ class MediaLibraryHubActivity : Activity() {
         }
     }
 
-    private fun refresh(){
+    /**
+     * The 7,232-film search and SharedPreferences/asset parsing must never run
+     * on Android's main/UI thread. A generation token drops stale search output.
+     */
+    private fun refresh() {
+        if (!::content.isInitialized || browseExecutor.isShutdown) return
+        val generation = ++browseGeneration
+        val kind = selected
+        val query = search.text.toString()
+        val onlyFavorites = favoritesOnly
+        val category = activeCategory
         updateTabs()
-        importButton.text="＋ M3U / Google Drive'dan " + selected.title + " ekle"
-        sportzXButton.visibility=if(selected==VideoLibraryKind.SPORT)View.VISIBLE else View.GONE
-        val imported=VideoStore.load(this)
-        val recentIds=RecentStore.ids(this).mapNotNull {
-            if(it.startsWith("tv:"))it.removePrefix("tv:") else null
+        importButton.text="＋ M3U / Google Drive'dan " + kind.title + " ekle"
+        sportzXButton.visibility=if(kind==VideoLibraryKind.SPORT)View.VISIBLE else View.GONE
+        counter.text="İçerikler hazırlanıyor…"
+        browseExecutor.execute {
+            val outcome = runCatching {
+                val imported=VideoStore.load(applicationContext)
+                val recentIds=RecentStore.ids(applicationContext).mapNotNull {
+                    if(it.startsWith("tv:"))it.removePrefix("tv:") else null
+                }
+                val resumable=if(kind==VideoLibraryKind.SPORT) emptySet()
+                    else recentIds.filter {
+                        VodProgressStore.position(applicationContext,it)>0L
+                    }.toSet()
+                val library=MediaLibraryBrowsePlanner.plan(
+                    imported,kind,query,onlyFavorites,category,recentIds,resumable
+                )
+                val embedded=if(kind==VideoLibraryKind.MOVIE && !onlyFavorites)
+                    EmbeddedFilmCatalog.load(applicationContext) else emptyList()
+                if(kind==VideoLibraryKind.MOVIE)
+                    BundledMovieLibrary.load(applicationContext)
+                val groups=if(embedded.isNotEmpty())
+                    EmbeddedFilmCatalog.groups(embedded,query) else emptyList()
+                val categories=if(groups.isNotEmpty())
+                    (groups.take(25)+library.categories).distinctBy {
+                        EmbeddedFilmCatalog.normalized(it.name)
+                    } else library.categories
+                val ownTitles=if(embedded.isNotEmpty()) imported.asSequence()
+                    .filter { VideoLibraryClassifier.classify(it)==VideoLibraryKind.MOVIE }
+                    .map { EmbeddedFilmCatalog.normalized(it.name) }.toSet()
+                    else emptySet()
+                val embeddedMatches=if(embedded.isEmpty()) emptyList() else
+                    EmbeddedFilmCatalog.filtered(embedded,query,category)
+                        .filterNot { EmbeddedFilmCatalog.normalized(it.title) in ownTitles }
+                val official=(OfficialMediaDirectory.list(kind,query)+
+                    dynamicOpenMovies.filter { it.kind==kind &&
+                        (query.isBlank() || it.title.contains(query,true)) })
+                    .distinctBy { if(it.mode==OfficialMediaMode.OPEN_MOVIE)
+                        it.target else it.id }
+                    .filter { !onlyFavorites ||
+                        OfficialMediaFavorites.contains(applicationContext,it.id) }
+                BrowseSnapshot(library,embedded,embeddedMatches,categories,official)
+            }
+            browseHandler.post {
+                if (isFinishing || isDestroyed || generation!=browseGeneration) return@post
+                outcome.fold(
+                    onSuccess = { renderSnapshot(it) },
+                    onFailure = {
+                        counter.text="Katalog okunamadı"
+                        content.removeAllViews()
+                        content.addView(text(
+                            "Katalog yüklenemedi. Yenile düğmesine basabilirsin. " +
+                            "Uygulamayı kapatmak zorunda değilsin.",14f,muted))
+                    }
+                )
+            }
         }
-        val resumable=if(selected==VideoLibraryKind.SPORT)emptySet()
-            else recentIds.filter{VodProgressStore.position(this,it)>0L}.toSet()
-        val library=MediaLibraryBrowsePlanner.plan(
-            imported,selected,search.text.toString(),favoritesOnly,
-            activeCategory,recentIds,resumable
-        )
-        val allEmbedded = if (selected == VideoLibraryKind.MOVIE && !favoritesOnly)
-            EmbeddedFilmCatalog.load(this) else emptyList()
-        val embeddedGroups = if (allEmbedded.isNotEmpty())
-            EmbeddedFilmCatalog.groups(allEmbedded, search.text.toString()) else emptyList()
-        val allCategories = if (embeddedGroups.isNotEmpty())
-            (embeddedGroups.take(25) + library.categories)
-                .distinctBy { EmbeddedFilmCatalog.normalized(it.name) } else library.categories
-        updateCategories(allCategories)
-        val ownTitles = if (allEmbedded.isNotEmpty()) imported
-            .filter { VideoLibraryClassifier.classify(it) == VideoLibraryKind.MOVIE }
-            .map { EmbeddedFilmCatalog.normalized(it.name) }.toSet()
-            else emptySet()
-        val embeddedMatches = if (allEmbedded.isEmpty()) emptyList() else
-            EmbeddedFilmCatalog.filtered(allEmbedded, search.text.toString(), activeCategory)
-                .filterNot { EmbeddedFilmCatalog.normalized(it.title) in ownTitles }
-        val official=(OfficialMediaDirectory.list(selected,search.text.toString()) +
-            dynamicOpenMovies.filter{it.kind==selected &&
-                (search.text.isBlank() || it.title.contains(search.text.toString(),true))})
-            .distinctBy{if(it.mode==OfficialMediaMode.OPEN_MOVIE)it.target else it.id}
-            .filter{!favoritesOnly || OfficialMediaFavorites.contains(this,it.id)}
-        counter.text=selected.title+" · "+library.total+" oynatılabilir kişisel kayıt • "+
-            embeddedMatches.size+" gömülü film künyesi"
+    }
+
+    private fun renderSnapshot(snapshot:BrowseSnapshot) {
+        val library=snapshot.library
+        val allEmbedded=snapshot.allEmbedded
+        val embeddedMatches=snapshot.embeddedMatches
+        val official=snapshot.official
+        updateCategories(snapshot.categories)
+        counter.text=selected.title+" · "+library.total+" kişisel kayıt • "+
+            embeddedMatches.size+" gömülü film • "+official.size+" resmî kaynak"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
         // The public repository holds catalogue titles. The private build may
@@ -896,6 +958,9 @@ class MediaLibraryHubActivity : Activity() {
         private const val PICK_VOD_M3U = 742
     }
     override fun onDestroy(){
+        browseGeneration++
+        queryTask?.let { browseHandler.removeCallbacks(it) }
+        browseExecutor.shutdownNow()
         if(::sessionHeader.isInitialized)sessionHeader.release()
         super.onDestroy()
     }
