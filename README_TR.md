@@ -1,8 +1,19 @@
-# ID.4 YOL ARKADAŞIM • v0.41 BETA
+# ID.4 YOL ARKADAŞIM • v0.42 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.42 — Film, dizi ve maçlarda kullanışlı katalog
+
+- Film/Dizi/Maçlar: kişinin eklediği M3U grupları için gerçek sayıları gösteren kategori çipleri; arama ve favori filtresi korunur.
+- Resmî sağlayıcı kartlarına cihazda saklanan favori yıldızı eklendi; favori ekranında artık kendi kaynaklarınla beraber bu kartlar da görülebilir.
+- Kaldığın yerden devam et: sadece kullanıcının açtığı ve ilerlemesi Media3 tarafından kaydedilmiş film/dizi dosyalarında görünür; son açılma sırasına göre ilk sekiz içerik.
+- Açık lisanslı Blender videoları için varsa kayıtlı dakikadan devam etiketi; indirme ve gerçek oynatma ayrı ayrı doğrulanmalıdır.
+- Radyo, IPTV, Android Auto ses hizmeti, YouTube, Netflix, Prime Video ve araç teşhis/bağlantı panelleri değişmedi.
+- REC TV 22.0.2 yeniden statik doğrulandı; hiçbir özel video akışı, token, uygulama kodu veya marka varlığı kopyalanmadı.
+- Android Auto sürüş ekranı videosu / Netflix-Prime DRM oynatımı doğrulanmış değildir. Cihaz testi ve GitHub Actions durumuna göre ayrıca raporlanır.
+- Teknik not: `docs/REC_TV_AND_LIBRARY_V042.md`.
 
 ## v0.41 — REC TV kaynak araştırması / Türkiye'de hangi platformda?
 
