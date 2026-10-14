@@ -150,7 +150,11 @@ class MediaLibraryHubActivity : Activity() {
             LinearLayout.LayoutParams(0,dp(52),.6f).apply{
                 leftMargin=dp(8)
             })
-        root.addView(space(8));root.addView(footer)
+        root.addView(button("▤ M3U DOSYASINDAN ${selected.title.uppercase()} İÇE AKTAR") {
+            pickM3uFile()
+        }, LinearLayout.LayoutParams(-1, dp(50)))
+        root.addView(space(6))
+        root.addView(footer)
         refresh()
         BlenderMovieFeed.load{list->
             if(!isFinishing && !isDestroyed){
@@ -464,6 +468,73 @@ class MediaLibraryHubActivity : Activity() {
         })
     }
 
+    private fun pickM3uFile() {
+        val kind = selected
+        AlertDialog.Builder(this)
+            .setTitle(kind.title + " • M3U dosyası")
+            .setMessage(
+                "Telefondan veya Google Drive dosya seçicisinden M3U dosyanı seç. " +
+                "Liste cihazında saklanacak; otomatik paylaşılmayacak. " +
+                "Dosyadaki afişler, türler ve videolar " + kind.title.lowercase() +
+                " bölümüne eklenecek.\n\n" +
+                "Yalnızca izleme / kullanım yetkin bulunan yayınları içe aktar. " +
+                "Dosya içindeki tüm bağlantıların çalışacağı garanti edilmez."
+            )
+            .setNegativeButton("Vazgeç", null)
+            .setPositiveButton("M3U dosyası seç") { _, _ ->
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }, PICK_VOD_M3U)
+            }.show()
+    }
+
+    @Deprecated("Android framework Activity file-picker callback")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_VOD_M3U || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        val targetKind = selected
+        val waiting = AlertDialog.Builder(this)
+            .setTitle(targetKind.title + " • İçe aktarılıyor")
+            .setMessage("Film isimleri, afişler ve kategoriler okunuyor…")
+            .setCancelable(false).create()
+        waiting.show()
+        Thread {
+            val outcome = runCatching {
+                val playlist = contentResolver.openInputStream(uri)?.use { PlaylistLoader.readLimited(it) }
+                    ?: error("Dosya okunamadı")
+                val items = M3uParser.parse(playlist).filterNot { it.isAudio }
+                require(items.isNotEmpty()) { "M3U geçerli HTTPS video kaydı içermiyor" }
+                val added = VideoStore.addAll(applicationContext, items, targetKind)
+                Pair(items.size, added)
+            }
+            runOnUiThread {
+                waiting.dismiss()
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                outcome.fold(onSuccess = { (total, added) ->
+                    activeCategory = null
+                    refresh()
+                    AlertDialog.Builder(this)
+                        .setTitle("M3U kitaplığı hazır")
+                        .setMessage(
+                            "$total geçerli video kaydı bulundu.\n" +
+                            "$added yeni kayıt " + targetKind.title.lowercase() +
+                            " bölümüne kaydedildi.\n\n" +
+                            "Listede daha önce kayıtlı bağlantılar yeniden eklenmedi. " +
+                            "Yayınların erişim hakkını ve çalışabilirliğini tek tek kontrol et."
+                        )
+                        .setPositiveButton("Tamam", null).show()
+                }, onFailure = {
+                    // Do not show exception details: playlist URLs can contain account tokens.
+                    Toast.makeText(this,
+                        "M3U içe aktarılamadı. 8 MB altı UTF-8 M3U ve HTTPS adreslerini kontrol et.",
+                        Toast.LENGTH_LONG).show()
+                })
+            }
+        }.start()
+    }
+
     private fun addSource(){
         val form=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
@@ -493,7 +564,10 @@ class MediaLibraryHubActivity : Activity() {
                     Toast.LENGTH_LONG).show()
             }.show()
     }
-    companion object { const val EXTRA_KIND="media_library_kind" }
+    companion object {
+        const val EXTRA_KIND="media_library_kind"
+        private const val PICK_VOD_M3U = 742
+    }
     override fun onDestroy(){
         if(::sessionHeader.isInitialized)sessionHeader.release()
         super.onDestroy()
