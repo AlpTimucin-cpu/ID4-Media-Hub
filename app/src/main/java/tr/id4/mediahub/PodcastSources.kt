@@ -13,7 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /** Only subscribed user-supplied HTTPS RSS feeds; no podcast search API or private keys. */
 data class PodcastFeed(val title:String,val url:String)
-data class PodcastEpisode(val title:String,val link:String,val source:String)
+data class PodcastEpisode(val title:String,val link:String,val source:String, val mimeType:String = "")
 
 object PodcastSources {
     private const val PREFS="id4_mola_podcast_feeds"
@@ -48,6 +48,9 @@ object PodcastSources {
         }
         context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
             .putString(KEY,a.toString()).apply()
+        // Notify Android Auto that the browsable podcast subscriptions changed.
+        context.sendBroadcast(android.content.Intent(
+            AudioLibraryService.ACTION_CATALOG_UPDATED).setPackage(context.packageName))
     }
 
     private fun secureDocument(bytes:ByteArray):org.w3c.dom.Document {
@@ -86,7 +89,7 @@ object PodcastSources {
                     val encl=el.getElementsByTagName("enclosure").item(0) as? Element
                     val url=encl?.getAttribute("url")?.trim().orEmpty()
                     if(title.isNotBlank()&&M3uParser.isHttpsUrl(url))
-                        add(PodcastEpisode(title,url,source))
+                        add(PodcastEpisode(title,url,source, encl?.getAttribute("type").orEmpty()))
                 }
             }
         }catch(_:Exception){emptyList()}
