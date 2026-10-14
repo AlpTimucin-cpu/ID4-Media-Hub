@@ -57,6 +57,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".PlayerActivity" android:exported="false" />
+        <activity android:name=".SportzXHubActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".MolaYoutubeActivity"
             android:exported="false" android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden" />
