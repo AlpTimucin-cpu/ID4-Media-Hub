@@ -47,6 +47,29 @@ grep -q 'OPML içe aktar' id4_podcast_ui.xml
 grep -q 'OPML dışa aktar' id4_podcast_ui.xml
 adb shell screencap -p /sdcard/id4_podcast.png
 adb pull /sdcard/id4_podcast.png id4_podcast.png
+# Validate YouTube now opens INSIDE ID.4 Yol Arkadaşım, rather than an
+# external YouTube package. No claims about network video playback are made.
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+for i in 1 2 3 4 5 6; do
+  adb shell uiautomator dump /sdcard/id4_youtube_card.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/id4_youtube_card.xml id4_youtube_card.xml >/dev/null 2>&1 || true
+  if [ -s id4_youtube_card.xml ] && grep -q 'YouTube.*Aç' id4_youtube_card.xml; then break; fi
+  adb shell input swipe 540 650 540 1480 330
+  sleep 1
+done
+test -s id4_youtube_card.xml
+python3 -c 'import re,subprocess,xml.etree.ElementTree as ET;r=ET.parse("id4_youtube_card.xml").getroot();a=[n.attrib.get("bounds","") for n in r.iter("node") if "YouTube" in n.attrib.get("content-desc","") and "Aç" in n.attrib.get("content-desc","")];assert a,"Mola YouTube card not found";b=list(map(int,re.findall(r"\d+",a[0])));subprocess.run(["adb","shell","input","tap",str((b[0]+b[2])//2),str((b[1]+b[3])//2)],check=True)'
+sleep 4
+adb shell uiautomator dump /sdcard/id4_youtube_hub.xml >/dev/null
+adb pull /sdcard/id4_youtube_hub.xml id4_youtube_hub.xml
+grep -q "YouTube'da ara" id4_youtube_hub.xml
+grep -q 'Shorts' id4_youtube_hub.xml
+grep -q 'Geçmiş' id4_youtube_hub.xml
+adb shell dumpsys activity activities > id4_youtube_activity.txt
+grep -q 'MolaYoutubeActivity' id4_youtube_activity.txt
+adb shell screencap -p /sdcard/id4_youtube_hub.png
+adb pull /sdcard/id4_youtube_hub.png id4_youtube_hub.png
 adb logcat -d -s AndroidRuntime:E > android_runtime_errors.log
 if grep -q 'FATAL EXCEPTION' android_runtime_errors.log; then
   cat android_runtime_errors.log
