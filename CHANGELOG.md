@@ -1,3 +1,13 @@
+# v0.42 — 14 Ekim 2026
+
+- Film, Dizi, Maçlar: kullanıcı M3U gruplarına dayalı kategori filtreleme, canlı arama ve sayılı kategori çipleri.
+- Resmî lisanslı katalog kartları cihaz içi favorilere alınabilir; favori ekranında gösterilir.
+- Son oynatılan, Media3 ilerlemesi olan kullanıcı videoları ayrı "Kaldığın yerden devam" bölümüne alınır; çift gösterim engellenir.
+- Blender açık video ilerleme etiketi; oynatma adresi bulunmazsa çalışıyor diye gösterilmez.
+- REC TV 22.0.2 APK statik incelemesi checksum/servis ayrımıyla belgelendi; gizli servis/DRM/üçüncü taraf kodu taşınmadı.
+- Paket adı, Android Auto ses servisi, IPTV/radyo ve YouTube/Netflix/Prime Video modülleri değiştirilmedi.
+- Emulator/telefon/araç testi yalnızca ilgili GitHub Actions ve cihaz sonuçları doğrulandığında başarılı kabul edilir.
+
 # v0.41 — 14 Ekim 2026
 
 - REC TV APK içinden doğrulanan TMDB metaverisi, Firebase yapılandırma ve özel içerik sunucusu ayrımı belgelendi.
