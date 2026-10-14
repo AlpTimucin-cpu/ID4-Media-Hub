@@ -163,9 +163,24 @@ class MediaLibraryHubActivity : Activity() {
         updateTabs()
         val channels=VideoLibraryClassifier.filtered(VideoStore.load(this),selected,
             search.text.toString(),favoritesOnly)
-        counter.text=selected.title+" · "+channels.size+" içerik"
+        val official=OfficialMediaDirectory.list(selected,search.text.toString())
+        counter.text=selected.title+" · "+channels.size+" kendi yayın • "+official.size+" resmî seçenek"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
+        if(!favoritesOnly && official.isNotEmpty()){
+            content.addView(text("KEŞFET • DOĞRULANMIŞ SAĞLAYICILAR",12f,mint,true).apply{
+                setPadding(dp(7),dp(11),0,dp(10))
+            })
+            official.forEach{source->
+                content.addView(officialCard(source),LinearLayout.LayoutParams(-1,-2).apply{
+                    bottomMargin=dp(9)
+                })
+            }
+            content.addView(space(8))
+        }
+        content.addView(text("KENDİ KÜTÜPHANEM • "+channels.size+" KAYIT",12f,mint,true).apply{
+            setPadding(dp(7),dp(8),0,dp(8))
+        })
         if(channels.isEmpty()){
             content.addView(text(if(favoritesOnly)"Henüz favori içerik yok."
                 else "Henüz "+selected.title.lowercase()+" kaynağı yok.\n\n"+
@@ -179,6 +194,114 @@ class MediaLibraryHubActivity : Activity() {
                 })
             }
             if(channels.size>500)content.addView(text("İlk 500 kayıt gösteriliyor. Aramayla daralt.",12f,muted))
+        }
+    }
+
+    private fun officialCard(src:OfficialMediaCard):LinearLayout{
+        val accent=when(src.kind){
+            VideoLibraryKind.MOVIE->0xffc5444b.toInt()
+            VideoLibraryKind.SERIES->0xff725cc1.toInt()
+            VideoLibraryKind.SPORT->0xff328f79.toInt()
+            else->mint
+        }
+        val tile=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(12),dp(11),dp(12),dp(11))
+            background=background(0xff202b31.toInt(),0xff131c24.toInt(),16)
+            isClickable=true;isFocusable=true
+            contentDescription=src.title+" · "+src.provider
+            setOnClickListener{openOfficial(src)}
+        }
+        val poster=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
+            background=background(accent,0xff19212e.toInt(),13)
+        }
+        poster.addView(text(when(src.mode){
+            OfficialMediaMode.OPEN_MOVIE->"▶"
+            OfficialMediaMode.PROVIDER_APP->"▣"
+            OfficialMediaMode.PROVIDER_WEB->"▦"
+            OfficialMediaMode.TV_CHANNEL->"●"
+        },31f,Color.WHITE,true))
+        poster.addView(text(if(src.provider=="Blender Open Movies")"OPEN"
+            else src.provider.take(7),10f,Color.WHITE,true))
+        tile.addView(poster,LinearLayout.LayoutParams(dp(84),dp(92)))
+        val labels=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(12),0,dp(6),0)
+        }
+        labels.addView(text(src.title,16f,Color.WHITE,true))
+        labels.addView(space(3))
+        labels.addView(text(src.detail,12f,muted))
+        labels.addView(space(5))
+        labels.addView(text(when(src.mode){
+            OfficialMediaMode.OPEN_MOVIE->"▶ Açık filmi oynat"
+            OfficialMediaMode.PROVIDER_APP->"↗ Resmî uygulamayı aç"
+            OfficialMediaMode.PROVIDER_WEB->"↗ Resmî yayın bilgisini aç"
+            OfficialMediaMode.TV_CHANNEL->"▶ Canlı yayını dene"
+        },12f,mint,true))
+        tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
+        tile.addView(text("›",28f,accent,true))
+        return tile
+    }
+
+    private fun openOfficial(src:OfficialMediaCard){
+        when(src.mode){
+            OfficialMediaMode.PROVIDER_APP->
+                InstalledMediaApps.open(this,src.provider,src.target)
+            OfficialMediaMode.PROVIDER_WEB->{
+                AlertDialog.Builder(this)
+                    .setTitle(src.title)
+                    .setMessage(src.rightNote+"\n\nResmî sağlayıcının sayfası açılacak.")
+                    .setNegativeButton("İptal",null)
+                    .setPositiveButton("Resmî siteyi aç"){_,_->
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW,
+                                android.net.Uri.parse(src.target)))
+                        } catch (_:Exception) {
+                            Toast.makeText(this,"Site açılamadı",Toast.LENGTH_SHORT).show()
+                        }
+                    }.show()
+            }
+            OfficialMediaMode.OPEN_MOVIE-> {
+                val dialog=AlertDialog.Builder(this)
+                    .setTitle(src.title)
+                    .setMessage("Blender'ın açık lisanslı videosunun oynatma adresi alınıyor…")
+                    .setNegativeButton("İptal",null)
+                    .create()
+                dialog.show()
+                BlenderOpenVideo.resolve(src.target){outcome->
+                    dialog.dismiss()
+                    if(isFinishing || isDestroyed)return@resolve
+                    outcome.fold(onSuccess={url->
+                        startActivity(Intent(this,PlayerActivity::class.java).apply{
+                            putExtra(PlayerActivity.EXTRA_TITLE,src.title)
+                            putExtra(PlayerActivity.EXTRA_URL,url)
+                            putExtra(PlayerActivity.EXTRA_ID,src.id)
+                            putExtra(PlayerActivity.EXTRA_IS_VOD,true)
+                        })
+                    },onFailure={
+                        AlertDialog.Builder(this)
+                            .setTitle(src.title)
+                            .setMessage("Blender oynatma bağlantısı şu an alınamadı. "+
+                                "Sunucu geçici olarak ulaşılamıyor olabilir. "+
+                                "İstersen resmî Blender video sayfasını açabilirsin.")
+                            .setNegativeButton("Kapat",null)
+                            .setPositiveButton("Blender'da aç"){_,_->
+                                BlenderOpenVideo.officialPage(src.target)?.let{url->
+                                    try{
+                                        startActivity(Intent(Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(url)))
+                                    }catch(_:Exception){}
+                                }
+                            }.show()
+                    })
+                }
+            }
+            OfficialMediaMode.TV_CHANNEL-> {
+                Toast.makeText(this,"Açık kanal bağlantısı için Kaynaklar'ı kullan",
+                    Toast.LENGTH_LONG).show()
+            }
         }
     }
 
