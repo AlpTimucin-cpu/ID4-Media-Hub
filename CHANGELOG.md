@@ -1,3 +1,11 @@
+# v0.47 — 14 Ekim 2026
+
+- Kullanıcının `filmler_full.m3u` dosyasındaki 7.232 film başlığı ve kategori bilgisi, güvenli bağlantı metaverisi şeklinde dört UTF-8 asset dosyasına gömüldü.
+- Film ekranı ilk açılışta çevrimdışı 7.232 başlığı gösterir; arama, kategoriler ve 36 kartlık sayfa mekanizması çalışır.
+- APK dosyasına yayın adresi/token/referer/user-agent veya REC TV özel poster URL'leri eklenmedi. Gömülü kayıtların medya oynatımı sunmadığı kart üzerinde açıklanır.
+- Kullanıcı yetkili M3U'yu ayrıca içe aktarabilir; ad eşleşirse gömülü kaydın seçilmesi yerel oynatma kanalına bağlanır.
+- Gömülü katalog için Unicode arama/kategori testleri ve dört dosyanın toplam kayıt sayısı doğrulandı.
+
 # v0.46 — 14 Ekim 2026
 
 - Telefon ana sayfasında Film, Dizi, Maç ve SportzX bölümleri bağımsız büyük kartlarla görünür hale getirildi.
