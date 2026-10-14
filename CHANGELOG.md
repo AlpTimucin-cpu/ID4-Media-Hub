@@ -1,3 +1,10 @@
+# v0.41 — 14 Ekim 2026
+
+- REC TV APK içinden doğrulanan TMDB metaverisi, Firebase yapılandırma ve özel içerik sunucusu ayrımı belgelendi.
+- Türkiye'de film/dizi yayınlayan lisanslı platformları TMDB/JustWatch API aracılığıyla gösteren ekran eklendi.
+- TMDB sağlayıcı bağlantısı doğrulama ve güvenli ID birim testleri; erişim anahtarı yalnızca bellekte.
+- REC TV kapalı yayın kaynakları, özel erişim anahtarları ve telifli içerikleri aktarılmadı.
+
 # v0.40 — 14 Ekim 2026
 
 - REC TV videolarında görülen dolu film/dizi/TV kataloğu ile M3U-only boş ID.4 ekranları karşılaştırıldı.
