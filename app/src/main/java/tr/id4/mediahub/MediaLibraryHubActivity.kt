@@ -819,7 +819,8 @@ class MediaLibraryHubActivity : Activity() {
     @Deprecated("Android framework Activity file-picker callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != PICK_VOD_M3U || resultCode != RESULT_OK) return
+        if ((requestCode != PICK_VOD_M3U && requestCode != PICK_JSON_API) ||
+            resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         val targetKind = selected
         val waiting = AlertDialog.Builder(this)
@@ -831,8 +832,10 @@ class MediaLibraryHubActivity : Activity() {
             val outcome = runCatching {
                 val playlist = contentResolver.openInputStream(uri)?.use { PlaylistLoader.readLimited(it) }
                     ?: error("Dosya okunamadı")
-                val items = M3uParser.parse(playlist).filterNot { it.isAudio }
-                require(items.isNotEmpty()) { "M3U geçerli HTTPS video kaydı içermiyor" }
+                val items = if (requestCode == PICK_JSON_API)
+                    UserMediaApiImporter.parse(playlist)
+                else M3uParser.parse(playlist).filterNot { it.isAudio }
+                require(items.isNotEmpty()) { "Dosya geçerli HTTPS medya kaydı içermiyor" }
                 val added = VideoStore.addAll(applicationContext, items, targetKind)
                 Pair(items.size, added)
             }
@@ -844,7 +847,8 @@ class MediaLibraryHubActivity : Activity() {
                     visibleLimit = 36
                     refresh()
                     AlertDialog.Builder(this)
-                        .setTitle("M3U kitaplığı hazır")
+                        .setTitle(if (requestCode == PICK_JSON_API)
+                            "JSON / API kitaplığı hazır" else "M3U kitaplığı hazır")
                         .setMessage(
                             "$total geçerli video kaydı bulundu.\n" +
                             "$added yeni kayıt " + targetKind.title.lowercase() +
@@ -856,7 +860,7 @@ class MediaLibraryHubActivity : Activity() {
                 }, onFailure = {
                     // Do not show exception details: playlist URLs can contain account tokens.
                     Toast.makeText(this,
-                        "M3U içe aktarılamadı. 8 MB altı UTF-8 M3U ve HTTPS adreslerini kontrol et.",
+                        "Dosya içe aktarılamadı. 8 MB altı UTF-8 JSON/M3U ve HTTPS adreslerini kontrol et.",
                         Toast.LENGTH_LONG).show()
                 })
             }
@@ -883,6 +887,12 @@ class MediaLibraryHubActivity : Activity() {
                 "Özel oturum, şifre, DRM veya sağlayıcıya özel API işlemleri desteklenmez.")
             .setView(wrapper)
             .setNegativeButton("Vazgeç",null)
+            .setNeutralButton("JSON / .api dosyası seç") { _, _ ->
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }, PICK_JSON_API)
+            }
             .setPositiveButton("Listeyi içe aktar") { _,_ ->
                 val url=address.text.toString().trim()
                 if (!M3uParser.isHttpsUrl(url)) {
@@ -964,6 +974,7 @@ class MediaLibraryHubActivity : Activity() {
     companion object {
         const val EXTRA_KIND="media_library_kind"
         private const val PICK_VOD_M3U = 742
+        private const val PICK_JSON_API = 743
     }
     override fun onDestroy(){
         browseGeneration++
