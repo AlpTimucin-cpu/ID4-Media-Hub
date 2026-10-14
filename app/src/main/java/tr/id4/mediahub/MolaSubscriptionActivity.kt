@@ -104,7 +104,7 @@ class MolaSubscriptionActivity : Activity() {
         top.addView(label(service.displayName,18f,Color.WHITE,true).apply{
             gravity=Gravity.CENTER_VERTICAL
         },LinearLayout.LayoutParams(0,dp(44),1f))
-        top.addView(control("↗"){openOfficialApp()},
+        top.addView(control("↗"){openCurrentInOfficial()},
             LinearLayout.LayoutParams(dp(48),dp(46)).apply{rightMargin=dp(6)})
         top.addView(control("⌂"){finish()},LinearLayout.LayoutParams(dp(48),dp(46)))
         main.addView(top)
@@ -225,7 +225,7 @@ class MolaSubscriptionActivity : Activity() {
         listOf(
             "⌂ Ana sayfa" to { go(SubscriptionPortalPolicy.homepage(service)) },
             "◷ Son içerikler" to { showHistory() },
-            "↗ Uygulama" to { openOfficialApp() }
+            "↗ Uygulamada izle" to { openCurrentInOfficial() }
         ).forEach{(title,action)->
             val chip=control(title,action).apply{textSize=12f}
             tabs.addView(chip,LinearLayout.LayoutParams(0,dp(46),1f).apply{
@@ -301,11 +301,11 @@ class MolaSubscriptionActivity : Activity() {
             .setNegativeButton("Kapat",null).show()
     }
 
-    private fun openOfficialApp(){
-        when(service){
-            StreamingService.NETFLIX->InstalledMediaApps.openNetflix(this)
-            StreamingService.PRIME_VIDEO->InstalledMediaApps.openPrimeVideo(this)
-        }
+    private fun openCurrentInOfficial() {
+        // Same-title handoff when the website is on a known title page,
+        // otherwise fall back to the official native app's home screen.
+        val current=if(::web.isInitialized)web.url.orEmpty() else ""
+        InstalledMediaApps.openStreamingTitle(this,service,current)
     }
 
     private fun exitFullscreen(){
