@@ -1,3 +1,13 @@
+# v0.40 — 14 Ekim 2026
+
+- REC TV videolarında görülen dolu film/dizi/TV kataloğu ile M3U-only boş ID.4 ekranları karşılaştırıldı.
+- Film, Dizi, Maçlar kategorilerinde resmî kaynak kartları listelenmeye başladı.
+- Blender Open Movies halka açık PeerTube katalog ve oynatma API'si, resmî sağlayıcı kontrolü.
+- Dizi/maçlar için tabii ve TRT Spor uygulama bağlantıları, TRT yayın akışı.
+- Boş TV dizinine TRT Haber seçeneği ve kullanıcı onaylı spor kanalları kaynak listesi.
+- Eski M3U medya, radyo, YouTube/Netflix/Prime Video ve TMDB altyapısı korundu.
+- REC TV kapalı API, premium film/maç bağlantıları veya güvenlik kilitleri aktarılmadı.
+
 # v0.39 — 14 Ekim 2026
 
 - REC TV'nin Flutter AOT metin izlerinde TMDB poster/trending URL'leri, özel movie/series API yolları ve Firebase `rectv_api_url_enc` uzak ayarı tespit edildi.
