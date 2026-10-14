@@ -162,6 +162,10 @@ class MediaLibraryHubActivity : Activity() {
             })
         root.addView(footer)
         refresh()
+        Thread {
+            BundledMovieLibrary.load(applicationContext)
+            runOnUiThread { if (!isFinishing && !isDestroyed) refresh() }
+        }.start()
         BlenderMovieFeed.load{list->
             if(!isFinishing && !isDestroyed){
                 dynamicOpenMovies=list
@@ -253,6 +257,19 @@ class MediaLibraryHubActivity : Activity() {
             embeddedMatches.size+" gömülü film künyesi"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
+        // The public repository holds catalogue titles. The private build may
+        // additionally package the user's full M3U; show its actual state.
+        if (selected == VideoLibraryKind.MOVIE && !favoritesOnly) {
+            val bundled = BundledMovieLibrary.peek()
+            content.addView(text(
+                when {
+                    bundled == null -> "TAM M3U • Dosya yükleniyor…"
+                    bundled.size > 0 -> "TAM M3U PAKETTE • ${bundled.size} medya bağlantısı"
+                    else -> "TAM M3U BULUNAMADI • Yalnızca film adları yüklü"
+                },
+                12f, if (bundled?.size ?: 0 > 0) mint else muted, true
+            ).apply { setPadding(dp(7),dp(9),dp(5),dp(6)) })
+        }
         // User-provided movie titles and genres are bundled, never the third-party
         // film stream URLs. Search/genre filtering works offline on first launch.
         if (selected == VideoLibraryKind.MOVIE && !favoritesOnly &&
@@ -260,8 +277,12 @@ class MediaLibraryHubActivity : Activity() {
             content.addView(text("GÖMÜLÜ FİLM KATALOĞU • "+allEmbedded.size+" BAŞLIK",
                 13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(7)) })
             content.addView(text(
-                "Film adları ve türler cihazda hazır. Bu katalog yayın adresi içermez; " +
-                "izlemek için erişim hakkın olan kaynağı eklemelisin.",
+                if (BundledMovieLibrary.peek()?.size ?: 0 > 0)
+                    "Film adları ve M3U bağlantıları APK'da hazır. Süreli veya engelli " +
+                    "bağlantılar çalışmayabilir."
+                else
+                    "Film adları hazır ancak oynatma M3U'su bu APK'da yok. " +
+                    "İzlemek için yetkili M3U dosyanı seç.",
                 12f,muted).apply { setPadding(dp(7),0,dp(7),dp(11)) })
             embeddedMatches.take(visibleLimit).forEach { film ->
                 content.addView(embeddedCard(film),LinearLayout.LayoutParams(-1,-2).apply {
@@ -373,14 +394,65 @@ class MediaLibraryHubActivity : Activity() {
             maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END
         })
         labels.addView(space(5))
-        labels.addView(text("Film bilgisi • Oynatmak için kaynak ekle",11f,mint,true))
+        labels.addView(text(
+            if ((BundledMovieLibrary.peek()?.size ?: 0)>0) "▶ Yayını açmayı dene"
+            else "Film bilgisi • Oynatmak için kaynak ekle",11f,mint,true))
         tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
         tile.addView(text("›",27f,mint,true))
         return tile
     }
 
-    /** Film catalogue cards are descriptive until the user connects an authorized URL. */
+    private fun playBundled(film: EmbeddedFilm, candidate: PlaylistEntry) {
+        startActivity(Intent(this, PlayerActivity::class.java).apply {
+            putExtra(PlayerActivity.EXTRA_URL, candidate.url)
+            putExtra(PlayerActivity.EXTRA_TITLE, film.title)
+            // A deterministic local id avoids placing signed playback tokens
+            // into playback progress or recent-history keys.
+            putExtra(PlayerActivity.EXTRA_ID,
+                "bundle-" + EmbeddedFilmCatalog.normalized(film.title).hashCode())
+            putExtra(PlayerActivity.EXTRA_IS_VOD, true)
+        })
+    }
+
+    /** The M3U is a bundled *source*, not a guarantee that a stream still works. */
     private fun openEmbeddedFilm(film: EmbeddedFilm) {
+        val bundle = BundledMovieLibrary.peek()
+        if (bundle == null) {
+            Toast.makeText(this, "Gömülü M3U okunuyor. Tekrar dokun.",
+                Toast.LENGTH_SHORT).show()
+            return
+        }
+        val bundled = BundledMovieLibrary.find(film, bundle)
+        if (bundled != null) {
+            val tms = BundledMovieLibrary.timestampSeconds(bundled.url)
+            val old = tms != null && tms > 1_600_000_000L &&
+                tms < System.currentTimeMillis()/1000L - 7*24*3600L
+            if (!old) {
+                playBundled(film,bundled)
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle(film.title)
+                    .setMessage(
+                        "Film bağlantısı APK içinde bulundu. Ancak listedeki sunucu " +
+                        "adresi eski tarihli bir tms parametresi içeriyor. Bu, akışın " +
+                        "artık çalışmayabileceğine işaret eder; kesin geçerlilik " +
+                        "süresini belirlemez.\\n\\n" +
+                        "Yine de oynatmayı deneyebilir veya güncel, kullanım hakkın " +
+                        "olan M3U dosyasını seçebilirsin."
+                    )
+                    .setNegativeButton("Kapat", null)
+                    .setNeutralButton("M3U seç") { _, _ -> pickM3uFile() }
+                    .setPositiveButton("Oynatmayı dene") { _, _ ->
+                        playBundled(film,bundled)
+                    }.show()
+            }
+            return
+        }
+        showUnlinkedFilm(film)
+    }
+
+    /** Film catalogue cards without a matching video show a clear source state. */
+    private fun showUnlinkedFilm(film: EmbeddedFilm) {
         val normalizedTitle = EmbeddedFilmCatalog.normalized(film.title)
         val own = VideoStore.load(this).firstOrNull { channel ->
             VideoLibraryClassifier.classify(channel) == VideoLibraryKind.MOVIE &&
