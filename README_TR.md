@@ -1,8 +1,18 @@
-# ID.4 YOL ARKADAŞIM • v0.42 BETA
+# ID.4 YOL ARKADAŞIM • v0.43 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+## v0.43 — Kullanıcının M3U film listesini içe aktarma
+
+- Film / Dizi / Maçlar ekranının altına **M3U dosyasından içe aktar** eklendi. Android dosya seçicisi üzerinden telefondan ya da Google Drive'dan bir M3U dosyası seçilebilir.
+- 2.500 kayıt sınırı 15.000'e yükseltildi; 7.232 satırlı örnek sentetik video kataloğu için ayrıştırıcı birim testi eklendi.
+- Her kaynak, seçilen Film / Dizi / Maçlar sekmesine kaydedilir; M3U içindeki grup türleri (`Dram | Türkçe Dublaj`) ayrı kategori filtrelerine dönüştürülür.
+- Aynı bağlantı yeniden eklenmez. Kaynak ve afiş URL'leri sadece cihazın özel uygulama verisinde saklanır; herhangi bir liste veya kimlik bilgisi projeye gömülmez.
+- **REC TV'ye ait dağıtım sunucuları, bağlantı tokenları veya ücretli/telifli yayın listeleri APK'ya gömülmez.** Yalnızca erişim hakkın olan kişisel M3U dosyasını seçip yerel oynatıcıda deneyebilirsin.
+- M3U içerisindeki HTTP Referer / User-Agent gerektiren yayınlar, lisans süresi dolan tokenlar veya DRM korumalı videolar açılmayabilir; bunların çalışacağı garanti edilmez.
+- Netflix, Prime Video, YouTube, radyo, IPTV ve Android Auto ses fonksiyonları korunur. Araç ekranında video oynatma kısıtı kaldırılmadı.
+- Test ve paketleme: GitHub Actions testDebugUnitTest ve assembleDebug + Android 15 emülatör smoke sonucu ayrıca doğrulanır.
 
 ## v0.42 — Film, dizi ve maçlarda kullanışlı katalog
 
