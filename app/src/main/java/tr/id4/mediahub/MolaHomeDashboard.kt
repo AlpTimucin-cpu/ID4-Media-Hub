@@ -161,7 +161,7 @@ object MolaHomeDashboard {
             0xffbd82f3.toInt(),actions.onPodcast))
         root.addView(vspace(activity,9))
         root.addView(section(activity,"FİLM · DİZİ · MAÇ",
-            "Kendi M3U ve HTTPS medya kaynakların"))
+            "Açık filmler, resmî sağlayıcılar ve kendi yayınların"))
         root.addView(vspace(activity,8))
         val library=horizontal(activity)
         listOf(
