@@ -48,6 +48,7 @@ class MolaTvBrowseActivity : Activity() {
         background=shape(0xff263f47.toInt(),0xff192b30.toInt(),13)
         setOnClickListener{onClick()}
     }
+    private lateinit var sessionHeader: MolaSessionHeader
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor=bg;window.navigationBarColor=bg
@@ -57,6 +58,8 @@ class MolaTvBrowseActivity : Activity() {
             setPadding(dp(12),dp(10),dp(12),dp(10))
         }
         setContentView(root)
+        sessionHeader=MolaSessionHeader(this)
+        root.addView(sessionHeader.view)
         if(android.os.Build.VERSION.SDK_INT>=30) {
             root.setOnApplyWindowInsetsListener{v,insets->
                 val x=insets.getInsets(WindowInsets.Type.systemBars())
@@ -232,4 +235,8 @@ class MolaTvBrowseActivity : Activity() {
     private fun back(){if(group!=null){group=null;search.setText("");renderList()}else finish()}
     @Deprecated("Activity navigation")
     override fun onBackPressed(){back()}
+    override fun onDestroy(){
+        if(::sessionHeader.isInitialized)sessionHeader.release()
+        super.onDestroy()
+    }
 }
