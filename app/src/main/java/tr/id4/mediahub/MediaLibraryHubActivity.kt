@@ -156,9 +156,13 @@ class MediaLibraryHubActivity : Activity() {
         val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         footer.addView(button("＋ Kaynak ekle"){addSource()},
             LinearLayout.LayoutParams(0,dp(52),1f))
+        footer.addView(button("◈ API ekle"){addApiSource()},
+            LinearLayout.LayoutParams(0,dp(52),.9f).apply {
+                leftMargin=dp(6)
+            })
         footer.addView(button("⟳ Yenile"){refresh()},
             LinearLayout.LayoutParams(0,dp(52),.6f).apply{
-                leftMargin=dp(8)
+                leftMargin=dp(6)
             })
         root.addView(footer)
         refresh()
@@ -787,6 +791,75 @@ class MediaLibraryHubActivity : Activity() {
                 })
             }
         }.start()
+    }
+
+    private fun addApiSource() {
+        val address = EditText(this).apply {
+            hint = "https://.../api veya .../playlist.json"
+            setSingleLine(true)
+            setTextColor(Color.BLACK)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
+        }
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18),0,dp(18),0)
+            addView(address)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(selected.title+" • HTTPS API kaynağı")
+            .setMessage("Kullanım iznin olan bir JSON API veya M3U bağlantısı gir. " +
+                "JSON içinde title/name ve url/stream_url alanları olmalı. " +
+                "Özel oturum, şifre, DRM veya sağlayıcıya özel API işlemleri desteklenmez.")
+            .setView(wrapper)
+            .setNegativeButton("Vazgeç",null)
+            .setPositiveButton("Listeyi içe aktar") { _,_ ->
+                val url=address.text.toString().trim()
+                if (!M3uParser.isHttpsUrl(url)) {
+                    Toast.makeText(this,"Geçerli HTTPS API adresi gerekli.",
+                        Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                val kind=selected
+                val loading=AlertDialog.Builder(this)
+                    .setTitle("API listesi okunuyor")
+                    .setMessage("JSON veya M3U içerikleri yükleniyor...")
+                    .setCancelable(false).create()
+                loading.show()
+                Thread {
+                    val result=runCatching {
+                        val items=UserMediaApiImporter.fetch(url)
+                        require(items.isNotEmpty()) { "Desteklenen medya alanı bulunamadı" }
+                        items.size to VideoStore.addAll(applicationContext,items,kind)
+                    }
+                    runOnUiThread {
+                        loading.dismiss()
+                        if(isFinishing || isDestroyed) return@runOnUiThread
+                        result.fold(
+                            onSuccess={ (found, added) ->
+                                activeCategory=null
+                                visibleLimit=36
+                                favoritesOnly=false
+                                refresh()
+                                AlertDialog.Builder(this)
+                                    .setTitle("API içe aktarıldı")
+                                    .setMessage("$found geçerli video kaydı okundu. " +
+                                        "$added yeni kayıt eklendi; daha önce kayıtlı " +
+                                        "bağlantılar tekrar eklenmedi.")
+                                    .setPositiveButton("Tamam",null).show()
+                            },
+                            onFailure={
+                                // Never show raw API exception strings: the URL may
+                                // contain account tokens or user credentials.
+                                Toast.makeText(this,
+                                    "API okunamadı. JSON/M3U biçimini, HTTPS erişimini " +
+                                    "ve kaynak iznini kontrol et.",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
+                }.start()
+            }.show()
     }
 
     private fun addSource(){
