@@ -229,16 +229,54 @@ class MediaLibraryHubActivity : Activity() {
             imported,selected,search.text.toString(),favoritesOnly,
             activeCategory,recentIds,resumable
         )
-        updateCategories(library.categories)
+        val allEmbedded = if (selected == VideoLibraryKind.MOVIE && !favoritesOnly)
+            EmbeddedFilmCatalog.load(this) else emptyList()
+        val embeddedGroups = if (allEmbedded.isNotEmpty())
+            EmbeddedFilmCatalog.groups(allEmbedded, search.text.toString()) else emptyList()
+        val allCategories = if (embeddedGroups.isNotEmpty())
+            (embeddedGroups.take(25) + library.categories)
+                .distinctBy { EmbeddedFilmCatalog.normalized(it.name) } else library.categories
+        updateCategories(allCategories)
+        val ownTitles = if (allEmbedded.isNotEmpty()) imported
+            .filter { VideoLibraryClassifier.classify(it) == VideoLibraryKind.MOVIE }
+            .map { EmbeddedFilmCatalog.normalized(it.name) }.toSet()
+            else emptySet()
+        val embeddedMatches = if (allEmbedded.isEmpty()) emptyList() else
+            EmbeddedFilmCatalog.filtered(allEmbedded, search.text.toString(), activeCategory)
+                .filterNot { EmbeddedFilmCatalog.normalized(it.title) in ownTitles }
         val official=(OfficialMediaDirectory.list(selected,search.text.toString()) +
             dynamicOpenMovies.filter{it.kind==selected &&
                 (search.text.isBlank() || it.title.contains(search.text.toString(),true))})
             .distinctBy{if(it.mode==OfficialMediaMode.OPEN_MOVIE)it.target else it.id}
             .filter{!favoritesOnly || OfficialMediaFavorites.contains(this,it.id)}
-        counter.text=selected.title+" · "+library.total+" kişisel kayıt • "+
-            official.size+" resmî seçenek"
+        counter.text=selected.title+" · "+library.total+" oynatılabilir kişisel kayıt • "+
+            embeddedMatches.size+" gömülü film künyesi"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
+        // User-provided movie titles and genres are bundled, never the third-party
+        // film stream URLs. Search/genre filtering works offline on first launch.
+        if (selected == VideoLibraryKind.MOVIE && !favoritesOnly &&
+            allEmbedded.isNotEmpty()) {
+            content.addView(text("GÖMÜLÜ FİLM KATALOĞU • "+allEmbedded.size+" BAŞLIK",
+                13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(7)) })
+            content.addView(text(
+                "Film adları ve türler cihazda hazır. Bu katalog yayın adresi içermez; " +
+                "izlemek için erişim hakkın olan kaynağı eklemelisin.",
+                12f,muted).apply { setPadding(dp(7),0,dp(7),dp(11)) })
+            embeddedMatches.take(visibleLimit).forEach { film ->
+                content.addView(embeddedCard(film),LinearLayout.LayoutParams(-1,-2).apply {
+                    bottomMargin=dp(9)
+                })
+            }
+            if (embeddedMatches.size > visibleLimit) {
+                val pageCount = minOf(visibleLimit, embeddedMatches.size)
+                content.addView(button("▼ Daha fazla film • $pageCount/${embeddedMatches.size}") {
+                    visibleLimit=(visibleLimit+36).coerceAtMost(embeddedMatches.size)
+                    refresh()
+                }, LinearLayout.LayoutParams(-1,dp(53)))
+            }
+            content.addView(space(10))
+        }
 
         // Display known open movies and official provider choices even when no
         // personal M3U was imported. Avoid an apparently empty Movie/Series page.
@@ -307,6 +345,55 @@ class MediaLibraryHubActivity : Activity() {
                 },LinearLayout.LayoutParams(-1,dp(54)))
             }
         }
+    }
+
+    private fun embeddedCard(film: EmbeddedFilm): LinearLayout {
+        val tile = LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(12),dp(11),dp(11),dp(11))
+            background=background(0xff243037.toInt(),0xff131e27.toInt(),16)
+            isClickable=true;isFocusable=true
+            contentDescription=film.title+" • Film künyesini görüntüle"
+            setOnClickListener { openEmbeddedFilm(film) }
+        }
+        tile.addView(text("▣",30f,0xffd6a4c5.toInt(),true).apply {
+            gravity=Gravity.CENTER
+            background=background(0xff583449.toInt(),0xff302b44.toInt(),12)
+        }, LinearLayout.LayoutParams(dp(73),dp(88)))
+        val labels=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(12),0,dp(6),0)
+        }
+        labels.addView(text(film.title,16f,Color.WHITE,true).apply {
+            maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END
+        })
+        labels.addView(space(5))
+        labels.addView(text(film.group,12f,muted).apply {
+            maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END
+        })
+        labels.addView(space(5))
+        labels.addView(text("Katalog bilgisi • İzleme kaynağı gerek",11f,mint,true))
+        tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
+        tile.addView(text("›",27f,mint,true))
+        return tile
+    }
+
+    private fun openEmbeddedFilm(film: EmbeddedFilm) {
+        val own = VideoStore.load(this).firstOrNull { channel ->
+            VideoLibraryClassifier.classify(channel) == VideoLibraryKind.MOVIE &&
+                EmbeddedFilmCatalog.normalized(channel.name) ==
+                    EmbeddedFilmCatalog.normalized(film.title)
+        }
+        if (own != null) { play(own); return }
+        AlertDialog.Builder(this)
+            .setTitle(film.title)
+            .setMessage(film.group+"\\n\\nBu filmin adı ve kategorisi APK'nın çevrimdışı " +
+                "kataloğunda bulunuyor. Yayın bağlantısı pakete eklenmedi. " +
+                "Erişim hakkın olan bir M3U kaynağı eklersen mevcut oynatıcıdan açabilirsin.")
+            .setNegativeButton("Kapat",null)
+            .setPositiveButton("Kendi M3U dosyamı seç") { _, _ -> pickM3uFile() }
+            .show()
     }
 
     private fun officialCard(src:OfficialMediaCard):LinearLayout{
