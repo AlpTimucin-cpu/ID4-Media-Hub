@@ -15,7 +15,8 @@ data class OfficialMediaCard(
     val provider: String,
     val mode: OfficialMediaMode,
     val target: String,
-    val rightNote: String
+    val rightNote: String,
+    val imageUrl: String = ""
 )
 
 object OfficialMediaDirectory {
