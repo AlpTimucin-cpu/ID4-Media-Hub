@@ -41,10 +41,19 @@ object StreamingPagePolicy {
         if (!uri.scheme.equals("https", ignoreCase = true) ||
             uri.rawUserInfo != null || uri.port !in listOf(-1, 443)) return null
         val parts = uri.rawPath.orEmpty().split('/').filter(String::isNotBlank)
-        if (host in netflixHosts && parts.size == 2 &&
-            parts[0] in setOf("watch", "title") && digits.matches(parts[1])) {
+        // Netflix often uses a locale prefix such as /tr/title/12345678.
+        // History saves only the content ID, never locale, tracking or session params.
+        val netflixParts = when {
+            parts.size == 2 -> parts
+            parts.size == 3 &&
+                parts[0].matches(Regex("[a-zA-Z]{2}(-[a-zA-Z]{2})?")) -> parts.drop(1)
+            else -> emptyList()
+        }
+        if (host in netflixHosts && netflixParts.size == 2 &&
+            netflixParts[0] in setOf("watch", "title") &&
+            digits.matches(netflixParts[1])) {
             return StreamingPage(StreamingService.NETFLIX,
-                "https://www.netflix.com/" + parts[0] + "/" + parts[1])
+                "https://www.netflix.com/" + netflixParts[0] + "/" + netflixParts[1])
         }
         if (host in primeHosts) {
             // /detail/ASIN and localized /-/tr/detail/ASIN forms.
