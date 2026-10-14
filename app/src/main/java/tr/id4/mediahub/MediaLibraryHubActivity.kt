@@ -91,6 +91,14 @@ class MediaLibraryHubActivity : Activity() {
         root.addView(space(16))
         tabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         root.addView(tabs)
+        root.addView(space(7))
+        root.addView(button("◈ TMDB film / dizi keşfet (afiş ve bilgiler)") {
+            startActivity(Intent(this,TmdbCatalogActivity::class.java).apply {
+                putExtra(TmdbCatalogActivity.EXTRA_KIND,
+                    if (selected == VideoLibraryKind.SERIES)
+                        TmdbKind.SERIES.name else TmdbKind.MOVIE.name)
+            })
+        },LinearLayout.LayoutParams(-1,dp(47)))
         root.addView(space(11))
         search=EditText(this).apply{
             hint="Film, dizi, maç veya kategori ara"
