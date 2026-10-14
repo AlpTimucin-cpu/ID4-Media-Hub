@@ -1,3 +1,12 @@
+# v0.46 — 14 Ekim 2026
+
+- Telefon ana sayfasında Film, Dizi, Maç ve SportzX bölümleri bağımsız büyük kartlarla görünür hale getirildi.
+- Resmî sağlayıcılar, açık Blender kısa filmleri ve dizi keşif kartları kişisel M3U boşken bile katalog başında görünür. WING IT! ve resmî Blender arşiv bağlantıları eklendi.
+- SportzX bölümü Mola tasarımına uyumlu dahili HTTPS web görünümü, site içi arama, geri, yenile, tam ekran ve kurulu Android APK'sına geçiş ile oluşturuldu.
+- SportzX sitesi esas olarak APK tanıtım sayfasıdır; native SportzX yayınlarına otomatik, gömülü erişim iddia edilmez.
+- Medya yayın yetkileri / DRM / Android Auto video güvenlik kısıtları değişmedi. GitHub'da REC TV özel stream URL'leri yok.
+- Web URL politikası ve Film/Dizi resmî katalog birim testleri eklendi.
+
 # v0.45 — 14 Ekim 2026
 
 - Android Auto için 5 ses kategorisi: tüm radyolar, favoriler, son dinlenen radyolar, radyo grupları, podcastlar.
