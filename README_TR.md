@@ -1,8 +1,17 @@
-# ID.4 YOL ARKADAŞIM • v0.37 BETA
+# ID.4 YOL ARKADAŞIM • v0.38 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.38 — Netflix ve Prime Video için YouTube ile aynı Mola gezinmesi
+
+- Netflix ve Prime Video büyük kartları artık **Mola içinde ayrı katalog ekranlarına** açılır.
+- Aynı Mola ses/bağlantı başlığı, platform içinde ara, ana sayfa, son açılan içerikler, geri ve yenile düğmeleri.
+- **↗ Uygulamada izle** seçeneği geçerli film/dizi sayfasını, mümkünse yerel resmî Netflix/Prime Video uygulamasına yönlendirir; aksi durumda uygulama ana ekranına geçilir.
+- Netflix `/tr/title` gibi yerelleştirilmiş film sayfaları için geçmiş desteği; her platformun geçmişi ayrıdır, takip parametreleri saklanmaz.
+- **Önemli:** Netflix ve Prime Video'nun DRM korumalı yayınları Android WebView'de çalışmayabilir. Bu yerel katalog/web görünümüdür; platformların lisanslı video oynatıcılarının kopyası değildir. Arama sayfalarının çalışması da sağlayıcıya bağlıdır.
+- Kapsam: `docs/MOLA_NETFLIX_PRIME_V038.md`. Araç hareketindeyken ön ekranda video kısıtı değiştirilmez.
 
 ## v0.37 — Mola içinde YouTube, ekranlar arasında ses kontrolleri
 
