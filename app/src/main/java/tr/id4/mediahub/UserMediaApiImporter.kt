@@ -49,12 +49,17 @@ object UserMediaApiImporter {
                 if(line.isNotBlank()) put(JSONObject(line))
             }
         }
+        val ndjsonLines=text.lineSequence().filter { it.isNotBlank() }.take(3).toList()
+        val isNdjson=ndjsonLines.size>=2 && ndjsonLines.all {
+            val line=it.trim()
+            line.startsWith("{") && line.endsWith("}")
+        }
         val root = when {
             text.startsWith("[") -> JSONArray(text)
+            isNdjson -> ndjson()
             text.startsWith("{") -> try {
                 JSONObject(text)
             } catch (_: org.json.JSONException) {
-                // A stream of distinct JSON objects rather than one object.
                 ndjson()
             }
             else -> return emptyList()
