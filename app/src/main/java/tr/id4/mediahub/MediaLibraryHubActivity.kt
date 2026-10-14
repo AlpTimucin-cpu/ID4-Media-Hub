@@ -193,9 +193,9 @@ class MediaLibraryHubActivity : Activity() {
         })
         if(channels.isEmpty()){
             content.addView(text(if(favoritesOnly)"Henüz favori içerik yok."
-                else "Henüz "+selected.title.lowercase()+" kaynağı yok.\n\n"+
-                    "Erişim hakkın olan HTTPS video/kanal bağlantısını ekle "+
-                    "veya Kaynaklar bölümünden yasal M3U listenizi içe aktar.",
+                else "Yukarıda açık videolar ve resmî platformlar var.\n\n"+
+                    "KENDİ KÜTÜPHANEM bölümüne yayın eklemek için "+
+                    "erişim hakkın olan HTTPS bağlantısını veya M3U listeni kullan.",
                 15f,muted).apply{setPadding(dp(12),dp(45),dp(12),dp(15))})
         }else{
             channels.take(500).forEach{ch->
