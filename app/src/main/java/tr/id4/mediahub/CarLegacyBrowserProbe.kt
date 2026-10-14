@@ -50,11 +50,12 @@ object CarLegacyBrowserProbe {
                         ) {
                             val ids = children.map { it.mediaId }.toSet()
                             val expected = setOf(
-                                "id4_audio_all", "id4_audio_favorites", "id4_audio_groups"
+                                "id4_audio_all", "id4_audio_favorites", "id4_audio_groups",
+                                "id4_audio_recents", "id4_podcast_root"
                             )
                             val ok = parentId == root && ids.containsAll(expected)
                             finish(if (ok) {
-                                "ESKİ ANDROID MEDIABROWSER: BAĞLANDI (3 kök kategori)"
+                                "ESKİ ANDROID MEDIABROWSER: BAĞLANDI (5 kök kategori)"
                             } else {
                                 "ESKİ ANDROID MEDIABROWSER: Eksik veya yanlış kök kategorileri"
                             })
