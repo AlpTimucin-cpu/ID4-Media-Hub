@@ -35,6 +35,7 @@ class MediaLibraryHubActivity : Activity() {
     private lateinit var counter: TextView
     private lateinit var favorites: Button
     private lateinit var tabs: LinearLayout
+    private var dynamicOpenMovies: List<OfficialMediaCard> = emptyList()
 
     private fun dp(n:Int)=(resources.displayMetrics.density*n).toInt()
     private fun background(a:Int,b:Int,r:Int=16)=
@@ -138,6 +139,12 @@ class MediaLibraryHubActivity : Activity() {
             })
         root.addView(space(8));root.addView(footer)
         refresh()
+        BlenderMovieFeed.load{list->
+            if(!isFinishing && !isDestroyed){
+                dynamicOpenMovies=list
+                refresh()
+            }
+        }
     }
     override fun onResume(){
         super.onResume()
@@ -163,7 +170,10 @@ class MediaLibraryHubActivity : Activity() {
         updateTabs()
         val channels=VideoLibraryClassifier.filtered(VideoStore.load(this),selected,
             search.text.toString(),favoritesOnly)
-        val official=OfficialMediaDirectory.list(selected,search.text.toString())
+        val official=(OfficialMediaDirectory.list(selected,search.text.toString()) +
+            dynamicOpenMovies.filter{it.kind==selected &&
+                (search.text.isBlank() || it.title.contains(search.text.toString(),true))})
+            .distinctBy{if(it.mode==OfficialMediaMode.OPEN_MOVIE)it.target else it.id}
         counter.text=selected.title+" · "+channels.size+" kendi yayın • "+official.size+" resmî seçenek"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
@@ -217,14 +227,23 @@ class MediaLibraryHubActivity : Activity() {
             orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER
             background=background(accent,0xff19212e.toInt(),13)
         }
-        poster.addView(text(when(src.mode){
-            OfficialMediaMode.OPEN_MOVIE->"▶"
-            OfficialMediaMode.PROVIDER_APP->"▣"
-            OfficialMediaMode.PROVIDER_WEB->"▦"
-            OfficialMediaMode.TV_CHANNEL->"●"
-        },31f,Color.WHITE,true))
-        poster.addView(text(if(src.provider=="Blender Open Movies")"OPEN"
-            else src.provider.take(7),10f,Color.WHITE,true))
+        if(src.imageUrl.isNotBlank()){
+            val cover=ImageView(this).apply{
+                scaleType=ImageView.ScaleType.CENTER_CROP
+                setImageResource(android.R.drawable.ic_media_play)
+            }
+            poster.addView(cover,LinearLayout.LayoutParams(-1,-1))
+            ChannelLogoLoader.into(src.imageUrl,cover,this)
+        }else{
+            poster.addView(text(when(src.mode){
+                OfficialMediaMode.OPEN_MOVIE->"▶"
+                OfficialMediaMode.PROVIDER_APP->"▣"
+                OfficialMediaMode.PROVIDER_WEB->"▦"
+                OfficialMediaMode.TV_CHANNEL->"●"
+            },31f,Color.WHITE,true))
+            poster.addView(text(if(src.provider=="Blender Open Movies")"OPEN"
+                else src.provider.take(7),10f,Color.WHITE,true))
+        }
         tile.addView(poster,LinearLayout.LayoutParams(dp(84),dp(92)))
         val labels=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
