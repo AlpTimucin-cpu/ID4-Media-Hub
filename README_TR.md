@@ -1,7 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.49 BETA
+# ID.4 YOL ARKADAŞIM • v0.50 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.50 — HTTPS .api / JSON / M3U medya içe aktarma
+
+- Gönderilen orijinal 7.232 bağlantılı `filmler_full.m3u` aynen APK'da kalır.
+- `filmler_full.m3u` içinde **.api uzantılı URL bulunmuyor** (7.229 `.m3u8`, 2 `.mp4`, 1 uzantısız). `tms` ve `token` parametreleri API uzantısı değildir.
+- Film/Dizi/Maç ekranı alt araç çubuğuna **◈ API ekle** seçeneği eklendi. Kullanıcı sahip olduğu veya kullanma izni bulunan `https://.../api` veya `.json` adresini girebilir.
+- API sonucunda JSON dizi veya `data`, `items`, `results`, `channels`, `streams`, `videos`, `movies`, `series` zarfı altındaki dizi; `name/title`, `url/stream_url/playUrl`, `group/category`, `logo/poster` alanlarını tanır. API M3U döndürüyorsa var olan M3U ayrıştırıcısı çalışır.
+- Yalnız HTTPS video adresleri kullanıcı seçtiği Film/Dizi/Maç bölümüne eklenir. Belirli bir servisin özel API'si, login işlem sırası, DRM, yayın hakkı veya API anahtarı otomatik üretimi desteklenmez.
+- Bağlantılar yalnızca cihazda saklanır. JSON parser testleri ve M3U karma biçim testi eklenmiştir.
 
 ## v0.49 — Tam filmler_full.m3u APK içinde, film kartından bağlantı çözümü
 
