@@ -50,6 +50,7 @@ class MediaLibraryHubActivity : Activity() {
     private var queryTask: Runnable? = null
     private var browseGeneration = 0
     private var skipInitialResume = true
+    private var lastRenderedKind: VideoLibraryKind? = null
 
     private data class BrowseSnapshot(
         val library: MediaLibraryBrowseResult,
@@ -258,6 +259,12 @@ class MediaLibraryHubActivity : Activity() {
         importButton.text="＋ M3U / Google Drive'dan " + kind.title + " ekle"
         sportzXButton.visibility=if(kind==VideoLibraryKind.SPORT)View.VISIBLE else View.GONE
         counter.text="İçerikler hazırlanıyor…"
+        if (lastRenderedKind != kind) {
+            content.removeAllViews()
+            content.addView(text("Katalog arka planda hazırlanıyor…",14f,muted).apply {
+                setPadding(dp(9),dp(22),dp(9),dp(20))
+            })
+        }
         browseExecutor.execute {
             val outcome = runCatching {
                 val imported=VideoStore.load(applicationContext)
@@ -314,6 +321,7 @@ class MediaLibraryHubActivity : Activity() {
     }
 
     private fun renderSnapshot(snapshot:BrowseSnapshot) {
+        lastRenderedKind = selected
         val library=snapshot.library
         val allEmbedded=snapshot.allEmbedded
         val embeddedMatches=snapshot.embeddedMatches
