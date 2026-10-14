@@ -1,3 +1,10 @@
+# v0.52 — 14 Ekim 2026
+
+- Kullanıcı tarafından bildirilen film ekranı gecikmesine karşı çevrimdışı katalog, M3U akış indeksinden tamamen ayrıldı. Başlıklar hazır olduğunda gösterilir; arka planda M3U yüklenince yayın seçimi güncellenir.
+- Android 15 smoke testi film başlığı görünürlüğünü ve tam kaynak hazır olma durumunu ayrı aşamalarda ölçer.
+- v0.51 JSON/.api içe aktarma ve 280ms debounced arama korunur. 7.232 kayıt ve orijinal tam M3U APK'da kalır.
+- Tarihlenmiş stream tokenlarının geçerliliği garanti edilmez.
+
 # v0.51 — 14 Ekim 2026
 
 - v0.50 Android emülatör kanıtlarında film ekranının `isn't responding` (ANR) hatasına düştüğü tespit edildi. Film ve M3U katalog işleme tek arka plan worker'ına alındı.
