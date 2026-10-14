@@ -14,7 +14,8 @@ object M3uParser {
     private val attribute = Regex("([A-Za-z][A-Za-z0-9_-]*)=\"([^\"]*)\"")
     private val audioGroups = setOf("radio", "radyo", "internet radio", "internet radyo", "audio", "podcast", "podcasts")
     private val audioExtensions = setOf("mp3", "aac", "ogg", "opus", "flac", "m4a")
-    private const val MAX_ENTRIES = 2500
+    // Local files can have thousands of individually licensed VOD entries.
+    private const val MAX_ENTRIES = 15000
     /**
      * EXTINF labels are separated by the first comma OUTSIDE quoted attributes.
      * A user-agent value can contain its own comma ("like Gecko, ...").
