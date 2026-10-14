@@ -1,8 +1,18 @@
-# ID.4 YOL ARKADAŞIM • v0.39 BETA
+# ID.4 YOL ARKADAŞIM • v0.40 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.40 — Film, Dizi, Maç ve TV ekranları için resmî kaynak keşfi
+
+- `30856.mp4`: kullanıcı uygulamasında film/dizi/maçlar boş; `30857.mp4`: REC TV'de afiş, yıl, puan, bölüm ve TV kataloglarının dolu olduğu karşılaştırıldı.
+- Film/Dizi/Maçlar bölümüne kendi M3U listen olmasa da görünen, hakları belirtilmiş **resmî içerik ve sağlayıcı kartları** eklendi.
+- Blender Open Movies açık filmleri için resmî PeerTube video API'sinden HLS/MP4 alma ve oynatıcıya aktarma, resmî afiş/veri kataloğu. Sunucu bağlantısı çalışmazsa erişim hatası ve resmî site seçeneği gösterilir.
+- **Diziler:** tabii'nin Gassal, Yeşil Deniz ve dizi arşivi; Blender'ın açık animasyon serisi. **Maçlar:** TRT Spor, tabii ve TRT Spor Yıldız resmî kanalları.
+- TV sayfası boşsa TRT Haber bağlantısını ekleme; TRT Spor/tabii uygulamalarını açma; spor açık kaynak M3U listesini kullanıcı onayıyla içe aktarma.
+- Ücretli beIN/S Sport yayın akışları, REC TV özel sunucuları ve DRM korumaları kopyalanmadı; resmî uygulamadaki abonelik koşulları devam eder.
+- Ayrıntılar: `docs/LEGAL_FILM_SERIES_SPORTS_V040.md`.
 
 ## v0.39 — REC TV film/dizi kaynak araştırması ve TMDB keşfi
 
