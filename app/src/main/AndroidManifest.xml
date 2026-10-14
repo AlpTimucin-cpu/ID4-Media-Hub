@@ -68,6 +68,8 @@
         <activity android:name=".TmdbCatalogActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".TmdbDiscoverActivity"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".MediaLibraryHubActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
