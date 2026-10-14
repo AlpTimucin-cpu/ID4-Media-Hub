@@ -245,7 +245,7 @@ class TmdbDiscoverActivity: Activity() {
             orientation=LinearLayout.VERTICAL
             setPadding(dp(15),dp(10),dp(15),dp(3))
         }
-        box.addView(text("TMDB hesabından kendine ait API Read Access Token al. Anahtar telefonun uygulama özel alanında saklanır; APK içine gömülmez.",12f,0xff344f55.toInt()))
+        box.addView(text("TMDB hesabından kendine ait API Read Access Token al. Anahtar yalnızca uygulama oturumu boyunca bellekte tutulur; APK'ya veya dosyaya kaydedilmez.",12f,0xff344f55.toInt()))
         box.addView(input)
         AlertDialog.Builder(this)
             .setTitle("TMDB bağlantısı")
