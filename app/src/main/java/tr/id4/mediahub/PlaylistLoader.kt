@@ -48,7 +48,7 @@ object PlaylistLoader {
             val count = input.read(buffer)
             if (count == -1) break
             total += count
-            require(total <= MAX_BYTES) { "M3U listesi 2 MB sınırını aşıyor." }
+            require(total <= MAX_BYTES) { "M3U listesi 8 MB sınırını aşıyor." }
             out.write(buffer, 0, count)
         }
         return out.toString(Charsets.UTF_8.name())
