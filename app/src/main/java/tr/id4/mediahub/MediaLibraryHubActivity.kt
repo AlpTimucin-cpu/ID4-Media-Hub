@@ -267,7 +267,7 @@ class MediaLibraryHubActivity : Activity() {
                     bundled.size > 0 -> "TAM M3U PAKETTE • ${bundled.size} medya bağlantısı"
                     else -> "TAM M3U BULUNAMADI • Yalnızca film adları yüklü"
                 },
-                12f, if (bundled?.size ?: 0 > 0) mint else muted, true
+                12f, if ((bundled?.size ?: 0) > 0) mint else muted, true
             ).apply { setPadding(dp(7),dp(9),dp(5),dp(6)) })
         }
         // User-provided movie titles and genres are bundled, never the third-party
@@ -277,7 +277,7 @@ class MediaLibraryHubActivity : Activity() {
             content.addView(text("GÖMÜLÜ FİLM KATALOĞU • "+allEmbedded.size+" BAŞLIK",
                 13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(7)) })
             content.addView(text(
-                if (BundledMovieLibrary.peek()?.size ?: 0 > 0)
+                if ((BundledMovieLibrary.peek()?.size ?: 0) > 0)
                     "Film adları ve M3U bağlantıları APK'da hazır. Süreli veya engelli " +
                     "bağlantılar çalışmayabilir."
                 else
