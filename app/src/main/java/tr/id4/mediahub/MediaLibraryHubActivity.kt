@@ -56,6 +56,7 @@ class MediaLibraryHubActivity : Activity() {
         layoutParams=LinearLayout.LayoutParams(1,dp(v))
     }
 
+    private lateinit var sessionHeader: MolaSessionHeader
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         selected=VideoLibraryKind.values().firstOrNull{
@@ -68,6 +69,8 @@ class MediaLibraryHubActivity : Activity() {
             setPadding(dp(14),dp(12),dp(14),dp(10))
         }
         setContentView(root)
+        sessionHeader=MolaSessionHeader(this)
+        root.addView(sessionHeader.view)
         if(android.os.Build.VERSION.SDK_INT>=30){
             root.setOnApplyWindowInsetsListener{view,insets->
                 val b=insets.getInsets(WindowInsets.Type.systemBars())
@@ -270,4 +273,8 @@ class MediaLibraryHubActivity : Activity() {
             }.show()
     }
     companion object { const val EXTRA_KIND="media_library_kind" }
+    override fun onDestroy(){
+        if(::sessionHeader.isInitialized)sessionHeader.release()
+        super.onDestroy()
+    }
 }
