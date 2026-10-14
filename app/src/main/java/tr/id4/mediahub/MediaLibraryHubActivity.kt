@@ -31,6 +31,8 @@ class MediaLibraryHubActivity : Activity() {
     private val black=0xff0b1316.toInt()
     private var selected=VideoLibraryKind.MOVIE
     private var favoritesOnly=false
+    private var visibleLimit=36
+    private lateinit var importButton: Button
     private var activeCategory:String?=null
     private lateinit var categoryChips:LinearLayout
     private lateinit var content: LinearLayout
@@ -95,6 +97,9 @@ class MediaLibraryHubActivity : Activity() {
         root.addView(space(16))
         tabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         root.addView(tabs)
+        root.addView(space(6))
+        importButton=button("＋ M3U dosyası seç / Google Drive'dan film ekle") { pickM3uFile() }
+        root.addView(importButton,LinearLayout.LayoutParams(-1,dp(52)))
         val categoryScroll=HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled=false
             isFillViewport=false
@@ -123,7 +128,7 @@ class MediaLibraryHubActivity : Activity() {
             addTextChangedListener(object:TextWatcher{
                 override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
                 override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){
-                    if(::content.isInitialized)refresh()
+                    if(::content.isInitialized){visibleLimit=36;refresh()}
                 }
                 override fun afterTextChanged(s:Editable?){}
             })
@@ -135,7 +140,7 @@ class MediaLibraryHubActivity : Activity() {
         }
         counter=text("Kaynaklar yükleniyor",12f,muted)
         controls.addView(counter,LinearLayout.LayoutParams(0,-2,1f))
-        favorites=button("☆ Favoriler"){favoritesOnly=!favoritesOnly;refresh()}
+        favorites=button("☆ Favoriler"){favoritesOnly=!favoritesOnly;visibleLimit=36;refresh()}
         controls.addView(favorites,LinearLayout.LayoutParams(dp(113),dp(47)))
         root.addView(controls)
         root.addView(space(9))
@@ -150,10 +155,6 @@ class MediaLibraryHubActivity : Activity() {
             LinearLayout.LayoutParams(0,dp(52),.6f).apply{
                 leftMargin=dp(8)
             })
-        root.addView(button("▤ M3U DOSYASINDAN ${selected.title.uppercase()} İÇE AKTAR") {
-            pickM3uFile()
-        }, LinearLayout.LayoutParams(-1, dp(50)))
-        root.addView(space(6))
         root.addView(footer)
         refresh()
         BlenderMovieFeed.load{list->
@@ -172,7 +173,7 @@ class MediaLibraryHubActivity : Activity() {
         tabs.removeAllViews()
         listOf(VideoLibraryKind.MOVIE,VideoLibraryKind.SERIES,VideoLibraryKind.SPORT)
             .forEach{kind->
-                val b=button(kind.title){selected=kind;activeCategory=null;refresh()}
+                val b=button(kind.title){selected=kind;activeCategory=null;visibleLimit=36;refresh()}
                 b.background=if(kind==selected)
                     background(0xff25796b.toInt(),0xff155a54.toInt())
                     else background(0xff1f3033.toInt(),0xff142124.toInt())
@@ -195,6 +196,7 @@ class MediaLibraryHubActivity : Activity() {
                 title+" ("+groups.first{it.name==category}.count+")"
             val chip=button(name){
                 activeCategory=category
+                visibleLimit=36
                 refresh()
             }.apply {
                 textSize=12f
@@ -210,11 +212,11 @@ class MediaLibraryHubActivity : Activity() {
 
     private fun refresh(){
         updateTabs()
+        importButton.text="＋ M3U / Google Drive'dan " + selected.title + " ekle"
         val imported=VideoStore.load(this)
         val recentIds=RecentStore.ids(this).mapNotNull {
             if(it.startsWith("tv:"))it.removePrefix("tv:") else null
         }
-        // Only title IDs are persisted. No private playlist or URL in recent history.
         val resumable=if(selected==VideoLibraryKind.SPORT)emptySet()
             else recentIds.filter{VodProgressStore.position(this,it)>0L}.toSet()
         val library=MediaLibraryBrowsePlanner.plan(
@@ -227,10 +229,11 @@ class MediaLibraryHubActivity : Activity() {
                 (search.text.isBlank() || it.title.contains(search.text.toString(),true))})
             .distinctBy{if(it.mode==OfficialMediaMode.OPEN_MOVIE)it.target else it.id}
             .filter{!favoritesOnly || OfficialMediaFavorites.contains(this,it.id)}
-        counter.text=selected.title+" · "+library.total+" kendi yayın • "+
+        counter.text=selected.title+" · "+library.total+" kişisel kayıt • "+
             official.size+" resmî seçenek"
         favorites.text=if(favoritesOnly)"★ Favoriler" else "☆ Favoriler"
         content.removeAllViews()
+
         if(library.continueWatching.isNotEmpty()){
             content.addView(text("↻ KALDIĞIN YERDEN DEVAM ET",12f,mint,true).apply{
                 setPadding(dp(7),dp(11),0,dp(10))
@@ -242,7 +245,47 @@ class MediaLibraryHubActivity : Activity() {
             }
             content.addView(space(6))
         }
+
+        // Personal imports are the primary reason for opening this screen.
+        // A 7,000-entry M3U must not create 500 ImageViews and network image
+        // requests at once: show only 36 rows, then add more on user demand.
+        content.addView(text("FİLM / MEDYA KÜTÜPHANEM • "+library.total+" KAYIT",
+            12f,mint,true).apply{setPadding(dp(7),dp(10),0,dp(9))})
+        val channels=library.entries
+        if(channels.isEmpty() && library.continueWatching.isEmpty()){
+            if(!favoritesOnly && search.text.isBlank() && activeCategory==null &&
+                library.total==0){
+                content.addView(text(
+                    "Henüz ${selected.title.lowercase()} listesi eklenmemiş. " +
+                    "Yukarıdaki M3U / Google Drive düğmesine basıp " +
+                    "kullanım hakkın olan .m3u dosyanı seç. " +
+                    "Dosyayı sadece Drive bağlantısı olarak bu sohbetten " +
+                    "göndermek uygulamaya otomatik yüklemez.",
+                    15f,muted).apply{setPadding(dp(12),dp(20),dp(12),dp(15))})
+                content.addView(button("＋ M3U DOSYASINI ŞİMDİ SEÇ"){
+                    pickM3uFile()
+                },LinearLayout.LayoutParams(-1,dp(54)))
+            }else{
+                content.addView(text(if(favoritesOnly)"Henüz favori içerik yok."
+                    else "Bu aramada veya kategoride kayıt bulunamadı.",
+                    15f,muted).apply{setPadding(dp(12),dp(20),dp(12),dp(15))})
+            }
+        }else{
+            channels.take(visibleLimit).forEach{ch->
+                content.addView(itemCard(ch),LinearLayout.LayoutParams(-1,-2).apply{
+                    bottomMargin=dp(10)
+                })
+            }
+            if(channels.size>visibleLimit){
+                val current=minOf(visibleLimit,channels.size)
+                content.addView(button("▼ Daha fazla film göster • $current/${channels.size}"){
+                    visibleLimit=(visibleLimit+36).coerceAtMost(channels.size)
+                    refresh()
+                },LinearLayout.LayoutParams(-1,dp(54)))
+            }
+        }
         if(official.isNotEmpty()){
+            content.addView(space(13))
             content.addView(text("KEŞFET • RESMÎ SAĞLAYICILAR",12f,mint,true).apply{
                 setPadding(dp(7),dp(11),0,dp(10))
             })
@@ -252,23 +295,6 @@ class MediaLibraryHubActivity : Activity() {
                 })
             }
             content.addView(space(8))
-        }
-        content.addView(text("KENDİ KÜTÜPHANEM • "+library.total+" KAYIT",
-            12f,mint,true).apply{setPadding(dp(7),dp(8),0,dp(8))})
-        val channels=library.entries
-        if(channels.isEmpty() && library.continueWatching.isEmpty()){
-            content.addView(text(if(favoritesOnly)"Henüz favori içerik yok."
-                else "Yukarıdaki resmî seçenekleri kullanabilir veya erişim hakkın olan "+
-                    "HTTPS/M3U kaynağını kendi kütüphanene ekleyebilirsin.",
-                15f,muted).apply{setPadding(dp(12),dp(30),dp(12),dp(15))})
-        }else{
-            channels.take(500).forEach{ch->
-                content.addView(itemCard(ch),LinearLayout.LayoutParams(-1,-2).apply{
-                    bottomMargin=dp(12)
-                })
-            }
-            if(channels.size>500)content.addView(text(
-                "İlk 500 kayıt gösteriliyor. Arama veya kategoriyle daralt.",12f,muted))
         }
     }
 
@@ -514,6 +540,7 @@ class MediaLibraryHubActivity : Activity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 outcome.fold(onSuccess = { (total, added) ->
                     activeCategory = null
+                    visibleLimit = 36
                     refresh()
                     AlertDialog.Builder(this)
                         .setTitle("M3U kitaplığı hazır")
