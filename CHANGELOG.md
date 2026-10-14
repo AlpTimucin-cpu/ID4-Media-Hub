@@ -1,3 +1,11 @@
+# v0.43 — 14 Ekim 2026
+
+- Film/Dizi/Maç ekranından Android sistem dosya seçicisiyle M3U film listesi içe aktarma eklendi (yerel dosya / Drive sağlayıcısı).
+- 15.000 video kapasitesi; film/dizi/maç olarak kullanıcı seçimine göre sınıflandırma ve tür etiketlerini `|` ile ayrılmış gerçek filtreler olarak gösterme.
+- Listeler cihazda kalır, duplicate HTTPS medya bağlantıları tekrar eklenmez. 7.232 kayıtlık sentetik veri birim testi eklendi.
+- Kullanıcı tarafından sağlanan REC TV bağlantıları APK veya GitHub kaynağına gömülmedi; DRM, kullanım yetkisi ve gerçek oynatma garantisi yok.
+- Mevcut IPTV, radyo, resmî platform kısayolları ve araç/sürüş güvenliği aynı kaldı.
+
 # v0.42 — 14 Ekim 2026
 
 - Film, Dizi, Maçlar: kullanıcı M3U gruplarına dayalı kategori filtreleme, canlı arama ve sayılı kategori çipleri.
