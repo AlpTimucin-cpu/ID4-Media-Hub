@@ -42,6 +42,7 @@ class PodcastBrowserActivity: Activity() {
         isClickable=true;isFocusable=true
         setOnClickListener{fn()}
     }
+    private lateinit var sessionHeader: MolaSessionHeader
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         window.statusBarColor=bg;window.navigationBarColor=bg
@@ -51,6 +52,8 @@ class PodcastBrowserActivity: Activity() {
             setPadding(dp(13),dp(10),dp(13),dp(9))
         }
         setContentView(root)
+        sessionHeader=MolaSessionHeader(this)
+        root.addView(sessionHeader.view)
         if(android.os.Build.VERSION.SDK_INT>=30){
             root.setOnApplyWindowInsetsListener{v,i->
                 val b=i.getInsets(WindowInsets.Type.systemBars())
@@ -231,5 +234,9 @@ class PodcastBrowserActivity: Activity() {
     @Deprecated("Activity navigation")
     override fun onBackPressed(){
         if(selected!=null){selected=null;render()}else super.onBackPressed()
+    }
+    override fun onDestroy(){
+        if(::sessionHeader.isInitialized)sessionHeader.release()
+        super.onDestroy()
     }
 }
