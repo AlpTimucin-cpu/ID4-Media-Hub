@@ -46,7 +46,7 @@ class MolaYoutubeActivity : Activity() {
     private var custom: View? = null
     private var customCallback: WebChromeClient.CustomViewCallback? = null
     private var orientationBefore = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    private val background=0xff0b1316.toInt()
+    private val backdropColor=0xff0b1316.toInt()
     private val muted=0xff9fb1b6.toInt()
     private val mint=0xff76e2d4.toInt()
 
@@ -68,13 +68,13 @@ class MolaYoutubeActivity : Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
-        window.statusBarColor=background
-        window.navigationBarColor=background
-        val root=FrameLayout(this).apply{setBackgroundColor(background)}
+        window.statusBarColor=backdropColor
+        window.navigationBarColor=backdropColor
+        val root=FrameLayout(this).apply{setBackgroundColor(backdropColor)}
         setContentView(root)
         val main=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
-            setBackgroundColor(background)
+            setBackgroundColor(backdropColor)
         }
         root.addView(main,FrameLayout.LayoutParams(-1,-1))
         root.setOnApplyWindowInsetsListener{v,insets->
