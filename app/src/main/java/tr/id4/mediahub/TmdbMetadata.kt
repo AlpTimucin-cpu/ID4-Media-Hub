@@ -26,6 +26,15 @@ enum class TmdbKind(val route: String, val label: String) {
     SERIES("tv", "Diziler")
 }
 
+/** Regional streaming availability only; no movie/episode playback streams. */
+data class TmdbWatchAvailability(
+    val subscriptions: List<String>,
+    val freeOrAds: List<String>,
+    val rental: List<String>,
+    val purchase: List<String>,
+    val watchPage: String
+)
+
 object TmdbMetadata {
     private const val API = "https://api.themoviedb.org/3/"
     private const val MAX_RESPONSE_BYTES = 550_000
@@ -56,6 +65,80 @@ object TmdbMetadata {
         return if (value.matches(Regex("/[a-zA-Z0-9_-]{8,110}\\.(jpg|png|webp)")))
             "https://image.tmdb.org/t/p/w342" + value
         else ""
+    }
+
+    /** Official TMDB/JustWatch endpoint for watch availability in Türkiye. */
+    fun watchProviderPath(kind: TmdbKind, id: Long): String {
+        require(id in 1..2_147_483_647L) { "Geçersiz TMDB içerik kimliği" }
+        return kind.route + "/" + id + "/watch/providers"
+    }
+
+    fun officialWatchPage(kind: TmdbKind, id: Long): String {
+        watchProviderPath(kind, id) // validate ID before interpolation
+        return "https://www.themoviedb.org/" + kind.route + "/" + id + "/watch?locale=TR"
+    }
+
+    fun loadWatchProviders(
+        kind: TmdbKind, id: Long,
+        callback: (Result<TmdbWatchAvailability>) -> Unit
+    ) {
+        val token = sessionToken
+        if (token.isNullOrBlank()) {
+            handler.post {
+                callback(Result.failure(IllegalStateException(
+                    "TMDB API Read Access Token gerekli")))
+            }
+            return
+        }
+        val path = try { watchProviderPath(kind, id) } catch (e: Exception) {
+            handler.post { callback(Result.failure(e)) }
+            return
+        }
+        workers.execute {
+            val outcome = try {
+                val conn = URL(API + path).openConnection() as HttpsURLConnection
+                conn.connectTimeout = 8_000
+                conn.readTimeout = 12_000
+                conn.instanceFollowRedirects = false
+                conn.setRequestProperty("Authorization", "Bearer " + token)
+                conn.setRequestProperty("Accept", "application/json")
+                try {
+                    val code = conn.responseCode
+                    if (code != 200) throw IllegalStateException(
+                        if (code == 401 || code == 403)
+                            "TMDB erişim anahtarını kontrol et"
+                        else "Sağlayıcı bilgileri alınamadı (HTTP " + code + ")")
+                    val bytes = conn.inputStream.use {
+                        it.readNBytes(MAX_RESPONSE_BYTES + 1)
+                    }
+                    if (bytes.size > MAX_RESPONSE_BYTES)
+                        throw IllegalStateException("TMDB yanıtı beklenenden büyük")
+                    val region = JSONObject(String(bytes, Charsets.UTF_8))
+                        .optJSONObject("results")?.optJSONObject("TR")
+                    fun providers(key: String): List<String> {
+                        val array = region?.optJSONArray(key) ?: return emptyList()
+                        return (0 until minOf(array.length(), 40)).mapNotNull { i ->
+                            val name = array.optJSONObject(i)?.optString("provider_name")
+                                ?.trim().orEmpty()
+                            name.takeIf { it.length in 2..80 &&
+                                !it.any(Char::isISOControl) }
+                        }.distinct()
+                    }
+                    Result.success(TmdbWatchAvailability(
+                        subscriptions = providers("flatrate"),
+                        freeOrAds = (providers("free") + providers("ads")).distinct(),
+                        rental = providers("rent"),
+                        purchase = providers("buy"),
+                        watchPage = officialWatchPage(kind, id)
+                    ))
+                } finally { conn.disconnect() }
+            } catch (e: Exception) {
+                Result.failure(IllegalStateException(
+                    if (e is IllegalStateException) e.message
+                    else "Türkiye'deki yayın sağlayıcıları alınamadı"))
+            }
+            handler.post { callback(outcome) }
+        }
     }
 
     fun load(kind: TmdbKind, search: String, callback: (Result<List<TmdbEntry>>) -> Unit) {
