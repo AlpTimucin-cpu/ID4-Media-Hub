@@ -1,3 +1,11 @@
+# v0.38 — 14 Ekim 2026
+
+- Netflix ve Prime Video: YouTube ile aynı Mola temalı in-app platform ekranı, arama, ana sayfa, yerel geçmiş, geri/yenile kontrolleri.
+- Resmî uygulama kısayolu, güvenli tanınan içerik bağlantısı varsa aynı filmi/diziyi uygulamada açmayı dener; başarısız olursa uygulama ana ekranını açar.
+- Netflix yerelleştirilmiş film/dizi adreslerini takip parametresiz geçmişe kaydetme.
+- Resmî site bağlantı güvenliği ve platform ayrımı için birim testleri.
+- DRM korumalı video oynatımı, sitenin web giriş davranışı ve gerçek ID.4 ön ekranı garanti edilmez; sürüş video güvenliği değiştirilmez.
+
 # v0.37 — 14 Ekim 2026
 
 - Mola tarzı uygulama içi YouTube ekranı: arama, ana sayfa, Shorts, kişisel sekme, geri/yenile ve yerel video geçmişi.
