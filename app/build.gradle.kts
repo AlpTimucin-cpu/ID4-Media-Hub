@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.mediahub"
         minSdk = 28
         targetSdk = 35
-        versionCode = 52
-        versionName = "0.51"
+        versionCode = 53
+        versionName = "0.52"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
