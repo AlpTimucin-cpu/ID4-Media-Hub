@@ -75,7 +75,7 @@ sleep 3
 for i in 1 2 3 4 5; do
   adb shell uiautomator dump /sdcard/id4_movie_detail.xml >/dev/null 2>&1 || true
   adb pull /sdcard/id4_movie_detail.xml id4_movie_detail.xml >/dev/null 2>&1 || true
-  if [ -s id4_movie_detail.xml ] && grep -q 'Oynatmayı dene' id4_movie_detail.xml; then break; fi
+  if [ -s id4_movie_detail.xml ] && grep -qi 'oynatmayı dene' id4_movie_detail.xml; then break; fi
   sleep 2
 done
 test -s id4_movie_detail.xml
@@ -83,8 +83,8 @@ if grep -q "isn't responding" id4_movie_detail.xml; then
   echo "ANR: Movie detail stopped responding"
   exit 1
 fi
-grep -q 'Oynatmayı dene' id4_movie_detail.xml
-grep -q 'M3U seç' id4_movie_detail.xml
+grep -qi 'oynatmayı dene' id4_movie_detail.xml
+grep -qi 'm3u seç' id4_movie_detail.xml
 adb shell screencap -p /sdcard/id4_movie_detail.png
 adb pull /sdcard/id4_movie_detail.png id4_movie_detail.png
 
