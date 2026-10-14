@@ -92,10 +92,23 @@ class PlayerActivity : Activity() {
                     }
                 }
                 override fun onPlayerError(error: PlaybackException) {
-                    playbackInfo?.text = "Oynatma başarısız: ${error.errorCodeName}. Bağlantıyı kontrol edip Yeniden dene'ye dokun."
-                    Toast.makeText(this@PlayerActivity,
-                        "Video açılamadı: ${error.errorCodeName}. Yayın linkini ve formatı kontrol et.",
-                        Toast.LENGTH_LONG).show()
+                    // A failed CDN/token is not a UI crash. One clear inline status
+                    // replaces repeated Android error-code popups/toasts.
+                    val status = when {
+                        error.errorCodeName.contains("BAD_HTTP_STATUS") ||
+                            error.errorCodeName.contains("FILE_NOT_FOUND") ->
+                            "Yayın sunucusu bu bağlantıyı kabul etmedi (403/404 veya süresi dolan adres)."
+                        error.errorCodeName.contains("NETWORK") ||
+                            error.errorCodeName.contains("TIMEOUT") ->
+                            "Yayın sunucusuna ulaşılamadı. İnternetini ve adresi kontrol et."
+                        error.errorCodeName.contains("DRM") ->
+                            "Bu içerik lisanslı oynatıcı/DRM gerektiriyor."
+                        error.errorCodeName.contains("PARSING") ||
+                            error.errorCodeName.contains("FORMAT") ->
+                            "Bu adresin video formatı desteklenmiyor veya yayın listesi hatalı."
+                        else -> "Yayın açılamadı. Adresin aktif olduğundan ve kullanım iznin olduğundan emin ol."
+                    }
+                    playbackInfo?.text = status + " Yeniden dene düğmesini kullanabilirsin."
                 }
             })
             val media = MediaItem.Builder().setUri(uri)
