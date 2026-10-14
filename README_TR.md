@@ -1,8 +1,16 @@
-# ID.4 YOL ARKADAŞIM • v0.40 BETA
+# ID.4 YOL ARKADAŞIM • v0.41 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
 
+
+## v0.41 — REC TV kaynak araştırması / Türkiye'de hangi platformda?
+
+- Kullanıcı APK'sından REC TV film/dizi **özel katalog servisi** ile **TMDB afiş/bilgi API'si** ayrımı yapıldı. Özel yayın URL'leri, kodları, tokenları aktarılmadı.
+- TMDB film veya dizi detayında **Türkiye'de nerede izlenir?**: JustWatch/TMDB sağlayıcı listesi (abonelik, ücretsiz/reklamlı, kirala, satın al).
+- **İzleme seçeneklerini aç** yalnızca resmî TMDB izleme sayfasına gider; videoları veya üyelikleri kopyalamaz.
+- Kullanıcının TMDB API Read Access Token'ı ile çalışır; uygulama içine gizli anahtar gömülmez.
+- Dokümantasyon: `docs/REC_TV_OFFICIAL_WATCH_PROVIDER_V041.md`.
 
 ## v0.40 — Film, Dizi, Maç ve TV ekranları için resmî kaynak keşfi
 
