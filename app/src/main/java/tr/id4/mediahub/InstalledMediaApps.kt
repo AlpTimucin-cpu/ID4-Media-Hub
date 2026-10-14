@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 
 /** Launch supported media apps installed on the same Android phone. No web redirects. */
@@ -17,6 +18,37 @@ object InstalledMediaApps {
     fun openNetflix(activity: Activity) = open(activity, "Netflix", NETFLIX_PACKAGE)
     fun openPrimeVideo(activity: Activity) = open(activity, "Prime Video", PRIME_VIDEO_PACKAGE)
     fun openRecTv(activity: Activity) = open(activity, "REC TV", REC_TV_PACKAGE)
+
+    /**
+     * User-initiated handoff to the installed native app. Only a canonical
+     * public content ID is forwarded; no cookies, auth or tracking parameters.
+     * The official service may reject the deep link, so opening its main app
+     * remains the supported fallback.
+     */
+    fun openStreamingTitle(activity: Activity, service: StreamingService, rawUrl: String) {
+        val item=StreamingPagePolicy.canonical(rawUrl)
+        val title=service.displayName
+        val packageName=when(service) {
+            StreamingService.NETFLIX->NETFLIX_PACKAGE
+            StreamingService.PRIME_VIDEO->PRIME_VIDEO_PACKAGE
+        }
+        if(item==null || item.service!=service) {
+            open(activity,title,packageName)
+            return
+        }
+        try {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url)).apply {
+                setPackage(packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (_: ActivityNotFoundException) {
+            open(activity,title,packageName)
+        } catch (_: SecurityException) {
+            open(activity,title,packageName)
+        } catch (_: IllegalStateException) {
+            open(activity,title,packageName)
+        }
+    }
 
     fun open(activity: Activity, title: String, packageName: String) {
         val pm = activity.packageManager
