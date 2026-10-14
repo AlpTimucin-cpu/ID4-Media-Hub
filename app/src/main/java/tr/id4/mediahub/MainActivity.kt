@@ -495,7 +495,7 @@ class MainActivity : Activity() {
                 onRadio = { selectTab(2) },
                 onPodcast = { startActivity(Intent(this,PodcastBrowserActivity::class.java)) },
                 onWeb = { openWebMedia(MediaWebActivity.YOUTUBE_URL) },
-                onYoutube = { InstalledMediaApps.openYouTube(this) },
+                onYoutube = { startActivity(Intent(this, MolaYoutubeActivity::class.java)) }
                 onMovies = { openLibraryHub(VideoLibraryKind.MOVIE) },
                 onSeries = { openLibraryHub(VideoLibraryKind.SERIES) },
                 onSports = { openLibraryHub(VideoLibraryKind.SPORT) },
