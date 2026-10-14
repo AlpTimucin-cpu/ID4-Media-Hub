@@ -1,7 +1,14 @@
-# ID.4 YOL ARKADAŞIM • v0.51 BETA
+# ID.4 YOL ARKADAŞIM • v0.52 BETA
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
+
+## v0.52 — Film kataloğunun M3U yüklemesini beklemeden açılması
+
+- Film ekranının arka plan işçisi artık tam 3.145.596 baytlık `filmler_full.m3u` kaynağını ayrıştırmayı **beklemez**. 7.232 film başlığı ayrı worker'da okunup önce gösterilir. İkinci worker M3U bağlantılarını indeksleyince başlıklardaki yayın göstergeleri etkinleşir.
+- v0.51 Android 15 emülatör testi artık uygulama ANR göstermemiş, fakat film katalog görüntüsü tüm M3U yüklenene kadar beklediğinden test süre sınırına takılmıştı. v0.52 testleri film başlığı görünürlüğünü ve M3U kaynak indeksinin tamamlanmasını ayrı ayrı doğrular.
+- Film/Dizi/Maç ekranından JSON, NDJSON, M3U ve kullanıcıdan gelen `.api`/ `.json` bağlantı ve dosyaları içe aktarılır. Sağlayıcı özel login/DRM otomatik desteklenmez.
+- Eski M3U akışlarının `tms` parametreleri 29 Ağustos 2026 tarihli olduğundan bugün geçersiz olabilir. APK'ya gömmek bu bağlantıların sunucu tarafında yenilenmesini sağlamaz.
 
 ## v0.51 — Film ekranında ANR düzeltmesi ve kapsamlı JSON/.api içe aktarma
 
