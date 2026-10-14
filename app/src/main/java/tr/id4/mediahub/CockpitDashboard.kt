@@ -24,6 +24,7 @@ data class CockpitActions(
     val onPodcast: () -> Unit,
     val onWeb: () -> Unit,
     val onYoutube: () -> Unit,
+    val onDiscover: () -> Unit,
     val onMovies: () -> Unit,
     val onSeries: () -> Unit,
     val onSports: () -> Unit,
