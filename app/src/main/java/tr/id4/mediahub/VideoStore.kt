@@ -65,7 +65,7 @@ object VideoStore {
         val existing = channels.mapTo(mutableSetOf()) { it.url }
         var added = 0
         for (item in items) {
-            if (channels.size >= 2500) break
+            if (channels.size >= MAX_CHANNELS) break
             if (!item.isAudio && M3uParser.isHttpsUrl(item.url) && existing.add(item.url)) {
                 channels.add(VideoChannel(UUID.randomUUID().toString(), M3uParser.displayTitle(item.name), item.url, item.group, false, item.logo, item.tvgId, kindOverride))
                 added++
