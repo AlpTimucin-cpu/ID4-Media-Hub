@@ -2,7 +2,6 @@ package tr.id4.mediahub
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 
 /**
  * Explicitly user-authorized HTTPS API importer. Supports documented common
@@ -23,20 +22,24 @@ object UserMediaApiImporter {
             value.takeIf { it.isNotEmpty() && it != "null" }
         }.orEmpty()
 
-    private fun root(value: Any?): JSONArray? = when(value) {
-        is JSONArray -> value
-        is JSONObject -> {
-            for(key in rootFields) {
-                val nested = value.opt(key)
-                if(nested is JSONArray) return nested
-                if(nested is JSONObject) {
-                    val deeper = root(nested)
-                    if(deeper != null) return deeper
+    private fun root(value: Any?): JSONArray? {
+        return when (value) {
+            is JSONArray -> value
+            is JSONObject -> {
+                var found: JSONArray? = null
+                for (key in rootFields) {
+                    val nested = value.opt(key)
+                    found = when (nested) {
+                        is JSONArray -> nested
+                        is JSONObject -> root(nested)
+                        else -> null
+                    }
+                    if (found != null) break
                 }
+                found
             }
-            null
+            else -> null
         }
-        else -> null
     }
 
     /** Parse format automatically; all candidate media URLs must be HTTPS. */
