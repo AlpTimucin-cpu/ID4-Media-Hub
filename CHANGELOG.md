@@ -1,3 +1,11 @@
+# v0.53 — 15 Ekim 2026
+
+- DiPlay 0.2.20 APK yapısı ve GPL/AGPL sınırları denetlendi; APK kodu/CarPlay kimlik bilgileri transfer edilmedi.
+- Var olan PlaybackDiagnostics ve StreamRetryBudget bileşenleri telefon tarafındaki film oynatıcısına eklendi.
+- Media3 rebuffer/ilk kare/düşen kare/decoder ölçümleri ve kullanıcının seçimiyle gizli URL içermeyen tanı raporu paylaşımı.
+- 401/403/404/410/429, DRM ve geçici ağ sunucusu hataları ayrı sınıflandırıldı. Yalnız belirli geçici durumlarda iki kısa otomatik yeniden deneme.
+- Birim testleri ve docs/DIPLAY_0_2_20_INTEGRATION_TR.md eklendi. CarPlay/Android Auto video yansıtma entegrasyonu yapılmadı.
+
 # v0.52 — 14 Ekim 2026
 
 - Kullanıcı tarafından bildirilen film ekranı gecikmesine karşı çevrimdışı katalog, M3U akış indeksinden tamamen ayrıldı. Başlıklar hazır olduğunda gösterilir; arka planda M3U yüklenince yayın seçimi güncellenir.
