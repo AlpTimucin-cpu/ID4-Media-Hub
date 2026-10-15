@@ -1,4 +1,15 @@
-# ID.4 YOL ARKADAŞIM • v0.52 BETA
+# ID.4 YOL ARKADAŞIM • v0.53 BETA
+
+## v0.53 — DiPlay 0.2.20 teknik araştırmasından uyarlanan film tanılama
+
+- Kullanıcının yüklediği DiPlay 0.2.20 APK'sı statik olarak incelendi. DiPlay'ın BYD/CarPlay kodu, MFi anahtarları ve GPL/AGPL kapsamındaki bileşenleri **kopyalanmadı**.
+- Film oynatıcıda Media3 tamponlama, kare düşmesi, ilk görüntü, çözünürlük ve decoder ölçümleri; **Tanı raporunu paylaş** düğmesi kullanıcının seçimiyle çalışır.
+- Geçici ağ sorunlarında iki sınırlı deneme (1.5 / 4 saniye); 401/403/404/410/429, DRM, format hataları için sonsuz tekrar yoktur. Başka ekrana geçince bekleyen tekrar iptal edilir.
+- Rapor video adresini, imzalı tokenları, özel HTTP başlıklarını ve film adlarını içermez. Özel/şifreli yayın sunucularına yetki atlama veya araç ekranında video kısıtını aşma özelliği eklenmedi.
+- Ayrıntılı inceleme ve test planı: [DiPlay 0.2.20 entegrasyon notları](docs/DIPLAY_0_2_20_INTEGRATION_TR.md).
+- **Uyarı:** Android emülatör smoke sonuçları ve gerçek film oynatımı ayrıca doğrulanmalıdır; derleme/test başarısı gerçek yayın garantisi değildir.
+
+## v0.52
 ### ID.4'e özgü, tek ekranda TV · radyo · web · araç bağlantı merkezi
 
 **Hedef:** POCO F5 (Android 15) ve Volkswagen ID.4 Pure. Uygulamamızın içinde çalışan IPTV, çok sekmeli web tarayıcı ve radyo. **Araç ekranında video henüz doğrulanmadı.**
