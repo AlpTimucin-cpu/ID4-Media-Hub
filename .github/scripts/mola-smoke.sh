@@ -57,6 +57,17 @@ fi
 grep -q 'TAM M3U PAKETTE' id4_movie.xml
 grep -q 'GÖMÜLÜ FİLM KATALOĞU' id4_movie.xml
 grep -q '7232 BAŞLIK' id4_movie.xml
+# The open-licensed control video is displayed BEFORE the archived film cards.
+# Android UIAutomator only dumps currently visible rows: scroll until first
+# real archive item is in the accessibility tree.
+grep -q 'OYNATICI TESTİ' id4_movie.xml
+for i in 1 2 3 4 5; do
+  if grep -q 'Film ayrıntılarını aç' id4_movie.xml; then break; fi
+  adb shell input swipe 530 1690 530 850 350
+  sleep 2
+  adb shell uiautomator dump /sdcard/id4_movie.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/id4_movie.xml id4_movie.xml >/dev/null 2>&1 || true
+done
 grep -q 'Film ayrıntılarını aç' id4_movie.xml
 adb shell screencap -p /sdcard/id4_movie.png
 adb pull /sdcard/id4_movie.png id4_movie.png
