@@ -1,4 +1,14 @@
-# ID.4 YOL ARKADAŞIM • v0.53 BETA
+# ID.4 YOL ARKADAŞIM • v0.54 BETA
+
+## v0.54 — DiPlay bağlantı gözlemlerinden bağımsız medya kaynak denetimi
+
+- Yüklü DiPlay 0.2.20 APK'sındaki yerel hotspot, ses yankısı işleme ve MFi/CarPlay bileşenleri yapısal olarak incelendi. Bunlar Volkswagen ID.4 Android Auto istemcisi ile doğrudan uyumlu değildir; sertifika, anahtar, üçüncü taraf native kütüphane, görsel veya kod aktarılmadı.
+- Film oynatıcısına **Kaynağı ve interneti kontrol et** eklendi. İstek **yalnızca kullanıcı düğmeye bastığında**, oynatılan HTTPS kaynağı için yapılır. İstek boyutu 1 KiB, zaman aşımı 6+6 saniye, yönlendirme azami 4 ve HTTPS dışına yönlendirme yasaktır.
+- Sunucunun 401/403 (erişim yok), 404/410 (adres kaldırılmış), 429 (hız limiti), 408/5xx (geçici sunucu) ve 200/206 (medya-benzeri içerik, HTML veya JSON) yanıtları ayrı ve açık hata türleriyle gösterilir.
+- Telefonun Wi-Fi / mobil veri bağlantısı ve Android'in internet doğrulama bilgisi gösterilir. **Sunucu 200 dönse bile gerçek oynatma/codec/DRM başarısı garanti değildir.**
+- Kaynak kontrolü sonucu kullanıcı isterse mevcut **Tanı raporunu paylaş** metnine eklenir. Medya URL'si, film adı, host, imzalı token, header ve yanıt gövdesi bu rapora alınmaz.
+- v0.53 Media3 ilk kare, buffer, düşen kare, hata sınıflandırması ve iki denemelik bağlantı kurtarma yaklaşımı korunur.
+- Birim testleri `SourceHealthProbeTest.kt` dosyasına eklendi; Android 15 emülatör/gerçek kullanıcı deneyimi ayrıca doğrulanmalıdır.
 
 ## v0.53 — DiPlay 0.2.20 teknik araştırmasından uyarlanan film tanılama
 
