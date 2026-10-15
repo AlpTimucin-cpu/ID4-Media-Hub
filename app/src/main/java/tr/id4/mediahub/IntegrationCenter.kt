@@ -128,6 +128,18 @@ object IntegrationCenter {
                 "mirrormobile" -> card.addView(button("MirrorMobile'ı telefonda aç") {
                     launch(activity,item.packages,"MirrorMobile")
                 },LinearLayout.LayoutParams(-1,dp(44)))
+                "diplay" -> card.addView(button("DiPlay • Bağlantı / uyumluluk raporu") {
+                    AlertDialog.Builder(activity)
+                        .setTitle("DiPlay / ID.4 ön kontrol")
+                        .setMessage(DiPlayCompatibility.report(activity))
+                        .setNegativeButton("Kapat", null)
+                        .setPositiveButton("Raporu kopyala") { _, _ ->
+                            val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE)
+                                as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText(
+                                "ID.4 / DiPlay uyumluluk", DiPlayCompatibility.report(activity)))
+                        }.show()
+                }, LinearLayout.LayoutParams(-1, dp(44)))
                 "androidauto" -> card.addView(button("Android Auto bağlantı raporu") {
                     CarCompatibility.show(activity)
                 },LinearLayout.LayoutParams(-1,dp(44)))
