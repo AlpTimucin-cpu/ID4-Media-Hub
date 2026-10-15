@@ -1,6 +1,9 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
@@ -24,6 +27,7 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.ui.PlayerView
+import java.util.concurrent.Executors
 
 /**
  * Phone-only VOD with bounded reconnection and private diagnostic export.
@@ -44,6 +48,10 @@ class PlayerActivity : Activity() {
     private val retryHandler = Handler(Looper.getMainLooper())
     private var scheduledRetry: Runnable? = null
     private var sessionGeneration = 0
+    private val sourceInspector = Executors.newSingleThreadExecutor()
+    private var sourceProbeGeneration = 0
+    private var sourceProbeInProgress = false
+    private var lastSourceProbe = "Kaynak henüz ayrı olarak kontrol edilmedi."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,6 +113,11 @@ class PlayerActivity : Activity() {
             setOnClickListener { shareDiagnostics() }
         }, LinearLayout.LayoutParams(0, -2, 1.2f))
         layout.addView(actions)
+        layout.addView(Button(this).apply {
+            text = "Kaynağı ve interneti kontrol et"
+            isAllCaps = false
+            setOnClickListener { checkSourceOnDemand() }
+        })
         setContentView(layout)
     }
 
@@ -237,11 +250,62 @@ class PlayerActivity : Activity() {
         retryHandler.postDelayed(task, delayMs)
     }
 
+    /**
+     * Inspired by receiver-style connection checks, not by DiPlay source code.
+     * No request occurs until the user taps the button.
+     */
+    private fun checkSourceOnDemand() {
+        if (sourceProbeInProgress) return
+        val uri = streamUri ?: return
+        if (uri.scheme == "content") {
+            lastSourceProbe = "Yerel belge: ağ kontrolü uygulanamaz."
+            playbackInfo?.text = lastSourceProbe
+            return
+        }
+        val generation = ++sourceProbeGeneration
+        sourceProbeInProgress = true
+        playbackInfo?.text = "İnternet ve yayın sunucusu kontrol ediliyor…"
+        val network = currentNetworkStatus()
+        sourceInspector.execute {
+            val source = SourceHealthProbe.check(uri.toString())
+            runOnUiThread {
+                if (generation != sourceProbeGeneration || isFinishing || isDestroyed)
+                    return@runOnUiThread
+                sourceProbeInProgress = false
+                lastSourceProbe = network + " • " +
+                    (source.status?.let { "HTTP " + it + " • " } ?: "") +
+                    source.description
+                playbackInfo?.text = lastSourceProbe
+            }
+        }
+    }
+
+    private fun currentNetworkStatus(): String {
+        return try {
+            val manager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val active = manager.activeNetwork ?: return "Telefon çevrimdışı görünüyor"
+            val caps = manager.getNetworkCapabilities(active)
+                ?: return "İnternet bağlantısı doğrulanamadı"
+            val transport = when {
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Mobil veri"
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
+                else -> "Ağ bağlantısı"
+            }
+            if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+                transport + " • internet doğrulandı"
+            else transport + " • internet erişimi doğrulanamadı"
+        } catch (_: Exception) {
+            "Ağ durumu okunamadı"
+        }
+    }
+
     private fun shareDiagnostics() {
         // No URL, signed query token, title, filename, credentials or headers.
         val report = buildString {
             appendLine("ID.4 Yol Arkadaşım • Film oynatıcı tanı raporu")
-            appendLine("Sürüm: 0.53 Beta")
+            appendLine("Sürüm: 0.54 Beta")
+            appendLine("Kullanıcının başlattığı kaynak kontrolü: " + lastSourceProbe)
             appendLine("Android API seviyesi: " + android.os.Build.VERSION.SDK_INT)
             appendLine("Kaynak tipi: " +
                 if (streamUri?.scheme == "content") "Yerel belge" else "HTTPS")
@@ -260,6 +324,8 @@ class PlayerActivity : Activity() {
 
     override fun onStop() {
         sessionActive = false
+        sourceProbeGeneration++
+        sourceProbeInProgress = false
         cancelRecovery()
         diagnostics.ready(SystemClock.elapsedRealtime())
         if (isVod && !ended) player?.let {
@@ -269,6 +335,11 @@ class PlayerActivity : Activity() {
         player?.release()
         player = null
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        sourceInspector.shutdownNow()
+        super.onDestroy()
     }
 
     companion object {
