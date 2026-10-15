@@ -1,3 +1,10 @@
+# v0.57 — 15 Ekim 2026
+
+- 7.232 başlıklı arşiv dosyasının yayına erişimi doğrulanmadı; 7.222 bağlantıda Ağustos 2026 tarihli `tms` parametresi tespit edildi.
+- Film ekranı eski imzalı URL'leri çalışır video gibi göstermiyor; açık lisanslı Big Buck Bunny Media3 oynatıcı kontrolü eklendi.
+- Kullanıcının güncel, izinli M3U ile içe aktardığı aynı adlı video eski arşiv URL'sinden öncelikli.
+- Test klibi: (c) copyright 2008 Blender Foundation / www.bigbuckbunny.org, CC BY 3.0; kamuya açık Google IMA MP4 örneği.
+
 # v0.56 — 15 Ekim 2026
 
 - Özel adresleri göstermeyen ağ alt hata teşhisi: DNS, TLS, zaman aşımı, bağlantı reddi/kesilme.
