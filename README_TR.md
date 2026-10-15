@@ -1,4 +1,15 @@
-# ID.4 YOL ARKADAŞIM • v0.54 BETA
+# ID.4 YOL ARKADAŞIM • v0.55 BETA
+
+## v0.55 — Film ve canlı TV sessiz tamponlama donmasına sonlu kurtarma
+
+- DiPlay 0.2.20 kararlı bağlantı / sorun tanılama konsepti incelenerek bağımsız Kotlin `PlaybackStallGuard` oluşturuldu; CarPlay protokolü, MFi materyali, BYD arayüzü, GPL/AGPL veya PolyForm ikonları aktarılmadı.
+- Film oynatıcı veya canlı TV, bir kaynağın `BUFFERING` durumunda hiç hata döndürmeden **25 saniye** takılmasını algılar. Var olan `StreamRetryBudget` toplamında **en fazla iki otomatik yeniden bağlanma** denenir, sonra kullanıcıya açık hata gösterilir.
+- Yeni bir yayın açılınca, oynatma `READY` olunca, film ekranından çıkınca veya canlı TV duraklatılınca, ilgili bekleme sayacı ve arka plan görevleri temizlenir.
+- Korunan davranışlar: HTTP 401/403/404/410 kalıcı reddi, DRM/format hatalarını sınırsız denememe; erişimi bitmiş `filmler_full.m3u` imzalı bağlantıları yenilememe; sürüş sırasında Android Auto videosunu etkinleştirmeme.
+- `PlaybackStallGuardTest` monoton zaman, 25.000 ms sınırı, READY sonrasında yeniden başlama ve bir tetiklemenin tekrarlanmaması konularını doğrular.
+- v0.54'ün **Kaynağı ve interneti kontrol et** işlevi ve v0.53'ün Media3 performans raporu da korunmuştur.
+
+
 
 ## v0.54 — DiPlay bağlantı gözlemlerinden bağımsız medya kaynak denetimi
 
