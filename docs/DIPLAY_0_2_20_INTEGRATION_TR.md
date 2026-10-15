@@ -35,6 +35,12 @@ Var olan `PlaybackDiagnostics` ve `StreamRetryBudget` sınıfları zaten **canl�
 - DiPlay'ın `settings-backup.html`, `settings-code.html` arayüz dosyaları, ikonlar ve BYD tasarımları **kopyalanmadı**.
 - Android Auto araç ekranında film gösterimi veya gerçek film oynatma **doğrulanmış değil**. Oynatılabilirlik için lisanslı ve hâlen erişilebilir URL gerekir.
 
+## v0.55 — Ek uygulanan sınırlı HLS/TV tamponlama kurtarması
+
+Statik APK'dan çıkartılan **güvenilir bağlantı teşhis yaklaşımı** temel alınarak, aynı kodu taşımadan `PlaybackStallGuard.kt` adlı saf Kotlin bileşeni oluşturuldu. Android Media3 filmi ya da canlı TV yayınını `BUFFERING` durumda 25 saniye bıraktığında, Media3'ün otomatik hata üretmediği **sessiz takılma** vakalarını tanır ve var olan 1,5 sn / 4 sn yeniden bağlanma bütçesini kullanır (en fazla iki tekrar). Sonuç alınmazsa kullanıcıya açık hata gösterir. Her ses/video oturumu için sıfırlanır, duraklat/çıkışla durdurulur. Hiçbir ağ adresi veya medya kimliği saklamaz.
+
+`PlaybackStallGuardTest.kt` normal süre sınırını, tekrar alarmlarını, READY temizliğini ve monoton saati test eder. Bu, Android Auto video yetkilendirmesi, CarPlay entegrasyonu veya kapalı akışların DRM çözümü değildir.
+
 ## 5. Nasıl test edilir?
 
 1. `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` başarılı olmalı.
