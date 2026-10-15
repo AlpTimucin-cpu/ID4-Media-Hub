@@ -1,4 +1,12 @@
-# ID.4 YOL ARKADAŞIM • v0.55 BETA
+# ID.4 YOL ARKADAŞIM • v0.56 BETA
+
+## v0.56 — Media3 bağlantı hatasının kök nedenini güvenle ayırma
+
+- v0.54 kullanıcı raporu: `ERROR_CODE_IO_NETWORK_CONNECTION_FAILED`, 6 saniyede ilk kare yok, 2 tamponlama, 1 otomatik tekrar. Bu kayıt yalnızca kaynak ağ bağlantısı hatasını kanıtlar; 403 veya DRM kanıtı değildir.
+- `SafeConnectionFailure` kök istisnayı sınırlı şekilde tarayarak **DNS**, **TLS**, **TIMEOUT**, **CONNECTION_REFUSED**, **NETWORK_UNREACHABLE**, **CONNECTION_INTERRUPTED**, **CONNECTION_CLOSED** veya **UNKNOWN** etiketi üretir. İstisna mesajlarını, imzalı medya URL'lerini ve tokenları **hiçbir rapora koymaz**.
+- Film oynatma raporu Media3 `NETWORK` hatasında belirlenebilen alt kategoriyi ekler. Kullanıcının başlattığı `Kaynağı ve interneti kontrol et` işlevi HTTPS bağlantı istisnalarını aynı güvenli sınıflandırma ile gösterir.
+- Rapor sürüm numarası artık yüklenmiş APK'dan okunur; eski v0.54 sabit metin kaldırıldı. Otomatik ağ taraması veya DRM/özel servis aşma özelliği eklenmedi.
+- Saf Kotlin birim testleri DNS, TLS, zaman aşımı, soket hatası ve gizli bağlantı bilgisinin açığa çıkmamasını sınar.
 
 ## v0.55 — Film ve canlı TV sessiz tamponlama donmasına sonlu kurtarma
 
