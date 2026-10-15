@@ -67,6 +67,8 @@ object CarCompatibility {
         appendLine()
         appendLine(CarCompanionApps.statusReport(activity))
         appendLine()
+        appendLine(DiPlayCompatibility.report(activity))
+        appendLine()
         appendLine("SES KİTAPLIĞI BAĞLANTI KAYITLARI")
         appendLine(CarConnectionJournal.summary(activity))
         appendLine()
