@@ -1,3 +1,10 @@
+# v0.56 — 15 Ekim 2026
+
+- Özel adresleri göstermeyen ağ alt hata teşhisi: DNS, TLS, zaman aşımı, bağlantı reddi/kesilme.
+- Film oynatıcı tanı raporu gerçek kurulu sürüm numarasını gösterir.
+- Kaynak kontrolü belirsiz hata yerine güvenli neden sınıflandırması verir.
+- Saf Kotlin birim testleri eklendi; oynatma kaynaklarının sunucu erişimi garanti edilmez.
+
 # v0.55 — 15 Ekim 2026
 
 - DiPlay 0.2.20 kararlı bağlantı yaklaşımı referans alınarak bağımsız `PlaybackStallGuard` ve 25 saniyelik tamponlama zaman aşımı oluşturuldu.
