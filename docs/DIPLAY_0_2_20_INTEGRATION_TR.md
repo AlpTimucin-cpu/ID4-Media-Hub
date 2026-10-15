@@ -48,3 +48,11 @@ Var olan `PlaybackDiagnostics` ve `StreamRetryBudget` sınıfları zaten **canl�
 - DiPlay resmi/açık kaynak deposu: https://github.com/shihabal3amri/DiPlay
 - DiPlay 0.2.20 sürüm ayrıntıları: https://diplay.org/versions/?lang=en
 - Bizim proje: https://github.com/AlpTimucin-cpu/ID4-Media-Hub
+
+## 6. v0.54 — Yeni kaynak ve ağ denetimi
+
+- DiPlay'ın bağlantı gözlemi yaklaşımından esinlenilen, tamamen yeni Kotlin implementasyonu: `SourceHealthProbe.kt`. Netflix/Prime korumalarını ya da CarPlay yetkilendirmesini aşmaz.
+- Oynatıcıdaki `Kaynağı ve interneti kontrol et` düğmesi, kullanıcının kendi HTTPS medya adresinin sınırlı ilk 1 KiB'ını kontrollü GET ile alır, içerik türünü inceler; kontrol otomatik başlatılmaz.
+- HTTP 401/403/404/410/429/5xx ve HTML/JSON gibi yanlış yanıtları kullanıcıya açıklar, cihaz ağ türünü kontrol eder. Karşı sunucunun dönüşü gerçek video izlenebilirliği anlamına gelmez.
+- Kimlik/token/yönlendirme hedefi/film adı/hata exception text raporda görünmez; bağlantı denetimi için arka plan işçisi kullanılır.
+- `SourceHealthProbeTest.kt` erişim ve yanıt formatlarını sınar; v0.54 beta build ve cihaz testleri ayrıca takip edilir.
