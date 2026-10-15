@@ -345,7 +345,9 @@ class PlayerActivity : Activity() {
         // No URL, signed query token, title, filename, credentials or headers.
         val report = buildString {
             appendLine("ID.4 Yol Arkadaşım • Film oynatıcı tanı raporu")
-            appendLine("Sürüm: 0.54 Beta")
+            appendLine("Sürüm: " + runCatching {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "Bilinmiyor"
+            }.getOrDefault("Bilinmiyor") + " Beta")
             appendLine("Kullanıcının başlattığı kaynak kontrolü: " + lastSourceProbe)
             appendLine("Android API seviyesi: " + android.os.Build.VERSION.SDK_INT)
             appendLine("Kaynak tipi: " +
