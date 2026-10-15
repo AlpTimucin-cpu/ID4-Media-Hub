@@ -45,9 +45,34 @@ class PlayerActivity : Activity() {
     private var sessionActive = false
     private val diagnostics = PlaybackDiagnostics()
     private val retries = StreamRetryBudget()
+    private val stallGuard = PlaybackStallGuard()
     private val retryHandler = Handler(Looper.getMainLooper())
     private var scheduledRetry: Runnable? = null
     private var sessionGeneration = 0
+
+    // A silent CDN/HLS stall may never raise onPlayerError. Probe only while
+    // this Activity is running; never retry indefinitely.
+    private val stallMonitor = object : Runnable {
+        override fun run() {
+            if (!sessionActive) return
+            if (stallGuard.shouldRecover(SystemClock.elapsedRealtime())) {
+                diagnostics.problem("BUFFER_STALL")
+                val delay = retries.nextDelay(true)
+                if (delay == null) {
+                    playbackInfo?.text =
+                        "Yayın sunucusu 25 saniyedir yanıt vermiyor. " +
+                        "Otomatik deneme sınırına ulaşıldı; farklı veya güncel kaynak seç."
+                    player?.pause()
+                } else {
+                    playbackInfo?.text =
+                        "Yayın 25 saniyedir yüklenemedi. " +
+                        "Bağlantı yeniden denenecek (" + retries.attempts + "/2)."
+                    scheduleRecovery(delay)
+                }
+            }
+            retryHandler.postDelayed(this, 5_000L)
+        }
+    }
     private val sourceInspector = Executors.newSingleThreadExecutor()
     private var sourceProbeGeneration = 0
     private var sourceProbeInProgress = false
@@ -101,6 +126,7 @@ class PlayerActivity : Activity() {
             setOnClickListener {
                 cancelRecovery()
                 retries.reset()
+                stallGuard.restart(SystemClock.elapsedRealtime())
                 diagnostics.start(SystemClock.elapsedRealtime())
                 ended = false
                 playbackInfo?.text = "Yayın yeniden deneniyor…"
@@ -127,9 +153,12 @@ class PlayerActivity : Activity() {
         val uri = streamUri ?: return
         cancelRecovery()
         retries.reset()
+        stallGuard.ready()
         diagnostics.start(SystemClock.elapsedRealtime())
         ended = false
         sessionActive = true
+        retryHandler.removeCallbacks(stallMonitor)
+        retryHandler.postDelayed(stallMonitor, 5_000L)
 
         val instance = ExoPlayer.Builder(this).build()
         instance.addAnalyticsListener(object : AnalyticsListener {
@@ -162,15 +191,19 @@ class PlayerActivity : Activity() {
                 if (!sessionActive) return
                 when (state) {
                     Player.STATE_BUFFERING -> {
-                        diagnostics.buffering(SystemClock.elapsedRealtime())
+                        val now = SystemClock.elapsedRealtime()
+                        diagnostics.buffering(now)
+                        stallGuard.buffering(now)
                         playbackInfo?.text = "Yayın yükleniyor…"
                     }
                     Player.STATE_READY -> {
                         diagnostics.ready(SystemClock.elapsedRealtime())
+                        stallGuard.ready()
                         playbackInfo?.text = "Yayın hazır • Oynatılıyor"
                     }
                     Player.STATE_ENDED -> {
                         diagnostics.ready(SystemClock.elapsedRealtime())
+                        stallGuard.ready()
                         ended = true
                         if (isVod) VodProgressStore.clear(this@PlayerActivity, channelId)
                         playbackInfo?.text = "Video sona erdi"
@@ -180,6 +213,7 @@ class PlayerActivity : Activity() {
             override fun onPlayerError(error: PlaybackException) {
                 if (!sessionActive) return
                 diagnostics.ready(SystemClock.elapsedRealtime())
+                stallGuard.ready()
                 val httpCode = findHttpStatus(error)
                 val failure = VodErrorPolicy.classify(httpCode, error.errorCodeName)
                 // Only safe enumerated codes and categories; NEVER raw exception text.
@@ -242,6 +276,7 @@ class PlayerActivity : Activity() {
             if (!sessionActive || isFinishing || isDestroyed ||
                 generation != sessionGeneration) return@Runnable
             diagnostics.retry()
+            stallGuard.restart(SystemClock.elapsedRealtime())
             playbackInfo?.text = "Yayın sunucusuna yeniden bağlanılıyor…"
             player?.apply { prepare(); playWhenReady = true }
         }
@@ -327,6 +362,8 @@ class PlayerActivity : Activity() {
         sourceProbeGeneration++
         sourceProbeInProgress = false
         cancelRecovery()
+        retryHandler.removeCallbacks(stallMonitor)
+        stallGuard.ready()
         diagnostics.ready(SystemClock.elapsedRealtime())
         if (isVod && !ended) player?.let {
             VodProgressStore.save(this, channelId, it.currentPosition, it.duration)
