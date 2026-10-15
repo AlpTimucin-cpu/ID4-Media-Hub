@@ -81,8 +81,14 @@ object IntegrationCatalog {
             "Yalnızca telefonda kurulu uygulamaya kısayol. Üçüncü taraf APK, yayın veya telifli içerik entegre edilmez.",
             packages = listOf("com.sportzx.live")),
         IntegrationSource(
-            "diplay", "DiPlay / Screen2Auto araştırması", IntegrationKind.REFERENCE,
-            "Önceki Android Auto ekran denemelerinden mimari çıkarımlar; doğrulanmamış paket, gizli API veya sahte navigasyon servisi kullanılmaz."),
+            "diplay", "DiPlay 0.2.20 • bağlantı ve medya tanılama", IntegrationKind.DIAGNOSTIC,
+            "Gönderilen 0.2.20 APK'sından USB, Wi-Fi Direct, hotspot, Bluetooth, " +
+            "MediaCodec, ses tamponu ve yeniden deneme mimarileri incelendi. " +
+            "Media Hub'a bağımsız medya tanılama ve sınırlı yeniden deneme eklendi. " +
+            "DiPlay doğrudan araç ünitesine kurulan CarPlay alıcısıdır; " +
+            "ID.4 Android Auto ekranında çalıştığı iddia edilmez.",
+            packages = listOf(DiPlayCompatibility.PACKAGE),
+            projectUrl = DiPlayCompatibility.REFERENCE),
         IntegrationSource(
             "androidauto", "Android Auto radyo", IntegrationKind.NATIVE,
             "MediaLibraryService / platform MediaBrowser ses kataloğu. Gerçek araç keşfi ve ses çıkışı ayrıca doğrulanmalı.",
