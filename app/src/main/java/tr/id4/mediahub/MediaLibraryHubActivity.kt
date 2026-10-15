@@ -346,22 +346,32 @@ class MediaLibraryHubActivity : Activity() {
             content.addView(text(
                 when {
                     bundled == null -> "TAM M3U • Dosya yükleniyor…"
-                    bundled.size > 0 -> "TAM M3U PAKETTE • ${bundled.size} medya bağlantısı"
+                    bundled.size > 0 -> "TAM M3U PAKETTE • ${bundled.size} ARŞİV BAĞLANTISI (ERİŞİM DOĞRULANMADI)"
                     else -> "TAM M3U BULUNAMADI • Yalnızca film adları yüklü"
                 },
-                12f, if ((bundled?.size ?: 0) > 0) mint else muted, true
+                12f, muted, true
             ).apply { setPadding(dp(7),dp(9),dp(5),dp(6)) })
         }
         // User-provided movie titles and genres are bundled, never the third-party
         // film stream URLs. Search/genre filtering works offline on first launch.
         if (selected == VideoLibraryKind.MOVIE && !favoritesOnly &&
             allEmbedded.isNotEmpty()) {
+            // Known open-licensed video separates broken playlist servers
+            // from a broken Media3 player, without storing user credentials.
+            content.addView(button("▶ OYNATICI TESTİ • Açık lisanslı Big Buck Bunny") {
+                playOpenTestMovie()
+            }, LinearLayout.LayoutParams(-1, dp(54)))
+            content.addView(text(
+                "Önce bu bağımsız filmi dene. Açılırsa oynatıcı temel olarak " +
+                "çalışıyordur; arşivdeki sunucuların erişimini ayrıca kontrol et.",
+                12f, muted).apply { setPadding(dp(7), dp(5), dp(7), dp(10)) })
             content.addView(text("GÖMÜLÜ FİLM KATALOĞU • "+allEmbedded.size+" BAŞLIK",
                 13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(7)) })
             content.addView(text(
                 if ((BundledMovieLibrary.peek()?.size ?: 0) > 0)
-                    "Film adları ve M3U bağlantıları APK'da hazır. Süreli veya engelli " +
-                    "bağlantılar çalışmayabilir."
+                    "DİKKAT: 7.232 film adı, 7.232 çalışan video anlamına gelmez. " +
+                    "Gömülü liste 29 Ağustos 2026 döneminden kalan tarihli/süreli bağlantılar içeriyor. " +
+                    "İnternette erişim doğrulanmadı; bu kaynakların açılmaması mümkündür."
                 else
                     "Film adları hazır ancak oynatma M3U'su bu APK'da yok. " +
                     "İzlemek için yetkili M3U dosyanı seç.",
@@ -450,6 +460,20 @@ class MediaLibraryHubActivity : Activity() {
         }
     }
 
+    /** CC BY 3.0: © copyright 2008, Blender Foundation / www.bigbuckbunny.org.
+     * Public MP4 used as a player/network control, NOT a replacement for expired VOD.
+     * Referenced by Google's public videojs-ima playlist example.
+     */
+    private fun playOpenTestMovie() {
+        startActivity(Intent(this, PlayerActivity::class.java).apply {
+            putExtra(PlayerActivity.EXTRA_URL,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+            putExtra(PlayerActivity.EXTRA_TITLE, "Big Buck Bunny • Blender Foundation (CC BY 3.0)")
+            putExtra(PlayerActivity.EXTRA_ID, "open-licensed-bbb-test")
+            putExtra(PlayerActivity.EXTRA_IS_VOD, false)
+        })
+    }
+
     private fun embeddedCard(film: EmbeddedFilm): LinearLayout {
         val tile = LinearLayout(this).apply {
             orientation=LinearLayout.HORIZONTAL
@@ -477,8 +501,9 @@ class MediaLibraryHubActivity : Activity() {
         })
         labels.addView(space(5))
         labels.addView(text(
-            if ((BundledMovieLibrary.peek()?.size ?: 0)>0) "▶ Yayını açmayı dene"
-            else "Film bilgisi • Oynatmak için kaynak ekle",11f,mint,true))
+            if ((BundledMovieLibrary.peek()?.size ?: 0)>0)
+                "⚠ Arşiv bağlantısı • çalıştığı doğrulanmadı"
+            else "Film bilgisi • Oynatmak için kaynak ekle",11f,muted,true))
         tile.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
         tile.addView(text("›",27f,mint,true))
         return tile
@@ -498,6 +523,17 @@ class MediaLibraryHubActivity : Activity() {
 
     /** The M3U is a bundled *source*, not a guarantee that a stream still works. */
     private fun openEmbeddedFilm(film: EmbeddedFilm) {
+        // A newly imported, user-authorized stream always takes precedence over
+        // an archived signed link from the original bundled playlist.
+        val normalizedTitle = EmbeddedFilmCatalog.normalized(film.title)
+        val userMedia = VideoStore.load(this).firstOrNull { channel ->
+            VideoLibraryClassifier.classify(channel) == VideoLibraryKind.MOVIE &&
+                EmbeddedFilmCatalog.normalized(channel.name) == normalizedTitle
+        }
+        if (userMedia != null) {
+            play(userMedia)
+            return
+        }
         val bundle = BundledMovieLibrary.peek()
         if (bundle == null) {
             Toast.makeText(this, "Gömülü M3U okunuyor. Tekrar dokun.",
@@ -515,12 +551,13 @@ class MediaLibraryHubActivity : Activity() {
                 AlertDialog.Builder(this)
                     .setTitle(film.title)
                     .setMessage(
-                        "Film bağlantısı APK içinde bulundu. Ancak listedeki sunucu " +
-                        "adresi eski tarihli bir tms parametresi içeriyor. Bu, akışın " +
-                        "artık çalışmayabileceğine işaret eder; kesin geçerlilik " +
-                        "süresini belirlemez.\\n\\n" +
-                        "Yine de oynatmayı deneyebilir veya güncel, kullanım hakkın " +
-                        "olan M3U dosyasını seçebilirsin."
+                        "Bu film için yalnızca ESKİ ARŞİV YAYIN ADRESİ var. " +
+                        "7.232 başlığın arşivde olması hiçbirinin açılacağını kanıtlamaz.\\n\\n" +
+                        "Bağlantıda Ağustos 2026 tarihli tms bilgisi var; " +
+                        "geçerliliği şüpheli (kesin sona erme süresi bilinmiyor).\\n\\n" +
+                        "Önce Filmler sayfasındaki açık lisanslı test videosunu dene. " +
+                        "Ardından güncel, kullanım hakkın olan M3U veya HTTPS video " +
+                        "bağlantısı ekleyebilirsin."
                     )
                     .setNegativeButton("Kapat", null)
                     .setNeutralButton("M3U seç") { _, _ -> pickM3uFile() }
