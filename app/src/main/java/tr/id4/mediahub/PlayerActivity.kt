@@ -94,6 +94,7 @@ class PlayerActivity : Activity() {
                 cancelRecovery()
                 retries.reset()
                 diagnostics.start(SystemClock.elapsedRealtime())
+                ended = false
                 playbackInfo?.text = "Yayın yeniden deneniyor…"
                 player?.apply { prepare(); playWhenReady = true }
             }
@@ -169,7 +170,7 @@ class PlayerActivity : Activity() {
                 val httpCode = findHttpStatus(error)
                 val failure = VodErrorPolicy.classify(httpCode, error.errorCodeName)
                 // Only safe enumerated codes and categories; NEVER raw exception text.
-                diagnostics.problem(failure.kind.name + " / " + error.errorCodeName)
+                diagnostics.problem(failure.kind.name + " / " + error.errorCodeName + (httpCode?.let { " / HTTP $it" } ?: ""))
                 val delay = retries.nextDelay(failure.canRetry)
                 if (delay == null) {
                     playbackInfo?.text = failure.message +
