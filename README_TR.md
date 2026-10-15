@@ -1,4 +1,12 @@
-# ID.4 YOL ARKADAŞIM • v0.56 BETA
+# ID.4 YOL ARKADAŞIM • v0.57 BETA
+
+## v0.57 — Film bağlantılarının neden açılmadığını görünür kılma ve kontrol videosu
+
+- Orijinal `filmler_full.m3u` (SHA-256: `b337c57ae71a3be32d64b52048c32d2d2d66c3316dad64630ae6b9983bc2f011`) analiz edildi: **7.232 başlık**, **7.223 benzersiz URL**, bunların **7.207'si aynı sunucuda**, **7.222'sinde 29 Ağustos 2026 tarihli tms bilgisi** var. Tms'in kesin son geçerlilik tarihi bilinmiyor. Liste video dosyalarını içermez; URL'lerin oynadığını kanıtlamaz.
+- Film ekranında arşiv URL sayısına yeşil "hazır" statüsü verilmez; **erişim doğrulanmadı** uyarısı gösterilir. Film kartında "Yayını aç" yerine arşiv bağlantısı olduğuna ve oynatma garantisi bulunmadığına dikkat çekilir.
+- Kullanıcının ayrıca içe aktardığı **güncel/yetkili film kaydı** varsa bu kayıt, eski paketlenmiş URL'den önceliklidir.
+- Filmler ekranına "OYNATICI TESTİ • Açık lisanslı Big Buck Bunny" kontrolü eklendi. Bu, Google IMA örneğinde yer alan açık HTTPS MP4 adresini Media3 içinde açar. Telif: © copyright 2008, Blender Foundation / www.bigbuckbunny.org, Creative Commons Attribution 3.0. URL'nin kullanıcının ağından erişilebilir olması gerekir, gerçek cihazda henüz ilk kare testi yapılmadı.
+- Test videosu oynuyor, eski film listesi oynamıyorsa öncelikli arıza katalogdaki yayın sunucusu/bağlantısıdır. Test videosu da oynamıyorsa cihaz ağ/oynatıcı teşhisi incelenmelidir. Telifli akış anahtarları, DRM veya özel uygulama API'leri otomatik yenilenemez.
 
 ## v0.56 — Media3 bağlantı hatasının kök nedenini güvenle ayırma
 
