@@ -1,3 +1,11 @@
+# v0.55 — 15 Ekim 2026
+
+- DiPlay 0.2.20 kararlı bağlantı yaklaşımı referans alınarak bağımsız `PlaybackStallGuard` ve 25 saniyelik tamponlama zaman aşımı oluşturuldu.
+- Film ve canlı TV Media3 oynatıcıları sessizce takılan yayını algılar; en fazla 2 otomatik kurtarma, ardından açık hata mesajı.
+- READY / manuel yeniden dene / duraklat / Activity stop / kanal değişimi sırasında sayaç temizliği.
+- Sınır koşulları için saf Kotlin birim testleri. DiPlay binary/CarPlay kodu, sertifikalar, native .so veya BYD ikonları aktarılmadı.
+- v0.54 kullanıcı tetiklemeli güvenli HTTPS kaynak analizi ve v0.53 kullanıcı onaylı tanı raporları korunur.
+
 # v0.53 — 15 Ekim 2026
 
 - DiPlay 0.2.20 APK yapısı ve GPL/AGPL sınırları denetlendi; APK kodu/CarPlay kimlik bilgileri transfer edilmedi.
