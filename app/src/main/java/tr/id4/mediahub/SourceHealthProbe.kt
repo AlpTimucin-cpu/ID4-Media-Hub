@@ -67,7 +67,7 @@ object SourceHealthProbe {
                     instanceFollowRedirects = false
                     setRequestProperty("Accept", "application/vnd.apple.mpegurl, video/*, */*")
                     setRequestProperty("Range", "bytes=0-1023")
-                    setRequestProperty("User-Agent", "ID4-Media-Hub/0.54")
+                    setRequestProperty("User-Agent", "ID4-Media-Hub")
                 }
                 try {
                     val status = connection.responseCode
