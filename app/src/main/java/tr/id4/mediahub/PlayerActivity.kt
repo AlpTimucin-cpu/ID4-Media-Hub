@@ -216,8 +216,14 @@ class PlayerActivity : Activity() {
                 stallGuard.ready()
                 val httpCode = findHttpStatus(error)
                 val failure = VodErrorPolicy.classify(httpCode, error.errorCodeName)
-                // Only safe enumerated codes and categories; NEVER raw exception text.
-                diagnostics.problem(failure.kind.name + " / " + error.errorCodeName + (httpCode?.let { " / HTTP $it" } ?: ""))
+                // Only safe enum categories, never Throwable.message or URL.
+                val transport = if (httpCode == null &&
+                    failure.kind == VodFailureKind.NETWORK)
+                    SafeConnectionFailure.classify(error) else null
+                diagnostics.problem(failure.kind.name + " / " + error.errorCodeName +
+                    (httpCode?.let { " / HTTP $it" } ?: "") +
+                    (transport?.takeIf { it.kind != ConnectionIssueKind.UNKNOWN }
+                        ?.let { " / " + it.kind.name } ?: ""))
                 val delay = retries.nextDelay(failure.canRetry)
                 if (delay == null) {
                     playbackInfo?.text = failure.message +
