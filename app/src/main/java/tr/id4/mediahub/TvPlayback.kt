@@ -66,10 +66,37 @@ class TvPlayback(
     private var initialized = false
     private val diagnostics = PlaybackDiagnostics()
     private val retries = StreamRetryBudget()
+    private val stallGuard = PlaybackStallGuard()
     private val retryHandler = Handler(Looper.getMainLooper())
     private var scheduledRetry: Runnable? = null
     private var playGeneration = 0
     private var autoRecoveryAllowed = false
+    // Unlike an HTTP error, a dead live-HLS CDN may stay BUFFERING forever.
+    private val stallMonitor = object : Runnable {
+        override fun run() {
+            if (!initialized || !autoRecoveryAllowed || current == null ||
+                activity.isFinishing || activity.isDestroyed) return
+            if (stallGuard.shouldRecover(SystemClock.elapsedRealtime())) {
+                diagnostics.problem("BUFFER_STALL")
+                val delay = retries.nextDelay(true)
+                if (delay == null) {
+                    autoRecoveryAllowed = false
+                    playbackState.text =
+                        "●  Yayın 25 saniyedir veri göndermiyor; yeniden bağlanma sınırına ulaşıldı."
+                    (overlay as? TextView)?.text =
+                        "YAYIN YANIT VERMİYOR\n\nGüncel kanal seçmek için dokun"
+                    overlay.visibility = View.VISIBLE
+                    player?.pause()
+                } else {
+                    playbackState.text =
+                        "●  Yayın 25 saniyedir yüklenemiyor; tekrar deneniyor (" +
+                        retries.attempts + "/2)"
+                    scheduleRecovery(delay)
+                }
+            }
+            if (autoRecoveryAllowed) retryHandler.postDelayed(this, 5_000L)
+        }
+    }
 
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
     private fun bg(color: Int, radius: Int = 14) = GradientDrawable().apply {
@@ -198,10 +225,14 @@ class TvPlayback(
             }
             override fun onPlaybackStateChanged(state: Int) {
                 if (!initialized) return
-                if (state == Player.STATE_BUFFERING)
-                    diagnostics.buffering(SystemClock.elapsedRealtime())
+                if (state == Player.STATE_BUFFERING) {
+                    val now=SystemClock.elapsedRealtime()
+                    diagnostics.buffering(now)
+                    stallGuard.buffering(now)
+                }
                 if (state == Player.STATE_READY) {
                     diagnostics.ready(SystemClock.elapsedRealtime())
+                    stallGuard.ready()
                     overlay.visibility = View.GONE
                 }
                 playbackState.text = when(state) {
@@ -214,6 +245,7 @@ class TvPlayback(
             override fun onPlayerError(error: PlaybackException) {
                 val message = playbackErrorExplanation(error)
                 diagnostics.ready(SystemClock.elapsedRealtime())
+                stallGuard.ready()
                 // Store only our own error classification, never a URL or exception text.
                 diagnostics.problem(error.errorCodeName)
                 val mayRetry = autoRecoveryAllowed && initialized &&
@@ -243,7 +275,10 @@ class TvPlayback(
         cancelRecovery()
         autoRecoveryAllowed = true
         retries.reset()
+        stallGuard.restart(SystemClock.elapsedRealtime())
         diagnostics.start(SystemClock.elapsedRealtime())
+        retryHandler.removeCallbacks(stallMonitor)
+        retryHandler.postDelayed(stallMonitor, 5_000L)
         current=channel
         if (!initialized) return
         overlay.visibility=View.GONE
@@ -301,6 +336,7 @@ class TvPlayback(
                     !autoRecoveryAllowed || activity.isFinishing || activity.isDestroyed ||
                     current == null) return
                 diagnostics.retry()
+                stallGuard.restart(SystemClock.elapsedRealtime())
                 try {
                     player?.apply {
                         setMediaItem(item)
@@ -639,6 +675,8 @@ class TvPlayback(
     fun pause(){
         autoRecoveryAllowed = false
         cancelRecovery()
+        retryHandler.removeCallbacks(stallMonitor)
+        stallGuard.ready()
         diagnostics.ready(SystemClock.elapsedRealtime())
         player?.pause()
     }
@@ -646,6 +684,8 @@ class TvPlayback(
         autoRecoveryAllowed = false
         initialized = false
         cancelRecovery()
+        retryHandler.removeCallbacks(stallMonitor)
+        stallGuard.ready()
         diagnostics.ready(SystemClock.elapsedRealtime())
         fullScreen?.dismiss()
         fullScreen=null
