@@ -96,9 +96,11 @@ object SourceHealthProbe {
             }
             SourceCheck(null, SourceCheckKind.UNREACHABLE,
                 "Sunucu çok fazla yönlendirme yapıyor.")
-        } catch (_: Exception) {
+        } catch (problem: Exception) {
             // Exception messages often include signed URL tokens. Never expose them.
-            SourceHealthPolicy.classify(null, null)
+            val safe = SafeConnectionFailure.classify(problem)
+            SourceCheck(null, SourceCheckKind.UNREACHABLE,
+                safe.kind.name + " • " + safe.explanation)
         }
     }
 }
