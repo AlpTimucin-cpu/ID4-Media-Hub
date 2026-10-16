@@ -13,6 +13,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
+import android.view.View
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -43,6 +45,7 @@ class PlayerActivity : Activity() {
     private var isVod = false
     private var ended = false
     private var sessionActive = false
+    private var isOfflineTest = false
     private val diagnostics = PlaybackDiagnostics()
     private val retries = StreamRetryBudget()
     private val stallGuard = PlaybackStallGuard()
@@ -80,9 +83,12 @@ class PlayerActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val value = intent.getStringExtra(EXTRA_URL) ?: intent.dataString ?: ""
+        isOfflineTest = intent.getBooleanExtra(EXTRA_OFFLINE_TEST, false)
+        val value = if (isOfflineTest) OFFLINE_TEST_URI
+            else intent.getStringExtra(EXTRA_URL) ?: intent.dataString ?: ""
         val parsed = Uri.parse(value)
-        if (parsed.scheme != "content" && !M3uParser.isHttpsUrl(value)) {
+        if (value != OFFLINE_TEST_URI && parsed.scheme != "content" &&
+            !M3uParser.isHttpsUrl(value)) {
             finish()
             return
         }
@@ -93,6 +99,13 @@ class PlayerActivity : Activity() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.rgb(10, 16, 27))
+            // Android 15 edge-to-edge otherwise overlays the status bar on
+            // the long film title (reported on POCO F5).
+            setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                insets
+            }
         }
         layout.addView(TextView(this).apply {
             text = intent.getStringExtra(EXTRA_TITLE) ?: "Video oynatıcı"
@@ -109,7 +122,10 @@ class PlayerActivity : Activity() {
         videoView = PlayerView(this).apply { useController = true }
         layout.addView(videoView, LinearLayout.LayoutParams(-1, 0, 1f))
         layout.addView(TextView(this).apply {
-            text = "Video yalnızca güvenli biçimde park halindeyken izlenmelidir. " +
+            text = if (isOfflineTest)
+                "ÇEVRİMDIŞI TEST • 2 saniyelik tekrar eden yerel H.264 video. " +
+                "İnternet ve film kaynakları kullanılmıyor."
+            else "Video yalnızca güvenli biçimde park halindeyken izlenmelidir. " +
                 "Android Auto ekranına yansıtılmaz."
             setTextColor(Color.LTGRAY)
             textSize = 13f
@@ -139,7 +155,7 @@ class PlayerActivity : Activity() {
             setOnClickListener { shareDiagnostics() }
         }, LinearLayout.LayoutParams(0, -2, 1.2f))
         layout.addView(actions)
-        layout.addView(Button(this).apply {
+        if (!isOfflineTest) layout.addView(Button(this).apply {
             text = "Kaynağı ve interneti kontrol et"
             isAllCaps = false
             setOnClickListener { checkSourceOnDemand() }
@@ -199,7 +215,9 @@ class PlayerActivity : Activity() {
                     Player.STATE_READY -> {
                         diagnostics.ready(SystemClock.elapsedRealtime())
                         stallGuard.ready()
-                        playbackInfo?.text = "Yayın hazır • Oynatılıyor"
+                        playbackInfo?.text = if (isOfflineTest)
+                            "Yerel video hazır • Karelerin ekranda hareket ettiğini kontrol et"
+                        else "Yayın hazır • Oynatılıyor"
                     }
                     Player.STATE_ENDED -> {
                         diagnostics.ready(SystemClock.elapsedRealtime())
@@ -243,6 +261,7 @@ class PlayerActivity : Activity() {
             StreamFormat.AUTO -> {}
         }
         instance.setMediaItem(media.build())
+        if (isOfflineTest) instance.repeatMode = Player.REPEAT_MODE_ONE
         player = instance
         videoView?.player = instance
         instance.prepare()
@@ -298,7 +317,7 @@ class PlayerActivity : Activity() {
     private fun checkSourceOnDemand() {
         if (sourceProbeInProgress) return
         val uri = streamUri ?: return
-        if (uri.scheme == "content") {
+        if (isOfflineTest || uri.scheme == "content") {
             lastSourceProbe = "Yerel belge: ağ kontrolü uygulanamaz."
             playbackInfo?.text = lastSourceProbe
             return
@@ -351,7 +370,8 @@ class PlayerActivity : Activity() {
             appendLine("Kullanıcının başlattığı kaynak kontrolü: " + lastSourceProbe)
             appendLine("Android API seviyesi: " + android.os.Build.VERSION.SDK_INT)
             appendLine("Kaynak tipi: " +
-                if (streamUri?.scheme == "content") "Yerel belge" else "HTTPS")
+                if (isOfflineTest) "Çevrimdışı paket içi H.264 test videosu"
+                else if (streamUri?.scheme == "content") "Yerel belge" else "HTTPS")
             appendLine(diagnostics.report(SystemClock.elapsedRealtime()))
             appendLine("Rapor yalnızca kullanıcı paylaşmayı seçtiğinde oluşturulur.")
         }
@@ -392,5 +412,9 @@ class PlayerActivity : Activity() {
         const val EXTRA_TITLE = "source_title"
         const val EXTRA_ID = "source_channel_id"
         const val EXTRA_IS_VOD = "source_is_vod"
+        const val EXTRA_OFFLINE_TEST = "id4_offline_playback_selftest"
+        // Bundled 96x54 H.264/MP4, generated locally with FFmpeg testsrc.
+        // No network, credentials, 3rd-party film or protected stream.
+        private const val OFFLINE_TEST_URI = "asset:///id4_selftest.mp4"
     }
 }
