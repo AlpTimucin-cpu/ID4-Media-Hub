@@ -57,7 +57,42 @@ fi
 grep -q 'TAM M3U PAKETTE' id4_movie.xml
 grep -q 'GÖMÜLÜ FİLM KATALOĞU' id4_movie.xml
 grep -q '7232 BAŞLIK' id4_movie.xml
-# The open-licensed control video is displayed BEFORE the archived film cards.
+# Real decoder regression: navigate to the locally bundled MP4, not an
+# external CDN that may answer HTTP 403 in Türkiye.
+grep -q 'ÇEVRİMDIŞI OYNATICI TESTİ' id4_movie.xml
+python3 - <<'PY'
+import re, subprocess, xml.etree.ElementTree as ET
+root=ET.parse("id4_movie.xml").getroot()
+nodes=[x for x in root.iter("node")
+       if "ÇEVRİMDIŞI OYNATICI TESTİ" in
+       (x.attrib.get("text","") + x.attrib.get("content-desc",""))]
+assert nodes,"Offline Media3 test button missing"
+box=[int(x) for x in re.findall(r"\d+",nodes[0].attrib["bounds"])]
+assert len(box)==4,box
+subprocess.run(["adb","shell","input","tap",
+    str((box[0]+box[2])//2),str((box[1]+box[3])//2)],check=True)
+PY
+for i in $(seq 1 12); do
+  adb shell uiautomator dump /sdcard/id4_offline_player.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/id4_offline_player.xml id4_offline_player.xml >/dev/null 2>&1 || true
+  if [ -s id4_offline_player.xml ] &&
+      grep -q 'YEREL TEST BAŞARILI' id4_offline_player.xml; then break; fi
+  sleep 2
+done
+test -s id4_offline_player.xml
+if ! grep -q 'YEREL TEST BAŞARILI' id4_offline_player.xml; then
+  echo 'FAIL: local offline MP4 did not render first frame in Android 15 emulator'
+  grep 'text=' id4_offline_player.xml | head -c 2000 || true
+  exit 1
+fi
+adb shell screencap -p /sdcard/id4_offline_player.png
+adb pull /sdcard/id4_offline_player.png id4_offline_player.png
+echo 'PASS: bundled offline H264 rendered its first Media3 frame'
+adb shell input keyevent 4
+sleep 4
+adb shell uiautomator dump /sdcard/id4_movie.xml >/dev/null 2>&1 || true
+adb pull /sdcard/id4_movie.xml id4_movie.xml >/dev/null 2>&1 || true
+# The offline control video is displayed BEFORE the archived film cards.
 # Android UIAutomator only dumps currently visible rows: scroll until first
 # real archive item is in the accessibility tree.
 grep -q 'OYNATICI TESTİ' id4_movie.xml
