@@ -59,6 +59,8 @@ jobs:
             id4_home_movie.xml
             id4_movie.xml
             id4_movie.png
+            id4_offline_player.xml
+            id4_offline_player.png
             id4_movie_detail.xml
             id4_movie_detail.png
             android_runtime_errors.log
