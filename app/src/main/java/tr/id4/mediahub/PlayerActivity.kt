@@ -199,6 +199,8 @@ class PlayerActivity : Activity() {
         instance.addListener(object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 diagnostics.firstFrame(SystemClock.elapsedRealtime())
+                if (isOfflineTest) playbackInfo?.text =
+                    "YEREL TEST BAŞARILI • Media3 ilk video karesini ekrana çizdi"
             }
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 diagnostics.videoSize(videoSize.width, videoSize.height)
