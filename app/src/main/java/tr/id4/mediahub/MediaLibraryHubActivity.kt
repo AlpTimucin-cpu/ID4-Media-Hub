@@ -358,12 +358,13 @@ class MediaLibraryHubActivity : Activity() {
             allEmbedded.isNotEmpty()) {
             // Known open-licensed video separates broken playlist servers
             // from a broken Media3 player, without storing user credentials.
-            content.addView(button("▶ OYNATICI TESTİ • Açık lisanslı Big Buck Bunny") {
-                playOpenTestMovie()
+            content.addView(button("▶ ÇEVRİMDIŞI OYNATICI TESTİ • DAHİLİ VİDEO") {
+                playOfflineTestVideo()
             }, LinearLayout.LayoutParams(-1, dp(54)))
             content.addView(text(
-                "Önce bu bağımsız filmi dene. Açılırsa oynatıcı temel olarak " +
-                "çalışıyordur; arşivdeki sunucuların erişimini ayrıca kontrol et.",
+                "Önce bunu dene: Uygulamaya gömülü 2 saniyelik renkli hareketli MP4 " +
+                "internetsiz oynar. Açılırsa H.264 çözücü ve Media3 temel olarak " +
+                "çalışıyordur; eski film sunucuları ayrıca test edilmelidir.",
                 12f, muted).apply { setPadding(dp(7), dp(5), dp(7), dp(10)) })
             content.addView(text("GÖMÜLÜ FİLM KATALOĞU • "+allEmbedded.size+" BAŞLIK",
                 13f,mint,true).apply { setPadding(dp(7),dp(14),0,dp(7)) })
@@ -460,17 +461,13 @@ class MediaLibraryHubActivity : Activity() {
         }
     }
 
-    /** CC BY 3.0: © copyright 2008, Blender Foundation / www.bigbuckbunny.org.
-     * Public MP4 used as a player/network control, NOT a replacement for expired VOD.
-     * Referenced by Google's public videojs-ima playlist example.
+    /** A locally generated 96x54 H.264 MP4 packaged as an app asset.
+     * Controls for playback ability without touching any CDN or film URL.
      */
-    private fun playOpenTestMovie() {
+    private fun playOfflineTestVideo() {
         startActivity(Intent(this, PlayerActivity::class.java).apply {
-            putExtra(PlayerActivity.EXTRA_URL,
-                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
-            putExtra(PlayerActivity.EXTRA_TITLE, "Big Buck Bunny • Blender Foundation (CC BY 3.0)")
-            putExtra(PlayerActivity.EXTRA_ID, "open-licensed-bbb-test")
-            putExtra(PlayerActivity.EXTRA_IS_VOD, false)
+            putExtra(PlayerActivity.EXTRA_OFFLINE_TEST, true)
+            putExtra(PlayerActivity.EXTRA_TITLE, "Çevrimdışı Oynatıcı Testi • Yerel H.264")
         })
     }
 
