@@ -1,4 +1,13 @@
-# ID.4 YOL ARKADAŞIM • v0.57 BETA
+# ID.4 YOL ARKADAŞIM • v0.58 BETA
+
+## v0.58 — 403 veren test videosunun yerine internet gerektirmeyen gerçek MP4 kontrolü
+
+- Kullanıcının POCO F5 ekran görüntüsü: Google'ın Big Buck Bunny test adresi **HTTP 403** dönüyor. Bu cevap, sunucunun isteği reddettiğini gösterir; Media3 kodeğinin bozuk olduğunu kanıtlamaz. Eski Big Buck Bunny test düğmesi kaldırıldı.
+- Uygulamaya tamamen yerel, **2 saniyelik / 96×54 / H.264 (12 kare) / 2.518 bayt** özgün renkli test klibi eklendi: `app/src/main/assets/id4_selftest.mp4`. FFmpeg `testsrc` ile üretildi, URL, CDN, şifre veya telifli film içermiyor. SHA256 `63e829c6b1737527c26d8b6a99d961416249d467eba904bf82e67a2668b8c4d1`.
+- **Filmler → ÇEVRİMDIŞI OYNATICI TESTİ • DAHİLİ VİDEO** seçildiğinde Media3 klibi `asset:///id4_selftest.mp4` adresinden döngülü oynatır. İlk kare gerçekten çizilirse **YEREL TEST BAŞARILI** bilgisi gösterilir, aksi takdirde oynatıcı tanı raporuyla devam edilir.
+- Android 15'in durum/navigasyon çubukları başlık üzerine bindiği için **WindowInsets** eklendi; test videosu için internet kaynak kontrol düğmesi gizlendi.
+- Bu test **yalnızca telefonun yerel video oynatmasını** sınar. Eski 7.232 arşiv film bağlantısına veya Volkswagen ID.4 Android Auto video görüntülemesine erişim sağlamaz.
+- `OfflinePlaybackAssetTest` dosyası paketlenmiş klibin bytes/MP4 başlığını ve SHA256 bütünlüğünü kontrol eder.
 
 ## v0.57 — Film bağlantılarının neden açılmadığını görünür kılma ve kontrol videosu
 
