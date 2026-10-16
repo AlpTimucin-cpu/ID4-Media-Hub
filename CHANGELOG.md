@@ -1,3 +1,10 @@
+# v0.58 — 16 Ekim 2026
+
+- HTTP 403 veren uzaktan Big Buck Bunny kontrolü yerine uygulama içi yerel 2 saniyelik FFmpeg H.264 test MP4'ü eklendi.
+- Media3 gerçekten ilk kareyi gösterirse ekranda yerel test başarısı yazıyor; asset SHA256 birim testi eklendi.
+- Android 15 POCO F5 player ekranında üst durum çubuğu ile başlık çakışması giderildi.
+- Kaynak kullanılamaması, oynatıcının bozukluğunu tek başına kanıtlamaz.
+
 # v0.57 — 15 Ekim 2026
 
 - 7.232 başlıklı arşiv dosyasının yayına erişimi doğrulanmadı; 7.222 bağlantıda Ağustos 2026 tarihli `tms` parametresi tespit edildi.
