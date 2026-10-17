@@ -146,6 +146,9 @@ class TurkeyNavigationActivity : Activity() {
         status=text("Harita: © OpenStreetMap katkıcıları • OpenFreeMap. " +
             "Şarj noktaları OSM topluluk verisidir.",11,false,pale)
         root.addView(status)
+        root.addView(button("＋ Open Charge Map kaynağı (isteğe bağlı API anahtarı)"){
+            configureOcmKey()
+        },LinearLayout.LayoutParams(-1,dp(48)))
         root.addView(button("EPDK Şarj@TR • Resmî istasyon, anlık müsaitlik ve fiyatlar"){
             openWeb(TurkeyGeoServices.EPDK_PUBLIC)
         },LinearLayout.LayoutParams(-1,dp(50)))
@@ -193,18 +196,29 @@ class TurkeyNavigationActivity : Activity() {
         }
         status.text="Görünen alandaki topluluk şarj noktaları aranıyor…"
         Thread{
-            val found=try{TurkeyGeoServices.nearbyStations(bbox)}
-            catch(e:Exception){null}
+            val osm=try{TurkeyGeoServices.nearbyStations(bbox)}catch(_:Exception){null}
+            val ocm=if(OpenChargeMapSources.hasKey(applicationContext)) {
+                try {
+                    val lat=(bbox.south+bbox.north)/2.0
+                    val lon=(bbox.west+bbox.east)/2.0
+                    OpenChargeMapSources.nearby(applicationContext,lat,lon)
+                        .filter{
+                            it.lat in bbox.south..bbox.north &&
+                            it.lon in bbox.west..bbox.east
+                        }
+                }catch(_:Exception){null}
+            }else emptyList()
+            val found=OpenChargeMapSources.merge(osm.orEmpty(),ocm.orEmpty())
             runOnUiThread{
                 if(isFinishing||isDestroyed)return@runOnUiThread
-                if(found==null){
-                    status.text="Şarj veri servisi geçici olarak yanıt vermedi veya kullanım aralığı doldu."
+                if(osm==null && ocm==null){
+                    status.text="Şarj veri servislerine ulaşılamadı veya kullanım aralığı doldu."
                     return@runOnUiThread
                 }
                 stations=found
                 redraw()
-                status.text=found.size.toString()+" OSM şarj noktası bulundu. " +
-                    "Liste tüm resmî istasyonları kapsamayabilir."
+                status.text=found.size.toString()+" OSM / Open Charge Map noktası bulundu. " +
+                    "Kapsam ve gerçek zamanlı doluluk garanti edilmez."
             }
         }.start()
     }
@@ -222,6 +236,40 @@ class TurkeyNavigationActivity : Activity() {
                 .title("⚡ "+it.title.take(80))
                 .snippet(it.operator.take(80))))
         }
+    }
+
+    private fun configureOcmKey(){
+        val input=EditText(this).apply{
+            hint="Open Charge Map API anahtarı"
+            isSingleLine=true
+            textSize=14f
+            inputType=android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val form=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(15),dp(9),dp(15),dp(9))
+        }
+        form.addView(text("API anahtarını openchargemap.org hesabından ücretsiz " +
+            "oluşturabilirsin. Anahtar cihazda şifreli saklanır ve yalnızca " +
+            "HTTPS X-API-Key başlığıyla sağlayıcıya gönderilir.",12,false,pale))
+        form.addView(input)
+        AlertDialog.Builder(this)
+            .setTitle("Open Charge Map • "+if(OpenChargeMapSources.hasKey(this))
+                "Anahtar kayıtlı" else "Anahtar ekle")
+            .setView(form)
+            .setNegativeButton("Kapat",null)
+            .setNeutralButton("Anahtarımı sil"){_,_->
+                OpenChargeMapSources.clearKey(this)
+                status.text="Open Charge Map anahtarı silindi."
+            }
+            .setPositiveButton("Kaydet"){_,_->
+                if(OpenChargeMapSources.saveKey(this,input.text.toString()))
+                    status.text="OCM anahtarı kaydedildi. Şarj noktalarını yenileyebilirsin."
+                else alert("Anahtar kaydedilemedi",
+                    "En az 10 karakterli, boşluksuz geçerli bir anahtar gir.")
+                input.text.clear()
+            }.show()
     }
 
     private fun listStations(){
