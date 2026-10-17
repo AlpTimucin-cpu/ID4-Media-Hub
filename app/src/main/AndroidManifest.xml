@@ -43,7 +43,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
     </queries>
-    <application android:name=".SafeStartApplication" android:label="ID.4 Yol Arkadaşım"
+    <application android:name=".SafeStartApplication" android:label="ID.4 Yol Arkadaşım • Test"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
@@ -54,7 +54,7 @@
         <!-- Shizuku's binder receiver is protected against regular third-party callers.
              This app only checks its status; no privileged commands are executed. -->
         <provider android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="tr.id4.mediahub.shizuku"
+            android:authorities="${applicationId}.shizuku"
             android:exported="true"
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
