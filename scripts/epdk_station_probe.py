@@ -8,6 +8,8 @@ It only prints top-level JSON type, collection sizes and safe FIELD NAMES.
 """
 import json
 import sys
+from pathlib import Path
+from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -21,22 +23,36 @@ MAX_BYTES = 20_000_000
 
 
 def inspect_shape(root):
-    print("root_type:", type(root).__name__)
+    # Strict schema-only summary. No station values, addresses or records.
+    status = {
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": URL,
+        "root_type": type(root).__name__,
+        "root_keys": [], "arrays": [], "objects": []
+    }
     if isinstance(root, list):
-        print("records:", len(root))
-        if root and isinstance(root[0], dict):
-            print("fields:", ", ".join(sorted(root[0])[:55]))
+        status["arrays"].append({
+            "path": "root", "count": len(root),
+            "field_names": sorted(root[0])[:60]
+                if root and isinstance(root[0], dict) else []
+        })
     elif isinstance(root, dict):
-        print("root_keys:", ", ".join(sorted(root)[:55]))
+        status["root_keys"] = sorted(root)[:60]
         for name, value in root.items():
             if isinstance(value, list):
-                print("array:", name, "length:", len(value))
-                if value and isinstance(value[0], dict):
-                    print("record_fields:", ", ".join(sorted(value[0])[:55]))
+                status["arrays"].append({
+                    "path": str(name)[:70], "count": len(value),
+                    "field_names": sorted(value[0])[:60]
+                        if value and isinstance(value[0], dict) else []
+                })
             elif isinstance(value, dict):
-                print("object:", name, "keys:", ", ".join(sorted(value)[:40]))
-    else:
-        print("unexpected data type")
+                status["objects"].append({
+                    "path": str(name)[:70], "field_names": sorted(value)[:45]
+                })
+    print(json.dumps(status, ensure_ascii=False))
+    dest = Path(__file__).resolve().parent.parent / "data/charging/epdk_schema.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main():
