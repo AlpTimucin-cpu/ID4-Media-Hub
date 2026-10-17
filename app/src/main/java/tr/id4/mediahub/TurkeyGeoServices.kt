@@ -31,14 +31,15 @@ object TurkeyGeoServices {
 
     data class Station(val osmId: String, val title: String,
         val lat: Double, val lon: Double, val operator: String,
-        val ccs: String, val type2: String, val rawPower: String) {
+        val ccs: String, val type2: String, val rawPower: String,
+        val source: String = "OpenStreetMap") {
         fun detail(): String = buildString {
             append(title)
             if(operator.isNotBlank()) append("\nİşletmeci: ").append(operator)
             if(ccs.isNotBlank()) append("\nCCS: ").append(ccs)
             if(type2.isNotBlank()) append("\nType 2: ").append(type2)
             if(rawPower.isNotBlank()) append("\nEtiketlenen güç: ").append(rawPower)
-            append("\nOpenStreetMap topluluk kaydıdır; müsaitlik/fiyat bilgisi doğrulanmaz.")
+            append("\nKaynak: ").append(source).append(". Canlı doluluk/fiyat doğrulanmaz.")
         }
         fun asPlace()=Place(title,lat,lon)
     }
