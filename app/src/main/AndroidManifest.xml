@@ -24,6 +24,7 @@
         <package android:name="me.aap.fermata.auto" />
         <package android:name="me.aap.fermata.auto.dear.google.why" />
         <package android:name="me.app.fermataX.auto.debug" />
+        <package android:name="me.app.fermataX.auto.mola32.debug" />
         <package android:name="me.app.fermataX.auto" />
         <package android:name="me.app.fermataX" />
         <package android:name="android.loandamaps.it" />
