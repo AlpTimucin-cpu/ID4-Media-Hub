@@ -40,6 +40,10 @@ def inspect_shape(root):
         })
     elif isinstance(root, dict):
         status["root_keys"] = sorted(root)[:60]
+        columns = root.get("columnNames")
+        if isinstance(columns,list):
+            status["column_names"] = [str(name)[:80] for name in columns[:40]
+                if isinstance(name,str)]
         status["status_code"] = root.get("statusCode") if isinstance(
             root.get("statusCode"), (int, str)) else None
         status["row_count"] = root.get("numRows") if isinstance(
