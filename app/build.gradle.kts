@@ -9,8 +9,10 @@ android {
         applicationId = "tr.id4.mediahub"
         minSdk = 28
         targetSdk = 35
-        versionCode = 59
-        versionName = "0.58"
+        versionCode = 60
+        versionName = "0.59-arm64-beta"
+        // POCO F5 runs arm64-v8a. Prevent packaging 3 unused VLC/MapLibre ABIs.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
