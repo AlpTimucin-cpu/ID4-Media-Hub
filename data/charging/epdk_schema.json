@@ -1,5 +1,5 @@
 {
-  "checked_at_utc": "2026-10-17T21:34:19+00:00",
+  "checked_at_utc": "2026-10-17T21:34:42+00:00",
   "source": "https://apigateway.epdk.gov.tr/sarjIstasyonlari",
   "root_type": "dict",
   "root_keys": [
@@ -29,5 +29,22 @@
   "row_count": 0,
   "result_type": "NoneType",
   "result_length": null,
-  "result_json_type": null
+  "result_json_type": null,
+  "column_names": [
+    "sarjIstasyonuNo",
+    "sarjIstasyonuAdi",
+    "yesilSarjIstasyonuMu",
+    "hizmetSekli",
+    "sarjAgiIsletmecisiUnvan",
+    "sarjAgiIsletmecisiLisansNo",
+    "sarjIstasyonuIsletmecisi",
+    "marka",
+    "olumluGorusVerenDagitimSirketiLisansNo",
+    "olumluGorusVerenDagitimSirketiLisansUnvani",
+    "dagitimSirketiOlumluGorusBelgeNumarasi",
+    "soketler",
+    "adres",
+    "enlem",
+    "boylam"
+  ]
 }
