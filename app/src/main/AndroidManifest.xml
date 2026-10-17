@@ -63,6 +63,7 @@
         </activity>
         <activity android:name=".PlayerActivity" android:exported="false" />
         <activity android:name=".MolaVlcPlayerActivity" android:exported="false" />
+        <activity android:name=".EvGarageActivity" android:exported="false" />
         <activity android:name=".SportzXHubActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
