@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
@@ -50,6 +52,9 @@ class TurkeyNavigationActivity : Activity() {
     private var selected: TurkeyGeoServices.Place? = null
     private var stations: List<TurkeyGeoServices.Station> = emptyList()
     private val drawn=ArrayList<Marker>()
+    private val drawHandler=Handler(Looper.getMainLooper())
+    private var drawVersion=0
+    private val maxVisibleMarkers=65
     private var chargingFilter=ChargingStationDiscovery.Filter()
     private var latestOfficial=emptyMap<String,EpdkPublicStations.Entry>()
 
@@ -253,24 +258,52 @@ class TurkeyNavigationActivity : Activity() {
                 val official=epdk?.size ?: 0
                 status.text="$official resmî EPDK + "+
                     (found.size-official).coerceAtLeast(0)+" topluluk noktası. "+
-                    "Müsaitlik ve soket fiyatı henüz canlı doğrulanmıyor."
+                    (if(found.size>maxVisibleMarkers) "Donmayı önlemek için haritada ilk $maxVisibleMarkers nokta çizilir; tamamı Liste'de. " else "")+
+                    "Canlı doluluk/fiyat doğrulanmıyor."
             }
         }.start()
     }
 
     private fun redraw(){
         val m=map?:return
-        drawn.forEach{marker->try{m.removeMarker(marker)}catch(_:Exception){}}
+        // Adding/removing hundreds of legacy MapLibre markers in one UI frame
+        // can make Android show the "app isn't responding" (ANR) dialog.
+        // Render a controlled number in small message-loop batches.
+        val generation=++drawVersion
+        val previous=drawn.toList()
         drawn.clear()
-        selected?.let{
-            drawn.add(m.addMarker(MarkerOptions().position(LatLng(it.lat,it.lon))
-                .title("Hedef • "+it.title.take(80))))
+        val targets=buildList {
+            selected?.let {
+                add(MarkerOptions().position(LatLng(it.lat,it.lon))
+                    .title("Hedef • "+it.title.take(80)))
+            }
+            stations.take(maxVisibleMarkers).forEach {
+                add(MarkerOptions().position(LatLng(it.lat,it.lon))
+                    .title("⚡ "+it.title.take(80))
+                    .snippet(it.operator.take(80)))
+            }
         }
-        stations.take(180).forEach{
-            drawn.add(m.addMarker(MarkerOptions().position(LatLng(it.lat,it.lon))
-                .title("⚡ "+it.title.take(80))
-                .snippet(it.operator.take(80))))
+        var removed=0
+        fun addBatch(index:Int) {
+            if(generation!=drawVersion || isFinishing || isDestroyed)return
+            for(i in index until minOf(index+3,targets.size)){
+                try {drawn.add(m.addMarker(targets[i]))} catch (_:Exception){}
+            }
+            if(index+3<targets.size){
+                drawHandler.postDelayed({addBatch(index+3)},45L)
+            }
         }
+        fun removeBatch() {
+            if(generation!=drawVersion || isFinishing || isDestroyed)return
+            val end=minOf(removed+5,previous.size)
+            while(removed<end){
+                try {m.removeMarker(previous[removed])}catch(_:Exception){}
+                removed++
+            }
+            if(removed<previous.size)drawHandler.postDelayed({removeBatch()},30L)
+            else addBatch(0)
+        }
+        removeBatch()
     }
 
     private fun configureOcmKey(){
@@ -443,7 +476,7 @@ class TurkeyNavigationActivity : Activity() {
     override fun onResume(){super.onResume();mapView.onResume()}
     override fun onPause(){mapView.onPause();super.onPause()}
     override fun onStop(){mapView.onStop();super.onStop()}
-    override fun onDestroy(){mapView.onDestroy();super.onDestroy()}
+    override fun onDestroy(){drawVersion++;drawHandler.removeCallbacksAndMessages(null);mapView.onDestroy();super.onDestroy()}
     override fun onLowMemory(){super.onLowMemory();mapView.onLowMemory()}
     override fun onSaveInstanceState(out:Bundle){
         super.onSaveInstanceState(out)
