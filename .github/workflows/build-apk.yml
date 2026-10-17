@@ -5,7 +5,7 @@ concurrency:
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/fermata-style-car-video]
+    branches: [main, feature/fermata-style-car-video, feature/mola-32-migration]
     paths:
       - 'app/**'
       - '*.gradle.kts'
