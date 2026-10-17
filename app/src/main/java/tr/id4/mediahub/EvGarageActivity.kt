@@ -330,7 +330,7 @@ class EvGarageActivity : Activity() {
     }
 
     /** Indicative visual only: values come from editable manual inputs. */
-    private inner class BatteryBar:View(this){
+    private inner class BatteryBar:View(this@EvGarageActivity){
         var soc=60f
         var target=80f
         private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
