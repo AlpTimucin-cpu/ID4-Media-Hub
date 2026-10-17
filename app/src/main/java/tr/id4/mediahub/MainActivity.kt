@@ -560,6 +560,9 @@ class MainActivity : Activity() {
         )
         homeContainer.removeAllViews()
         homeContainer.addView(cockpit)
+        homeContainer.addView(button("🗺 TÜRKİYE NAVİGASYON • Adres & Şarj Noktaları") {
+            startActivity(Intent(this, TurkeyNavigationActivity::class.java))
+        })
         homeContainer.addView(button("⚡ ID.4 ENERJİ MERKEZİ • Şarj ve menzil hesabı") {
             startActivity(Intent(this, EvGarageActivity::class.java))
         })
