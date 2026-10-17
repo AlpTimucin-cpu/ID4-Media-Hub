@@ -93,6 +93,15 @@ object ChargingStationDiscovery {
     fun socketDetails(station: EpdkPublicStations.Entry): String = buildString {
         append("EPDK resmî istasyon no: ").append(station.stationId).append('\n')
         append("Lisans no: ").append(station.operatorLicense.ifBlank { "Belirtilmemiş" }).append('\n')
+        if(station.brand.isNotBlank())
+            append("Marka: ").append(station.brand).append('\n')
+        if(station.stationOperator.isNotBlank())
+            append("İstasyon işletmecisi: ").append(station.stationOperator).append('\n')
+        if(station.greenStationRaw.isNotBlank())
+            append("Yeşil istasyon (EPDK ham değeri): ")
+                .append(station.greenStationRaw).append('\n')
+        if(station.distributionCompany.isNotBlank())
+            append("Dağıtım şirketi: ").append(station.distributionCompany).append('\n')
         append("Adres: ").append(station.address.ifBlank { "Belirtilmemiş" }).append('\n')
         append("Soket sayısı: ").append(station.sockets.size).append('\n')
         station.sockets.take(24).forEach { socket ->
