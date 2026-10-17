@@ -180,6 +180,9 @@ class MainActivity : Activity() {
         })
 
         library.addView(section("KÜTÜPHANEM","Kaynaklar, oynatma ve cihaz bağlantıları"))
+        library.addView(button("🗺 Türkiye • Adres / Şarj / Rota Haritası") {
+            startActivity(Intent(this, TurkeyNavigationActivity::class.java))
+        })
         library.addView(button("⚡ ID.4 • Enerji / Menzil / Şarj Planlayıcı") {
             startActivity(Intent(this, EvGarageActivity::class.java))
         })
