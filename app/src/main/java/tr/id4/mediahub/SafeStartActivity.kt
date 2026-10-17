@@ -9,6 +9,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -24,8 +29,11 @@ object StartupCrashNotes {
     private const val WHEN="when"
     private val urls=Regex("""(?:https?://|rtsp://|rtmp://)\S+""",RegexOption.IGNORE_CASE)
     private val credentials=Regex("""(?i)(password|token|apikey|username|authorization)[=:]\s*\S+""")
-    fun save(context:Context,error:Throwable) {
-        val raw=error.stackTraceToString()
+    fun save(context:Context,error:Throwable) = saveDiagnostic(context,
+        "Beklenmeyen hata (exception)\n"+error.stackTraceToString())
+
+    // Invoked only from a background thread during a possible UI stall.
+    fun saveDiagnostic(context:Context,raw:String) {
         val cleaned=raw.replace(urls,"[private source]")
             .replace(credentials,"[private credential]")
             .take(3400)
@@ -42,6 +50,12 @@ object StartupCrashNotes {
 }
 
 class SafeStartApplication:Application() {
+    private val active = AtomicBoolean(false)
+    private val lastResponse = AtomicLong(SystemClock.uptimeMillis())
+    private val main = Handler(Looper.getMainLooper())
+    private val mainThread = Looper.getMainLooper().thread
+    private val capturedThisSession = AtomicBoolean(false)
+
     override fun onCreate() {
         super.onCreate()
         val previous=Thread.getDefaultUncaughtExceptionHandler()
@@ -50,6 +64,41 @@ class SafeStartApplication:Application() {
             if(previous!=null) previous.uncaughtException(thread,error)
             else kotlin.system.exitProcess(1)
         }
+        // ANR does not throw an exception. A low-frequency watchdog records
+        // the *main-thread stack* if the foreground UI stops handling messages.
+        registerActivityLifecycleCallbacks(object:ActivityLifecycleCallbacks {
+            override fun onActivityCreated(a:Activity,b:Bundle?){}
+            override fun onActivityStarted(a:Activity){}
+            override fun onActivityResumed(a:Activity){
+                active.set(true)
+                lastResponse.set(SystemClock.uptimeMillis())
+            }
+            override fun onActivityPaused(a:Activity){active.set(false)}
+            override fun onActivityStopped(a:Activity){}
+            override fun onActivitySaveInstanceState(a:Activity,out:Bundle){}
+            override fun onActivityDestroyed(a:Activity){}
+        })
+        Thread({
+            while(true) {
+                try{
+                    Thread.sleep(2500)
+                    if(!active.get())continue
+                    val before=SystemClock.uptimeMillis()
+                    main.post{lastResponse.set(SystemClock.uptimeMillis())}
+                    // After a verified ~9 second foreground UI stall,
+                    // persist a local redacted trace for the next safe launch.
+                    if(before-lastResponse.get()>9000 &&
+                        capturedThisSession.compareAndSet(false,true) && active.get()){
+                        val frames=mainThread.stackTrace.take(36)
+                            .joinToString("\n"){it.toString()}
+                        StartupCrashNotes.saveDiagnostic(this,
+                            "Olası ANR: ana ekran 9 saniyeden uzun yanıt vermedi\n"+
+                            "Ana iş parçacığı:\n"+frames)
+                    }
+                }catch(_:InterruptedException){return@Thread}
+                catch(_:Exception){}
+            }
+        },"ID4-ANR-watchdog").apply{isDaemon=true;start()}
     }
 }
 
@@ -80,7 +129,7 @@ class SafeStartActivity:Activity() {
         }
         root.addView(label("ID.4 Yol Arkadaşım • Güvenli Başlatma",20f))
         root.addView(label(
-            "Bir önceki çalıştırmada uygulama kapandı. Hata raporu yalnızca " +
+            "Bir önceki çalıştırmada uygulama dondu veya kapandı. Tanılama yalnızca " +
                 "telefonuna kaydedildi; hiçbir sunucuya gönderilmedi.",14f))
         root.addView(action("Ana uygulamayı tekrar dene"){
             StartupCrashNotes.clear(this);openMain()
