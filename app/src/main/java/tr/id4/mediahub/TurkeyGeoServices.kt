@@ -18,6 +18,7 @@ import javax.net.ssl.HttpsURLConnection
 object TurkeyGeoServices {
     const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
     const val EPDK_PUBLIC = "https://www.epdk.gov.tr/Detay/Icerik/1-3428/serbest-erisim-platformu--sarj%40tr"
+    const val EPDK_STATIONS = "https://lisans.epdk.gov.tr/epvys-web/faces/pages/lisans/elektrikSarjAgiIsletmeci/sarjIstasyonuOzetSorgula.xhtml"
     private const val USER_AGENT =
         "ID4-Yol-Arkadasim/0.60 (personal beta; https://github.com/AlpTimucin-cpu/ID4-Media-Hub)"
     private const val NOMINATIM = "https://nominatim.openstreetmap.org"
