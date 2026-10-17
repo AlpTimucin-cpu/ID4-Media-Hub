@@ -30,14 +30,18 @@ object VideoStore {
         cachedChannels?.let { if (raw == cachedRaw) return it }
         return try {
             val array = JSONArray(raw)
+            var needsMigration = false
             buildList {
                 for (i in 0 until minOf(array.length(), MAX_CHANNELS)) {
                     val obj = array.getJSONObject(i)
-                    val url = obj.getString("url")
+                    val encodedUrl = obj.getString("url")
+                    if (!PrivateUrlCodec.isEncrypted(encodedUrl)) needsMigration = true
+                    val url = PrivateUrlCodec.decode(encodedUrl)
                     if (M3uParser.isHttpsUrl(url)) add(VideoChannel(
                         obj.getString("id"), M3uParser.displayTitle(obj.getString("name")), url,
                         obj.optString("group", "Diğer"), obj.optBoolean("favorite", false),
-                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty(),
+                        PrivateUrlCodec.decode(obj.optString("logo", ""))
+                            .takeIf { M3uParser.isHttpsUrl(it) }.orEmpty(),
                         obj.optString("tvgId", "").take(160),
                         VideoLibraryKind.values().firstOrNull { it.name == obj.optString("kind") }
                     ))
@@ -45,6 +49,8 @@ object VideoStore {
             }.also { parsed ->
                 cachedRaw = raw
                 cachedChannels = parsed
+                // Upgrade legacy plaintext credentials on the first successful read.
+                if (needsMigration) try { save(context, parsed) } catch (_: Exception) { }
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -100,8 +106,8 @@ object VideoStore {
         val json = JSONArray()
         channels.forEach { channel ->
             json.put(JSONObject().put("id", channel.id).put("name", channel.name)
-                .put("url", channel.url).put("group", channel.group)
-                .put("favorite", channel.favorite).put("logo", channel.logo)
+                .put("url", PrivateUrlCodec.encode(channel.url)).put("group", channel.group)
+                .put("favorite", channel.favorite).put("logo", PrivateUrlCodec.encode(channel.logo))
                 .put("tvgId", channel.tvgId).put("kind", channel.kindOverride?.name ?: ""))
         }
         val encoded = json.toString()
