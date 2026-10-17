@@ -30,6 +30,8 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("com.google.guava:guava:33.4.8-android")
+    // LibVLC engine version used by the GPL Mola source project.
+    implementation("org.videolan.android:libvlc-all:3.7.2")
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
     testImplementation("junit:junit:4.13.2")
