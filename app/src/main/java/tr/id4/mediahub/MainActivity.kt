@@ -180,6 +180,9 @@ class MainActivity : Activity() {
         })
 
         library.addView(section("KÜTÜPHANEM","Kaynaklar, oynatma ve cihaz bağlantıları"))
+        library.addView(button("⚡ ID.4 • Enerji / Menzil / Şarj Planlayıcı") {
+            startActivity(Intent(this, EvGarageActivity::class.java))
+        })
         val importCard=panel()
         importCard.addView(label("M3U / M3U8 KANAL LİSTESİ",18,true))
         importCard.addView(label("Abonelik veya açık yayın bağlantınızı ekleyin. Kanallar TV ve Radyo sekmelerine ayrılır.",12,false))
