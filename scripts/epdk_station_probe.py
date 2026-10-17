@@ -14,11 +14,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 URL = "https://apigateway.epdk.gov.tr/sarjIstasyonlari"
-FILTER = {
-    "lisansNo": "", "sarjIstasyonuNo": "", "markaAdi": "",
-    "yesilSarjIstasyonuMu": "", "sarjIstasyonuAdi": "",
-    "hizmetSekli": ""
-}
+FILTER = {}  # Test unfiltered documented GET body; no private API calls
 MAX_BYTES = 20_000_000
 
 
