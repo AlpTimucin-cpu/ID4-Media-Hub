@@ -4,6 +4,8 @@ concurrency:
   cancel-in-progress: true
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [feature/fermata-style-car-video]
   push:
     branches: [main, feature/fermata-style-car-video, feature/mola-32-migration]
     paths:
