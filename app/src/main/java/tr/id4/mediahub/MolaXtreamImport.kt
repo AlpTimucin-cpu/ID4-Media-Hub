@@ -100,7 +100,7 @@ object MolaXtreamImport {
         waiting.show()
         Thread {
             val result = try {
-                val m3u = PlaylistLoader.fromHttps(playlist)
+                val m3u = PlaylistLoader.fromHttps(playlist, strictOrigin = true)
                 val items = M3uParser.parse(m3u)
                 require(items.isNotEmpty()) {
                     "Sağlayıcı geçerli HTTPS yayın listesi döndürmedi."
