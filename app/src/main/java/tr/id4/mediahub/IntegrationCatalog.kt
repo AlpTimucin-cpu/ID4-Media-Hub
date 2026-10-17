@@ -21,6 +21,12 @@ data class IntegrationSource(
 object IntegrationCatalog {
     val sources = listOf(
         IntegrationSource(
+            "mola_native", "Mola kaynak özellikleri • uygulama içinde", IntegrationKind.NATIVE,
+            "HTTPS Xtream Codes M3U içe aktarma, LibVLC 3.7.2 alternatif video motoru, " +
+                "Keystore AES-GCM şifreli TV/radyo yayın URL'leri. " +
+                "Bunlar kaynak kodda mevcut; başarılı APK derlemesi ve araç testi henüz doğrulanmadı.",
+            projectUrl = "https://github.com/moris545454/araba-"),
+        IntegrationSource(
             "media3", "Media3 / Fermata tarzı IPTV", IntegrationKind.NATIVE,
             "HLS/M3U8, IPTV kanal seçimi, kalite, altyazı, ses dili ve oynatma sorunlarını izleme."),
         IntegrationSource(
