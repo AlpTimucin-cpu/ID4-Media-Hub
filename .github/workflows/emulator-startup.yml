@@ -1,6 +1,8 @@
 name: Android 15 Startup Crash Reproduction
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [feature/fermata-style-car-video]
   push:
     branches: [feature/mola-32-migration]
     paths:
