@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.mediahub"
         minSdk = 28
         targetSdk = 35
-        versionCode = 60
-        versionName = "0.59-arm64-beta"
+        versionCode = 61
+        versionName = "0.60-safe-start-test"
         // POCO F5 runs arm64-v8a. Prevent packaging 3 unused VLC/MapLibre ABIs.
         if (providers.gradleProperty("id4EmulatorTest").orNull != "true") {
             ndk { abiFilters += listOf("arm64-v8a") }
@@ -24,7 +24,9 @@ android {
     buildTypes {
         release { isMinifyEnabled = false }
         getByName("debug") {
-            // Debug-signed beta builds should not expose a JDWP/debuggable process.
+            // Separate app ID preserves the user's existing media data despite
+            // GitHub-hosted debug keystores changing between workflow runs.
+            applicationIdSuffix = ".test"
             isDebuggable = false
         }
     }
