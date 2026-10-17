@@ -114,6 +114,16 @@ class EvGarageActivity : Activity() {
         content.addView(text("Car Scanner ile gördüğün SoC, kilometre ve teknik notları kaydet. " +
             "Tek bir ölçümden kesin SoH sonucu çıkarılmaz.",12,false,neutral))
         content.addView(button("＋ Manuel batarya kaydı"){ addBatteryNote() })
+        content.addView(button("📥 Car Scanner CSV dosyası içe aktar") {
+            try {
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type="*/*"
+                }, PICK_CARSCANNER_CSV)
+            } catch (_: Exception) {
+                alert("Dosya seçici açılamadı", "Android dosya seçimini başlatamadı.")
+            }
+        })
         content.addView(button("Batarya geçmişini göster"){ showBatteryNotes() })
         content.addView(section("PARK & SEYAHAT"))
         content.addView(button("Şarj istasyonlarını haritada ara"){openStations()})
@@ -216,6 +226,60 @@ class EvGarageActivity : Activity() {
             }.show()
     }
 
+    @Deprecated("Android framework SAF callback")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode!=PICK_CARSCANNER_CSV || resultCode!=RESULT_OK)return
+        val uri=data?.data?:return
+        Thread {
+            val reading=try {
+                val bytes=contentResolver.openInputStream(uri)?.use { stream ->
+                    val out=java.io.ByteArrayOutputStream()
+                    val buffer=ByteArray(8192)
+                    while(true){
+                        val count=stream.read(buffer)
+                        if(count<0)break
+                        require(out.size()+count<=3_500_000) { "File too large" }
+                        out.write(buffer,0,count)
+                    }
+                    out.toString(Charsets.UTF_8.name())
+                } ?: error("Missing CSV")
+                CarScannerCsv.parse(bytes)
+            } catch (_:Exception) { null }
+            runOnUiThread {
+                if(isFinishing || isDestroyed)return@runOnUiThread
+                if(reading==null){
+                    alert("CSV okunamadı", "Dosya 3,5 MB altında ve Car Scanner CSV biçiminde olmalı.")
+                    return@runOnUiThread
+                }
+                val builder=AlertDialog.Builder(this)
+                    .setTitle("Car Scanner CSV • Önizleme")
+                    .setMessage(if(reading.hasMeasurements())
+                        reading.detail()+"\n\nHam konum, VIN ve diğer veri alanları kaydedilmeyecek. " +
+                        "Bu bir tanılama/SoH sertifikası değildir."
+                        else "Tanınan batarya ölçümü bulunamadı.\n\n"+
+                            "İncelenen satır: "+reading.inspectedRows+
+                            ". CSV sütun isimleri başka olabilir.")
+                    .setNegativeButton("Kapat",null)
+                if(reading.socPercent != null && reading.odometerKm != null){
+                    builder.setPositiveButton("SoC ve km kaydını sakla") { _, _ ->
+                        val note=listOfNotNull(
+                            reading.batteryVoltageV?.let{"Voltaj $it V"},
+                            reading.batteryTemperatureC?.let{"Sıcaklık $it C"},
+                            reading.dcPowerKw?.let{"Güç $it kW"}
+                        ).joinToString(" • ")
+                        if(EvGarageStore.addNote(this,
+                            EvGarageStore.BatteryNote(System.currentTimeMillis(),
+                                reading.socPercent,reading.odometerKm,
+                                "Car Scanner CSV • "+note))) toast("CSV özeti kaydedildi.")
+                        else alert("Kaydedilemedi","Ölçümler geçersiz.")
+                    }
+                }
+                builder.show()
+            }
+        }.start()
+    }
+
     private fun showBatteryNotes() {
         val notes=EvGarageStore.notes(this)
         val body=if(notes.isEmpty())"Henüz ölçüm yok." else notes.take(30).joinToString("\n\n") {
@@ -294,6 +358,7 @@ class EvGarageActivity : Activity() {
     private fun EditText.value():Double?=text.toString().trim().replace(',','.').toDoubleOrNull()
     private fun num(x:Double):String=String.format(tr,"%.1f",x)
     private fun date(x:Long):String=SimpleDateFormat("dd.MM.yyyy HH:mm",tr).format(Date(x))
+    companion object { private const val PICK_CARSCANNER_CSV=9502 }
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
     private fun shape(color:Int)=GradientDrawable().apply{
         setColor(color);cornerRadius=dp(13).toFloat()
