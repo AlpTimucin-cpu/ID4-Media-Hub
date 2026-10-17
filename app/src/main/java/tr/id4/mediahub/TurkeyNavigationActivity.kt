@@ -205,6 +205,9 @@ class TurkeyNavigationActivity : Activity() {
         }
         status.text="Görünen alandaki topluluk şarj noktaları aranıyor…"
         Thread{
+            // Prefer the EPDK's officially registered PUBLIC stations.
+            // Community datasets only fill gaps; they never acquire an EPDK label.
+            val epdk=try{EpdkPublicStations.nearby(applicationContext,bbox)}catch(_:Exception){null}
             val osm=try{TurkeyGeoServices.nearbyStations(bbox)}catch(_:Exception){null}
             val ocm=if(OpenChargeMapSources.hasKey(applicationContext)) {
                 try {
@@ -217,17 +220,20 @@ class TurkeyNavigationActivity : Activity() {
                         }
                 }catch(_:Exception){null}
             }else emptyList()
-            val found=OpenChargeMapSources.merge(osm.orEmpty(),ocm.orEmpty())
+            val community=OpenChargeMapSources.merge(osm.orEmpty(),ocm.orEmpty())
+            val found=OpenChargeMapSources.merge(epdk?.first.orEmpty(),community).take(200)
             runOnUiThread{
                 if(isFinishing||isDestroyed)return@runOnUiThread
-                if(osm==null && ocm==null){
-                    status.text="Şarj veri servislerine ulaşılamadı veya kullanım aralığı doldu."
+                if(epdk==null && osm==null && ocm==null){
+                    status.text="EPDK ve topluluk şarj veri servislerine ulaşılamadı."
                     return@runOnUiThread
                 }
                 stations=found
                 redraw()
-                status.text=found.size.toString()+" OSM / Open Charge Map noktası bulundu. " +
-                    "Kapsam ve gerçek zamanlı doluluk garanti edilmez."
+                val official=epdk?.first?.size ?: 0
+                status.text="$official resmî EPDK + "+
+                    (found.size-official).coerceAtLeast(0)+" topluluk noktası. "+
+                    "Müsaitlik ve soket fiyatı henüz canlı doğrulanmıyor."
             }
         }.start()
     }
