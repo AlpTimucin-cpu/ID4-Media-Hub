@@ -12,7 +12,9 @@ android {
         versionCode = 60
         versionName = "0.59-arm64-beta"
         // POCO F5 runs arm64-v8a. Prevent packaging 3 unused VLC/MapLibre ABIs.
-        ndk { abiFilters += listOf("arm64-v8a") }
+        if (providers.gradleProperty("id4EmulatorTest").orNull != "true") {
+            ndk { abiFilters += listOf("arm64-v8a") }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
