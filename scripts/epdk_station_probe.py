@@ -28,7 +28,9 @@ def inspect_shape(root):
         "checked_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source": URL,
         "root_type": type(root).__name__,
-        "root_keys": [], "arrays": [], "objects": []
+        "root_keys": [], "arrays": [], "objects": [],
+        "status_code": None, "row_count": None, "result_type": None,
+        "result_length": None, "result_json_type": None
     }
     if isinstance(root, list):
         status["arrays"].append({
@@ -38,6 +40,22 @@ def inspect_shape(root):
         })
     elif isinstance(root, dict):
         status["root_keys"] = sorted(root)[:60]
+        status["status_code"] = root.get("statusCode") if isinstance(
+            root.get("statusCode"), (int, str)) else None
+        status["row_count"] = root.get("numRows") if isinstance(
+            root.get("numRows"), int) else None
+        value = root.get("result")
+        status["result_type"] = type(value).__name__
+        status["result_length"] = len(value) if isinstance(value,
+            (list, dict, str)) else None
+        if isinstance(value, str):
+            try:
+                decoded = json.loads(value)
+                status["result_json_type"] = type(decoded).__name__
+                if isinstance(decoded,list):
+                    status["result_length"] = len(decoded)
+            except ValueError:
+                pass
         for name, value in root.items():
             if isinstance(value, list):
                 status["arrays"].append({
