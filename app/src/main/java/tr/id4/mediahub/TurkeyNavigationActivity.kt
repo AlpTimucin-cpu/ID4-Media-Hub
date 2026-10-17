@@ -37,7 +37,7 @@ import java.util.Locale
  * not all licensed providers or guaranteed live price/availability information.
  */
 class TurkeyNavigationActivity : Activity() {
-    private val background=0xff081724.toInt()
+    private val screenColor=0xff081724.toInt()
     private val accent=0xff70e2d0.toInt()
     private val pale=0xffa7bccb.toInt()
     private var map: MapLibreMap? = null
@@ -51,12 +51,12 @@ class TurkeyNavigationActivity : Activity() {
 
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor=background
-        window.navigationBarColor=background
+        window.statusBarColor=screenColor
+        window.navigationBarColor=screenColor
         MapLibre.getInstance(this)
         val root=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
-            setBackgroundColor(background)
+            setBackgroundColor(screenColor)
         }
         root.setOnApplyWindowInsetsListener { view,insets ->
             if(android.os.Build.VERSION.SDK_INT>=30) {
