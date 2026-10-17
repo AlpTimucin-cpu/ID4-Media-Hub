@@ -192,6 +192,16 @@ class MainActivity : Activity() {
             }, PICK_PLAYLIST)
         })
         library.addView(importCard)
+        val providerCard=panel()
+        providerCard.addView(label("MOLA • IPTV SAĞLAYICILARI",18,true))
+        providerCard.addView(label(
+            "Xtream Codes sağlayıcını doğrudan ID.4 Yol Arkadaşım kitaplığına bağla. " +
+            "Mola'nın ayrıca kurulu olması gerekmez. Sadece HTTPS ve izinli yayınlar desteklenir.",
+            12,false))
+        providerCard.addView(button("＋ Xtream Codes hesabımdan TV, film ve radyo içe aktar") {
+            MolaXtreamImport.show(this) { refresh(); refreshVideo(); renderHome() }
+        })
+        library.addView(providerCard)
 
         val ready=panel()
         ready.addView(label("AÇIK YAYIN LİSTELERİ",18,true))
