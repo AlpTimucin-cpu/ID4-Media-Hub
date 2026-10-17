@@ -21,6 +21,14 @@ data class IntegrationSource(
 object IntegrationCatalog {
     val sources = listOf(
         IntegrationSource(
+            "turkey_map", "Türkiye Haritası ve Şarj Noktaları", IntegrationKind.NATIVE,
+            "MapLibre/OpenFreeMap telefonda harita; manuel Türkiye adres araması, " +
+                "görünür semtte OSM ve isteğe bağlı Open Charge Map istasyonları; " +
+                "hedefi Google Maps'in dönüş dönüş navigasyonuna aktarır. " +
+                "Şarj@TR üzerinden resmî fiyat ve müsaitlik bilgilerine bağlantı sağlar. " +
+                "Araç içi yerleşik navigasyonun açılması veya bağımsız rota motoru değildir.",
+            projectUrl = "https://openfreemap.org/quick_start/"),
+        IntegrationSource(
             "mola_native", "Mola kaynak özellikleri • uygulama içinde", IntegrationKind.NATIVE,
             "HTTPS Xtream Codes M3U içe aktarma, LibVLC 3.7.2 alternatif video motoru, " +
                 "Keystore AES-GCM şifreli TV/radyo yayın URL'leri. " +
