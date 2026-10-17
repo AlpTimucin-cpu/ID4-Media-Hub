@@ -48,6 +48,14 @@ object IntegrationCatalog {
             packages = listOf("me.app.fermataX.auto.debug", "me.app.fermataX.auto", "me.app.fermataX"),
             projectUrl = "https://github.com/chuoinho/FermataX"),
         IntegrationSource(
+            "mola32", "Mola 3.2 (ayrı uygulama)", IntegrationKind.EXTERNAL,
+            "Kullanıcının sağladığı APK'da me.app.fermataX.auto.mola32.debug kimliği doğrulandı. " +
+                "Yalnızca uygulamayı açma veya seçili HTTPS akışı kullanıcı onayıyla gönderilir. " +
+                "3.2 APK'sı GitHub'daki 2.2.2 kaynak/sertifika kaydıyla eşleşmiş sayılmaz. " +
+                "Araç ekranında video oynatma doğrulanmadı.",
+            packages = listOf("me.app.fermataX.auto.mola32.debug"),
+            projectUrl = "https://github.com/moris545454/araba-"),
+        IntegrationSource(
             "screen2auto", "Screen2Auto", IntegrationKind.DIAGNOSTIC,
             "Telefon üzerindeki bilinen dağıtım paketlerini algılama; gizli API, ekran hızı veya güvenlik kilidi değişimi yok.",
             packages = listOf("android.loandamaps.it", "android.loandamaps.it.aaad_157ff3")),
