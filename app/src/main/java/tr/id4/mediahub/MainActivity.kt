@@ -149,6 +149,8 @@ class MainActivity : Activity() {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
         television.addView(mediaApps)
+        television.addView(button("📺 Mola 3.2 uygulamasını aç") { MolaBridge.open(this) })
+        television.addView(button("↗ Kendi TV kanalımdan Mola’ya gönder") { MolaBridge.chooseVideo(this) })
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
@@ -166,6 +168,11 @@ class MainActivity : Activity() {
             }
         )
         radio.addView(radioDashboard.view())
+        radio.addView(button("↗ Seçili radyoyu Mola’ya gönder") {
+            val selectedId = controller?.currentMediaItem?.mediaId ?: currentRadioId
+            val selected = StationStore.load(this).firstOrNull { it.id == selectedId }
+            MolaBridge.offerRadio(this, selected)
+        })
         radio.addView(button("↗ FermataX 2.2.6 ile radyoyu telefonda aç") {
             val chosenId = controller?.currentMediaItem?.mediaId ?: currentRadioId
             val chosen = StationStore.load(this).firstOrNull { it.id == chosenId }
@@ -258,6 +265,7 @@ class MainActivity : Activity() {
         external.addView(textAction("↗  Kurulu SportzX Android uygulamasını aç") {
             SportzXLauncher.openIfInstalled(this)
         })
+        external.addView(textAction("📺 Mola 3.2 • Telefonda aç") { MolaBridge.open(this) })
         external.addView(label("EKRAN YANSITMA • SCREENONAUTO",15,true))
         external.addView(label("Kurulu ScreenOnAuto uygulamasına kendi belgelenmiş komutlarıyla istek gönderir. Gerçek araç ekranındaki video ayrıca doğrulanmalıdır.",12,false))
         val mirrorActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
