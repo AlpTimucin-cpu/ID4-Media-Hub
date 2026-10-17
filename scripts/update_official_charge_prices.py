@@ -56,7 +56,7 @@ def visible_text(html):
 
 
 def parse_amount(s):
-    amount = float(s.replace(".", "").replace(",", "."))
+    amount = float(s.replace(".", "").replace(",", ".")) if "," in s else float(s)
     if not (1.0 <= amount <= 100.0):
         raise ValueError("Implausible tariff")
     return amount
@@ -71,9 +71,36 @@ def _match(regex, text):
 
 def parse_trugo(html):
     txt = visible_text(html)
-    dc = _match(r"DC\s+cihazlar\s+için.{0,240}?1\s*kWh\s+ücreti.{0,100}?(\d{1,3},\d{2})\s*TL", txt)
-    ac = _match(r"AC\s+cihazlar\s+için.{0,240}?1\s*kWh\s+ücreti.{0,100}?(\d{1,3},\d{2})\s*TL", txt)
-    return {"AC": ac, "DC": dc}
+    def band(kind):
+        # Trugo sometimes serves Turkish, sometimes English, and may publish
+        # a location-dependent *range*. Keep both endpoints, not a fake
+        # nationwide fixed price.
+        label = (r"(?:DC\s+cihazlar\s+için|For\s+DC\s+chargers)"
+                 if kind == "DC" else
+                 r"(?:AC\s+cihazlar\s+için|For\s+AC\s+chargers)")
+        pattern = (label + r".{0,150}?(?:1\s*kWh\s+ücreti|Cost\s+per\s+kWh)"
+                   r".{0,70}?(\d{1,3}[.,]\d{2})"
+                   r"(?:\s*(?:TRY|TL|₺))?(?:\s*-\s*(\d{1,3}[.,]\d{2}))?")
+        found = re.search(pattern, txt, re.IGNORECASE)
+        if not found:
+            raise ValueError("Trugo " + kind + " tariff not recognized")
+        minimum = parse_amount(found.group(1))
+        maximum = parse_amount(found.group(2)) if found.group(2) else None
+        if maximum is not None and maximum < minimum:
+            raise ValueError("Unexpected tariff range")
+        return minimum, maximum
+    ac, ac_max = band("AC")
+    dc, dc_max = band("DC")
+    result = {"AC": ac}
+    if ac_max is not None:
+        result["AC_MIN"] = result.pop("AC")
+        result["AC_MAX"] = ac_max
+    if dc_max is not None:
+        result["DC_MIN"] = dc
+        result["DC_MAX"] = dc_max
+    else:
+        result["DC"] = dc
+    return result
 
 
 def parse_zes(html):
@@ -95,7 +122,7 @@ def fetch_official(url, domain):
     if parsed.scheme != "https" or not (parsed.hostname == domain or
         parsed.hostname == "www." + domain):
         raise ValueError("Unexpected official source host")
-    request = Request(url, headers={"User-Agent": UA, "Accept": "text/html"})
+    request = Request(url, headers={"User-Agent": UA, "Accept": "text/html", "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8"})
     with urlopen(request, timeout=23) as response:
         destination = urlsplit(response.geturl())
         if destination.scheme != "https" or destination.hostname not in {domain, "www." + domain}:
