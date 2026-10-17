@@ -50,7 +50,9 @@ object VideoStore {
                 cachedRaw = raw
                 cachedChannels = parsed
                 // Upgrade legacy plaintext credentials on the first successful read.
-                if (needsMigration) try { save(context, parsed) } catch (_: Exception) { }
+                // Large saved playlists must NOT be re-encrypted on the UI launch path.
+                // The next explicit user edit/save writes encrypted URLs.
+                // A dedicated background migrator will be added after device testing.
             }
         } catch (_: Exception) { emptyList() }
     }
