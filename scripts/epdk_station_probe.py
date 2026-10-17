@@ -36,6 +36,24 @@ def inspect_shape(root):
         })
     elif isinstance(root, dict):
         status["root_keys"] = sorted(root)[:60]
+        rows = root.get("data")
+        if isinstance(rows,list) and rows:
+            from collections import Counter
+            types = Counter(str(row.get("hizmetSekli", ""))[:50]
+                for row in rows if isinstance(row,dict))
+            status["service_categories"] = dict(types.most_common(12))
+            sample = next((row for row in rows if isinstance(row,dict)),{})
+            status["coordinate_types"] = {
+                field: type(sample.get(field)).__name__
+                for field in ("enlem","boylam")
+            }
+            sockets = next((row.get("soketler") for row in rows
+                if isinstance(row,dict) and row.get("soketler")),None)
+            status["socket_collection_type"] = type(sockets).__name__
+            if isinstance(sockets,list):
+                status["socket_example_count"] = len(sockets)
+                if sockets and isinstance(sockets[0],dict):
+                    status["socket_field_names"] = sorted(sockets[0])[:40]
         columns = root.get("columnNames")
         if isinstance(columns,list):
             status["column_names"] = [str(name)[:80] for name in columns[:40]
