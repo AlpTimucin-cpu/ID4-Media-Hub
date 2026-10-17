@@ -18,6 +18,15 @@ class OfficialChargePricesTest(unittest.TestCase):
         """
         self.assertEqual({"AC": 9.95, "DC": 14.98}, prices.parse_trugo(page))
 
+    def test_trugo_english_range_preserves_both_endpoints(self):
+        page = """
+        <h3>For DC chargers</h3><p>Cost per kWh</p><b>12.00 TRY - 14.98 TRY</b>
+        <h3>For AC chargers</h3><p>Cost per kWh</p><b>9.95 TRY</b>
+        """
+        self.assertEqual(
+            {"AC": 9.95, "DC_MIN": 12.0, "DC_MAX": 14.98},
+            prices.parse_trugo(page))
+
     def test_zes_retains_two_dc_bands(self):
         page = """
         <h1>Fiyatlandırma</h1>
