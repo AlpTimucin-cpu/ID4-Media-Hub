@@ -116,6 +116,9 @@ object IntegrationCenter {
                 "fermata" -> card.addView(button("Fermata'yı telefonda aç") {
                     launch(activity,item.packages,"Fermata")
                 },LinearLayout.LayoutParams(-1,dp(44)))
+                "mola32" -> card.addView(button("Mola 3.2'yi telefonda aç") {
+                    MolaBridge.open(activity)
+                },LinearLayout.LayoutParams(-1,dp(44)))
                 "fermatax" -> card.addView(button("FermataX'i telefonda aç") {
                     launch(activity,item.packages,"FermataX")
                 },LinearLayout.LayoutParams(-1,dp(44)))
