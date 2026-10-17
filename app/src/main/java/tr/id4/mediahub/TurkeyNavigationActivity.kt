@@ -149,6 +149,9 @@ class TurkeyNavigationActivity : Activity() {
         root.addView(button("＋ Open Charge Map kaynağı (isteğe bağlı API anahtarı)"){
             configureOcmKey()
         },LinearLayout.LayoutParams(-1,dp(48)))
+        root.addView(button("EPDK • Türkiye resmî şarj istasyonu listesini aç") {
+            openWeb(TurkeyGeoServices.EPDK_STATIONS)
+        },LinearLayout.LayoutParams(-1,dp(48)))
         root.addView(button("EPDK Şarj@TR • Resmî istasyon, anlık müsaitlik ve fiyatlar"){
             openWeb(TurkeyGeoServices.EPDK_PUBLIC)
         },LinearLayout.LayoutParams(-1,dp(50)))
