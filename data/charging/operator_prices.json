@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "last_attempt_utc": null,
+    "record_type": "official_operator_tariffs",
+    "operator_count": 0,
+    "last_refresh_had_errors": false,
+    "price_valid_hours": 36,
+    "availability_included": false,
+    "station_specific_prices_included": false,
+    "source_note": "Initial placeholder only; no tariffs verified yet."
+  },
+  "operators": []
+}
