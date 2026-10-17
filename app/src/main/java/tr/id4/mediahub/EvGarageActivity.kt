@@ -126,7 +126,10 @@ class EvGarageActivity : Activity() {
         })
         content.addView(button("Batarya geçmişini göster"){ showBatteryNotes() })
         content.addView(section("PARK & SEYAHAT"))
-        content.addView(button("Şarj istasyonlarını haritada ara"){openStations()})
+        content.addView(button("🗺 Türkiye Şarj Haritasını Aç") {
+            startActivity(Intent(this, TurkeyNavigationActivity::class.java))
+        })
+        content.addView(button("Harici haritada şarj istasyonu ara"){openStations()})
         content.addView(text("Park notlarını ve şarj kayıtlarını yalnızca telefonda tutar. " +
             "Tesla Sentry, uzaktan klima, kapı kontrolü ve otomatik batarya ön koşullandırması " +
             "burada varmış gibi gösterilmez.",12,false,neutral))
