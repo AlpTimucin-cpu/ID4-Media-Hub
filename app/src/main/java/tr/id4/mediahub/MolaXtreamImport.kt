@@ -62,7 +62,7 @@ object MolaXtreamImport {
                 if (link == null) {
                     toast(activity, "Geçerli HTTPS sunucu adresi, kullanıcı adı ve şifre gerekli.")
                 } else {
-                    import(activity, link, onImported)
+                    importSource(activity, link, onImported)
                 }
             }.show()
     }
@@ -91,7 +91,7 @@ object MolaXtreamImport {
         return result
     }
 
-    private fun import(activity: Activity, playlist: String, onImported: () -> Unit) {
+    private fun importSource(activity: Activity, playlist: String, onImported: () -> Unit) {
         val waiting = AlertDialog.Builder(activity)
             .setTitle("Mola • Xtream içe aktarma")
             .setMessage("Sağlayıcının HTTPS yayın listesi okunuyor. Şifreler ve tam URL'ler günlüğe yazılmıyor.")
@@ -126,7 +126,7 @@ object MolaXtreamImport {
                             "${result.audio} yeni radyo eklendi.\n\n" +
                             "Mevcut kanallar ve favoriler korundu. " +
                             "Yayınların gerçekten oynatılması ayrıca kontrol edilmelidir.")
-                        .setPositiveButton("Kitaplığı yenile") { _, _ -> onImported() }
+                        .setPositiveButton("Tamam", null)
                         .show()
                     onImported()
                 }
