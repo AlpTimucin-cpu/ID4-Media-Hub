@@ -43,37 +43,38 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
+            sdkmanager "platforms;android-36" >/dev/null
             gradle --no-daemon :app:assembleDebug -Pid4EmulatorTest=true
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am force-stop tr.id4.mediahub
-            adb shell am start -W -n tr.id4.mediahub/.MainActivity
+            adb shell am force-stop tr.id4.mediahub.test
+            adb shell am start -W -n tr.id4.mediahub.test/.SafeStartActivity
             sleep 6
             adb logcat -d -v threadtime > /tmp/id4-startup-logcat.txt
             echo "==== AndroidRuntime fatal traces ===="
-            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub\\|Fatal signal" /tmp/id4-startup-logcat.txt | tail -n 130 || true
+            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub.test\\|Fatal signal" /tmp/id4-startup-logcat.txt | tail -n 130 || true
             if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/id4-startup-logcat.txt; then
               echo "::error::Android 15 emulator recorded a fatal error"
               exit 1
             fi
-            adb shell pidof tr.id4.mediahub | grep -q '[0-9]' || {
+            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]' || {
               echo "::error::Main process not running after cold start"; exit 1;
             }
             echo "PASS: App remained running after cold start"
             # Click phone UI's EvGarageActivity and TurkeyNavigationActivity
             adb logcat -c
-            adb shell am start -W -n tr.id4.mediahub/.EvGarageActivity
+            adb shell am start -W -n tr.id4.mediahub.test/.EvGarageActivity
             sleep 3
-            adb shell pidof tr.id4.mediahub | grep -q '[0-9]'
-            adb shell am start -W -n tr.id4.mediahub/.TurkeyNavigationActivity
+            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]'
+            adb shell am start -W -n tr.id4.mediahub.test/.TurkeyNavigationActivity
             sleep 6
             adb logcat -d -v threadtime > /tmp/id4-navigation-logcat.txt
-            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub\\|Fatal signal" /tmp/id4-navigation-logcat.txt | tail -n 130 || true
+            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub.test\\|Fatal signal" /tmp/id4-navigation-logcat.txt | tail -n 130 || true
             if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/id4-navigation-logcat.txt; then
               echo "::error::EV or navigation activity crashed"
               exit 1
             fi
-            adb shell pidof tr.id4.mediahub | grep -q '[0-9]'
+            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]'
             echo "PASS: Main, EV and Navigation activities started without fatal errors"
       - name: Preserve AndroidRuntime diagnostics on failure
         if: failure()
