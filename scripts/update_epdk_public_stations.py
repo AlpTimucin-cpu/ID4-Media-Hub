@@ -140,6 +140,14 @@ def main():
     if not 100_000 <= len(compressed) <= 10_000_000:
         raise ValueError("Unreasonable exported snapshot size")
     DEST.write_bytes(compressed)
+    meta = {k: document[k] for k in (
+        "schema_version", "source_url", "verified_at_utc",
+        "all_rows_count", "public_rows_count", "geocoded_public_rows_count",
+        "prices_included", "live_status_included")}
+    meta["compressed_bytes"] = len(compressed)
+    meta_path = DEST.parent / "epdk_public_snapshot_meta.json"
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
     print("EPDK total rows:", document["all_rows_count"])
     print("EPDK public rows:", document["public_rows_count"])
     print("EPDK geocoded public rows:", document["geocoded_public_rows_count"])
