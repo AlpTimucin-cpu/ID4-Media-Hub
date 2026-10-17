@@ -22,10 +22,16 @@ object PrivateUrlCodec {
     private const val PREFIX = "id4enc:v1:"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
 
+    @Volatile private var keyCache: SecretKey? = null
+
     @Synchronized
     private fun key(): SecretKey {
+        keyCache?.let { return it }
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (ks.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        (ks.getKey(KEY_ALIAS, null) as? SecretKey)?.let {
+            keyCache = it
+            return it
+        }
         val generator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         generator.init(KeyGenParameterSpec.Builder(KEY_ALIAS,
@@ -35,7 +41,7 @@ object PrivateUrlCodec {
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setRandomizedEncryptionRequired(true)
             .build())
-        return generator.generateKey()
+        return generator.generateKey().also { keyCache = it }
     }
 
     fun encode(value: String): String {
