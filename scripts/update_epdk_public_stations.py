@@ -71,6 +71,18 @@ def normalize_station(row):
         "name": name or "Şarj istasyonu",
         "operator": operator,
         "operator_license": license_id,
+        "brand": str(row.get("marka") or "").strip()[:130],
+        "station_operator": str(row.get("sarjIstasyonuIsletmecisi") or "").strip()[:160],
+        "green_station_raw": str(row.get("yesilSarjIstasyonuMu")
+                                 if row.get("yesilSarjIstasyonuMu") is not None
+                                 else "").strip()[:30],
+        "service_kind": "HALKA_ACIK",
+        "distribution_license": str(
+            row.get("olumluGorusVerenDagitimSirketiLisansNo") or "").strip()[:80],
+        "distribution_company": str(
+            row.get("olumluGorusVerenDagitimSirketiLisansUnvani") or "").strip()[:160],
+        "distribution_approval_doc": str(
+            row.get("dagitimSirketiOlumluGorusBelgeNumarasi") or "").strip()[:90],
         "lat": round(lat, 7),
         "lon": round(lon, 7),
         "address": address,
