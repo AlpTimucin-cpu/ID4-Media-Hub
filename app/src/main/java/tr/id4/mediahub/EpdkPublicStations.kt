@@ -39,7 +39,13 @@ object EpdkPublicStations {
         val stationId: String, val name: String, val operator: String,
         val operatorLicense: String,
         val address: String, val lat: Double, val lon: Double,
-        val sockets: List<Socket>
+        val sockets: List<Socket>,
+        val brand: String = "",
+        val stationOperator: String = "",
+        val greenStationRaw: String = "",
+        val distributionCompany: String = "",
+        val distributionLicense: String = "",
+        val distributionApprovalDocument: String = ""
     ) {
         fun asPoint():TurkeyGeoServices.Station {
             val ccs=sockets.count{
@@ -106,7 +112,13 @@ object EpdkPublicStations {
                 o.optString("operator").take(160),
                 o.optString("operator_license").take(60),
                 o.optString("address").take(260),
-                lat,lon,sockets))
+                lat,lon,sockets,
+                brand=o.optString("brand").take(130),
+                stationOperator=o.optString("station_operator").take(160),
+                greenStationRaw=o.optString("green_station_raw").take(30),
+                distributionCompany=o.optString("distribution_company").take(160),
+                distributionLicense=o.optString("distribution_license").take(80),
+                distributionApprovalDocument=o.optString("distribution_approval_doc").take(90)))
         }
         require(entries.size >= geocoded * 0.90){"Insufficient valid EPDK rows"}
         return Snapshot(root.optString("verified_at_utc"),
