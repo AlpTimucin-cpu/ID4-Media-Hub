@@ -18,6 +18,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
@@ -48,6 +50,8 @@ class TurkeyNavigationActivity : Activity() {
     private var selected: TurkeyGeoServices.Place? = null
     private var stations: List<TurkeyGeoServices.Station> = emptyList()
     private val drawn=ArrayList<Marker>()
+    private var chargingFilter=ChargingStationDiscovery.Filter()
+    private var latestOfficial=emptyMap<String,EpdkPublicStations.Entry>()
 
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,6 +138,8 @@ class TurkeyNavigationActivity : Activity() {
         }
         controls.addView(button("⚡ Şarj noktaları"){loadStations()},
             LinearLayout.LayoutParams(0,dp(54),1f))
+        controls.addView(button("⚙ Filtre"){showChargingFilters()},
+            LinearLayout.LayoutParams(0,dp(54),.75f).apply{leftMargin=dp(4)})
         controls.addView(button("☷ Liste"){listStations()},
             LinearLayout.LayoutParams(0,dp(54),.65f).apply{leftMargin=dp(4)})
         controls.addView(button("↗ Rota"){selected?.let(::navigate) ?: alert(
@@ -203,11 +209,18 @@ class TurkeyNavigationActivity : Activity() {
                 "Tüm Türkiye'yi tek seferde taramak ortak OSM sunucularına uygun değil.")
             return
         }
-        status.text="Görünen alandaki topluluk şarj noktaları aranıyor…"
+        status.text="EPDK resmî halka açık şarj noktaları aranıyor…"
         Thread{
-            // Prefer the EPDK's officially registered PUBLIC stations.
-            // Community datasets only fill gaps; they never acquire an EPDK label.
-            val epdk=try{EpdkPublicStations.nearby(applicationContext,bbox)}catch(_:Exception){null}
+            // Fetch the entire already-normalized official public snapshot,
+            // then filter OFFICIAL SOCKETS; do not infer live occupancy.
+            val snapshot=try{EpdkPublicStations.load(applicationContext)
+                .takeIf{it.fresh()}}catch(_:Exception){null}
+            val officialEntries=snapshot?.stations.orEmpty().asSequence()
+                .filter{it.lat in bbox.south..bbox.north && it.lon in bbox.west..bbox.east}
+                .toList()
+            val matching=ChargingStationDiscovery.filter(officialEntries,chargingFilter)
+                .take(180)
+            val epdk=if(snapshot!=null) matching.map{it.asPoint()} else null
             val osm=try{TurkeyGeoServices.nearbyStations(bbox)}catch(_:Exception){null}
             val ocm=if(OpenChargeMapSources.hasKey(applicationContext)) {
                 try {
@@ -220,8 +233,14 @@ class TurkeyNavigationActivity : Activity() {
                         }
                 }catch(_:Exception){null}
             }else emptyList()
-            val community=OpenChargeMapSources.merge(osm.orEmpty(),ocm.orEmpty())
-            val found=OpenChargeMapSources.merge(epdk?.first.orEmpty(),community).take(200)
+            val filtered=chargingFilter.operator.isNotBlank() ||
+                chargingFilter.text.isNotBlank() ||
+                chargingFilter.connector!=ChargingStationDiscovery.Connector.ALL
+            // Only EPDK records have verified socket and licensing metadata.
+            // With advanced filters, do not mix in weaker community claims.
+            val community=if(filtered) emptyList()
+                else OpenChargeMapSources.merge(osm.orEmpty(),ocm.orEmpty())
+            val found=OpenChargeMapSources.merge(epdk.orEmpty(),community).take(200)
             runOnUiThread{
                 if(isFinishing||isDestroyed)return@runOnUiThread
                 if(epdk==null && osm==null && ocm==null){
@@ -229,8 +248,9 @@ class TurkeyNavigationActivity : Activity() {
                     return@runOnUiThread
                 }
                 stations=found
+                latestOfficial=matching.associateBy{it.stationId}
                 redraw()
-                val official=epdk?.first?.size ?: 0
+                val official=epdk?.size ?: 0
                 status.text="$official resmî EPDK + "+
                     (found.size-official).coerceAtLeast(0)+" topluluk noktası. "+
                     "Müsaitlik ve soket fiyatı henüz canlı doğrulanmıyor."
@@ -287,6 +307,55 @@ class TurkeyNavigationActivity : Activity() {
             }.show()
     }
 
+    private fun showChargingFilters(){
+        val labels=arrayOf("Tümü","CCS DC","Type 2 AC","CHAdeMO","Diğer")
+        val opts=arrayOf(
+            ChargingStationDiscovery.Connector.ALL,
+            ChargingStationDiscovery.Connector.CCS,
+            ChargingStationDiscovery.Connector.TYPE2,
+            ChargingStationDiscovery.Connector.CHADEMO,
+            ChargingStationDiscovery.Connector.OTHER)
+        val form=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(18),dp(8),dp(18),dp(8))
+        }
+        val op=EditText(this).apply{
+            hint="Operatör adı (isteğe bağlı)"
+            isSingleLine=true
+            setText(chargingFilter.operator)
+        }
+        val query=EditText(this).apply{
+            hint="İl / ilçe / adres / istasyon adı"
+            isSingleLine=true
+            setText(chargingFilter.text)
+        }
+        val connector=Spinner(this).apply{
+            adapter=ArrayAdapter(this@TurkeyNavigationActivity,
+                android.R.layout.simple_spinner_dropdown_item,labels)
+            setSelection(opts.indexOf(chargingFilter.connector).coerceAtLeast(0))
+        }
+        form.addView(text("EPDK resmî istasyonlarına göre filtrele",13,true))
+        form.addView(op)
+        form.addView(query)
+        form.addView(connector)
+        form.addView(text("Anlık müsaitlik filtresi henüz yok: yetkili canlı " +
+            "servis bağlanmadan 'müsait' iddia edilmeyecek.",12,false,pale))
+        AlertDialog.Builder(this).setTitle("Şarj@TR tarzı filtreler")
+            .setView(form)
+            .setNegativeButton("Vazgeç",null)
+            .setNeutralButton("Temizle"){_,_->
+                chargingFilter=ChargingStationDiscovery.Filter()
+                loadStations()
+            }
+            .setPositiveButton("Uygula"){_,_->
+                chargingFilter=ChargingStationDiscovery.Filter(
+                    operator=op.text.toString().trim().take(100),
+                    text=query.text.toString().trim().take(120),
+                    connector=opts[connector.selectedItemPosition])
+                loadStations()
+            }.show()
+    }
+
     private fun listStations(){
         if(stations.isEmpty()){
             alert("Henüz şarj listesi yok",
@@ -302,8 +371,12 @@ class TurkeyNavigationActivity : Activity() {
     }
 
     private fun showStation(station: TurkeyGeoServices.Station){
+        val entry=station.osmId.removePrefix("epdk:").takeIf{
+            station.osmId.startsWith("epdk:")}?.let{latestOfficial[it]}
+        val officialDetails=entry?.let{ChargingStationDiscovery.socketDetails(it)}
+            ?: station.detail()
         AlertDialog.Builder(this).setTitle("⚡ "+station.title)
-            .setMessage(station.detail()+"\n\n" +
+            .setMessage(officialDetails+"\n\n" +
                 "Soketin anlık müsaitliği ve bu istasyondaki geçerli fiyat " +
                 "yetkili operatör API'sinden henüz doğrulanamadı. " +
                 "Bilinmiyor olarak kabul et.")
