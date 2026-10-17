@@ -56,16 +56,23 @@ object StationStore {
             ?: return defaults
         return try {
             val array = JSONArray(raw)
+            var needsMigration = false
             buildList {
                 for (i in 0 until minOf(array.length(), MAX_STATIONS)) {
                     val obj = array.getJSONObject(i)
+                    val storedUrl = obj.getString("url")
+                    if (!PrivateUrlCodec.isEncrypted(storedUrl)) needsMigration = true
                     val station = Station(
-                        obj.getString("id"), M3uParser.displayTitle(obj.getString("name")), obj.getString("url"),
+                        obj.getString("id"), M3uParser.displayTitle(obj.getString("name")),
+                        PrivateUrlCodec.decode(storedUrl),
                         obj.optString("group", "Radyo"), obj.optBoolean("favorite", false),
-                        obj.optString("logo", "").takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
+                        PrivateUrlCodec.decode(obj.optString("logo", ""))
+                        .takeIf { M3uParser.isHttpsUrl(it) }.orEmpty()
                     )
                     if (validUrl(station.url)) add(station)
                 }
+            }.also { parsed ->
+                if (needsMigration) try { save(context, parsed) } catch (_: Exception) { }
             }
         } catch (_: Exception) { defaults }
     }
@@ -133,8 +140,10 @@ object StationStore {
     private fun save(context: Context, stations: List<Station>) {
         val data = JSONArray()
         stations.forEach { s ->
-            data.put(JSONObject().put("id", s.id).put("name", s.name).put("url", s.url)
-                .put("group", s.group).put("favorite", s.favorite).put("logo", s.logo))
+            data.put(JSONObject().put("id", s.id).put("name", s.name)
+                .put("url", PrivateUrlCodec.encode(s.url))
+                .put("group", s.group).put("favorite", s.favorite)
+                .put("logo", PrivateUrlCodec.encode(s.logo)))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, data.toString()).apply()
