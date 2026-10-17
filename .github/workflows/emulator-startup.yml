@@ -43,7 +43,6 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
-            sdkmanager "platforms;android-36" >/dev/null
             gradle --no-daemon :app:assembleDebug -Pid4EmulatorTest=true
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
