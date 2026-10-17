@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- MapLibre includes optional location access; this app intentionally does not. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
@@ -24,6 +28,7 @@
         <package android:name="me.aap.fermata.auto" />
         <package android:name="me.aap.fermata.auto.dear.google.why" />
         <package android:name="me.app.fermataX.auto.debug" />
+        <package android:name="me.app.fermataX.auto.mola32.debug" />
         <package android:name="me.app.fermataX.auto" />
         <package android:name="me.app.fermataX" />
         <package android:name="android.loandamaps.it" />
@@ -38,7 +43,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
     </queries>
-    <application android:label="ID.4 Yol Arkadaşım"
+    <application android:name=".SafeStartApplication" android:label="ID.4 Yol Arkadaşım • Test"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
@@ -49,18 +54,22 @@
         <!-- Shizuku's binder receiver is protected against regular third-party callers.
              This app only checks its status; no privileged commands are executed. -->
         <provider android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="tr.id4.mediahub.shizuku"
+            android:authorities="${applicationId}.shizuku"
             android:exported="true"
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
-        <activity android:name=".MainActivity" android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+        <activity android:name=".SafeStartActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".PlayerActivity" android:exported="false" />
+        <activity android:name=".MolaVlcPlayerActivity" android:exported="false" />
+        <activity android:name=".EvGarageActivity" android:exported="false" />
+        <activity android:name=".TurkeyNavigationActivity" android:exported="false" />
         <activity android:name=".SportzXHubActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"

@@ -21,6 +21,20 @@ data class IntegrationSource(
 object IntegrationCatalog {
     val sources = listOf(
         IntegrationSource(
+            "turkey_map", "Türkiye Haritası ve Şarj Noktaları", IntegrationKind.NATIVE,
+            "MapLibre/OpenFreeMap telefonda harita; manuel Türkiye adres araması, " +
+                "görünür semtte OSM ve isteğe bağlı Open Charge Map istasyonları; " +
+                "hedefi Google Maps'in dönüş dönüş navigasyonuna aktarır. " +
+                "Şarj@TR üzerinden resmî fiyat ve müsaitlik bilgilerine bağlantı sağlar. " +
+                "Araç içi yerleşik navigasyonun açılması veya bağımsız rota motoru değildir.",
+            projectUrl = "https://openfreemap.org/quick_start/"),
+        IntegrationSource(
+            "mola_native", "Mola kaynak özellikleri • uygulama içinde", IntegrationKind.NATIVE,
+            "HTTPS Xtream Codes M3U içe aktarma, LibVLC 3.7.2 alternatif video motoru, " +
+                "Keystore AES-GCM şifreli TV/radyo yayın URL'leri. " +
+                "Bunlar kaynak kodda mevcut; başarılı APK derlemesi ve araç testi henüz doğrulanmadı.",
+            projectUrl = "https://github.com/moris545454/araba-"),
+        IntegrationSource(
             "media3", "Media3 / Fermata tarzı IPTV", IntegrationKind.NATIVE,
             "HLS/M3U8, IPTV kanal seçimi, kalite, altyazı, ses dili ve oynatma sorunlarını izleme."),
         IntegrationSource(
@@ -47,6 +61,14 @@ object IntegrationCatalog {
             "Kullanıcının 2.2.6 (332) manifestinde Android API 28–36; dışarıya açık VIEW medya etkinliği, AutoFermataMediaService, CarService ve MediaProjection bileşenleri var. Telefon TV oynatıcısından, onayla HTTPS yayını FermataX Debug'a gönderilebilir. Projeksiyon/araç videosu desteklendiği iddia edilmez.",
             packages = listOf("me.app.fermataX.auto.debug", "me.app.fermataX.auto", "me.app.fermataX"),
             projectUrl = "https://github.com/chuoinho/FermataX"),
+        IntegrationSource(
+            "mola32", "Mola 3.2 (ayrı uygulama)", IntegrationKind.EXTERNAL,
+            "Kullanıcının sağladığı APK'da me.app.fermataX.auto.mola32.debug kimliği doğrulandı. " +
+                "Yalnızca uygulamayı açma veya seçili HTTPS akışı kullanıcı onayıyla gönderilir. " +
+                "3.2 APK'sı GitHub'daki 2.2.2 kaynak/sertifika kaydıyla eşleşmiş sayılmaz. " +
+                "Araç ekranında video oynatma doğrulanmadı.",
+            packages = listOf("me.app.fermataX.auto.mola32.debug"),
+            projectUrl = "https://github.com/moris545454/araba-"),
         IntegrationSource(
             "screen2auto", "Screen2Auto", IntegrationKind.DIAGNOSTIC,
             "Telefon üzerindeki bilinen dağıtım paketlerini algılama; gizli API, ekran hızı veya güvenlik kilidi değişimi yok.",

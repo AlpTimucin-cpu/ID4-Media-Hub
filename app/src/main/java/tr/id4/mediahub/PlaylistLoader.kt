@@ -8,9 +8,10 @@ import javax.net.ssl.HttpsURLConnection
 object PlaylistLoader {
     private const val MAX_BYTES = 8_000_000
 
-    fun fromHttps(url: String): String {
+    fun fromHttps(url: String, strictOrigin: Boolean = false): String {
         require(M3uParser.isHttpsUrl(url)) { "HTTPS M3U adresi gerekli." }
-        var current = URL(url)
+        val initial = URL(url)
+        var current = initial
         repeat(5) {
             // Only HTTPS-to-HTTPS redirects are allowed. Never expose a token-bearing URL in the UI.
             val connection = (current.openConnection() as HttpsURLConnection).apply {
@@ -30,6 +31,10 @@ object PlaylistLoader {
                         "Yalnızca HTTPS yönlendirmeleri desteklenir"
                     }
                     require(next.userInfo == null) { "Kimlik içeren URL desteklenmez" }
+                    if (strictOrigin) require(next.host.equals(initial.host, ignoreCase = true) &&
+                        next.port == initial.port) {
+                        "Xtream hesabı başka sunucuya yönlendirilmeyecek"
+                    }
                     current = next
                 } else {
                     require(code == 200) { "M3U sunucusu HTTP $code yanıtı döndürdü" }

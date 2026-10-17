@@ -4,8 +4,10 @@ concurrency:
   cancel-in-progress: true
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [feature/fermata-style-car-video]
   push:
-    branches: [main, feature/fermata-style-car-video]
+    branches: [main, feature/fermata-style-car-video, feature/mola-32-migration]
     paths:
       - 'app/**'
       - '*.gradle.kts'
@@ -53,6 +55,27 @@ jobs:
         run: bash .github/scripts/prepare-bundled-m3u.sh
       - name: Run tests and build debug APK
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
+      - name: Validate merged Android permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$AAPT"
+          "$AAPT" dump permissions "$APK" > /tmp/id4-merged-permissions.txt
+          # No banking-sensitive/privileged Android permissions should be merged.
+          for p in READ_SMS RECEIVE_SMS READ_CONTACTS READ_CALL_LOG ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO CAMERA READ_MEDIA_AUDIO READ_MEDIA_VIDEO QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW REQUEST_INSTALL_PACKAGES; do
+            if grep -Fq "android.permission.$p" /tmp/id4-merged-permissions.txt; then
+              echo "::error::Unexpected merged permission: $p"
+              exit 1
+            fi
+          done
+          if "$AAPT" dump badging "$APK" | grep -q "application-debuggable"; then
+            echo "::error::Merged test APK is debuggable"
+            exit 1
+          fi
+          echo "No listed banking-sensitive permissions requested."
+
       - name: Verify APK and checksum
         shell: bash
         run: |
