@@ -176,6 +176,9 @@ class TvPlayback(
         root.addView(button("↗  FermataX 2.2.6 ile telefonda aç") {
             FermataXInterop.offerVideo(activity, current)
         }, LinearLayout.LayoutParams(-1, dp(46)))
+        root.addView(button("▶ VLC motoruyla oynat • Mola") {
+            MolaVlcPlayerActivity.open(activity, current)
+        }, LinearLayout.LayoutParams(-1, dp(46)))
         root.addView(button("📊  Yayın performansı ve bağlantı raporu") {
             showPlaybackDiagnostics()
         }, LinearLayout.LayoutParams(-1, dp(48)))
