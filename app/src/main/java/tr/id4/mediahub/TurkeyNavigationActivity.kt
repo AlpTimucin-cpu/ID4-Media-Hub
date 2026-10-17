@@ -149,6 +149,12 @@ class TurkeyNavigationActivity : Activity() {
         root.addView(button("＋ Open Charge Map kaynağı (isteğe bağlı API anahtarı)"){
             configureOcmKey()
         },LinearLayout.LayoutParams(-1,dp(48)))
+        root.addView(button("₺ Operatörlerin günlük resmî fiyatlarını karşılaştır") {
+            OfficialChargingTariffs.show(this)
+        },LinearLayout.LayoutParams(-1,dp(50)))
+        root.addView(button("Şarj Haritası • Karşılaştırma ve canlı servisler") {
+            OfficialChargingTariffs.officialBrowser(this,"https://www.sarjharitasi.tr/")
+        },LinearLayout.LayoutParams(-1,dp(48)))
         root.addView(button("EPDK • Türkiye resmî şarj istasyonu listesini aç") {
             openWeb(TurkeyGeoServices.EPDK_STATIONS)
         },LinearLayout.LayoutParams(-1,dp(48)))
@@ -291,7 +297,10 @@ class TurkeyNavigationActivity : Activity() {
 
     private fun showStation(station: TurkeyGeoServices.Station){
         AlertDialog.Builder(this).setTitle("⚡ "+station.title)
-            .setMessage(station.detail())
+            .setMessage(station.detail()+"\n\n" +
+                "Soketin anlık müsaitliği ve bu istasyondaki geçerli fiyat " +
+                "yetkili operatör API'sinden henüz doğrulanamadı. " +
+                "Bilinmiyor olarak kabul et.")
             .setNegativeButton("Kapat",null)
             .setNeutralButton("Haritada göster"){_,_->
                 selected=station.asPlace()
