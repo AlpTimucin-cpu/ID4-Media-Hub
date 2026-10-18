@@ -15,7 +15,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * Single-purpose, media-free EV navigation and charging assistant.
+ * Lightweight EV navigation, charging and optionally selected live TV.
  * Deliberately does not initialize MapLibre, VLC, Media3, IPTV, Mola or
  * any film/TV component. Android platform widgets only.
  */
@@ -34,8 +34,11 @@ class EvLiteActivity:Activity() {
         setContentView(root)
         content.addView(header("ID.4 YOL ARKADAŞIM",23))
         content.addView(body("Elektrikli araç ve şarj asistanı  •  Lite Beta"))
-        content.addView(body("Bu sürümde film, dizi, maç, IPTV, video oynatıcı, " +
-            "Mola ve ağır harita motoru bulunmaz."))
+        content.addView(body("Film ve dizi katalogları çıkarıldı; Mola TV yalnızca isteğe bağlı açılır. Ağır VLC/Media3 ve harita motoru bulunmaz."))
+        content.addView(section("MOLA TV • CANLI YAYIN"))
+        content.addView(action("📺 Mola TV", "Kurulu Mola uygulamasını aç, kişisel M3U TV kanallarını seç ve izle") {
+            startActivity(Intent(this,MolaTvActivity::class.java))
+        })
         content.addView(section("ŞARJ & NAVİGASYON"))
         content.addView(action("⚡ EPDK resmî şarj istasyonları", "Türkiye genelinde istasyon, soket tipi ve operatör ara") {
             startActivity(Intent(this,EvStationActivity::class.java))
