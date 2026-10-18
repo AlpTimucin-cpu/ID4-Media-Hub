@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.evguide.lite"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1-mola-tv-lite-beta"
+        versionCode = 3
+        versionName = "1.2-embedded-map-beta"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -28,6 +28,8 @@ android {
     }
 }
 dependencies {
+    // Android WebViewAssetLoader safely serves our bundled map HTML.
+    implementation("androidx.webkit:webkit:1.16.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")
 }
