@@ -9,7 +9,7 @@
     <!-- No location, media, SMS, Bluetooth, microphone or accessibility permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application android:allowBackup="false"
-        android:label="ID.4 Yol Arkadaşım • TV & EV"
+        android:label="ID.4 Yol Arkadaşım • TV &amp; EV"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity android:name="tr.id4.mediahub.EvLiteActivity"
