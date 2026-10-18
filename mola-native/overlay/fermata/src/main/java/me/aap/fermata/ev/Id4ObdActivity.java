@@ -44,10 +44,8 @@ public final class Id4ObdActivity extends Activity {
     private TextView status;
     private LinearLayout readings;
     private Thread worker;
-    private static final String[] DIDS = {"028C","1E3B","2A0B","7448","189D"};
-    private final String[] labels = {"BMS SoC", "HV gerilim", "Batarya sıcaklığı",
-      "Çalışma/şarj modu", "Batarya soğutma çıkışı"};
-    private final TextView[] fields = new TextView[DIDS.length];
+    private final TextView[] fields = new TextView[Id4MebDecoder.SENSORS.size()];
+    private final long[] updatedAt = new long[Id4MebDecoder.SENSORS.size()];
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -56,7 +54,7 @@ public final class Id4ObdActivity extends Activity {
         root.setBackgroundColor(0xff091e2a);
         root.setPadding(14,25,14,20);
         setContentView(root);
-        TextView title = label("ID.4 • OBD CANLI ÖLÇÜM",22);
+        TextView title = label("ID.4 • CANLI ARAÇ VERİLERİ",22);
         root.addView(title);
         root.addView(label("Yalnızca eşleştirilmiş Bluetooth Classic ELM327. Car Scanner'ı önce kapat. Ölçümler VIN bazında doğrulanmadı.",13));
         LinearLayout buttons = new LinearLayout(this);
@@ -73,8 +71,16 @@ public final class Id4ObdActivity extends Activity {
         ScrollView sc = new ScrollView(this); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         readings=new LinearLayout(this); readings.setOrientation(LinearLayout.VERTICAL);
         sc.addView(readings);
-        for(int i=0;i<DIDS.length;i++){
-            fields[i]=label(labels[i]+": —",19);
+        String category="";
+        for(int i=0;i<Id4MebDecoder.SENSORS.size();i++){
+            Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
+            if(!category.equals(item.category)){
+                category=item.category;
+                TextView heading=label("▰ "+category.toUpperCase(Locale.forLanguageTag("tr-TR")),16);
+                heading.setTextColor(0xff6de4d2);
+                readings.addView(heading);
+            }
+            fields[i]=label(item.name+": —  (okunmadı)",16);
             readings.addView(fields[i]);
         }
         readings.addView(label("Bu değerler yalnızca ECU'dan doğrulanmış yanıt geldikten sonra görüntülenir. Anlık güç, kesin SOH ve menzil için ek VIN/protokol doğrulaması gereklidir.",13));
@@ -127,15 +133,22 @@ public final class Id4ObdActivity extends Activity {
             }
             showStatus("Bağlandı: VW MEB salt-okunur deneysel ölçüm");
             while(active){
-                for(int i=0;i<DIDS.length && active;i++){
-                    String answer=exchange(in,out,"22"+DIDS[i]);
-                    String result=decode(DIDS[i],answer);
+                for(int i=0;i<Id4MebDecoder.SENSORS.size() && active;i++){
+                    Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
+                    String answer=exchange(in,out,"22"+item.did);
+                    String result=Id4MebDecoder.decode(item,answer);
+                    final int idx=i;
                     if(result!=null){
-                        final int idx=i; final String label=labels[i]+": "+result;
-                        ui.post(()->{if(active&&!isFinishing())fields[idx].setText(label);});
+                        updatedAt[i]=System.currentTimeMillis();
+                        final String line=item.name+": "+result+" • CANLI";
+                        ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});
+                    }else if(System.currentTimeMillis()-updatedAt[i]>25000){
+                        final String line=item.name+": —  (ECU yanıtı yok)";
+                        ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});
                     }
+                    Thread.sleep(100);
                 }
-                Thread.sleep(1800);
+                Thread.sleep(2000);
             }
         }catch(Exception e){
             if(active)showStatus("OBD ölçümü durdu: "+e.getClass().getSimpleName());
@@ -154,25 +167,6 @@ public final class Id4ObdActivity extends Activity {
             }
             throw new IllegalStateException("Eksik adaptör yanıtı");
         }finally{cancel.cancel(false);}
-    }
-    private String decode(String did,String response){
-        if(response==null)return null;
-        String compact=response.toUpperCase(Locale.ROOT).replaceAll("[^0-9A-F]","");
-        int at=compact.indexOf("62"+did);
-        if(at<0)return null;
-        String hex=compact.substring(at+6);
-        try{
-            double v;String unit;
-            switch(did){
-                case "028C":v=Integer.parseInt(hex.substring(0,2),16)/2.5;unit="%";if(v<0||v>100)return null;break;
-                case "1E3B":v=Integer.parseInt(hex.substring(0,4),16)/4.0;unit="V";if(v<150||v>550)return null;break;
-                case "2A0B":v=Integer.parseInt(hex.substring(0,2),16)/2.0-40;unit="°C";if(v< -40||v>100)return null;break;
-                case "189D":v=Integer.parseInt(hex.substring(0,4),16)/64.0;unit="°C";if(v< -40||v>100)return null;break;
-                case "7448":v=Integer.parseInt(hex.substring(0,2),16);unit="";if(v==4)return "AC şarj";if(v==6)return "DC şarj";if(v==1)return "Sürüş";if(v==0)return "Bekleme";return null;
-                default:return null;
-            }
-            return String.format(Locale.forLanguageTag("tr-TR"),"%.1f %s",v,unit);
-        }catch(Exception ignored){return null;}
     }
     private synchronized void disconnect(){
         active=false;
