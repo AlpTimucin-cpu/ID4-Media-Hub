@@ -93,6 +93,16 @@ public final class Id4EvActivity extends Activity {
         row.addView(button,new LinearLayout.LayoutParams(0,dp(52),1f));
     }
     private LinearLayout content() {
+        if(map!=null){
+            try {
+                map.stopLoading();
+                map.loadUrl("about:blank");
+                if(map.getParent() instanceof ViewGroup)
+                    ((ViewGroup)map.getParent()).removeView(map);
+                map.destroy();
+            }catch(Exception ignore){}
+            map=null;
+        }
         while(root.getChildCount()>2) root.removeViewAt(2);
         mapReady=false;
         LinearLayout layout=new LinearLayout(this);
