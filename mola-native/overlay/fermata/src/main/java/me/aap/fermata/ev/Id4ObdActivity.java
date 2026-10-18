@@ -230,6 +230,8 @@ public final class Id4ObdActivity extends Activity {
     }
     private synchronized void disconnect(){
         active=false;
+        chargeHistory.telemetryLost();
+        ui.post(this::updateChargeHistory);
         ui.post(()->{
             if(!isFinishing())for(int i=0;i<fields.length;i++){
                 if(fields[i]!=null){
