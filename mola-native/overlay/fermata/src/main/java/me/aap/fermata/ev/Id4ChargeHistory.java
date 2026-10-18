@@ -43,10 +43,11 @@ public final class Id4ChargeHistory {
         }
     }
 
-    private static final long MAX_SOC_AGE_MS=120000L;
+    private static final long MAX_SOC_AGE_MS=300000L;
+    private static final long MAX_MODE_GAP_MS=720000L;
     private static final long MIN_DURATION_MS=60000L;
     private final List<Session> sessions=new ArrayList<>();
-    private long lastSocAt=-1, startAt=-1;
+    private long lastSocAt=-1, lastModeAt=-1, startAt=-1;
     private double lastSoc=Double.NaN, startSoc=Double.NaN, endSoc=Double.NaN;
     private int nonChargingPolls;
     private String method;
@@ -66,7 +67,12 @@ public final class Id4ChargeHistory {
      * Returns a newly completed session or null.
      */
     public synchronized Session acceptMode(long ms,int mode) {
-        if(ms<=0)return null;
+        if(ms<=lastModeAt || ms<=0)return null;
+        if(charging && lastModeAt>0 && ms-lastModeAt>MAX_MODE_GAP_MS){
+            // Missing telemetry for too long: do not invent a session end.
+            charging=false;nonChargingPolls=0;reset();
+        }
+        lastModeAt=ms;
         final boolean isCharge=(mode==4||mode==6);
         if(isCharge){
             nonChargingPolls=0;
@@ -82,6 +88,7 @@ public final class Id4ChargeHistory {
         if(++nonChargingPolls<2)return null;
         charging=false;nonChargingPolls=0;
         if(startAt<0 || ms<=startAt || ms-startAt<MIN_DURATION_MS ||
+           lastSocAt<startAt || ms-lastSocAt>MAX_SOC_AGE_MS ||
            !Double.isFinite(startSoc) || !Double.isFinite(endSoc) ||
            endSoc-startSoc<0.2) {
             reset();
