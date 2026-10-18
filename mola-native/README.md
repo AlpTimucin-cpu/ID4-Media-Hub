@@ -46,13 +46,13 @@ ve Android Auto işlemleri **kesinlikle bozulmadan** uygulama içine
 
 **Türkiye haritası**
 - OpenStreetMap tile'ları + Leaflet ile uygulamanın içinde harita.
-- Adres araması Nominatim'den **manuel ve düğmeye basınca**.
+- Adres araması komoot Photon demo servisinden **manuel ve düğmeye basınca** (makul kullanım sınırları içinde).
 - Haritaya dokununca hedef; uzun basınca başlangıç; OSRM açık demo
   servisiyle rota **önizlemesi**. Tam navigasyon motoru, otomatik reroute,
   sesli kılavuz ve canlı trafik mevcut değildir.
 - Haritada 55'ten fazla işaret aynı anda çizilmez, harita açılışı
   ana Mola oynatıcısını yüklemeye veya durdurmaya çalışmaz.
-- Nominatim, OSRM, OSM demo tile'ları yüksek hacimli üretim için
+- Photon, OSRM, OSM demo tile'ları yüksek hacimli üretim için
   ücretsiz sınırsız/garantili servis **değildir**. Büyümede lisanslı
   tile, geocoder ve routing backend gereklidir.
 
@@ -93,7 +93,7 @@ APK henüz başarılı derlenip telefonda ve ID.4'te çalıştırılmadan
 
 ## Kaynak ve kullanım politikaları
 - https://operations.osmfoundation.org/policies/tiles/
-- https://operations.osmfoundation.org/policies/nominatim/
+- https://github.com/komoot/photon (kamu demo API'si makul kullanım; garanti yok)
 - https://www.openstreetmap.org/copyright
 - https://project-osrm.org/
 - https://www.epdk.gov.tr/
