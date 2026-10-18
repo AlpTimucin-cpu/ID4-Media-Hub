@@ -1,0 +1,100 @@
+name: Mola Native ID4 Preview (preserve TV)
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/mola-native-id4]
+    paths:
+      - 'mola-native/**'
+      - '.github/workflows/build-mola-native-id4.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mola-native-id4-preview
+  cancel-in-progress: true
+jobs:
+  mola-id4-source-preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Download ID4 overlay
+        uses: actions/checkout@v4
+        with:
+          path: integration
+      - name: Clone public GPL Mola at pinned commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/moris545454/araba-.git mola
+          cd mola
+          git checkout --detach 3f45ad3557a25822c2a3a9f152f32ef82f57e005
+          test "$(git rev-parse HEAD)" = "3f45ad3557a25822c2a3a9f152f32ef82f57e005"
+          test -f LICENSE
+      - name: Apply only additive ID.4 overlay
+        run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
+      - name: Ensure changes do not touch Mola playback classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mola
+          git diff --name-only | tee /tmp/mola-modified.txt
+          cat >/tmp/expected.txt <<'EOF'
+          fermata/src/main/AndroidManifest.xml
+          fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java
+          fermata/src/main/res/layout/dashboard_fragment.xml
+          EOF
+          diff -u /tmp/expected.txt /tmp/mola-modified.txt
+          test -s fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java
+          test -s fermata/src/main/assets/id4/index.html
+          # Compare code for TV, VLC, YouTube, MediaProjection etc with base.
+          git diff --exit-code -- modules/tv modules/web modules/vlc modules/exoplayer
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install matching Android toolchain
+        uses: android-actions/setup-android@v3
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+            ndk;29.0.14206865
+      - name: Build Mola's original app + new optional EV screen
+        shell: bash
+        working-directory: mola
+        env:
+          NO_GS: 'true'
+          APP_ID_SFX: '.id4preview'
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --no-parallel verifyWebOnlyProductionGraph
+          ./build.sh -d
+      - name: Verify ID4 preview is SEPARATE from user's Mola 3.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find mola/dist -maxdepth 1 -name 'FermataX-*.apk' -print -quit)"
+          test -n "$APK"
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$AAPT" dump badging "$APK" > /tmp/mola-preview-package.txt
+          head -3 /tmp/mola-preview-package.txt
+          grep -q 'id4preview' /tmp/mola-preview-package.txt
+          if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mola-preview-package.txt; then
+            echo "::error::Refusing APK that could overwrite Mola 3.2"
+            exit 1
+          fi
+          test "$(stat -c %s "$APK")" -gt 10000000
+          mkdir -p output
+          cp "$APK" output/Mola-ID4-Preview.apk
+          sha256sum output/Mola-ID4-Preview.apk | tee output/SHA256.txt
+      - name: Upload testable standalone Mola fork APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mola-OpenSource-ID4-Preview-Not-3.2-APK
+          path: |
+            output/Mola-ID4-Preview.apk
+            output/SHA256.txt
+          retention-days: 7
+          if-no-files-found: error
