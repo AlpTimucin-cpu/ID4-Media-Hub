@@ -53,6 +53,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Test local ID.4 charge history and data freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/charge-tests"
+          javac -encoding UTF-8 -d "$RUNNER_TEMP/charge-tests" \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java \
+            integration/mola-native/tests/Id4ChargeHistoryTest.java
+          java -ea -cp "$RUNNER_TEMP/charge-tests" Id4ChargeHistoryTest
       - name: Install matching Android toolchain
         uses: android-actions/setup-android@v3
         with:
