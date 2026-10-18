@@ -71,7 +71,13 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew --no-daemon --no-parallel verifyWebOnlyProductionGraph
-          ./build.sh -d
+          # The public Mola build.sh conflates APP_ID_SFX env with flavor.
+          # Pass the suffix as an explicit Gradle *property* instead.
+          ./gradlew --no-daemon --no-parallel :fermata:packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview
+          mkdir -p dist
+          mapfile -t built < <(find fermata/build/outputs/apk_from_bundle -type f -name 'fermata*.apk' -print)
+          test "${#built[@]}" -eq 1
+          cp "${built[0]}" dist/FermataX-id4preview.apk
       - name: Verify ID4 preview is SEPARATE from user's Mola 3.2
         shell: bash
         run: |
