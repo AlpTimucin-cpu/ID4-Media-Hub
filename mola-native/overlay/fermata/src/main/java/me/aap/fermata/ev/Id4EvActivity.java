@@ -518,6 +518,10 @@ public final class Id4EvActivity extends Activity {
         }
         return records=stations;
     }
+    private static boolean valid(double lat,double lon){
+        return Double.isFinite(lat)&&Double.isFinite(lon)&&
+            lat>=35&&lat<=43&&lon>=25&&lon<=46;
+    }
     private static byte[] readBounded(InputStream stream,int max)throws Exception{
         try(InputStream in=stream;ByteArrayOutputStream out=new ByteArrayOutputStream()){
             byte[] buffer=new byte[8192];
