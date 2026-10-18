@@ -91,6 +91,34 @@ public final class Id4MebDecoder {
             }
         }catch(RuntimeException ignored){return null;}
     }
+    /** Numeric BMS reading for local session statistics; null on invalid UDS. */
+    public static Double bmsSoc(String response){
+        String payload=positivePayload("028C",response,2);
+        if(payload==null)return null;
+        try{
+            double soc=Integer.parseInt(payload.substring(0,2),16)/2.5;
+            return soc>=0&&soc<=100?soc:null;
+        }catch(RuntimeException e){return null;}
+    }
+    /** Verified UDS 0x62 status byte only. Unknown code is NOT charging off. */
+    public static Integer chargeModeCode(String response){
+        String payload=positivePayload("7448",response,2);
+        if(payload==null)return null;
+        try{
+            int mode=Integer.parseInt(payload.substring(0,2),16);
+            return mode==0||mode==1||mode==4||mode==6?mode:null;
+        }catch(RuntimeException e){return null;}
+    }
+    private static String positivePayload(String did,String response,int min){
+        if(response==null)return null;
+        String up=response.toUpperCase(Locale.ROOT);
+        if(up.contains("NO DATA")||up.contains("ERROR")||up.contains("7F22")||
+           up.contains("STOPPED")||up.contains("UNABLE"))return null;
+        String compact=up.replaceAll("[^0-9A-F]","");
+        int n=compact.indexOf("62"+did);
+        if(n<0 || compact.length()<n+6+min)return null;
+        return compact.substring(n+6);
+    }
     private static String format(double n,String unit){
         return String.format(Locale.forLanguageTag("tr-TR"),"%.1f %s",n,unit);
     }
