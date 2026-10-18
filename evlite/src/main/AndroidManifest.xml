@@ -25,5 +25,6 @@
             android:exported="false"/>
         <activity android:name="tr.id4.mediahub.MolaTvActivity" android:exported="false"/>
         <activity android:name="tr.id4.mediahub.MolaTvPlayerActivity" android:exported="false"/>
+        <activity android:name="tr.id4.mediahub.EmbeddedMapActivity" android:exported="false"/>
     </application>
 </manifest>
