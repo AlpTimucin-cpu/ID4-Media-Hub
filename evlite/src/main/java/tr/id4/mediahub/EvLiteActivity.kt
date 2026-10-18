@@ -33,8 +33,8 @@ class EvLiteActivity:Activity() {
         root.addView(content)
         setContentView(root)
         content.addView(header("ID.4 YOL ARKADAŞIM",23))
-        content.addView(body("Elektrikli araç ve şarj asistanı  •  Lite Beta"))
-        content.addView(body("Film ve dizi katalogları çıkarıldı; Mola TV yalnızca isteğe bağlı açılır. Ağır VLC/Media3 ve harita motoru bulunmaz."))
+        content.addView(body("Elektrikli araç, gömülü harita ve Mola TV • Beta"))
+        content.addView(body("Film ve dizi katalogları yok; Mola TV isteğe bağlıdır. Harita hafif WebView içinde açılır, harici uygulamaya geçmez."))
         content.addView(section("MOLA TV • CANLI YAYIN"))
         content.addView(action("📺 Mola TV", "Kurulu Mola uygulamasını aç, kişisel M3U TV kanallarını seç ve izle") {
             startActivity(Intent(this,MolaTvActivity::class.java))
@@ -43,11 +43,8 @@ class EvLiteActivity:Activity() {
         content.addView(action("⚡ EPDK resmî şarj istasyonları", "Türkiye genelinde istasyon, soket tipi ve operatör ara") {
             startActivity(Intent(this,EvStationActivity::class.java))
         })
-        content.addView(action("🧭 Yol tarifi", "Google Haritalar üzerinden güvenilir sesli navigasyon") {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://www.google.com/maps/")))
-            }catch(_:Exception){message("Harita açılamadı","Bir harita uygulaması veya tarayıcı yükle.")}
+        content.addView(action("🗺 Türkiye Haritası • Uygulama içinde", "Adres ara, EPDK istasyonlarını gör ve rota önizlemesini kendi haritamızda çiz") {
+            startActivity(Intent(this,EmbeddedMapActivity::class.java))
         })
         content.addView(action("₺ Operatörlerin resmî şarj ücretleri", "Trugo ve ZES • Tarihli ve kaynağı belli tarifeler") {
             OfficialChargingTariffs.show(this)
