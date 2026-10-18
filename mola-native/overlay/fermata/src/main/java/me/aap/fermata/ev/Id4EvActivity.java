@@ -230,19 +230,31 @@ public final class Id4EvActivity extends Activity {
         int id=++generation;
         work.execute(()->{
             try{
-                String path="/search?format=jsonv2&countrycodes=tr&limit=6&q="+
+                // Photon explicitly permits small, reasonable use of its
+                // public demo API; do not use the restricted public Nominatim
+                // endpoint as an app's generic AI-generated geocoder.
+                String path="/api/?limit=6&lang=tr&bbox=25,35,46,43&q="+
                     URLEncoder.encode(q,"UTF-8");
-                JSONArray results=new JSONArray(download("nominatim.openstreetmap.org",
-                    path,300000));
+                JSONArray features=new JSONObject(download("photon.komoot.io",
+                    path,350000)).getJSONArray("features");
                 List<JSONObject> points=new ArrayList<>();
                 List<String> names=new ArrayList<>();
-                for(int i=0;i<results.length();i++){
-                    JSONObject a=results.optJSONObject(i);if(a==null)continue;
-                    double lat=a.optDouble("lat",Double.NaN);
-                    double lon=a.optDouble("lon",Double.NaN);
-                    if(valid(lat,lon)){
-                        points.add(a);names.add(a.optString("display_name"));
-                    }
+                for(int i=0;i<features.length();i++){
+                    JSONObject feature=features.optJSONObject(i);
+                    if(feature==null)continue;
+                    JSONArray coords=feature.optJSONObject("geometry")==null ?
+                        null:feature.optJSONObject("geometry").optJSONArray("coordinates");
+                    if(coords==null||coords.length()<2)continue;
+                    double lon=coords.optDouble(0,Double.NaN);
+                    double lat=coords.optDouble(1,Double.NaN);
+                    if(!valid(lat,lon))continue;
+                    JSONObject props=feature.optJSONObject("properties");
+                    String name=props==null?"Haritadaki sonuç":
+                        (props.optString("name")+" "+props.optString("street")+
+                        " "+props.optString("city")+" "+props.optString("state")).trim();
+                    JSONObject normalized=new JSONObject()
+                        .put("lat",lat).put("lon",lon).put("display_name",name);
+                    points.add(normalized);names.add(name);
                 }
                 runOnUiThread(()->{
                     if(id!=generation||stopped)return;
@@ -518,7 +530,7 @@ public final class Id4EvActivity extends Activity {
     }
     private static byte[] downloadBytes(String host,String path,int max)throws Exception{
         if(!("raw.githubusercontent.com".equals(host)||
-             "nominatim.openstreetmap.org".equals(host)||
+             "photon.komoot.io".equals(host)||
              "router.project-osrm.org".equals(host)))throw new Exception();
         URL url=new URL("https://"+host+path);
         HttpURLConnection conn=(HttpURLConnection)url.openConnection();
