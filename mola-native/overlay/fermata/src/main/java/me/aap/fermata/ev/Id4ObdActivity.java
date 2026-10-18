@@ -21,6 +21,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +46,9 @@ public final class Id4ObdActivity extends Activity {
     private TextView status;
     private LinearLayout readings;
     private Thread worker;
+    private final Id4ChargeHistory chargeHistory=new Id4ChargeHistory();
+    private TextView chargeSummary;
+    private TextView pastSessions;
     private final TextView[] fields = new TextView[Id4MebDecoder.SENSORS.size()];
     private final long[] updatedAt = new long[Id4MebDecoder.SENSORS.size()];
 
@@ -68,9 +73,30 @@ public final class Id4ObdActivity extends Activity {
         root.addView(buttons);
         status=label("OBD bağlı değil; canlı ölçüm yok.",15);
         root.addView(status);
+        Id4ChargeHistoryStore.load(this,chargeHistory);
         ScrollView sc = new ScrollView(this); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         readings=new LinearLayout(this); readings.setOrientation(LinearLayout.VERTICAL);
         sc.addView(readings);
+        TextView overviewTitle=label("⚡  ŞARJ OTURUMLARI",18);
+        overviewTitle.setTextColor(0xff6de4d2);
+        readings.addView(overviewTitle);
+        chargeSummary=label("Şarj algılanmadı · OBD gerekli",15);
+        readings.addView(chargeSummary);
+        pastSessions=label("Kayıt yok",14);
+        readings.addView(pastSessions);
+        Button clearHistory=new Button(this);
+        clearHistory.setText("Yerel şarj geçmişini sil");
+        clearHistory.setOnClickListener(v->new AlertDialog.Builder(this)
+            .setTitle("Şarj kayıtlarını sil")
+            .setMessage("Yalnızca bu uygulamadaki tarih ve SoC kayıtları silinir. Araç verisine müdahale edilmez.")
+            .setNegativeButton("Vazgeç",null)
+            .setPositiveButton("Sil",(d,w)->{
+                chargeHistory.clear();
+                Id4ChargeHistoryStore.clear(this);
+                updateChargeHistory();
+            }).show());
+        readings.addView(clearHistory);
+        updateChargeHistory();
         String category="";
         for(int i=0;i<Id4MebDecoder.SENSORS.size();i++){
             Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
@@ -84,6 +110,28 @@ public final class Id4ObdActivity extends Activity {
             readings.addView(fields[i]);
         }
         readings.addView(label("Bu değerler yalnızca ECU'dan doğrulanmış yanıt geldikten sonra görüntülenir. Anlık güç, kesin SOH ve menzil için ek VIN/protokol doğrulaması gereklidir.",13));
+    }
+    private void updateChargeHistory(){
+        if(chargeSummary==null || pastSessions==null || isFinishing())return;
+        if(chargeHistory.isCharging()){
+            double soc=chargeHistory.observedSocChange();
+            String change=Double.isFinite(soc)?
+                String.format(Locale.forLanguageTag("tr-TR")," · +%.1f%% SoC",soc):"";
+            chargeSummary.setText("Şarj oturumu sürüyor • "+chargeHistory.method()+change);
+        }else chargeSummary.setText("Aktif şarj oturumu yok");
+        List<Id4ChargeHistory.Session> history=chargeHistory.completed();
+        if(history.isEmpty()){pastSessions.setText("Henüz tamamlanmış şarj kaydı yok.");return;}
+        SimpleDateFormat fmt=new SimpleDateFormat("dd.MM.yyyy HH:mm",Locale.forLanguageTag("tr-TR"));
+        StringBuilder b=new StringBuilder("SON ŞARJLAR (yalnızca bu cihaz)\n");
+        for(Id4ChargeHistory.Session h:history){
+            b.append(fmt.format(new Date(h.endedAtMs)))
+             .append(" • ").append(h.chargingMethod)
+             .append(" • ").append(String.format(Locale.forLanguageTag("tr-TR"),
+                 "%.1f%% → %.1f%% (%.1f puan)",h.socStart,h.socEnd,h.socChangePercent()))
+             .append(" • ").append(h.durationMinutes()).append(" dk\n");
+        }
+        b.append("KWh ve TL bu kayıtlardan kesin olarak ölçülmez. Fatura için operatör sayacı gerekir.");
+        pastSessions.setText(b.toString());
     }
     private TextView label(String s,int sp){
         TextView t=new TextView(this);t.setTextColor(Color.WHITE);t.setTextSize(sp);
@@ -137,6 +185,18 @@ public final class Id4ObdActivity extends Activity {
                     Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
                     String answer=exchange(in,out,"22"+item.did);
                     String result=Id4MebDecoder.decode(item,answer);
+                    long sampleTime=System.currentTimeMillis();
+                    if("028C".equals(item.did)){
+                        Double soc=Id4MebDecoder.bmsSoc(answer);
+                        if(soc!=null)chargeHistory.acceptSoc(sampleTime,soc);
+                    }else if("7448".equals(item.did)){
+                        Integer mode=Id4MebDecoder.chargeModeCode(answer);
+                        if(mode!=null){
+                            Id4ChargeHistory.Session saved=chargeHistory.acceptMode(sampleTime,mode);
+                            if(saved!=null)Id4ChargeHistoryStore.save(this,chargeHistory);
+                            ui.post(this::updateChargeHistory);
+                        }
+                    }
                     final int idx=i;
                     if(result!=null){
                         updatedAt[i]=System.currentTimeMillis();
@@ -170,6 +230,14 @@ public final class Id4ObdActivity extends Activity {
     }
     private synchronized void disconnect(){
         active=false;
+        ui.post(()->{
+            if(!isFinishing())for(int i=0;i<fields.length;i++){
+                if(fields[i]!=null){
+                    Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
+                    fields[i].setText(item.name+": — (bağlantı yok)");
+                }
+            }
+        });
         BluetoothSocket s=socket;socket=null;
         if(s!=null)try{s.close();}catch(Exception ignored){}
         if(worker!=null && worker!=Thread.currentThread())worker.interrupt();
