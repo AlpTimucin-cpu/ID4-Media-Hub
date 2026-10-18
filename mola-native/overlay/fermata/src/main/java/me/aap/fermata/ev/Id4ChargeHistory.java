@@ -102,6 +102,15 @@ public final class Id4ChargeHistory {
         return session;
     }
 
+    /** Abort an unverified partial session on a physical OBD disconnect. */
+    public synchronized void telemetryLost(){
+        charging=false;
+        nonChargingPolls=0;
+        lastModeAt=-1;
+        lastSocAt=-1;
+        lastSoc=Double.NaN;
+        reset();
+    }
     public synchronized boolean isCharging() {return charging;}
     public synchronized double observedSocChange() {
         if(!charging || !Double.isFinite(startSoc) || !Double.isFinite(endSoc))
