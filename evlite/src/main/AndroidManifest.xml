@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only explicit Mola/Fermata package visibility; no QUERY_ALL_PACKAGES. -->
+    <queries>
+        <package android:name="me.app.fermataX.auto.mola32.debug" />
+        <package android:name="me.app.fermataX.auto.debug" />
+        <package android:name="me.app.fermataX.auto" />
+    </queries>
+    <!-- No location, media, SMS, Bluetooth, microphone or accessibility permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:allowBackup="false"
+        android:label="ID.4 Yol Arkadaşım • TV &amp; EV"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:usesCleartextTraffic="false">
+        <activity android:name="tr.id4.mediahub.EvLiteActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name="tr.id4.mediahub.EvStationActivity"
+            android:exported="false"/>
+        <activity android:name="tr.id4.mediahub.EvEnergyActivity"
+            android:exported="false"/>
+        <activity android:name="tr.id4.mediahub.MolaTvActivity" android:exported="false"/>
+        <activity android:name="tr.id4.mediahub.MolaTvPlayerActivity" android:exported="false"/>
+        <activity android:name="tr.id4.mediahub.EmbeddedMapActivity" android:exported="false"/>
+    </application>
+</manifest>

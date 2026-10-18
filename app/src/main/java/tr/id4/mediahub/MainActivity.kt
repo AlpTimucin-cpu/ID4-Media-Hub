@@ -149,6 +149,8 @@ class MainActivity : Activity() {
             openWebMedia(MediaWebActivity.YOUTUBE_URL)
         })
         television.addView(mediaApps)
+        television.addView(button("📺 Mola 3.2 uygulamasını aç") { MolaBridge.open(this) })
+        television.addView(button("↗ Kendi TV kanalımdan Mola’ya gönder") { MolaBridge.chooseVideo(this) })
         television.addView(tvPlayer.view())
         television.addView(label("Kanal listesi ve yayın adresleri Kitaplığım bölümünde saklanır.", 12, false))
 
@@ -166,6 +168,11 @@ class MainActivity : Activity() {
             }
         )
         radio.addView(radioDashboard.view())
+        radio.addView(button("↗ Seçili radyoyu Mola’ya gönder") {
+            val selectedId = controller?.currentMediaItem?.mediaId ?: currentRadioId
+            val selected = StationStore.load(this).firstOrNull { it.id == selectedId }
+            MolaBridge.offerRadio(this, selected)
+        })
         radio.addView(button("↗ FermataX 2.2.6 ile radyoyu telefonda aç") {
             val chosenId = controller?.currentMediaItem?.mediaId ?: currentRadioId
             val chosen = StationStore.load(this).firstOrNull { it.id == chosenId }
@@ -173,6 +180,12 @@ class MainActivity : Activity() {
         })
 
         library.addView(section("KÜTÜPHANEM","Kaynaklar, oynatma ve cihaz bağlantıları"))
+        library.addView(button("🗺 Türkiye • Adres / Şarj / Rota Haritası") {
+            startActivity(Intent(this, TurkeyNavigationActivity::class.java))
+        })
+        library.addView(button("⚡ ID.4 • Enerji / Menzil / Şarj Planlayıcı") {
+            startActivity(Intent(this, EvGarageActivity::class.java))
+        })
         val importCard=panel()
         importCard.addView(label("M3U / M3U8 KANAL LİSTESİ",18,true))
         importCard.addView(label("Abonelik veya açık yayın bağlantınızı ekleyin. Kanallar TV ve Radyo sekmelerine ayrılır.",12,false))
@@ -185,6 +198,16 @@ class MainActivity : Activity() {
             }, PICK_PLAYLIST)
         })
         library.addView(importCard)
+        val providerCard=panel()
+        providerCard.addView(label("MOLA • IPTV SAĞLAYICILARI",18,true))
+        providerCard.addView(label(
+            "Xtream Codes sağlayıcını doğrudan ID.4 Yol Arkadaşım kitaplığına bağla. " +
+            "Mola'nın ayrıca kurulu olması gerekmez. Sadece HTTPS ve izinli yayınlar desteklenir.",
+            12,false))
+        providerCard.addView(button("＋ Xtream Codes hesabımdan TV, film ve radyo içe aktar") {
+            MolaXtreamImport.show(this) { refresh(); refreshVideo(); renderHome() }
+        })
+        library.addView(providerCard)
 
         val ready=panel()
         ready.addView(label("AÇIK YAYIN LİSTELERİ",18,true))
@@ -258,6 +281,7 @@ class MainActivity : Activity() {
         external.addView(textAction("↗  Kurulu SportzX Android uygulamasını aç") {
             SportzXLauncher.openIfInstalled(this)
         })
+        external.addView(textAction("📺 Mola 3.2 • Telefonda aç") { MolaBridge.open(this) })
         external.addView(label("EKRAN YANSITMA • SCREENONAUTO",15,true))
         external.addView(label("Kurulu ScreenOnAuto uygulamasına kendi belgelenmiş komutlarıyla istek gönderir. Gerçek araç ekranındaki video ayrıca doğrulanmalıdır.",12,false))
         val mirrorActions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
@@ -536,6 +560,12 @@ class MainActivity : Activity() {
         )
         homeContainer.removeAllViews()
         homeContainer.addView(cockpit)
+        homeContainer.addView(button("🗺 TÜRKİYE NAVİGASYON • Adres & Şarj Noktaları") {
+            startActivity(Intent(this, TurkeyNavigationActivity::class.java))
+        })
+        homeContainer.addView(button("⚡ ID.4 ENERJİ MERKEZİ • Şarj ve menzil hesabı") {
+            startActivity(Intent(this, EvGarageActivity::class.java))
+        })
     }
 
     private fun refreshMiniHeader() {
