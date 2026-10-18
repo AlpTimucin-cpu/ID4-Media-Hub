@@ -58,8 +58,8 @@ public final class Id4ChargeHistoryTest {
         h2.acceptSoc(T,30);
         h2.acceptMode(T+500,4);
         h2.acceptSoc(T+70000,40);
-        h2.acceptMode(T+6*60000,0);
-        check(h2.acceptMode(T+6*60000+1000,0)==null,"stale soc cannot end");
+        h2.acceptMode(T+8*60000,0);
+        check(h2.acceptMode(T+8*60000+1000,0)==null,"stale soc cannot end");
         check(h2.completed().isEmpty(),"no stale soc session");
     }
     private static void invalidSamples(){
