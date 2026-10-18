@@ -14,6 +14,7 @@ public final class Id4ChargeHistoryTest {
         unknownModeAndDebounce();
         staleTelemetry();
         invalidSamples();
+        disconnectAborts();
         duplicateSessions();
         invalidSessions();
         System.out.println("Id4ChargeHistory: "+passed+" checks passed.");
@@ -77,6 +78,18 @@ public final class Id4ChargeHistoryTest {
         h.acceptMode(T+200000,0);
         check(h.acceptMode(T+201000,0)==null,"no false zero-delta charge");
         check(h.completed().isEmpty(),"zero delta rejected");
+    }
+    private static void disconnectAborts(){
+        Id4ChargeHistory h=new Id4ChargeHistory();
+        h.acceptSoc(T,21);
+        h.acceptMode(T+1000,4);
+        h.acceptSoc(T+90000,31);
+        check(h.isCharging(),"charge detected before OBD loss");
+        h.telemetryLost();
+        check(!h.isCharging(),"disconnect stops incomplete session");
+        h.acceptMode(T+120000,0);
+        check(h.acceptMode(T+121000,0)==null,"post-disconnect idle is not session end");
+        check(h.completed().isEmpty(),"no fabricated disconnected session");
     }
     private static void duplicateSessions(){
         Id4ChargeHistory h=new Id4ChargeHistory();
