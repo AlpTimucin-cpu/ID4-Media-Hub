@@ -7,3 +7,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ID4MediaHub"
 include(":app")
+
+// Separate compact car-first APK: excludes every film/TV/VLC/MapLibre class.
+include(":evlite")
