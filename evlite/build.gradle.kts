@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.evguide.lite"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0-ev-lite-beta"
+        versionCode = 2
+        versionName = "1.1-mola-tv-lite-beta"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -20,6 +20,9 @@ android {
     buildTypes {
         release { isMinifyEnabled = false }
         debug {
+            // Side-by-side beta prevents differing CI debug signing keys from
+            // overwriting existing EV Lite and user charging records.
+            applicationIdSuffix = ".tvbeta"
             isDebuggable = false
         }
     }
