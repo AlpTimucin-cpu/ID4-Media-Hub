@@ -48,8 +48,7 @@ class EvStationActivity:Activity() {
         box.addView(label("EPDK ŞARJ NOKTALARI",22,true))
         box.addView(label(
             "Resmî halka açık istasyonlar • CCS, Type 2 ve CHAdeMO soketleri",13,false))
-        box.addView(label("Bu hafif sürüm kendi harita motorunu yüklemez. " +
-            "İstasyona dokununca Google Haritalar'da yol tarifi açılır.",12,false))
+        box.addView(label("Harita ve istasyon rotası ID.4 Yol Arkadaşım içinde açılır.",12,false))
         query=input("Şehir / ilçe / adres / istasyon adı")
         operator=input("Operatör (isteğe bağlı)")
         box.addView(query)
@@ -61,6 +60,9 @@ class EvStationActivity:Activity() {
                 android.R.layout.simple_spinner_dropdown_item,names)
         }
         box.addView(socket)
+        box.addView(button("🗺 Türkiye Haritasını Aç"){
+            startActivity(Intent(this,EmbeddedMapActivity::class.java))
+        })
         box.addView(button("⚡ Resmî istasyonları yükle / ara"){
             fetchAndSearch()
         })
@@ -118,10 +120,8 @@ class EvStationActivity:Activity() {
         AlertDialog.Builder(this).setTitle("⚡ "+entry.name)
             .setMessage(text.take(5000))
             .setNegativeButton("Kapat",null)
-            .setPositiveButton("🧭 Yol tarifi"){_,_->
-                try{startActivity(Intent(Intent.ACTION_VIEW,
-                    TurkeyGeoServices.mapsDirections(entry.lat,entry.lon)))}
-                catch(_:Exception){message("Harita açılamadı","Tarayıcı/harita uygulaması bulunamadı.")}
+            .setPositiveButton("🗺 Haritada aç"){_,_->
+                EmbeddedMapActivity.open(this,entry.lat,entry.lon,entry.name)
             }.show()
     }
     private fun input(hint:String)=EditText(this).apply{
