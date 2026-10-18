@@ -10,6 +10,7 @@ on:
     branches: [main, feature/fermata-style-car-video, feature/mola-32-migration]
     paths:
       - 'app/**'
+      - 'evlite/**'
       - '*.gradle.kts'
       - 'gradle.properties'
       - '.github/workflows/build-apk.yml'
@@ -92,3 +93,54 @@ jobs:
             app/build/outputs/apk/debug/APK_SHA256.txt
           if-no-files-found: error
           retention-days: 14
+
+  ev-lite-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android 36 platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOL="$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager -print -quit)"
+          test -n "$TOOL"
+          "$TOOL" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build NO-MEDIA EV Lite and run unit tests
+        run: gradle --no-daemon :evlite:testDebugUnitTest :evlite:assembleDebug
+      - name: Verify EV Lite APK excludes media and sensitive permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=evlite/build/outputs/apk/debug/evlite-debug.apk
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -s "$APK"
+          "$AAPT" dump badging "$APK" | tee /tmp/ev-lite-badging.txt
+          "$AAPT" dump permissions "$APK" | tee /tmp/ev-lite-permissions.txt
+          grep -q "package: name='tr.id4.evguide.lite'" /tmp/ev-lite-badging.txt
+          for p in READ_SMS RECEIVE_SMS READ_CONTACTS READ_CALL_LOG ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION ACCESS_BACKGROUND_LOCATION RECORD_AUDIO CAMERA READ_MEDIA_AUDIO READ_MEDIA_VIDEO QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW REQUEST_INSTALL_PACKAGES; do
+            if grep -q "android.permission.$p" /tmp/ev-lite-permissions.txt; then
+              echo "::error::Forbidden permission $p"; exit 1
+            fi
+          done
+          if unzip -Z1 "$APK" | grep -E 'libvlc|libmaplibre|libandroid-mpv|^lib/'; then
+            echo "::error::Unexpected packaged media or map renderer"; exit 1
+          fi
+          test "$(stat -c %s "$APK")" -lt 18000000
+          sha256sum "$APK" > evlite/build/outputs/apk/debug/EV_LITE_SHA256.txt
+          du -h "$APK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ID4-EV-Lite-No-Media-APK
+          path: |
+            evlite/build/outputs/apk/debug/evlite-debug.apk
+            evlite/build/outputs/apk/debug/EV_LITE_SHA256.txt
+          retention-days: 14
+          if-no-files-found: error
