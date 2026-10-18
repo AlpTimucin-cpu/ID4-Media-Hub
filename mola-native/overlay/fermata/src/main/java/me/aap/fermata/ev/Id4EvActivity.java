@@ -84,6 +84,7 @@ public final class Id4EvActivity extends Activity {
         addTab(tabs,"🗺 Harita",this::mapScreen);
         addTab(tabs,"⚡ İstasyon",this::stationsScreen);
         addTab(tabs,"🔋 Enerji",this::energyScreen);
+        addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)));
         status=text("ID.4 • Mola eklentisi • Resmî EPDK verileri",11,false);
         root.addView(status);
         mapScreen();
