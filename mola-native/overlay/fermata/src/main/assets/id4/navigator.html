@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://tile.openstreetmap.org data:; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'">
+<title>Mola • ID.4 Yolculuk</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+<style>
+:root{--ink:#182635;--muted:#627183;--teal:#087f8c;--paper:#fff;--line:#e3e8ed}
+*{box-sizing:border-box}body,html{height:100%;margin:0;font:15px system-ui,-apple-system,Roboto,sans-serif;color:var(--ink);background:#e8eeec}
+button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{position:absolute;inset:0;z-index:0;background:#dbe7e2}
+.top{position:absolute;top:max(12px,env(safe-area-inset-top));left:13px;right:13px;z-index:901;display:flex;gap:10px;align-items:flex-start}
+.brand{background:#073549;box-shadow:0 3px 16px #0002;border-radius:15px;color:#fff;padding:12px 14px;min-height:55px;flex:1}
+.brand strong{letter-spacing:1px;font-size:16px}.brand small{display:block;font-size:10px;opacity:.8;letter-spacing:.5px}
+.round{border-radius:16px;width:54px;height:54px;background:#fff;box-shadow:0 4px 15px #0002;font-size:23px}
+.buttons{position:absolute;right:13px;top:82px;display:flex;flex-direction:column;gap:9px;z-index:890}
+.buttons button{background:#fff;box-shadow:0 2px 9px #0002;border-radius:12px;width:52px;height:52px;font-size:20px;color:#102e3d}
+.sheet{position:absolute;bottom:0;left:0;right:0;height:46%;min-height:330px;z-index:902;background:#fafcfd;border-radius:24px 24px 0 0;box-shadow:0 -8px 25px #0925382e;overflow:auto;padding:12px 17px 20px}
+.grip{height:5px;width:54px;border-radius:100px;background:#9aa5b0;margin:0 auto 14px}
+.flex{display:flex;align-items:center;justify-content:space-between;gap:10px}.title{font-size:22px;font-weight:750;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr auto;gap:8px}
+.search{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;font-size:15px;width:100%;min-width:0}
+.primary{color:#fff;background:#086b80;padding:13px 18px;border-radius:13px;font-weight:700}
+.minor{background:#eaf0f4;padding:11px;border-radius:11px;font-weight:650;color:#2b4a59}
+.tag{font-size:11px;color:#6d7b85;background:#eaf0f4;border-radius:20px;padding:6px 10px;font-weight:650}
+.row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:12px 2px;gap:10px}
+.label{font-size:12px;color:#677484}.value{font-size:17px;font-weight:750;margin-top:3px}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.tools button{border:1px solid #dce5eb;background:#fff;border-radius:13px;padding:12px 7px;min-height:60px;font-size:12px;color:#0d4657;font-weight:650}
+.tools span{display:block;font-size:20px;margin-bottom:4px}
+.vehicle{padding:15px;border-radius:16px;border:1px solid #dfe8ed;background:#fff;margin:14px 0}
+.vehicle strong{font-size:17px}.vehicle small{color:var(--muted)}
+.badge{color:#97641a;background:#fff4d7;border-radius:100px;padding:4px 8px;font-size:11px;font-weight:600}
+.notice{font-size:11px;color:#677786;line-height:1.5}
+.weather{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:9px 0 11px}
+.weather div{background:#eef4f7;padding:9px 4px;text-align:center;border-radius:12px}
+.weather strong{font-size:13px;display:block}.weather small{font-size:10px;color:#667786}
+#status{font-size:12px;color:#596c7a;margin:9px 0;min-height:18px}
+#target{color:#2d7380;font-size:12px;margin:7px 0;min-height:15px}
+.trip{background:#e6f5f4;border:1px solid #c6e3e0;border-radius:14px;padding:13px;display:none;margin-top:10px}
+.trip strong{font-size:22px}
+#directions{max-height:95px;overflow:auto;font-size:12px;color:#34515b;margin-top:8px}
+.map-note{position:absolute;bottom:48%;left:13px;right:13px;font-size:11px;text-align:center;z-index:890;color:#153642;background:#ffffffdc;border-radius:9px;padding:7px}
+.leaflet-container a{color:var(--teal)}
+@media(min-width:950px) and (orientation:landscape){.sheet{width:35%;height:100%;left:auto;border-radius:0;padding-top:25px}.map-note{right:36%;bottom:20px}.top{right:37%}.buttons{right:37%;top:80px}}
+</style></head><body>
+<div id="map"></div>
+<div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small></div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
+<div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
+<div class="map-note">Haritaya dokunarak varış belirleyebilirsin. Rota için GPS izni gerekli.</div>
+<section class="sheet"><div class="grip"></div>
+<div class="flex"><h1 class="title">Nereye gidiyoruz?</h1><span class="tag">BETA / GPS</span></div>
+<div class="grid"><input class="search" id="dest" placeholder="Varış noktası veya adres ara" aria-label="Varış noktası">
+<button class="primary" id="find">Ara</button></div>
+<div id="target">Hedef seçilmedi</div>
+<div class="row"><div><div class="label">Başlangıç</div><div class="value" id="origin">Konumum · GPS bekleniyor</div></div><button class="minor" id="locate">Konum</button></div>
+<div class="row"><div><div class="label">Sesli yol tarifi</div><div class="value" id="ttslabel">Türkçe · Açık</div></div><button class="minor" id="tts">Kapat</button></div>
+<div class="flex" style="margin-top:12px"><button class="primary" id="plan" style="flex:1">Rotayı hesapla</button><button class="minor" id="stop">Durdur</button></div>
+<div id="status" role="status">Harita açılıyor. GPS verileri henüz alınmadı.</div>
+<div class="trip" id="trip"><div class="flex"><div><div class="label">Tahmini rota</div><strong id="tripdata">—</strong></div><span class="tag" id="alternatives">—</span></div><div id="directions"></div></div>
+<div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
+<div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value">— %</div></div><div><div class="label">Tahmini menzil</div><div class="value">— km</div></div></div></div>
+<div><strong>Yol boyunca hava</strong><div class="weather"><div><strong>+1 dk</strong><small>Veri bekleniyor</small></div><div><strong>+5 dk</strong><small>Veri bekleniyor</small></div><div><strong>+10 dk</strong><small>Veri bekleniyor</small></div><div><strong>+15 dk</strong><small>Veri bekleniyor</small></div></div></div>
+<p class="notice">Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik, kaza, kesin şarj fiyatı ve hava verisi bu sürümde bağlı değildir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+<script>
+(function(){
+'use strict';
+var map,mark,locMarker,line,target=null,voice=true;
+var $=x=>document.getElementById(x);
+function msg(t){$('status').textContent=t}
+function valid(lat,lon){return Number.isFinite(lat)&&Number.isFinite(lon)&&lat>35&&lat<43&&lon>25&&lon<46}
+function choose(lat,lon,label){
+ if(!valid(lat,lon))return;
+ target={lat:lat,lon:lon}; $('target').textContent='Varış: '+String(label||'Haritadaki konum').slice(0,75);
+ if(mark)map.removeLayer(mark);
+ mark=L.marker([lat,lon]).addTo(map).bindPopup('Varış noktası');
+ map.panTo([lat,lon]);$('trip').style.display='none';
+}
+window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))choose(x.lat,x.lon,x.label)};
+window.molaPosition=function(x){
+ if(!x||!valid(x.lat,x.lon))return;
+ $('origin').textContent='Konumum · GPS ±'+Math.round(x.accuracy||0)+' m';
+ if(!locMarker){locMarker=L.circleMarker([x.lat,x.lon],{radius:8,color:'#fff',weight:2,fillColor:'#267ce1',fillOpacity:1}).addTo(map);map.setView([x.lat,x.lon],13)}
+ else locMarker.setLatLng([x.lat,x.lon]);
+};
+window.molaStatus=function(o){if(o&&o.detail)msg(o.detail)};
+window.molaRoute=function(o){
+ if(!o||!Array.isArray(o.coordinates))return;
+ var pts=o.coordinates.filter(c=>Array.isArray(c)&&c.length>=2&&valid(c[1],c[0])).map(c=>[c[1],c[0]]);
+ if(!pts.length){msg('Rota verisi geçersiz');return}
+ if(line)map.removeLayer(line);
+ line=L.polyline(pts,{weight:6,opacity:.9,color:'#1178cc'}).addTo(map);
+ map.fitBounds(line.getBounds(),{padding:[25,25]});
+ $('trip').style.display='block';
+ $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
+ $('alternatives').textContent=String(o.alternatives||1)+' rota';
+ $('directions').textContent=(o.steps||[]).slice(0,5).join(' • ');
+ msg('Rota çizildi; uygun konum ve sesli yönlendirme gerekiyor.');
+};
+function native(name,...args){try{if(window.MolaNative&&typeof window.MolaNative[name]==='function')window.MolaNative[name](...args);else msg('Bu HTML, Mola APK içinde çalışacak bir önizlemedir.')}catch(e){msg('Android bağlantısı kurulamadı.')}}
+try{
+ map=L.map('map',{zoomControl:false}).setView([38.9,35.1],6);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap katkıcıları',maxZoom:18}).addTo(map);
+ map.on('click',e=>choose(e.latlng.lat,e.latlng.lng,'Haritadan seçilen hedef'));msg('Varış seç veya konumunu kullan.');
+}catch(e){msg('Harita çevrimiçi kitaplığı yüklenemedi. İnterneti denetle.');}
+$('find').onclick=()=>{if(!$('dest').value.trim()){msg('Önce varış adresi gir.');return}msg('Adres aranıyor...');native('search',$('dest').value)};
+$('gps').onclick=$('locate').onclick=()=>native('location');
+$('plus').onclick=()=>map&&map.zoomIn();
+$('minus').onclick=()=>map&&map.zoomOut();
+$('plan').onclick=()=>{if(!target){msg('Haritadan varış belirle veya adres ara.');return}msg('Rota oluşturuluyor...');native('route',target.lat,target.lon)};
+$('stop').onclick=()=>{native('stop');msg('Yönlendirme durduruldu.');if(line){map.removeLayer(line);line=null}};
+$('tts').onclick=()=>{voice=!voice;native('voice',voice);$('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');$('tts').textContent=voice?'Kapat':'Aç'};
+$('back').onclick=()=>native('back');
+$('charge').onclick=()=>native('stations');
+$('sensors').onclick=$('allSensors').onclick=()=>native('sensors');
+})();
+</script></body></html>
