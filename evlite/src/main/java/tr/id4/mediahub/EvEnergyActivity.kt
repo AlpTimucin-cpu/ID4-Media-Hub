@@ -108,7 +108,7 @@ class EvEnergyActivity:Activity() {
         val paid=input("Ödenen TL").apply{
             inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
-        listOf(name,energy,paid).forEach(holder::addView)
+        listOf(name,energy,paid).forEach { holder.addView(it) }
         AlertDialog.Builder(this).setTitle("Gerçek şarjı kaydet")
             .setView(holder).setNegativeButton("Vazgeç",null)
             .setPositiveButton("Kaydet"){_,_->
