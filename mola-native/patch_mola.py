@@ -65,7 +65,7 @@ source=source.replace(anchor,
                     ? View.GONE : View.VISIBLE);
             id4Entry.setOnClickListener(button ->
                 requireContext().startActivity(new android.content.Intent(
-                    requireContext(), me.aap.fermata.ev.Id4EvActivity.class)));
+                    requireContext(), me.aap.fermata.ev.Id4NavigatorActivity.class)));
         }
 ''' + anchor)
 fragment.write_text(source,encoding="utf-8")
@@ -76,7 +76,9 @@ source=manifest.read_text(encoding="utf-8")
 permission_anchor = '<uses-permission android:name="android.permission.INTERNET" />'
 assert source.count(permission_anchor)==1
 source=source.replace(permission_anchor,
-    permission_anchor + '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />' +
+    permission_anchor + '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' +
+    '\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' +
+    '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />' +
     '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />', 1)
 
 anchor='        <activity\n            android:name="me.aap.fermata.ui.activity.MainActivity"'
@@ -86,6 +88,8 @@ source=source.replace(anchor,
             android:exported="false" />
         <activity android:name="me.aap.fermata.ev.Id4ObdActivity"
             android:exported="false" />
+        <activity android:name="me.aap.fermata.ev.Id4NavigatorActivity"
+            android:exported="false" />
 ''' + anchor)
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
@@ -93,8 +97,11 @@ manifest.write_text(source,encoding="utf-8")
 java=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java"
 html=overlay/"fermata/src/main/assets/id4/index.html"
 obd=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ObdActivity.java"
-assert java.is_file() and html.is_file() and obd.is_file()
-for f in [java,html,obd]:
+navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
+decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
+nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html])
+for f in [java,html,obd,navigator,decoder,nav_html]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -103,7 +110,9 @@ for f in [java,html,obd]:
 
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {
-    str(java.relative_to(overlay)),str(html.relative_to(overlay)),str(obd.relative_to(overlay))}
+    str(java.relative_to(overlay)),str(html.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(navigator.relative_to(overlay)),
+    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():
