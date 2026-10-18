@@ -495,8 +495,11 @@ public final class Id4EvActivity extends Activity {
         if(stations.length()<5000||stations.length()>100000)throw new Exception();
         Instant verified=Instant.parse(root.getString("verified_at_utc"));
         long age=Duration.between(verified,Instant.now()).toHours();
-        if(age<0||age>72)throw new Exception("Stale official snapshot");
-        verifiedAt=root.getString("verified_at_utc").substring(0,16)+" UTC";
+        if(age<0)throw new Exception("Future-dated official snapshot");
+        // Station locations remain useful when daily background publishing
+        // is delayed; label old data instead of inventing freshness.
+        verifiedAt=root.getString("verified_at_utc").substring(0,16)+" UTC"+
+            (age>72?" • ESKİ İSTASYON VERİSİ":"");
         // Once source/schema/time has been validated, preserve last valid cache.
         if(!cache.isFile()||System.currentTimeMillis()-cache.lastModified()>6*3600000L){
             try(FileOutputStream out=new FileOutputStream(cache)){out.write(zipped);}
