@@ -1,6 +1,8 @@
 name: Mola Native ID4 Preview (preserve TV)
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [feature/mola-32-migration]
   push:
     branches: [feature/mola-native-id4]
     paths:
