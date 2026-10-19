@@ -46,6 +46,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private TextToSpeech tts;
     private Location position;
     private boolean running, voice=true, destroyed;
+    private volatile String activeRouteProvider="OSRM demo";
     private int generation, nextStep;
     private long lastSpeech;
     private static final class Step {
@@ -106,7 +107,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void voice(boolean on) {
             voice=on;if(!on && tts!=null)tts.stop();
         }
-        @JavascriptInterface public void stop() {running=false;steps.clear();nextStep=0;}
+        @JavascriptInterface public void stop() {running=false;generation++;steps.clear();nextStep=0;}
         @JavascriptInterface public void suggest(String field,String query,int requestId){
             suggestPlaces(field,query,requestId);
         }
@@ -220,17 +221,38 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             try{
                 String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
                 String b=String.format(Locale.US,"%.6f,%.6f",toLon,toLat);
-                String u="https://router.project-osrm.org/route/v1/driving/"+a+";"+b+
+                String query="/route/v1/driving/"+a+";"+b+
                     "?overview=full&geometries=geojson&steps=true&alternatives=true";
-                JSONObject out=new JSONObject(fetch(u,1500000));
+                JSONObject out=null;
+                StringBuilder problems=new StringBuilder();
+                String[] hosts={"https://router.project-osrm.org",
+                                "https://routing.openstreetmap.de/routed-car"};
+                for(int attempt=0;attempt<hosts.length && out==null;attempt++){
+                    try{
+                        JSONObject candidate=new JSONObject(fetch(hosts[attempt]+query,3000000));
+                        if(!"Ok".equals(candidate.optString("code"))){
+                            throw new IllegalStateException("OSRM "+candidate.optString("code"));
+                        }
+                        JSONArray matches=candidate.optJSONArray("routes");
+                        if(matches==null || matches.length()==0)throw new IllegalStateException("Boş güzergâh");
+                        out=candidate;
+                        activeRouteProvider=hosts[attempt];
+                    }catch(Exception e){
+                        if(problems.length()>0)problems.append(" | ");
+                        problems.append("Sağlayıcı ").append(attempt+1).append(": ")
+                            .append(e.getClass().getSimpleName());
+                    }
+                }
+                if(out==null)throw new IllegalStateException(problems.toString());
                 JSONArray routes=out.getJSONArray("routes");
-                if(routes.length()==0)throw new IllegalStateException("Rota yok");
                 JSONObject selected=routes.getJSONObject(0);
                 JSONObject packet=new JSONObject();
                 packet.put("coordinates",selected.getJSONObject("geometry").getJSONArray("coordinates"));
                 packet.put("distanceKm",Math.round(selected.getDouble("distance")/100.0)/10.0);
                 packet.put("durationMin",Math.round(selected.getDouble("duration")/60.0));
                 packet.put("alternatives",routes.length());
+                packet.put("provider",activeRouteProvider);
+                packet.put("trafficAvailable",false);
                 packet.put("navigationActive",verifiedGps);
                 JSONArray roadSteps=selected.getJSONArray("legs").getJSONObject(0).getJSONArray("steps");
                 ArrayList<Step> parsed=new ArrayList<>();
@@ -252,13 +274,112 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     steps.clear();steps.addAll(parsed);nextStep=0;
                     running=verifiedGps;
                     send("molaRoute",packet);
+                    // Weather is a separate best-effort request after the drawn route.
+                    final JSONObject routeData=selected;
+                    jobs.execute(()->loadRouteWeather(routeData,myGeneration));
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
             }catch(Exception e){send("molaStatus",record("error",
-                "Rota servisi erişilemiyor. Rota ve sesli yönlendirme başlatılmadı."));}
+                "Rota çizilemedi: "+e.getMessage()+". Ağ veya rota servisini kontrol et."));}
         });
     }
+    /**
+     * Open-Meteo 15-minute MODEL forecast, evaluated at predicted positions
+     * along the route for +1,+5,+10,+15 min. Not minute-by-minute observations.
+     * Separate network request so a weather outage cannot erase the route.
+     */
+    private void loadRouteWeather(JSONObject route,int routeGeneration){
+        final int[] minutes={1,5,10,15};
+        try{
+            JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
+            if(coords.length()<2)throw new IllegalStateException("Rota geometrisi boş");
+            double durationSec=route.getDouble("duration");
+            double[] lengths=new double[coords.length()];
+            double total=0;
+            for(int i=1;i<coords.length();i++){
+                JSONArray previous=coords.getJSONArray(i-1),current=coords.getJSONArray(i);
+                float[] distance=new float[1];
+                Location.distanceBetween(previous.getDouble(1),previous.getDouble(0),
+                    current.getDouble(1),current.getDouble(0),distance);
+                total+=distance[0];lengths[i]=total;
+            }
+            if(total<10)throw new IllegalStateException("Rota mesafesi hatalı");
+            StringBuilder lat=new StringBuilder(),lon=new StringBuilder();
+            for(int minute:minutes){
+                double fraction=Math.min(1.0,minute*60.0/Math.max(1.0,durationSec));
+                double target=total*fraction;int idx=1;
+                while(idx<lengths.length-1 && lengths[idx]<target)idx++;
+                JSONArray p=coords.getJSONArray(idx-1),q=coords.getJSONArray(idx);
+                double ratio=(target-lengths[idx-1])/
+                    Math.max(0.0001,lengths[idx]-lengths[idx-1]);
+                ratio=Math.max(0,Math.min(1,ratio));
+                double plat=p.getDouble(1)+(q.getDouble(1)-p.getDouble(1))*ratio;
+                double plon=p.getDouble(0)+(q.getDouble(0)-p.getDouble(0))*ratio;
+                if(lat.length()>0){lat.append(',');lon.append(',');}
+                lat.append(String.format(Locale.US,"%.5f",plat));
+                lon.append(String.format(Locale.US,"%.5f",plon));
+            }
+            String u="https://api.open-meteo.com/v1/forecast?latitude="+lat+
+                "&longitude="+lon+
+                "&minutely_15=temperature_2m,precipitation,wind_speed_10m,weather_code"+
+                "&hourly=temperature_2m,precipitation,wind_speed_10m,weather_code"+
+                "&forecast_minutely_15=8&forecast_hours=4"+
+                "&timeformat=unixtime&timezone=GMT";
+            JSONArray locations=new JSONArray(fetch(u,350000));
+            if(locations.length()<4)throw new IllegalStateException("Tahmin bölgeleri eksik");
+            JSONArray cards=new JSONArray();
+            long now=System.currentTimeMillis()/1000L;
+            for(int i=0;i<4;i++){
+                JSONObject item=locations.getJSONObject(i);
+                JSONObject series=item.optJSONObject("minutely_15");
+                String resolution="15dk model";
+                if(series==null || series.optJSONArray("time")==null ||
+                    series.optJSONArray("time").length()==0){
+                    series=item.optJSONObject("hourly");resolution="saatlik model";
+                }
+                if(series==null)throw new IllegalStateException("Tahmin serisi yok");
+                JSONArray times=series.optJSONArray("time");
+                JSONArray temp=series.optJSONArray("temperature_2m");
+                JSONArray precip=series.optJSONArray("precipitation");
+                JSONArray wind=series.optJSONArray("wind_speed_10m");
+                JSONArray code=series.optJSONArray("weather_code");
+                if(times==null || temp==null || precip==null || wind==null ||
+                    times.length()==0)throw new IllegalStateException("Hava alanları eksik");
+                long target=now+minutes[i]*60L;
+                int closest=0;long diff=Long.MAX_VALUE;
+                for(int j=0;j<times.length();j++){
+                    long d=Math.abs(times.optLong(j)-target);
+                    if(d<diff){closest=j;diff=d;}
+                }
+                if(diff>4000)throw new IllegalStateException("Güncel tahmin zamanı bulunamadı");
+                double temperature=temp.optDouble(closest,Double.NaN);
+                double rainfall=precip.optDouble(closest,Double.NaN);
+                double windKmh=wind.optDouble(closest,Double.NaN);
+                if(!Double.isFinite(temperature)||!Double.isFinite(rainfall)||
+                    !Double.isFinite(windKmh))throw new IllegalStateException("Eksik hava ölçümü");
+                JSONObject card=new JSONObject();
+                card.put("minutes",minutes[i]);
+                card.put("temperature",temperature);
+                card.put("precipitation",rainfall);
+                card.put("wind",windKmh);
+                card.put("weatherCode",code==null?-1:code.optInt(closest,-1));
+                card.put("resolution",resolution);
+                card.put("forecastTime",times.optLong(closest));
+                cards.put(card);
+            }
+            JSONObject packet=new JSONObject();
+            packet.put("cards",cards);
+            packet.put("source","Open-Meteo");
+            packet.put("updatedAt",System.currentTimeMillis());
+            if(!destroyed && routeGeneration==generation)send("molaWeather",packet);
+        }catch(Exception e){
+            if(!destroyed && routeGeneration==generation)
+                send("molaWeatherError",record("weather",
+                    "Hava tahmini alınamadı ("+e.getClass().getSimpleName()+")."));
+        }
+    }
+
     private static String spoken(String type,String modifier,String street){
         String road=street==null||street.trim().isEmpty()?"":(" "+street.trim());
         switch(type){
