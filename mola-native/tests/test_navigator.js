@@ -15,7 +15,7 @@ const elements={};
 function el(){
  return {
   value:'',style:{},children:[],textContent:'',onclick:null,handlers:{},
-  classList:{add(){},remove(){}},
+  classList:{_set:new Set(),add(c){this._set.add(c)},remove(c){this._set.delete(c)},contains(c){return this._set.has(c)}},
   addEventListener(name,fn){this.handlers[name]=fn},
   appendChild(child){this.children.push(child)},
   replaceChildren(){this.children=[]},
@@ -53,9 +53,11 @@ const context={
  clearTimeout(){},console,Number,Array,Object,String,Math,
  };
 const wCards=get('weather-cards');
+const compactWeather=get('compact-weather');
 for(let i=0;i<4;i++){
  const row=el();const title=el();const desc=el();
  row.children=[title,desc];wCards.children.push(row);
+ compactWeather.children.push(el());
 }
 vm.createContext(context);vm.runInContext(inline,context,{timeout:2000});
 function typing(field,query){
@@ -111,6 +113,8 @@ win.molaWeather({source:'Open-Meteo',cards:[
 ]});
 assert(get('weather-cards').children[0].children[1].textContent.includes('12°C'),
   'weather data did not update actual card');
+assert(get('compact-weather').children[0].textContent.includes('12°C'),
+  'compact weather did not update');
 assert(get('weather-source').textContent.includes('model'),
   'model forecast not labeled');
 // Real route callback must update visible polyline, not merely route inputs.
@@ -120,6 +124,14 @@ win.molaRoute({
  navigationActive:false,steps:['Devam et','Sola dön']
 });
 assert(get('trip').style.display==='block','route summary not visible');
+assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
+assert(get('sheet').classList.contains('route-active'),'route panel did not collapse');
+assert(get('map-note').style.display==='none','old map hint still overlays the route');
+get('route-details').onclick();
+assert(get('sheet').classList.contains('details-open'),'details could not be expanded');
+get('route-details').onclick();
+assert(!get('sheet').classList.contains('details-open'),'details could not be collapsed');
+
 assert(get('traffic-source').textContent.includes('Canlı trafik'),
   'route must not claim unlicensed live traffic');
 assert(get('tripdata').textContent.includes('510 km'),'route distance absent');
