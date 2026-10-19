@@ -138,7 +138,7 @@ function selectPoint(field,lat,lon,label,gps){
  wipeRoute();
 }
 function fold(s){return String(s||'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i')
- .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')}
+ .normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
 function offlineCities(query){
  var q=fold(query.trim());
  if(q.length<2)return [];
