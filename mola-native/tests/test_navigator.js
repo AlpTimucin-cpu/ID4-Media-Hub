@@ -15,6 +15,7 @@ const elements={};
 function el(){
  return {
   value:'',style:{},children:[],textContent:'',onclick:null,handlers:{},
+  classList:{add(){},remove(){}},
   addEventListener(name,fn){this.handlers[name]=fn},
   appendChild(child){this.children.push(child)},
   replaceChildren(){this.children=[]},
@@ -27,7 +28,10 @@ const messages=[],timeouts=[];
 const calls={suggest:[],route:[],location:0,stop:0};
 const L={
  map(){return {setView(){return this},on(){return this},removeLayer(){},
-  fitBounds(){},zoomIn(){},zoomOut(){},panTo(){}}},
+  fitBounds(bounds,opts){globalThis.lastRouteBoundsOptions=opts},
+  getSize(){return {x:390,y:780}},
+  invalidateSize(){return this},
+  zoomIn(){},zoomOut(){},panTo(){}}},
  tileLayer(){return {addTo(){return this}}},
  circleMarker(){return {addTo(){return this},bindPopup(){return this},setLatLng(){}}},
  polyline(){return {addTo(){return this},getBounds(){return []}}}
@@ -41,10 +45,18 @@ const win={
  }
 };
 const context={
- window:win,document:{getElementById:get,createElement:el},
+ window:Object.assign(win,{innerWidth:390}),document:{
+  getElementById:get,createElement:el,
+  querySelector(){return get('sheet')}
+ },
  L,setTimeout(fn){timeouts.push(fn);return timeouts.length},
  clearTimeout(){},console,Number,Array,Object,String,Math,
  };
+const wCards=get('weather-cards');
+for(let i=0;i<4;i++){
+ const row=el();const title=el();const desc=el();
+ row.children=[title,desc];wCards.children.push(row);
+}
 vm.createContext(context);vm.runInContext(inline,context,{timeout:2000});
 function typing(field,query){
  get(field).value=query;get(field).handlers.input();
@@ -90,5 +102,18 @@ assert(Math.abs(calls.route[1][2]-37.9667)<0.002);
 const accent=typing('from','Nigde');
 assert(get('from-list').children.some(x=>x.textContent.includes('Niğde')),
  'accent-insensitive matching must work');
+// Weather cards update only with an actual provider result.
+win.molaWeather({source:'Open-Meteo',cards:[
+ {minutes:1,temperature:12,precipitation:0.2,wind:11,resolution:'15dk model'},
+ {minutes:5,temperature:11,precipitation:0.2,wind:13,resolution:'15dk model'},
+ {minutes:10,temperature:10,precipitation:0.3,wind:14,resolution:'15dk model'},
+ {minutes:15,temperature:9,precipitation:0.4,wind:15,resolution:'15dk model'}
+]});
+assert(get('weather-cards').children[0].children[1].textContent.includes('12°C'),
+  'weather data did not update actual card');
+assert(get('weather-source').textContent.includes('model'),
+  'model forecast not labeled');
+assert(get('traffic-source').textContent.includes('Canlı trafik'),
+  'live traffic status missing');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
