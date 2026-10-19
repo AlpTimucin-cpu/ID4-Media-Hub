@@ -92,11 +92,23 @@ function valid(lat,lon){return typeof lat==='number'&&typeof lon==='number'&&
  Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46}
 function native(name){
  try{
-  var args=Array.prototype.slice.call(arguments,1);
-  if(window.MolaNative&&typeof window.MolaNative[name]==='function'){
-    window.MolaNative[name].apply(window.MolaNative,args);return true;
+  var a=Array.prototype.slice.call(arguments,1);
+  if(!window.MolaNative){
+    msg('Canlı adres araması ve rota için Mola Android APK gerekli.');return false;
   }
-  msg('Bu ekranın arama ve rota işlemleri için Mola Android APK gereklidir.');return false;
+  var bridge=window.MolaNative;
+  switch(name){
+   case 'suggest':bridge.suggest(a[0],a[1],a[2]);break;
+   case 'route':bridge.route(a[0],a[1],a[2],a[3],a[4]);break;
+   case 'location':bridge.location();break;
+   case 'voice':bridge.voice(a[0]);break;
+   case 'stop':bridge.stop();break;
+   case 'back':bridge.back();break;
+   case 'stations':bridge.stations();break;
+   case 'sensors':bridge.sensors();break;
+   default:return false;
+  }
+  return true;
  }catch(e){msg('Android bağlantı hatası: '+e.message);return false}
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
