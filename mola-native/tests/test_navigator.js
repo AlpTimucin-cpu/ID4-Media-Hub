@@ -113,7 +113,17 @@ assert(get('weather-cards').children[0].children[1].textContent.includes('12°C'
   'weather data did not update actual card');
 assert(get('weather-source').textContent.includes('model'),
   'model forecast not labeled');
+// Real route callback must update visible polyline, not merely route inputs.
+win.molaRoute({
+ coordinates:[[34.6833,37.9667],[33.8,37.4],[30.7056,36.8841]],
+ distanceKm:510,durationMin:385,alternatives:2,provider:'OSRM test',
+ navigationActive:false,steps:['Devam et','Sola dön']
+});
+assert(get('trip').style.display==='block','route summary not visible');
 assert(get('traffic-source').textContent.includes('Canlı trafik'),
-  'live traffic status missing');
+  'route must not claim unlicensed live traffic');
+assert(get('tripdata').textContent.includes('510 km'),'route distance absent');
+assert(globalThis.lastRouteBoundsOptions.paddingBottomRight[1]>=200,
+  'route viewport hides map beneath info sheet');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
