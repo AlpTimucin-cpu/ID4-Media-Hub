@@ -69,7 +69,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <input id="to" inputmode="search" autocomplete="off" placeholder="Örn. Antalya, hastane, otel veya adres yaz"/>
 <div id="to-list" class="suggestions" role="listbox" aria-label="Varış önerileri"></div>
 </div>
-<div class="hint">3 harften sonra öneriler listelenir. Bir konumu seç; GPS kullanmak zorunda değilsin.</div>
+<div class="hint">İller çevrimdışı listelenir; 3 harften sonra ayrıntılı yer araması yapılır. GPS zorunlu değil.</div>
 <div class="controls-inline"><button class="minor" id="locate">◎ Konumumu başlangıç yap</button><button class="minor" id="swap">⇅ Yerleri değiştir</button></div>
 <div class="row"><div><div class="label">Sesli yol tarifi</div><div class="value" id="ttslabel">Türkçe · Açık</div></div><button class="minor" id="tts">Kapat</button></div>
 <div class="flex" style="margin-top:12px"><button class="primary" id="plan" style="flex:1">Rotayı hesapla</button><button class="minor" id="stop">Durdur</button></div>
@@ -78,12 +78,14 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
 <div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value">— %</div></div><div><div class="label">Tahmini menzil</div><div class="value">— km</div></div></div></div>
 <div><strong>Yol boyunca hava</strong><div class="weather"><div><strong>+1 dk</strong><small>Veri bekleniyor</small></div><div><strong>+5 dk</strong><small>Veri bekleniyor</small></div><div><strong>+10 dk</strong><small>Veri bekleniyor</small></div><div><strong>+15 dk</strong><small>Veri bekleniyor</small></div></div></div>
-<p class="notice">Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik, kaza, kesin şarj fiyatı ve hava verisi bu sürümde bağlı değildir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
+<p class="notice">İl merkezleri: mevlutcelik/turkey-cities-data (MIT); ayrıntılı adresler: Photon/OSM. Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik, kaza, kesin şarj fiyatı ve hava verisi bu sürümde bağlı değildir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (function(){
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
+// City-centre coordinates: mevlutcelik/turkey-cities-data, MIT license.
+var CITY_DATA=[["Adana",37,35.3213],["Adıyaman",37.7648,38.2786],["Afyonkarahisar",38.7569,30.5387],["Aksaray",38.3687,34.0369],["Amasya",40.6499,35.8353],["Ankara",39.9208,32.8541],["Antalya",36.8841,30.7056],["Ardahan",41.1109,42.7022],["Artvin",41.1828,41.8174],["Aydın",37.856,27.8416],["Ağrı",39.7217,43.0567],["Balıkesir",39.6484,27.8826],["Bartın",41.633,32.3378],["Batman",37.8812,41.1351],["Bayburt",40.2552,40.2237],["Bilecik",40.1469,30.4086],["Bingöl",38.8846,40.4939],["Bitlis",38.3943,42.1237],["Bolu",40.7399,31.6116],["Burdur",37.7244,30.2889],["Bursa",40.1826,29.0669],["Denizli",37.7765,29.0864],["Diyarbakır",37.9134,40.2179],["Düzce",40.8438,31.1565],["Edirne",41.6818,26.5623],["Elazığ",38.681,39.2264],["Erzincan",39.75,39.5],["Erzurum",39.9042,41.2676],["Eskişehir",39.766,30.526],["Gaziantep",37.0662,37.3833],["Giresun",40.9144,38.3908],["Gümüşhane",40.4602,39.4818],["Hakkari",37.5833,43.7333],["Hatay",36.2063,36.1601],["Isparta",37.7648,30.556],["Iğdır",39.888,44.0049],["Kahramanmaraş",37.5833,36.9333],["Karabük",41.196,32.625],["Karaman",37.1759,33.2287],["Kars",40.6066,43.0975],["Kastamonu",41.3887,33.7827],["Kayseri",38.7223,35.4853],["Kilis",36.7167,37.1167],["Kocaeli",40.8533,29.8815],["Konya",37.8651,32.482],["Kütahya",39.4168,29.983],["Kırklareli",41.7355,27.2255],["Kırıkkale",39.8468,33.5153],["Kırşehir",39.15,34.1667],["Malatya",38.3552,38.3095],["Manisa",38.6191,27.4289],["Mardin",37.3124,40.7357],["Mersin",36.8,34.6333],["Muğla",37.2153,28.3636],["Muş",38.9462,41.7539],["Nevşehir",38.625,34.712],["Niğde",37.9667,34.6833],["Ordu",40.9849,37.8785],["Osmaniye",37.0742,36.2475],["Rize",41.0201,40.5234],["Sakarya",40.7569,30.3782],["Samsun",41.2928,36.3313],["Siirt",37.93,41.94],["Sinop",42.0231,35.1531],["Sivas",39.7477,37.0179],["Tekirdağ",40.9833,27.5167],["Tokat",40.3167,36.55],["Trabzon",41.0015,39.7178],["Tunceli",39.108,39.5473],["Uşak",38.68,29.4081],["Van",38.5018,43.3748],["Yalova",40.65,29.2667],["Yozgat",39.82,34.8048],["Zonguldak",41.4564,31.7987],["Çanakkale",40.1553,26.4142],["Çankırı",40.6013,33.6134],["Çorum",40.5497,34.953],["İstanbul",41.0082,28.9784],["İzmir",38.4192,27.1287],["Şanlıurfa",37.1671,38.7939],["Şırnak",37.5164,42.4614]];
 var points={from:null,to:null},usingGps=false,pendingGps=false,voice=true;
 var ids={from:0,to:0},timers={from:0,to:0};
 var $=function(x){return document.getElementById(x)};
@@ -135,22 +137,39 @@ function selectPoint(field,lat,lon,label,gps){
  else msg(field==='from'?'Başlangıç seçildi. Varış seç.':'Varış seçildi. Başlangıç seç.');
  wipeRoute();
 }
+function fold(s){return String(s||'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i')
+ .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')}
+function offlineCities(query){
+ var q=fold(query.trim());
+ if(q.length<2)return [];
+ return CITY_DATA.filter(function(c){return fold(c[0]).indexOf(q)>=0;})
+  .sort(function(a,b){return (fold(a[0]).startsWith(q)?0:1)-(fold(b[0]).startsWith(q)?0:1)})
+  .slice(0,8).map(function(c){
+   return {label:c[0]+', Türkiye · İl merkezi (çevrimdışı)',lat:c[1],lon:c[2],offline:true};
+  });
+}
 function showSuggestions(field,items,error){
- var el=$(field+'-list');el.replaceChildren();
- if(!Array.isArray(items)||!items.length){
-  if(error){
-   var line=document.createElement('div');line.className='suggestion';
-   line.textContent=error;el.appendChild(line);el.style.display='block';
-  }else el.style.display='none';
-  return;
- }
- items.forEach(function(item){
+ var el=$(field+'-list'),query=$(field).value.trim();
+ el.replaceChildren();
+ var local=offlineCities(query),all=local.slice();
+ if(Array.isArray(items))items.forEach(function(item){
   if(!item||!valid(item.lat,item.lon))return;
+  // Keep nearby city and remote venue results, avoid duplicate labels.
+  if(all.some(function(x){return x.label===item.label}))return;
+  all.push(item);
+ });
+ all.slice(0,12).forEach(function(item){
   var btn=document.createElement('button');btn.type='button';
   btn.className='suggestion';btn.textContent=item.label;
   btn.onclick=function(){selectPoint(field,item.lat,item.lon,item.label,false)};
   el.appendChild(btn);
  });
+ if(error){
+  var line=document.createElement('div');line.className='hint';
+  line.textContent=local.length?'Ayrıntılı adresler şu anda yüklenemiyor. İl merkezini seçebilirsin.':
+   'Adres servisi erişilemiyor. İstersen haritadan bir nokta seçebilirsin.';
+  el.appendChild(line);
+ }
  el.style.display=el.children.length?'block':'none';
 }
 window.molaSuggestions=function(packet){
@@ -166,7 +185,8 @@ function bindAutocomplete(field){
   ids[field]++;clearTimeout(timers[field]);closeList(field);
   wipeRoute();
   var value=el.value.trim();
-  if(value.length<3){msg('Öneri için en az 3 harf yaz.');return;}
+  if(value.length>=2)showSuggestions(field,[],null);
+  if(value.length<3){msg('Şehirler çevrimdışı önerilir; ayrıntılı adres için 3 harf yaz.');return;}
   var current=ids[field];
   timers[field]=setTimeout(function(){
    if(current!==ids[field])return;
