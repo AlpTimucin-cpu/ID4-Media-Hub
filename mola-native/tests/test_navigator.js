@@ -51,34 +51,44 @@ function typing(field,query){
  while(timeouts.length)timeouts.shift()();
  return calls.suggest[calls.suggest.length-1];
 }
+// Offline fallback works even if Photon returns errors.
 const first=typing('from','Niğde');
 assert.equal(first.field,'from');assert.equal(first.q,'Niğde');
-win.molaSuggestions({field:'from',requestId:first.id,items:[
- {label:'Niğde, Türkiye',lat:37.966,lon:34.675}
-]});
-assert.equal(get('from-list').children.length,1,'origin suggestions not visible');
+assert(get('from-list').children.length>=1,'offline Niğde result must show immediately');
+assert(get('from-list').children[0].textContent.includes('Niğde'),'offline Niğde label missing');
+win.molaSuggestions({field:'from',requestId:first.id,items:[],
+ error:'External server unavailable'});
+assert(get('from-list').children.length>=1,'server outage hid offline city');
 get('from-list').children[0].onclick();
 const next=typing('to','Antalya');
 assert.equal(next.field,'to');assert.equal(next.q,'Antalya');
+assert(get('to-list').children.length>=1,'offline Antalya result must show immediately');
+const before=get('to-list').children.length;
 win.molaSuggestions({field:'to',requestId:next.id-1,
  items:[{label:'Wrong stale match',lat:36.9,lon:30.7}]});
-assert.equal(get('to-list').children.length,0,'outdated suggestions accepted');
+assert.equal(get('to-list').children.length,before,'outdated response replaced offline result');
 win.molaSuggestions({field:'to',requestId:next.id,items:[
  {label:'Antalya Eğitim ve Araştırma Hastanesi',lat:36.893,lon:30.68},
  {label:'Antalya, Türkiye',lat:36.895,lon:30.7}
 ]});
-assert.equal(get('to-list').children.length,2,'destination suggestions not visible');
-get('to-list').children[0].onclick();
+const suggestions=get('to-list').children;
+assert(suggestions.length>=3,'remote location results not merged with offline city');
+const hospital=suggestions.find(x=>x.textContent.includes('Eğitim ve Araştırma'));
+assert(hospital,'remote detailed Antalya hospital not listed');
+hospital.onclick();
 get('plan').onclick();
 assert.equal(calls.route.length,1,'manual route never called');
-assert.equal(calls.route[0][0],37.966);
-assert.equal(calls.route[0][1],34.675);
+assert(Math.abs(calls.route[0][0]-37.9667)<0.002,'Niğde source coordinate wrong');
+assert(Math.abs(calls.route[0][1]-34.6833)<0.002,'Niğde longitude wrong');
 assert.equal(calls.route[0][2],36.893);
 assert.equal(calls.route[0][3],30.68);
 assert.equal(calls.route[0][4],false,'manual route must not demand GPS');
 assert.equal(calls.location,0,'GPS triggered without user choice');
 get('swap').onclick();get('plan').onclick();
 assert.equal(calls.route[1][0],36.893);
-assert.equal(calls.route[1][2],37.966);
+assert(Math.abs(calls.route[1][2]-37.9667)<0.002);
+const accent=typing('from','Nigde');
+assert(get('from-list').children.some(x=>x.textContent.includes('Niğde')),
+ 'accent-insensitive matching must work');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
-console.log('PASS: dual manual endpoints, autocomplete, stale results, route and swap (no GPS needed).');
+console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
