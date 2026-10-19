@@ -356,14 +356,16 @@ public final class Id4EvActivity extends Activity {
                                 s.optString("operator")+"\n"+s.optString("address")+
                                 "\n"+formatSockets(s.optJSONArray("sockets"));
                             list.addView(button(title,()->{
-                                mapScreen();
                                 double lat=s.optDouble("lat"),lon=s.optDouble("lon");
-                                map.postDelayed(()->{
-                                    if(mapReady&&valid(lat,lon))
-                                      map.evaluateJavascript(
-                                       "window.id4Focus("+lat+","+lon+","+
-                                        JSONObject.quote(s.optString("name"))+");",null);
-                                },1800);
+                                if(!valid(lat,lon)){
+                                    alert("İstasyon konumu","Geçerli istasyon koordinatı bulunamadı.");
+                                    return;
+                                }
+                                Intent intent=new Intent(this,Id4NavigatorActivity.class);
+                                intent.putExtra("toLat",lat);
+                                intent.putExtra("toLon",lon);
+                                intent.putExtra("toName",s.optString("name","Seçilen şarj istasyonu"));
+                                startActivity(intent);
                             }));
                         }
                         setStatus(total+" eşleşme. İlk "+hits.size()+" gösteriliyor.");
