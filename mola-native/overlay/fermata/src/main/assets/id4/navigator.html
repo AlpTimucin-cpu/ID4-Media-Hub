@@ -40,6 +40,13 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 #directions{max-height:95px;overflow:auto;font-size:12px;color:#34515b;margin-top:8px}
 .map-note{position:absolute;bottom:60%;left:13px;right:13px;font-size:11px;text-align:center;z-index:890;color:#153642;background:#ffffffdc;border-radius:9px;padding:7px}
 .leaflet-container a{color:var(--teal)}
+.sheet.route-active{height:38%;min-height:260px}
+#weather-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+#weather-cards .weather-card{text-align:left;padding:10px 12px}
+#weather-cards .weather-card strong{font-size:13px}
+#weather-cards .weather-card small{font-size:12px;display:block;margin-top:4px}
+.state-line{font-size:12px;line-height:1.45;color:#556979;margin-top:8px;padding:8px;background:#e9f2f4;border-radius:10px}
+@media(min-width:950px) and (orientation:landscape){.sheet.route-active{height:100%;min-height:0}}
 @media(min-width:950px) and (orientation:landscape){.sheet{width:39%;height:100%;left:auto;border-radius:0;padding-top:25px}.map-note{right:40%;bottom:20px}.top{right:41%}.buttons{right:41%;top:80px}}
 
 .lookup{position:relative;margin-bottom:9px}
@@ -77,8 +84,17 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div class="trip" id="trip"><div class="flex"><div><div class="label">Tahmini rota</div><strong id="tripdata">—</strong></div><span class="tag" id="alternatives">—</span></div><div id="directions"></div></div>
 <div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
 <div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value">— %</div></div><div><div class="label">Tahmini menzil</div><div class="value">— km</div></div></div></div>
-<div><strong>Yol boyunca hava</strong><div class="weather"><div><strong>+1 dk</strong><small>Veri bekleniyor</small></div><div><strong>+5 dk</strong><small>Veri bekleniyor</small></div><div><strong>+10 dk</strong><small>Veri bekleniyor</small></div><div><strong>+15 dk</strong><small>Veri bekleniyor</small></div></div></div>
-<p class="notice">İl merkezleri: mevlutcelik/turkey-cities-data (MIT); ayrıntılı adresler: Photon/OSM. Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik, kaza, kesin şarj fiyatı ve hava verisi bu sürümde bağlı değildir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
+<div><strong>Yol boyunca hava</strong>
+<div class="weather" id="weather-cards">
+<div class="weather-card"><strong>+1 dk</strong><small>Rota bekleniyor</small></div>
+<div class="weather-card"><strong>+5 dk</strong><small>Rota bekleniyor</small></div>
+<div class="weather-card"><strong>+10 dk</strong><small>Rota bekleniyor</small></div>
+<div class="weather-card"><strong>+15 dk</strong><small>Rota bekleniyor</small></div>
+</div>
+<div id="weather-source" class="hint">Hava: Rota hesaplandıktan sonra Open-Meteo'dan model tahmini istenir.</div>
+<div id="traffic-source" class="state-line">Trafik / kaza / yol çalışması: Canlı sağlayıcı bağlı değil. Bu bilgiler rota süresine katılmıyor.</div>
+</div>
+<p class="notice">İl merkezleri: mevlutcelik/turkey-cities-data (MIT); ayrıntılı adresler: Photon/OSM. Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik/kaza ve kesin şarj fiyatı bağlı değildir. Hava yalnızca API yanıtı alındığında model tahmini olarak gösterilir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (function(){
@@ -92,6 +108,25 @@ var $=function(x){return document.getElementById(x)};
 function msg(t){$('status').textContent=String(t)}
 function valid(lat,lon){return typeof lat==='number'&&typeof lon==='number'&&
  Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46}
+window.molaWeather=function(packet){
+ if(!packet||!Array.isArray(packet.cards)||packet.cards.length!==4)return;
+ var cards=$('weather-cards').children;
+ packet.cards.forEach(function(w,i){
+  if(!w||!Number.isFinite(w.temperature)||!Number.isFinite(w.wind)||
+     !Number.isFinite(w.precipitation))return;
+  cards[i].children[0].textContent='+'+w.minutes+' dk';
+  cards[i].children[1].textContent=
+   Math.round(w.temperature)+'°C · yağış '+w.precipitation.toFixed(1)+' mm · rüzgâr '+
+   Math.round(w.wind)+' km/sa';
+ });
+ $('weather-source').textContent='Kaynak: '+String(packet.source||'Open-Meteo')+
+  ' · '+String(packet.cards[0].resolution||'model')+
+  ' çözünürlüğünde rota noktası tahmini; 1 dakikalık canlı ölçüm değildir.';
+};
+window.molaWeatherError=function(packet){
+ $('weather-source').textContent=packet&&packet.detail?
+  packet.detail:'Hava tahmini kaynağına ulaşılamıyor.';
+};
 function native(name){
  try{
   var a=Array.prototype.slice.call(arguments,1);
@@ -117,6 +152,11 @@ function closeList(field){var el=$(field+'-list');el.style.display='none';el.tex
 function wipeRoute(){
  if(line&&map){map.removeLayer(line);line=null}
  $('trip').style.display='none';
+ document.querySelector('.sheet').classList.remove('route-active');
+ $('weather-source').textContent='Hava: Rota seçilmedi.';
+ [...$('weather-cards').children].forEach(function(c){
+   c.children[1].textContent='Rota bekleniyor';
+ });
  native('stop');
 }
 function selectPoint(field,lat,lon,label,gps){
@@ -222,10 +262,25 @@ window.molaRoute=function(o){
  if(line&&map)map.removeLayer(line);
  if(map){
   line=L.polyline(pts,{weight:6,opacity:.9,color:'#1378cf'}).addTo(map);
-  map.fitBounds(line.getBounds(),{padding:[25,25]});
+  // Fit the entire route in the exposed portion of the map, not underneath
+  // the bottom information sheet; a major cause of 'route is invisible'.
+  var mapSize=map.getSize();
+  var narrow=window.innerWidth<950;
+  var bottom=narrow?Math.round(mapSize.y*0.43):20;
+  var right=narrow?20:Math.round(mapSize.x*0.43);
+  map.invalidateSize();
+  map.fitBounds(line.getBounds(),{
+    paddingTopLeft:[20,20],
+    paddingBottomRight:[right,bottom],
+    animate:false,maxZoom:15
+  });
  }
  $('trip').style.display='block';
+ document.querySelector('.sheet').classList.add('route-active');
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
+ $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
+ $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
+  ' · kaza ve yol çalışması bilgisi içermez.';
  $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
  $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
  msg(o.navigationActive?'GPS yönlendirme deneysel olarak açık.':
