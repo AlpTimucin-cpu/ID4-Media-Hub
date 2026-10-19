@@ -59,12 +59,33 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .hint{font-size:11px;color:#6a7d88;margin:-1px 0 10px 3px}
 .controls-inline{display:flex;gap:8px;margin:2px 0 10px}
 .controls-inline button{flex:1}
+
+#route-compact{display:none}
+.compact-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.compact-distance{font-size:23px;font-weight:800;color:#103448}
+.mini-weather{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:10px 0}
+.mini-weather span{font-size:10px;line-height:1.3;text-align:center;background:#eaf4f5;border-radius:9px;padding:8px 3px;color:#234f60}
+.compact-actions{display:flex;gap:8px}
+.compact-actions button{flex:1;min-height:42px;border-radius:11px;font-size:12px;font-weight:700}
+#route-details{background:#08798a;color:#fff}
+#route-edit{background:#e7edf1;color:#1c4657}
+.sheet.route-active{height:238px;min-height:0;padding:10px 15px 20px;overflow:hidden}
+.sheet.route-active #route-compact{display:block}
+.sheet.route-active:not(.details-open)>:not(.grip):not(#route-compact){display:none!important}
+.sheet.route-active.details-open{height:74%;max-height:92%;padding-bottom:110px;overflow-y:auto}
+.sheet.route-active.details-open #route-form{display:none}
+.sheet.route-active.details-open #route-compact{position:sticky;top:0;background:#fafcfd;z-index:4;padding-bottom:8px}
 </style></head><body>
 <div id="map"></div>
 <div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small></div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
-<div class="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
+<div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
+<div id="route-compact" aria-label="Rota özeti">
+<div class="compact-row"><div><span class="label">GÜZERGÂH</span><div class="compact-distance" id="compact-trip">—</div></div><span class="tag">Trafik verisi yok</span></div>
+<div class="mini-weather" id="compact-weather"><span>+1 dk · hava bekleniyor</span><span>+5 dk · hava bekleniyor</span><span>+10 dk · hava bekleniyor</span><span>+15 dk · hava bekleniyor</span></div>
+<div class="compact-actions"><button id="route-details" type="button">Hava ve rota ayrıntıları</button><button id="route-edit" type="button">Yeni rota</button></div></div>
+<div id="route-form">
 <div class="flex"><h1 class="title">Nereye gidiyoruz?</h1><span class="tag">BETA · MANUEL/GPS</span></div>
 <div class="lookup">
 <label for="from">NEREDEN · başlangıç konumu</label>
@@ -80,7 +101,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div class="controls-inline"><button class="minor" id="locate">◎ Konumumu başlangıç yap</button><button class="minor" id="swap">⇅ Yerleri değiştir</button></div>
 <div class="row"><div><div class="label">Sesli yol tarifi</div><div class="value" id="ttslabel">Türkçe · Açık</div></div><button class="minor" id="tts">Kapat</button></div>
 <div class="flex" style="margin-top:12px"><button class="primary" id="plan" style="flex:1">Rotayı hesapla</button><button class="minor" id="stop">Durdur</button></div>
-<div id="status" role="status">Harita açılıyor. GPS verileri henüz alınmadı.</div>
+<div id="status" role="status">Harita açılıyor. GPS isteğe bağlı.</div>
+</div>
 <div class="trip" id="trip"><div class="flex"><div><div class="label">Tahmini rota</div><strong id="tripdata">—</strong></div><span class="tag" id="alternatives">—</span></div><div id="directions"></div></div>
 <div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
 <div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value">— %</div></div><div><div class="label">Tahmini menzil</div><div class="value">— km</div></div></div></div>
@@ -118,6 +140,7 @@ window.molaWeather=function(packet){
   cards[i].children[1].textContent=
    Math.round(w.temperature)+'°C · yağış '+w.precipitation.toFixed(1)+' mm · rüzgâr '+
    Math.round(w.wind)+' km/sa';
+  $('compact-weather').children[i].textContent='+'+w.minutes+' dk · '+Math.round(w.temperature)+'°C';
  });
  $('weather-source').textContent='Kaynak: '+String(packet.source||'Open-Meteo')+
   ' · '+String(packet.cards[0].resolution||'model')+
@@ -126,6 +149,9 @@ window.molaWeather=function(packet){
 window.molaWeatherError=function(packet){
  $('weather-source').textContent=packet&&packet.detail?
   packet.detail:'Hava tahmini kaynağına ulaşılamıyor.';
+ [1,5,10,15].forEach(function(m,i){
+  $('compact-weather').children[i].textContent='+'+m+' dk · veri yok';
+ });
 };
 function native(name){
  try{
@@ -152,13 +178,19 @@ function closeList(field){var el=$(field+'-list');el.style.display='none';el.tex
 function wipeRoute(){
  if(line&&map){map.removeLayer(line);line=null}
  $('trip').style.display='none';
- document.querySelector('.sheet').classList.remove('route-active');
- $('weather-source').textContent='Hava: Rota seçilmedi.';
- [...$('weather-cards').children].forEach(function(c){
-   c.children[1].textContent='Rota bekleniyor';
+ var sheet=document.querySelector('.sheet');
+ sheet.classList.remove('route-active');sheet.classList.remove('details-open');
+ sheet.scrollTop=0;
+ $('map-note').style.display='';
+ $('route-details').textContent='Hava ve rota ayrıntıları';
+ [1,5,10,15].forEach(function(m,i){
+  $('compact-weather').children[i].textContent='+'+m+' dk · hava bekleniyor';
  });
+ $('weather-source').textContent='Hava: Rota seçilmedi.';
+ [...$('weather-cards').children].forEach(function(c){c.children[1].textContent='Rota bekleniyor'});
  native('stop');
 }
+
 function selectPoint(field,lat,lon,label,gps){
  if(!valid(lat,lon))return;
  points[field]={lat:lat,lon:lon,label:String(label||'Haritadan seçilen konum')};
@@ -259,24 +291,26 @@ window.molaRoute=function(o){
   return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
  }).map(function(c){return [c[1],c[0]]});
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
+ var sheet=document.querySelector('.sheet');
+ sheet.classList.add('route-active');
+ sheet.classList.remove('details-open');
+ sheet.scrollTop=0;
+ $('map-note').style.display='none';
+ $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
+ $('route-details').textContent='Hava ve rota ayrıntıları';
  if(line&&map)map.removeLayer(line);
  if(map){
-  line=L.polyline(pts,{weight:6,opacity:.9,color:'#1378cf'}).addTo(map);
-  // Fit the entire route in the exposed portion of the map, not underneath
-  // the bottom information sheet; a major cause of 'route is invisible'.
-  var mapSize=map.getSize();
-  var narrow=window.innerWidth<950;
-  var bottom=narrow?Math.round(mapSize.y*0.43):20;
-  var right=narrow?20:Math.round(mapSize.x*0.43);
+  line=L.polyline(pts,{weight:6,opacity:.94,color:'#1378cf'}).addTo(map);
   map.invalidateSize();
+  var size=map.getSize(),portrait=window.innerWidth<950;
+  var bottom=portrait?Math.max(238,Math.round(size.y*0.23)):20;
+  var right=portrait?20:Math.round(size.x*0.43);
   map.fitBounds(line.getBounds(),{
-    paddingTopLeft:[20,20],
-    paddingBottomRight:[right,bottom],
-    animate:false,maxZoom:15
+    paddingTopLeft:[30,Math.max(100,Math.round(size.y*0.13))],
+    paddingBottomRight:[right,bottom],animate:false,maxZoom:15
   });
  }
  $('trip').style.display='block';
- document.querySelector('.sheet').classList.add('route-active');
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
  $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
  $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
@@ -318,6 +352,17 @@ $('plan').onclick=function(){
  closeList('from');closeList('to');
  msg('Seçili başlangıç ve varış için rota hesaplanıyor...');
  native('route',points.from.lat,points.from.lon,points.to.lat,points.to.lon,usingGps);
+};
+$('route-details').onclick=function(){
+ var sheet=document.querySelector('.sheet');
+ var expanded=sheet.classList.contains('details-open');
+ if(expanded)sheet.classList.remove('details-open');
+ else sheet.classList.add('details-open');
+ sheet.scrollTop=0;
+ $('route-details').textContent=expanded?'Hava ve rota ayrıntıları':'Haritayı büyüt';
+};
+$('route-edit').onclick=function(){
+ wipeRoute();msg('Başlangıç ve varışı değiştirebilirsin.');
 };
 $('stop').onclick=function(){wipeRoute();msg('Rota durduruldu.')};
 $('tts').onclick=function(){
