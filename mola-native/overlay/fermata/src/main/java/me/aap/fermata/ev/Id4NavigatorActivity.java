@@ -82,6 +82,20 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){
                 return !PAGE.equals(r.getUrl().toString());
             }
+            @Override public void onPageFinished(WebView v,String url){
+                if(!PAGE.equals(url) || destroyed)return;
+                Intent source=getIntent();
+                if(source==null || !source.hasExtra("toLat") || !source.hasExtra("toLon"))return;
+                double lat=source.getDoubleExtra("toLat",Double.NaN);
+                double lon=source.getDoubleExtra("toLon",Double.NaN);
+                if(!valid(lat,lon))return;
+                JSONObject station=new JSONObject();
+                try{
+                    station.put("lat",lat);station.put("lon",lon);
+                    station.put("label",source.getStringExtra("toName"));
+                    send("molaDestination",station);
+                }catch(Exception ignored){}
+            }
         });
         web.loadUrl(PAGE);
     }
