@@ -5,7 +5,7 @@ const assert=require('assert');
 const path=require('path');
 const file=process.argv[2] || path.join(__dirname,'../overlay/fermata/src/main/assets/id4/navigator.html');
 const html=fs.readFileSync(file,'utf8');
-const inline=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)]
+const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
  .map(m=>m[1]).find(x=>x.includes('molaSuggestions'));
 assert(inline,'Mola native navigation JavaScript missing');
 for(const id of ['from','to','from-list','to-list','locate','plan','swap']){
