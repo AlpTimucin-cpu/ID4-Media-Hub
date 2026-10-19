@@ -81,13 +81,14 @@ public final class Id4EvActivity extends Activity {
         LinearLayout tabs=new LinearLayout(this);
         root.addView(tabs);
         addTab(tabs,"‹ Mola",()->finish());
-        addTab(tabs,"🗺 Harita",this::mapScreen);
+        addTab(tabs,"🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         addTab(tabs,"⚡ İstasyon",this::stationsScreen);
         addTab(tabs,"🔋 Enerji",this::energyScreen);
         addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)));
         status=text("ID.4 • Mola eklentisi • Resmî EPDK verileri",11,false);
         root.addView(status);
-        mapScreen();
+        // Enter the station list, never the deprecated long-press map flow.
+        stationsScreen();
     }
     private void addTab(LinearLayout row,String label,Runnable action) {
         Button button=button(label,action);
@@ -166,7 +167,7 @@ public final class Id4EvActivity extends Activity {
         body.addView(map,new LinearLayout.LayoutParams(-1,0,1f));
         LinearLayout commands=new LinearLayout(this);
         addTab(commands,"⚡ Şarjları göster",this::showMapStations);
-        addTab(commands,"↗ Rota çiz",this::drawRoute);
+        addTab(commands,"↗ Rota planla",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         body.addView(commands);
         body.addView(text("© OpenStreetMap katkıcıları. Rota önizlemedir; " +
                 "canlı trafik ve sesli dönüş talimatları henüz yoktur.",11,false));
