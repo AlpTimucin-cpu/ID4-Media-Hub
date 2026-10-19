@@ -418,7 +418,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             return b.toString("UTF-8");
         }finally{c.disconnect();}
     }
-    @Override protected void onResume(){super.onResume(); if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)requestGps();}
+    // Never start GPS merely because the user opened a manual route preview.
+    // Location is requested explicitly via the "Konumumu başlangıç yap" button.
+    @Override protected void onResume(){super.onResume();}
     @Override protected void onPause(){
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         running=false; if(tts!=null)tts.stop();super.onPause();
