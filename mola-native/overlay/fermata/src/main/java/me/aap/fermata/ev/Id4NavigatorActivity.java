@@ -161,7 +161,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             try{
                 packet.put("field",field);
                 packet.put("requestId",requestId);
-                String u="https://photon.komoot.io/api/?limit=7&lang=tr&q="+
+                // The public Photon demo usually indexes English/local names, not 'tr'.
+                // Invalid lang=tr previously caused 400, reported as 'no internet'.
+                String u="https://photon.komoot.io/api/?limit=7&lang=en&q="+
                     URLEncoder.encode(query,"UTF-8");
                 JSONArray found=new JSONObject(fetch(u,500000)).getJSONArray("features");
                 JSONArray items=new JSONArray();
@@ -200,7 +202,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             }catch(Exception e){
                 try{
                     packet.put("items",new JSONArray());
-                    packet.put("error","Adres araması servisine ulaşılamıyor. İnternet bağlantısını kontrol et.");
+                    packet.put("error","Photon ayrıntılı adres servisi şu an yanıt vermiyor; çevrimdışı iller kullanılabilir.");
                 }catch(Exception ignored){}
             }
             send("molaSuggestions",packet);
@@ -281,6 +283,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         HttpURLConnection c=(HttpURLConnection)new URL(address).openConnection();
         c.setConnectTimeout(7500);c.setReadTimeout(10000);c.setInstanceFollowRedirects(false);
         c.setRequestProperty("User-Agent","Mola-ID4-Navigation-Preview/0.2");
+        c.setRequestProperty("Accept-Language","en");
         try{
             if(c.getResponseCode()!=200)throw new IllegalStateException("HTTP "+c.getResponseCode());
             ByteArrayOutputStream b=new ByteArrayOutputStream();
