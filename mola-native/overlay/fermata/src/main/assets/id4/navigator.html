@@ -13,7 +13,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .round{border-radius:16px;width:54px;height:54px;background:#fff;box-shadow:0 4px 15px #0002;font-size:23px}
 .buttons{position:absolute;right:13px;top:82px;display:flex;flex-direction:column;gap:9px;z-index:890}
 .buttons button{background:#fff;box-shadow:0 2px 9px #0002;border-radius:12px;width:52px;height:52px;font-size:20px;color:#102e3d}
-.sheet{position:absolute;bottom:0;left:0;right:0;height:46%;min-height:330px;z-index:902;background:#fafcfd;border-radius:24px 24px 0 0;box-shadow:0 -8px 25px #0925382e;overflow:auto;padding:12px 17px 20px}
+.sheet{position:absolute;bottom:0;left:0;right:0;height:58%;min-height:330px;z-index:902;background:#fafcfd;border-radius:24px 24px 0 0;box-shadow:0 -8px 25px #0925382e;overflow:auto;padding:12px 17px 20px}
 .grip{height:5px;width:54px;border-radius:100px;background:#9aa5b0;margin:0 auto 14px}
 .flex{display:flex;align-items:center;justify-content:space-between;gap:10px}.title{font-size:22px;font-weight:750;margin:0 0 12px}
 .grid{display:grid;grid-template-columns:1fr auto;gap:8px}
@@ -38,20 +38,39 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .trip{background:#e6f5f4;border:1px solid #c6e3e0;border-radius:14px;padding:13px;display:none;margin-top:10px}
 .trip strong{font-size:22px}
 #directions{max-height:95px;overflow:auto;font-size:12px;color:#34515b;margin-top:8px}
-.map-note{position:absolute;bottom:48%;left:13px;right:13px;font-size:11px;text-align:center;z-index:890;color:#153642;background:#ffffffdc;border-radius:9px;padding:7px}
+.map-note{position:absolute;bottom:60%;left:13px;right:13px;font-size:11px;text-align:center;z-index:890;color:#153642;background:#ffffffdc;border-radius:9px;padding:7px}
 .leaflet-container a{color:var(--teal)}
-@media(min-width:950px) and (orientation:landscape){.sheet{width:35%;height:100%;left:auto;border-radius:0;padding-top:25px}.map-note{right:36%;bottom:20px}.top{right:37%}.buttons{right:37%;top:80px}}
+@media(min-width:950px) and (orientation:landscape){.sheet{width:39%;height:100%;left:auto;border-radius:0;padding-top:25px}.map-note{right:40%;bottom:20px}.top{right:41%}.buttons{right:41%;top:80px}}
+
+.lookup{position:relative;margin-bottom:9px}
+.lookup label{display:block;font-size:11px;font-weight:750;color:#617488;margin:0 0 5px 3px}
+.lookup input{width:100%;font:inherit;font-size:15px;padding:13px;border:1px solid #d7e3eb;border-radius:12px;background:#fff;color:#233642;outline-color:#00939c}
+.suggestions{position:relative;margin-top:2px;background:#fff;border:1px solid #cedee6;border-radius:12px;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px #142b3922;display:none;z-index:999}
+.suggestion{width:100%;text-align:left;padding:11px 12px;background:#fff;border-bottom:1px solid #e7edf1;font-size:13px;color:#193a4a;line-height:1.4}
+.suggestion:last-child{border-bottom:0}
+.suggestion:active{background:#e6f5f4}
+.hint{font-size:11px;color:#6a7d88;margin:-1px 0 10px 3px}
+.controls-inline{display:flex;gap:8px;margin:2px 0 10px}
+.controls-inline button{flex:1}
 </style></head><body>
 <div id="map"></div>
 <div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small></div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
-<div class="map-note">Haritaya dokunarak varış belirleyebilirsin. Rota için GPS izni gerekli.</div>
+<div class="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
-<div class="flex"><h1 class="title">Nereye gidiyoruz?</h1><span class="tag">BETA / GPS</span></div>
-<div class="grid"><input class="search" id="dest" placeholder="Varış noktası veya adres ara" aria-label="Varış noktası">
-<button class="primary" id="find">Ara</button></div>
-<div id="target">Hedef seçilmedi</div>
-<div class="row"><div><div class="label">Başlangıç</div><div class="value" id="origin">Konumum · GPS bekleniyor</div></div><button class="minor" id="locate">Konum</button></div>
+<div class="flex"><h1 class="title">Nereye gidiyoruz?</h1><span class="tag">BETA · MANUEL/GPS</span></div>
+<div class="lookup">
+<label for="from">NEREDEN · başlangıç konumu</label>
+<input id="from" inputmode="search" autocomplete="off" placeholder="Örn. Niğde, cadde veya adres yaz"/>
+<div id="from-list" class="suggestions" role="listbox" aria-label="Başlangıç önerileri"></div>
+</div>
+<div class="lookup">
+<label for="to">NEREYE · varış konumu</label>
+<input id="to" inputmode="search" autocomplete="off" placeholder="Örn. Antalya, hastane, otel veya adres yaz"/>
+<div id="to-list" class="suggestions" role="listbox" aria-label="Varış önerileri"></div>
+</div>
+<div class="hint">3 harften sonra öneriler listelenir. Bir konumu seç; GPS kullanmak zorunda değilsin.</div>
+<div class="controls-inline"><button class="minor" id="locate">◎ Konumumu başlangıç yap</button><button class="minor" id="swap">⇅ Yerleri değiştir</button></div>
 <div class="row"><div><div class="label">Sesli yol tarifi</div><div class="value" id="ttslabel">Türkçe · Açık</div></div><button class="minor" id="tts">Kapat</button></div>
 <div class="flex" style="margin-top:12px"><button class="primary" id="plan" style="flex:1">Rotayı hesapla</button><button class="minor" id="stop">Durdur</button></div>
 <div id="status" role="status">Harita açılıyor. GPS verileri henüz alınmadı.</div>
@@ -64,53 +83,164 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <script>
 (function(){
 'use strict';
-var map,mark,locMarker,line,target=null,voice=true;
-var $=x=>document.getElementById(x);
-function msg(t){$('status').textContent=t}
-function valid(lat,lon){return Number.isFinite(lat)&&Number.isFinite(lon)&&lat>35&&lat<43&&lon>25&&lon<46}
-function choose(lat,lon,label){
- if(!valid(lat,lon))return;
- target={lat:lat,lon:lon}; $('target').textContent='Varış: '+String(label||'Haritadaki konum').slice(0,75);
- if(mark)map.removeLayer(mark);
- mark=L.marker([lat,lon]).addTo(map).bindPopup('Varış noktası');
- map.panTo([lat,lon]);$('trip').style.display='none';
+var map=null,markers={from:null,to:null},liveMarker=null,line=null;
+var points={from:null,to:null},usingGps=false,pendingGps=false,voice=true;
+var ids={from:0,to:0},timers={from:0,to:0};
+var $=function(x){return document.getElementById(x)};
+function msg(t){$('status').textContent=String(t)}
+function valid(lat,lon){return typeof lat==='number'&&typeof lon==='number'&&
+ Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46}
+function native(name){
+ try{
+  var args=Array.prototype.slice.call(arguments,1);
+  if(window.MolaNative&&typeof window.MolaNative[name]==='function'){
+    window.MolaNative[name].apply(window.MolaNative,args);return true;
+  }
+  msg('Bu ekranın arama ve rota işlemleri için Mola Android APK gereklidir.');return false;
+ }catch(e){msg('Android bağlantı hatası: '+e.message);return false}
 }
-window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))choose(x.lat,x.lon,x.label)};
+function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
+function wipeRoute(){
+ if(line&&map){map.removeLayer(line);line=null}
+ $('trip').style.display='none';
+ native('stop');
+}
+function selectPoint(field,lat,lon,label,gps){
+ if(!valid(lat,lon))return;
+ points[field]={lat:lat,lon:lon,label:String(label||'Haritadan seçilen konum')};
+ if(field==='from')usingGps=!!gps;
+ $(field).value=points[field].label;
+ ids[field]++;closeList(field);
+ if(map){
+  if(markers[field])map.removeLayer(markers[field]);
+  markers[field]=L.circleMarker([lat,lon],{
+   radius:9,fillOpacity:1,fillColor:field==='from'?'#1f7dda':'#1ca078',
+   color:'#fff',weight:2
+  }).addTo(map).bindPopup(field==='from'?'Başlangıç':'Varış');
+  if(!points.from||!points.to)map.setView([lat,lon],11);
+ }
+ if(points.from&&points.to)msg('Başlangıç ve varış hazır. Rotayı hesapla.');
+ else msg(field==='from'?'Başlangıç seçildi. Varış seç.':'Varış seçildi. Başlangıç seç.');
+ wipeRoute();
+}
+function showSuggestions(field,items,error){
+ var el=$(field+'-list');el.replaceChildren();
+ if(!Array.isArray(items)||!items.length){
+  if(error){
+   var line=document.createElement('div');line.className='suggestion';
+   line.textContent=error;el.appendChild(line);el.style.display='block';
+  }else el.style.display='none';
+  return;
+ }
+ items.forEach(function(item){
+  if(!item||!valid(item.lat,item.lon))return;
+  var btn=document.createElement('button');btn.type='button';
+  btn.className='suggestion';btn.textContent=item.label;
+  btn.onclick=function(){selectPoint(field,item.lat,item.lon,item.label,false)};
+  el.appendChild(btn);
+ });
+ el.style.display=el.children.length?'block':'none';
+}
+window.molaSuggestions=function(packet){
+ if(!packet||(packet.field!=='from'&&packet.field!=='to'))return;
+ var field=packet.field;
+ if(packet.requestId!==ids[field])return;
+ showSuggestions(field,packet.items||[],packet.error);
+};
+function bindAutocomplete(field){
+ var el=$(field);
+ el.addEventListener('input',function(){
+  points[field]=null;if(field==='from')usingGps=false;
+  ids[field]++;clearTimeout(timers[field]);closeList(field);
+  wipeRoute();
+  var value=el.value.trim();
+  if(value.length<3){msg('Öneri için en az 3 harf yaz.');return;}
+  var current=ids[field];
+  timers[field]=setTimeout(function(){
+   if(current!==ids[field])return;
+   msg('Adres önerileri aranıyor...');
+   native('suggest',field,value,current);
+  },650);
+ });
+ el.addEventListener('keydown',function(e){if(e.key==='Enter'){
+  e.preventDefault();el.blur();
+ }});
+}
 window.molaPosition=function(x){
  if(!x||!valid(x.lat,x.lon))return;
- $('origin').textContent='Konumum · GPS ±'+Math.round(x.accuracy||0)+' m';
- if(!locMarker){locMarker=L.circleMarker([x.lat,x.lon],{radius:8,color:'#fff',weight:2,fillColor:'#267ce1',fillOpacity:1}).addTo(map);map.setView([x.lat,x.lon],13)}
- else locMarker.setLatLng([x.lat,x.lon]);
+ if(map){
+  if(!liveMarker)liveMarker=L.circleMarker([x.lat,x.lon],{
+   radius:7,color:'#fff',weight:2,fillColor:'#2b86eb',fillOpacity:1
+  }).addTo(map);
+  else liveMarker.setLatLng([x.lat,x.lon]);
+ }
+ if(pendingGps){
+  pendingGps=false;
+  selectPoint('from',x.lat,x.lon,'Konumum (GPS ±'+Math.round(x.accuracy||0)+' m)',true);
+  if(map)map.setView([x.lat,x.lon],13);
+ }
 };
 window.molaStatus=function(o){if(o&&o.detail)msg(o.detail)};
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
- var pts=o.coordinates.filter(c=>Array.isArray(c)&&c.length>=2&&valid(c[1],c[0])).map(c=>[c[1],c[0]]);
- if(!pts.length){msg('Rota verisi geçersiz');return}
- if(line)map.removeLayer(line);
- line=L.polyline(pts,{weight:6,opacity:.9,color:'#1178cc'}).addTo(map);
- map.fitBounds(line.getBounds(),{padding:[25,25]});
+ var pts=o.coordinates.filter(function(c){
+  return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
+ }).map(function(c){return [c[1],c[0]]});
+ if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
+ if(line&&map)map.removeLayer(line);
+ if(map){
+  line=L.polyline(pts,{weight:6,opacity:.9,color:'#1378cf'}).addTo(map);
+  map.fitBounds(line.getBounds(),{padding:[25,25]});
+ }
  $('trip').style.display='block';
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
- $('alternatives').textContent=String(o.alternatives||1)+' rota';
- $('directions').textContent=(o.steps||[]).slice(0,5).join(' • ');
- msg('Rota çizildi; uygun konum ve sesli yönlendirme gerekiyor.');
+ $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
+ $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
+ msg(o.navigationActive?'GPS yönlendirme deneysel olarak açık.':
+ 'Manuel noktalarla rota önizlemesi hazır. GPS gerektirmez; sesli yönlendirme kapalı.');
 };
-function native(name,...args){try{if(window.MolaNative&&typeof window.MolaNative[name]==='function')window.MolaNative[name](...args);else msg('Bu HTML, Mola APK içinde çalışacak bir önizlemedir.')}catch(e){msg('Android bağlantısı kurulamadı.')}}
+window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))selectPoint('to',x.lat,x.lon,x.label,false)};
+bindAutocomplete('from');bindAutocomplete('to');
 try{
+ if(typeof L==='undefined')throw new Error('Harita kitaplığı yüklenmedi');
  map=L.map('map',{zoomControl:false}).setView([38.9,35.1],6);
- L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap katkıcıları',maxZoom:18}).addTo(map);
- map.on('click',e=>choose(e.latlng.lat,e.latlng.lng,'Haritadan seçilen hedef'));msg('Varış seç veya konumunu kullan.');
-}catch(e){msg('Harita çevrimiçi kitaplığı yüklenemedi. İnterneti denetle.');}
-$('find').onclick=()=>{if(!$('dest').value.trim()){msg('Önce varış adresi gir.');return}msg('Adres aranıyor...');native('search',$('dest').value)};
-$('gps').onclick=$('locate').onclick=()=>native('location');
-$('plus').onclick=()=>map&&map.zoomIn();
-$('minus').onclick=()=>map&&map.zoomOut();
-$('plan').onclick=()=>{if(!target){msg('Haritadan varış belirle veya adres ara.');return}msg('Rota oluşturuluyor...');native('route',target.lat,target.lon)};
-$('stop').onclick=()=>{native('stop');msg('Yönlendirme durduruldu.');if(line){map.removeLayer(line);line=null}};
-$('tts').onclick=()=>{voice=!voice;native('voice',voice);$('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');$('tts').textContent=voice?'Kapat':'Aç'};
-$('back').onclick=()=>native('back');
-$('charge').onclick=()=>native('stations');
-$('sensors').onclick=$('allSensors').onclick=()=>native('sensors');
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap katkıcıları',maxZoom:18
+ }).addTo(map);
+ map.on('click',function(e){selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false)});
+ msg('Başlangıç ve varış için yer adı yazabilirsin; GPS isteğe bağlı.');
+}catch(e){
+ msg('Harita açılmadı: '+e.message+'. Adres/rota araması yine denenebilir.');
+}
+$('gps').onclick=$('locate').onclick=function(){
+ pendingGps=true;
+ if(!native('location'))pendingGps=false;
+};
+$('plus').onclick=function(){if(map)map.zoomIn()};
+$('minus').onclick=function(){if(map)map.zoomOut()};
+$('swap').onclick=function(){
+ var from=points.from,to=points.to;
+ if(!from||!to){msg('İki nokta da seçilince yer değiştirebilirsin.');return}
+ selectPoint('from',to.lat,to.lon,to.label,false);
+ selectPoint('to',from.lat,from.lon,from.label,false);
+};
+$('plan').onclick=function(){
+ if(!points.from||!points.to){
+  msg('Nereden ve Nereye alanlarında öneri listesinden iki konum seç.');return;
+ }
+ closeList('from');closeList('to');
+ msg('Seçili başlangıç ve varış için rota hesaplanıyor...');
+ native('route',points.from.lat,points.from.lon,points.to.lat,points.to.lon,usingGps);
+};
+$('stop').onclick=function(){wipeRoute();msg('Rota durduruldu.')};
+$('tts').onclick=function(){
+ voice=!voice;native('voice',voice);
+ $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');
+ $('tts').textContent=voice?'Kapat':'Aç';
+};
+$('back').onclick=function(){native('back')};
+$('charge').onclick=function(){native('stations')};
+$('sensors').onclick=$('allSensors').onclick=function(){native('sensors')};
+window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
 </script></body></html>
