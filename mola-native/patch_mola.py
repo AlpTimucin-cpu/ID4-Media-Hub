@@ -101,10 +101,13 @@ navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.
 decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
 city_license=overlay/"fermata/src/main/assets/id4/CITY_DATA_LICENSE.txt"
+leaflet_js=overlay/"fermata/src/main/assets/id4/leaflet.js"
+leaflet_css=overlay/"fermata/src/main/assets/id4/leaflet.css"
+leaflet_license=overlay/"fermata/src/main/assets/id4/LEAFLET_LICENSE.txt"
 charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
 charge_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistoryStore.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,charge,charge_store])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,charge,charge_store]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -117,6 +120,8 @@ allowed=set(SOURCE_SHA) | {
     str(obd.relative_to(overlay)),str(navigator.relative_to(overlay)),
     str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
+    str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
+    str(leaflet_license.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
