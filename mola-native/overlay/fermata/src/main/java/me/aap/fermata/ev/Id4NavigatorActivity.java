@@ -107,9 +107,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             voice=on;if(!on && tts!=null)tts.stop();
         }
         @JavascriptInterface public void stop() {running=false;steps.clear();nextStep=0;}
-        @JavascriptInterface public void search(String query) {findDestination(query);}
-        @JavascriptInterface public void route(double latitude,double longitude) {
-            plan(latitude,longitude);
+        @JavascriptInterface public void suggest(String field,String query,int requestId){
+            suggestPlaces(field,query,requestId);
+        }
+        @JavascriptInterface public void route(double fromLat,double fromLon,
+              double toLat,double toLon,boolean useGps){
+            plan(fromLat,fromLon,toLat,toLon,useGps);
         }
     }
     private void requestGps() {
@@ -147,39 +150,73 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(voice && tts!=null && !instruction.isEmpty())
             ui.post(()->tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"mola-direction"));
     }
-    private void findDestination(String raw) {
+    // Both departure and arrival use the same autocomplete lookup.
+    // Queries only leave the phone after the user types 3+ characters.
+    private void suggestPlaces(String field,String raw,int requestId){
+        if(!"from".equals(field) && !"to".equals(field))return;
         final String query=raw==null?"":raw.trim();
-        if(query.length()<3||query.length()>100){
-            send("molaStatus",record("error","En az 3 harf gir."));return;
-        }
+        if(query.length()<3||query.length()>100)return;
         jobs.execute(()->{
+            JSONObject packet=new JSONObject();
             try{
-                String url="https://photon.komoot.io/api/?limit=3&lang=tr&q="+
+                packet.put("field",field);
+                packet.put("requestId",requestId);
+                String u="https://photon.komoot.io/api/?limit=7&lang=tr&q="+
                     URLEncoder.encode(query,"UTF-8");
-                JSONObject data=new JSONObject(fetch(url,300000));
-                JSONArray features=data.getJSONArray("features");
-                if(features.length()==0)throw new IllegalStateException("Adres bulunamadı");
-                JSONObject f=features.getJSONObject(0);
-                JSONArray c=f.getJSONObject("geometry").getJSONArray("coordinates");
-                JSONObject prop=f.optJSONObject("properties");
-                String name=prop==null?query:prop.optString("name",query);
-                JSONObject result=new JSONObject();
-                result.put("lat",c.getDouble(1));result.put("lon",c.getDouble(0));
-                result.put("label",name);
-                send("molaDestination",result);
-            }catch(Exception e){send("molaStatus",record("error","Adres araması yapılamadı. Haritadan hedef seçebilirsin."));}
+                JSONArray found=new JSONObject(fetch(u,500000)).getJSONArray("features");
+                JSONArray items=new JSONArray();
+                for(int i=0;i<found.length() && items.length()<7;i++){
+                    JSONObject feature=found.optJSONObject(i);
+                    if(feature==null)continue;
+                    JSONObject geom=feature.optJSONObject("geometry");
+                    if(geom==null)continue;
+                    JSONArray coords=geom.optJSONArray("coordinates");
+                    if(coords==null || coords.length()<2)continue;
+                    double lon=coords.optDouble(0,Double.NaN);
+                    double lat=coords.optDouble(1,Double.NaN);
+                    if(!valid(lat,lon))continue;
+                    JSONObject props=feature.optJSONObject("properties");
+                    if(props==null)continue;
+                    String name=props.optString("name","");
+                    String city=props.optString("city","");
+                    String district=props.optString("district","");
+                    String state=props.optString("state","");
+                    String country=props.optString("country","");
+                    StringBuilder label=new StringBuilder();
+                    for(String part:new String[]{name,district,city,state,country}){
+                        if(part.isEmpty())continue;
+                        if(label.toString().contains(part))continue;
+                        if(label.length()>0)label.append(", ");
+                        label.append(part);
+                    }
+                    if(label.length()==0)continue;
+                    JSONObject item=new JSONObject();
+                    item.put("label",label.toString());
+                    item.put("lat",lat);item.put("lon",lon);
+                    items.put(item);
+                }
+                packet.put("items",items);
+                if(items.length()==0)packet.put("error","Türkiye içinde eşleşen konum bulunamadı.");
+            }catch(Exception e){
+                try{
+                    packet.put("items",new JSONArray());
+                    packet.put("error","Adres araması servisine ulaşılamıyor. İnternet bağlantısını kontrol et.");
+                }catch(Exception ignored){}
+            }
+            send("molaSuggestions",packet);
         });
     }
-    private void plan(double toLat,double toLon){
-        Location origin=position;
-        if(origin==null || origin.getAccuracy()>100){
-            send("molaStatus",record("error","Önce GPS konumunu al. Konum doğrulanmadan rota başlatılmaz."));return;
+    private void plan(double fromLat,double fromLon,
+                      double toLat,double toLon,boolean useGps) {
+        if(!valid(fromLat,fromLon)||!valid(toLat,toLon)){
+            send("molaStatus",record("error","Başlangıç ve varış için listeden konum seç."));return;
         }
-        if(!valid(toLat,toLon)){send("molaStatus",record("error","Hatalı hedef koordinatı"));return;}
+        boolean verifiedGps=useGps && position!=null && position.getAccuracy()<=60 &&
+            System.currentTimeMillis()-position.getTime()<=30000;
         final int myGeneration=++generation;
         jobs.execute(()->{
             try{
-                String a=String.format(Locale.US,"%.6f,%.6f",origin.getLongitude(),origin.getLatitude());
+                String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
                 String b=String.format(Locale.US,"%.6f,%.6f",toLon,toLat);
                 String u="https://router.project-osrm.org/route/v1/driving/"+a+";"+b+
                     "?overview=full&geometries=geojson&steps=true&alternatives=true";
@@ -192,6 +229,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("distanceKm",Math.round(selected.getDouble("distance")/100.0)/10.0);
                 packet.put("durationMin",Math.round(selected.getDouble("duration")/60.0));
                 packet.put("alternatives",routes.length());
+                packet.put("navigationActive",verifiedGps);
                 JSONArray roadSteps=selected.getJSONArray("legs").getJSONObject(0).getJSONArray("steps");
                 ArrayList<Step> parsed=new ArrayList<>();
                 JSONArray labels=new JSONArray();
@@ -209,13 +247,14 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("steps",labels);
                 ui.post(()->{
                     if(myGeneration!=generation||destroyed)return;
-                    steps.clear();steps.addAll(parsed);nextStep=0;running=true;
+                    steps.clear();steps.addAll(parsed);nextStep=0;
+                    running=verifiedGps;
                     send("molaRoute",packet);
-                    announce("Rota hesaplandı. Mesafe "+packet.optDouble("distanceKm")+
-                        " kilometre. Yol tarifini başlatıyorum.");
+                    if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
+                        " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
             }catch(Exception e){send("molaStatus",record("error",
-                "Rota servisi erişilemiyor. Sesli yönlendirme başlamadı."));}
+                "Rota servisi erişilemiyor. Rota ve sesli yönlendirme başlatılmadı."));}
         });
     }
     private static String spoken(String type,String modifier,String street){
