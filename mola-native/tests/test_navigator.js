@@ -352,8 +352,10 @@ win.molaRoute({
  energyLowKwh:1.92,energyHighKwh:2.88,
  arrivalSocLower:74.5,arrivalSocUpper:76.0,chargingNeededByModel:false,steps:[]
 });
-assert(get('trip-energy').textContent.includes('Varış SoC ~%75–%76'),
- 'recent BMS SoC arrival range missing');
+assert(get('trip-energy').textContent.includes('güncel GPS ve OBD'),
+ 'old planning SoC must not override live-source requirements');
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'stale or off-route GPS must suppress model arrival percentage');
 win.molaRoute({coordinates:[[34.68,37.96],[34.9,37.8],[30.7,36.9]],
  distanceKm:513,durationMin:397,stopIncluded:true,
  energyLowKwh:82,energyHighKwh:123,steps:[]});
