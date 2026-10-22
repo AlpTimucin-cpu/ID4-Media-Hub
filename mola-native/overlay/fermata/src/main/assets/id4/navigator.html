@@ -9,7 +9,13 @@
 button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{position:absolute;inset:0;z-index:0;background:#dbe7e2}
 .top{position:absolute;top:max(12px,env(safe-area-inset-top));left:13px;right:13px;z-index:901;display:flex;gap:10px;align-items:flex-start}
 .brand{background:#073549;box-shadow:0 3px 16px #0002;border-radius:15px;color:#fff;padding:12px 14px;min-height:55px;flex:1}
-.brand strong{letter-spacing:1px;font-size:16px}.brand small{display:block;font-size:10px;opacity:.8;letter-spacing:.5px}
+.brand strong{letter-spacing:1px;font-size:16px}
+.live-hud{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.live-hud span{font-size:12px;font-weight:750;white-space:nowrap}
+.live-hud small{display:inline;font-size:10px;opacity:.8}
+.live-hud button{background:#195d69;color:#fff;border-radius:8px;font-size:11px;padding:5px 8px}
+#live-status{font-size:10px;opacity:.82;max-width:235px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:380px){.live-hud{gap:6px}.live-hud span{font-size:11px}}.brand small{display:block;font-size:10px;opacity:.8;letter-spacing:.5px}
 .round{border-radius:16px;width:54px;height:54px;background:#fff;box-shadow:0 4px 15px #0002;font-size:23px}
 .buttons{position:absolute;right:13px;top:82px;display:flex;flex-direction:column;gap:9px;z-index:890}
 .buttons button{background:#fff;box-shadow:0 2px 9px #0002;border-radius:12px;width:52px;height:52px;font-size:20px;color:#102e3d}
@@ -77,7 +83,14 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .sheet.route-active.details-open #route-compact{position:sticky;top:0;background:#fafcfd;z-index:4;padding-bottom:8px}
 </style></head><body>
 <div id="map"></div>
-<div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small></div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
+<div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small>
+<div class="live-hud" aria-label="Canlı araç bilgileri">
+<span><small>SoC </small><b id="live-soc">—</b></span>
+<span><small>HV </small><b id="live-voltage">—</b></span>
+<span><small>Batarya </small><b id="live-temp">—</b></span>
+<button type="button" id="connect-obd">OBD bağla</button>
+</div><div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
+</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
@@ -105,7 +118,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 </div>
 <div class="trip" id="trip"><div class="flex"><div><div class="label">Tahmini rota</div><strong id="tripdata">—</strong></div><span class="tag" id="alternatives">—</span></div><div id="directions"></div></div>
 <div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
-<div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value">— %</div></div><div><div class="label">Tahmini menzil</div><div class="value">— km</div></div></div></div>
+<div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge" id="obd-status">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value" id="vehicle-soc">—</div></div><div><div class="label">Menzil</div><div class="value">Doğrulanmadı</div></div></div></div>
 <div><strong>Yol boyunca hava</strong>
 <div class="weather" id="weather-cards">
 <div class="weather-card"><strong>+1 dk</strong><small>Rota bekleniyor</small></div>
@@ -320,6 +333,32 @@ window.molaRoute=function(o){
  msg(o.navigationActive?'GPS yönlendirme deneysel olarak açık.':
  'Manuel noktalarla rota önizlemesi hazır. GPS gerektirmez; sesli yönlendirme kapalı.');
 };
+var lastTelemetryAt=0;
+function clearTelemetry(){
+ $('live-soc').textContent='—';
+ $('live-voltage').textContent='—';
+ $('live-temp').textContent='—';
+ $('vehicle-soc').textContent='—';
+}
+window.molaTelemetry=function(data){
+ var d=data||{},fresh=!!d.fresh;
+ lastTelemetryAt=fresh?Date.now():0;
+ if(fresh){
+  $('live-soc').textContent=String(d.soc||'—');
+  $('live-voltage').textContent=String(d.voltage||'—');
+  $('live-temp').textContent=String(d.temperature||'—');
+  $('vehicle-soc').textContent=String(d.soc||'—');
+ }else clearTelemetry();
+ $('live-status').textContent=String(d.status||'OBD bağlı değil');
+ $('obd-status').textContent=fresh?'Canlı OBD':'OBD yok';
+};
+setInterval(function(){
+ if(lastTelemetryAt && Date.now()-lastTelemetryAt>25000){
+  clearTelemetry();lastTelemetryAt=0;
+  $('live-status').textContent='OBD ölçümü güncel değil';
+  $('obd-status').textContent='Veri eski';
+ }
+},5000);
 window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))selectPoint('to',x.lat,x.lon,x.label,false)};
 bindAutocomplete('from');bindAutocomplete('to');
 try{
@@ -372,7 +411,8 @@ $('tts').onclick=function(){
 };
 $('back').onclick=function(){native('back')};
 $('charge').onclick=function(){native('stations')};
-$('sensors').onclick=$('allSensors').onclick=function(){native('sensors')};
+$('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
+$('allSensors').onclick=function(){native('sensors')};
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
 </script></body></html>
