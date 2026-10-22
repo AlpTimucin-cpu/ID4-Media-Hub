@@ -49,6 +49,7 @@ public final class Id4ObdActivity extends Activity {
     private TextView status;
     private TextView heroSoc, heroRange, heroSource, heroVoltage, heroTemp, heroMode;
     private TextView heroConsumption, heroPower, heroCost, heroHealth;
+    private TextView routeDistance, routeEnergyEstimate;
     private LinearLayout sensorDetails;
     private boolean detailsVisible;
     private static final String ADAPTER_PREFS="mola_id4_obd_device";
@@ -118,7 +119,11 @@ public final class Id4ObdActivity extends Activity {
         heroCost=slot(row3,"ŞARJ MALİYETİ","— TL");
         LinearLayout row4=new LinearLayout(this);cards.addView(row4);
         heroHealth=slot(row4,"BATARYA SAĞLIĞI (SOH)","— %");
-        slot(row4,"BAĞLANTI KAYNAĞI","ELM327 / MEB");
+        routeDistance=slot(row4,"SON HESAPLANAN ROTA","— km");
+        LinearLayout row5=new LinearLayout(this);cards.addView(row5);
+        routeEnergyEstimate=slot(row5,"YOL ENERJİSİ · MODEL","— kWh");
+        slot(row5,"VERİ KAYNAĞI","ELM327 / MEB");
+        refreshPlan();
 
         body.addView(label("Maliyet: operatör tarifesi ve ölçülen faturalı kWh olmadan hesaplanmaz. Menzil, SOH, tüketim ve güç için doğrulanmış veriler gereklidir.",12));
 
@@ -209,6 +214,26 @@ public final class Id4ObdActivity extends Activity {
         b.setOnClickListener(v->action.run());
         return b;
     }
+    private void refreshPlan(){
+        Id4EnergyData.Snapshot source=Id4EnergyData.load(this,System.currentTimeMillis());
+        if(routeDistance==null || routeEnergyEstimate==null)return;
+        if(!source.hasRoute()){
+            routeDistance.setText("— km");
+            routeEnergyEstimate.setText("— kWh");
+            return;
+        }
+        routeDistance.setText(String.format(Locale.forLanguageTag("tr-TR"),
+            "%.1f km",source.routeKm));
+        Id4EnergyModel.Result est=Id4EnergyModel.estimate(source.routeKm,
+            source.hasSoc()?source.soc:Double.NaN);
+        if(est==null){routeEnergyEstimate.setText("— kWh");return;}
+        routeEnergyEstimate.setText(String.format(Locale.forLanguageTag("tr-TR"),
+            "%.1f – %.1f kWh (tahmin)",est.lowRouteKwh,est.highRouteKwh));
+    }
+    @Override protected void onResume(){
+        super.onResume();
+        refreshPlan();
+    }
     private void renderCore(String did,String value){
         if(!active || isFinishing())return;
         switch(did){
@@ -218,6 +243,7 @@ public final class Id4ObdActivity extends Activity {
             case "7448":heroMode.setText(value);break;
             default:break;
         }
+        if("028C".equals(did))refreshPlan();
         heroSource.setText("● CANLI OBD · Doğrulanmamış MEB profili");
         heroSource.setTextColor(0xff70f1cb);
     }
