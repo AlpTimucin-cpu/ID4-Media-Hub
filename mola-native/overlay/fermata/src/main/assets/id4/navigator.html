@@ -97,6 +97,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 @media (orientation:landscape) and (min-width:640px){
  html,body{overflow:hidden;background:#041c2b}
  #map{position:fixed;inset:0;background:#0d283b}
+ #map .leaflet-tile-pane{filter:invert(.91) hue-rotate(175deg) brightness(.78) contrast(1.13) saturate(.72)}
  .top{top:0;left:0;right:0;padding:8px 16px;z-index:1001;
    align-items:center;background:rgba(2,21,35,.93);height:78px;gap:10px;
    border-bottom:1px solid rgba(91,205,228,.16)}
@@ -126,10 +127,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .cockpit-title{color:#bed7e6;letter-spacing:.35px;
     text-transform:uppercase;font-weight:700;font-size:clamp(9px,.85vw,13px)}
  .cockpit-value{color:#fff;font-weight:950;line-height:1.13;
-    font-size:clamp(15px,2vw,31px);-webkit-text-stroke:.75px #000;
+    font-size:clamp(15px,2vw,31px);-webkit-text-stroke:1.05px #000;
     text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
  .cockpit-main-value{font-size:clamp(33px,5.5vw,79px);
-    letter-spacing:-1.3px}
+    letter-spacing:-1.3px;-webkit-text-stroke:1.7px #000}
  .cockpit-soc{color:#36e6bd}
  .cockpit-bar{height:11px;border-radius:100px;background:rgba(178,212,223,.25);
     overflow:hidden;margin-top:7px}
@@ -248,7 +249,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  </div>
 </div>
 
-<div class="top"><div class="brand"><strong>MOLA · ID.4</strong><small>YOLCULUK VE ARAÇ MERKEZİ</small>
+<div class="top"><div class="brand"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS · YOLCULUK VE ARAÇ MERKEZİ</small>
 <div class="live-hud" aria-label="Canlı araç bilgileri">
 <span><small>SoC </small><b id="live-soc">—</b></span>
 <span><small>HV </small><b id="live-voltage">—</b></span>
