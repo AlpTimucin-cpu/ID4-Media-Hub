@@ -267,8 +267,8 @@ final class Id4StationCatalog {
         }
         JSONObject packet=response("route",candidates,total,true);
         boolean socKnown=Double.isFinite(observedSoc)&&observedSoc>=0&&observedSoc<=100;
-        boolean chargeLikely=socKnown && candidates.size()>0 &&
-            candidates.get(0).assessment.chargeLikely;
+        boolean chargeLikely=socKnown &&
+            Id4ChargeAdvisor.assess(roadKm,observedSoc,0,0).chargeLikely;
         packet.put("chargeModel",!socKnown?"no-soc":chargeLikely?"charge-likely":"no-stop-model");
         packet.put("modelReserveSoc",Id4ChargeAdvisor.RESERVE_SOC);
         packet.put("modelNote","52 kWh, 16–24 kWh/100 km ve %15 rezerv varsayımı. "
