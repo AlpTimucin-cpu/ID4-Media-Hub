@@ -691,6 +691,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             getWindow().getDecorView().setSystemUiVisibility(flags);
         }
     }
+    @Override public void onConfigurationChanged(Configuration configuration){
+        super.onConfigurationChanged(configuration);
+        updateImmersiveCockpit();
+        // Landscape switch is user-initiated; retain this WebView's OBD and route state.
+        if(web!=null)web.post(()->{
+            if(web!=null&&!destroyed)
+                web.evaluateJavascript("window.molaLayout&&window.molaLayout()",null);
+        });
+    }
     @Override public void onWindowFocusChanged(boolean hasFocus){
         super.onWindowFocusChanged(hasFocus);
         if(hasFocus&&!destroyed)updateImmersiveCockpit();
