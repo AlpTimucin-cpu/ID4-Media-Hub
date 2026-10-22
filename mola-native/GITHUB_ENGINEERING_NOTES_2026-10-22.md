@@ -40,3 +40,74 @@ Kaynaklara ait içerik, veriler ve lisanslar aynen ilgili projelere aittir. Bura
 6. Uzun rotalarda enerji/rezerv/şarj noktası optimizasyonu; demo rota servisini üretim garantisi gibi kullanmama.
 
 Her geliştirme, cihazda doğrulanana kadar **deneysel** kabul edilir.
+
+
+## 22.10.2026 — yeni kaynak kontrolü ve mimari kararlar
+
+**Android Auto – resmî destek, ayrı host ekranı:** Android for Cars App Library
+(`androidx.car.app`) navigasyon uygulamalarında `CarAppService`,
+`androidx.car.app.category.NAVIGATION`, `NavigationTemplate` ve
+`MapWithContentTemplate` kullanır. Harita `SurfaceCallback` üzerinden
+render edilir; Android telefondaki normal `Activity` içindeki `WebView`
+ve özel HTML HUD, Android Auto araç ekranında kendiliğinden gösterilemez.
+`Id4NavigatorActivity` şu an **yalnızca telefon kokpiti** olarak
+kabul edilmeli. Mola medya oynatıcı tabanı Android Auto harita/navigation
+servisine dönüştürülmeden veya ayrı bir uygun kategorili Android Auto
+modülü eklenmeden araç ekranı vaadi yapılamaz. Sürüş sırasında HTML
+medya/video yüzeyi gösterilmesi hedef değildir.
+
+Kaynaklar:
+- https://developer.android.com/training/cars/apps/navigation
+- https://developer.android.com/training/cars/apps/library/draw-maps
+- https://developer.android.com/training/cars/apps/library/interact-map
+
+**OSM erişim politikası:** `tile.openstreetmap.org` yardım amaçlı
+best-effort standart karo sunucusudur, SLA/çevrimdışı toplu indirme
+vermiyor. Kaynak gösterimi HUD tarafından kapanmamalıdır; doğru HTTPS
+URL, uygulamayı tanımlayan User-Agent ve HTTP önbellek kurallarına
+uyulmalıdır. Android WebView için özel uygulama UA eki ve
+`WebSettings.LOAD_DEFAULT` ayarı, Leaflet haritasına ayrıca sürekli
+görünen © OpenStreetMap contributors etiketi eklendi.
+Bu önlem üretim seviyesinde garantili tile servisi sunmaz.
+Kaynak: https://operations.osmfoundation.org/policies/tiles/
+
+**ID.4 telemetri kaynakları:** `Mo3he/VW-Dash` live WebSocket ve
+WeConnect hesabıyla çalışır; projenin kendi README'si Avrupa dışı
+hesaplar için sınırlama bildirir. `robske110/IDDataLogger` geçmiş
+şarj ve ABRP entegrasyon yaklaşımı için örnektir; bunlar ELM327
+Bluetooth üzerinden doğrulanmış batarya PID verileriyle aynı değildir.
+Dış hesap/kullanıcı adı/şifre istemeden, Türkiye'de kesin çalışacak
+uzaktan telemetri varsayımı yapılmayacak.
+Kaynaklar:
+- https://github.com/Mo3he/VW-Dash
+- https://github.com/robske110/IDDataLogger
+
+**EPDK resmî veri:** Kurumun enerji dönüşümü SSS'si kamuya açık
+istasyon/işletmeci web servisleri olduğunu bildirir, ayrıca özel
+API erişimi için talep gerekmeyebileceğini belirtir.
+Uygulamamız henüz bunun canlı ve belgelenmiş uç noktasını
+kullanmıyor; yalnızca doğrulanma tarihi belirtilen
+`epdk_public_stations.json.gz` snapshot'unu kullanır.
+Canlı soket doluluğu ve kWh bazlı kesin ücret gösterilmez.
+Kaynak: https://www.epdk.gov.tr/Detay/Icerik/12-1040/enerji-donusumu
+
+**Gerçekleşen dayanıklılık geliştirmeleri:** Model varış SoC bandı,
+*mevcut* BMS SoC ve hatasız, güncel GPS konumuyla rotadaki yaklaşık
+kalan mesafeyi birleştirir. Şarj miktarı bilinmiyorsa sonuç
+boş bırakılır. Eski istasyon istekleri yeni rotayı örtmez.
+Bu hesap tüketim/yükselti/sıcaklık detaylarını ölçen bir BMS
+navigasyon motoru **değildir**.
+
+### Teknik öncelikler
+
+1. Son kod için GitHub CI'nin yeşil olması ve gerçek telefonda
+   16:9/19.5:9 ölçülerde ekran görüntüsü kontrolü.
+2. Gerçek ID.4 için Car Scanner loglarıyla MEB DID doğrulaması
+   (karıştırılmış/yanlış ECU değerlerinden kaçınma).
+3. Bağımsız, Google kategorisi/izinlerine uygun Android Auto
+   navigasyon servis prototipi; harita çizimi + rota + şarj noktaları,
+   önce DHU/uyumlu host testleri.
+4. EPDK belgeli XML/web servis şemasını yetkili ve kaynak uyumlu
+   yöntemle alma; operatör bazlı canlı CCS doluluğu ayrı sözleşme/izin.
+5. Türkiye'de üretim dağıtımı için SLA'lı harita/routing ve
+   yasal/teknik tile önbellekleme mimarisi.
