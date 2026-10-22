@@ -26,11 +26,27 @@ final class Id4LiveTelemetry {
         String status="OBD bağlı değil";
         String soc="—", voltage="—", batteryTemp="—", chargeMode="—", cooling="—";
         long updatedAt=0L;
+        long socAt=0L, voltageAt=0L, batteryTempAt=0L, chargeModeAt=0L, coolingAt=0L;
         boolean connected=false;
         Data copy(){
             Data d=new Data();d.status=status;d.soc=soc;d.voltage=voltage;
             d.batteryTemp=batteryTemp;d.chargeMode=chargeMode;d.cooling=cooling;
-            d.updatedAt=updatedAt;d.connected=connected;return d;
+            d.updatedAt=updatedAt;d.connected=connected;
+            d.socAt=socAt;d.voltageAt=voltageAt;d.batteryTempAt=batteryTempAt;
+            d.chargeModeAt=chargeModeAt;d.coolingAt=coolingAt;return d;
+        }
+        private static boolean recent(long at,long now){
+            return at>0 && now>=at && now-at<25000;
+        }
+        /** Timestamp each sensor separately: a fresh voltage must not make stale SoC look live. */
+        Data displayAt(long now){
+            Data d=copy();
+            if(!connected || !recent(socAt,now))d.soc="—";
+            if(!connected || !recent(voltageAt,now))d.voltage="—";
+            if(!connected || !recent(batteryTempAt,now))d.batteryTemp="—";
+            if(!connected || !recent(chargeModeAt,now))d.chargeMode="—";
+            if(!connected || !recent(coolingAt,now))d.cooling="—";
+            return d;
         }
     }
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -58,8 +74,10 @@ final class Id4LiveTelemetry {
         if(!connected) {
             data.soc="—";data.voltage="—";data.batteryTemp="—";
             data.chargeMode="—";data.cooling="—";data.updatedAt=0L;
+            data.socAt=0;data.voltageAt=0;data.batteryTempAt=0;
+            data.chargeModeAt=0;data.coolingAt=0;
         }
-        Data result=data.copy();
+        Data result=data.displayAt(System.currentTimeMillis());
         main.post(()->listener.onData(result));
     }
     private synchronized void measurement(String did,String response){
@@ -69,20 +87,21 @@ final class Id4LiveTelemetry {
             if(did.equals(sensor.did)) {decoded=Id4MebDecoder.decode(sensor,response);break;}
         }
         if(decoded==null)return;
+        long now=System.currentTimeMillis();
         switch(did){
             case "028C":
-                data.soc=decoded;
+                data.soc=decoded;data.socAt=now;
                 Double verified=Id4MebDecoder.bmsSoc(response);
                 if(verified!=null)Id4EnergyData.saveSoc(context,verified,System.currentTimeMillis());
                 break;
-            case "1E3B": data.voltage=decoded;break;
-            case "2A0B": data.batteryTemp=decoded;break;
-            case "7448": data.chargeMode=decoded;break;
-            case "189D": data.cooling=decoded;break;
+            case "1E3B": data.voltage=decoded;data.voltageAt=now;break;
+            case "2A0B": data.batteryTemp=decoded;data.batteryTempAt=now;break;
+            case "7448": data.chargeMode=decoded;data.chargeModeAt=now;break;
+            case "189D": data.cooling=decoded;data.coolingAt=now;break;
             default:return;
         }
-        data.updatedAt=System.currentTimeMillis();
-        Data result=data.copy();main.post(()->listener.onData(result));
+        data.updatedAt=now;
+        Data result=data.displayAt(now);main.post(()->listener.onData(result));
     }
     private void loop(BluetoothDevice device){
         try{
