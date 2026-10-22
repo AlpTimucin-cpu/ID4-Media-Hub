@@ -303,7 +303,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         position=location;
         JSONObject j=new JSONObject();
         try{j.put("lat",location.getLatitude());j.put("lon",location.getLongitude());
-            j.put("accuracy",location.getAccuracy());}catch(Exception ignored){}
+            j.put("accuracy",location.getAccuracy());
+            j.put("timeMs",location.getTime());}catch(Exception ignored){}
         send("molaPosition",j);
         if(!running || location.getAccuracy()>60 || nextStep>=steps.size())return;
         Step step=steps.get(nextStep);
