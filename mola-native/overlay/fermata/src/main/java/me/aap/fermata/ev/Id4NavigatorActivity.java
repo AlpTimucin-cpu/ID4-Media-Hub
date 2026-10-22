@@ -156,6 +156,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
               double toLat,double toLon,boolean useGps){
             plan(fromLat,fromLon,toLat,toLon,useGps);
         }
+        @JavascriptInterface public void routeVia(double fromLat,double fromLon,
+              double viaLat,double viaLon,double toLat,double toLon,boolean useGps){
+            if(!valid(viaLat,viaLon)){
+                send("molaStatus",record("error","Şarj molası konumu geçersiz."));return;
+            }
+            planWithStop(fromLat,fromLon,toLat,toLon,useGps,viaLat,viaLon);
+        }
     }
     /** Only known, freshly read ECU measurements reach the map HUD. */
     private JSONObject obdPacket(Id4LiveTelemetry.Data d) {
@@ -363,6 +370,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private void plan(double fromLat,double fromLon,
                       double toLat,double toLon,boolean useGps) {
+        planWithStop(fromLat,fromLon,toLat,toLon,useGps,Double.NaN,Double.NaN);
+    }
+    private void planWithStop(double fromLat,double fromLon,
+                      double toLat,double toLon,boolean useGps,
+                      double stopLat,double stopLon) {
         if(!valid(fromLat,fromLon)||!valid(toLat,toLon)){
             send("molaStatus",record("error","Başlangıç ve varış için listeden konum seç."));return;
         }
@@ -373,7 +385,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             try{
                 String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
                 String b=String.format(Locale.US,"%.6f,%.6f",toLon,toLat);
-                String query="/route/v1/driving/"+a+";"+b+
+                boolean hasStop=valid(stopLat,stopLon);
+                String via=hasStop?
+                    String.format(Locale.US,"%.6f,%.6f",stopLon,stopLat):"";
+                String query="/route/v1/driving/"+a+(hasStop?";"+via:"")+";"+b+
                     "?overview=full&geometries=geojson&steps=true&alternatives=true";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
@@ -406,6 +421,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("provider",activeRouteProvider);
                 packet.put("trafficAvailable",false);
                 packet.put("navigationActive",verifiedGps);
+                packet.put("stopIncluded",hasStop);
                 // EV profile model, not an ECU claim. No manual entry.
                 // A recent measured SoC is optional; assumptions are explicit in the UI.
                 Id4EnergyData.Snapshot facts=Id4EnergyData.load(this,System.currentTimeMillis());
@@ -430,18 +446,24 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         }
                     }
                 }
-                JSONArray roadSteps=selected.getJSONArray("legs").getJSONObject(0).getJSONArray("steps");
+                JSONArray legs=selected.getJSONArray("legs");
                 ArrayList<Step> parsed=new ArrayList<>();
                 JSONArray labels=new JSONArray();
-                for(int i=0;i<roadSteps.length() && i<180;i++){
-                    JSONObject row=roadSteps.getJSONObject(i);
-                    JSONObject m=row.getJSONObject("maneuver");
-                    JSONArray coord=m.getJSONArray("location");
-                    String instruction=spoken(m.optString("type"),m.optString("modifier"),
-                        row.optString("name"));
-                    if(!instruction.isEmpty()){
-                        parsed.add(new Step(coord.getDouble(1),coord.getDouble(0),instruction));
-                        labels.put(instruction);
+                for(int leg=0;leg<legs.length();leg++){
+                    if(leg==1 && hasStop){
+                        labels.put("Şarj molasından sonra hedefe devam et");
+                    }
+                    JSONArray roadSteps=legs.getJSONObject(leg).getJSONArray("steps");
+                    for(int i=0;i<roadSteps.length() && parsed.size()<180;i++){
+                        JSONObject row=roadSteps.getJSONObject(i);
+                        JSONObject m=row.getJSONObject("maneuver");
+                        JSONArray coord=m.getJSONArray("location");
+                        String instruction=spoken(m.optString("type"),m.optString("modifier"),
+                            row.optString("name"));
+                        if(!instruction.isEmpty()){
+                            parsed.add(new Step(coord.getDouble(1),coord.getDouble(0),instruction));
+                            labels.put(instruction);
+                        }
                     }
                 }
                 packet.put("steps",labels);
