@@ -58,77 +58,81 @@ public final class Id4OverviewActivity extends Activity {
         scroll.setBackgroundColor(BG);
         setContentView(scroll);
         LinearLayout page=new LinearLayout(this);
-        page.setPadding(dp(15),dp(15),dp(15),dp(28));
+        page.setPadding(dp(10),dp(9),dp(10),dp(20));
         page.setOrientation(LinearLayout.VERTICAL);scroll.addView(page);
-        TextView heading=text("MOLA  •  ID.4",25,true,AQUA);
+        TextView heading=text("MOLA  •  ID.4",21,true,AQUA);
         page.addView(heading);
-        page.addView(text("2024 Volkswagen ID.4 Pure  ·  Araç özeti",13,false,0xffa6c7d0));
-        state=text("OBD bağlı değil",14,true,Color.WHITE);
+        page.addView(text("2024 Volkswagen ID.4 Pure  ·  Tek bakışta araç ve rota",11,false,0xffa6c7d0));
+        state=text("OBD bağlı değil",12,true,Color.WHITE);
         page.addView(state);
-        updated=text("Ölçümler doğrulanmadı",12,false,0xff96b6bf);page.addView(updated);
+        updated=text("Ölçümler doğrulanmadı",11,false,0xff96b6bf);page.addView(updated);
+
+        // Main view is a one-glance instrument panel; details remain below.
+        // No estimated SoC, charging power, price or range is invented.
+        page.addView(text("CANLI ARAÇ DURUMU",12,true,AQUA));
+        LinearLayout primary=new LinearLayout(this);page.addView(primary);
+        soc=addCard(primary,"Batarya","—",true);
+        range=addCard(primary,"Menzil","—",true);
+        charge=addCard(primary,"Şarj / sürüş","—",true);
+
+        page.addView(text("ROTA VE YOLCULUK",12,true,AQUA));
+        LinearLayout journey=new LinearLayout(this);page.addView(journey);
+        lastRoute=addCard(journey,"Son rota","—",true);
+        cost=addCard(journey,"Şarj maliyeti","—",true);
+        lastRouteInfo=text("Henüz kaydedilmiş rota yok.",11,false,0xffa6c7d0);
+        page.addView(lastRouteInfo);
+        routeEnergy=text("Rota enerjisi: ölçüm yok",12,true,AQUA);
+        page.addView(routeEnergy);
+
+        // Traffic and pricing are not live until supported provider feeds exist.
+        // Weather is requested on a planned route in the existing navigator.
+        page.addView(text("HAVA · Rota ekranında Open-Meteo tahmini  |  TRAFİK · Canlı veri bağlı değil",11,false,0xffa6c7d0));
 
         LinearLayout actions=new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         page.addView(actions);
-        addAction(actions,"OBD bağla",this::selectAdapter);
-        addAction(actions,"Rota aç",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
+        addAction(actions,"Rota / harita",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         addAction(actions,"İstasyonlar",()->startActivity(new Intent(this,Id4EvActivity.class)));
+        addAction(actions,"OBD bağla",this::selectAdapter);
 
-        page.addView(text("BATARYA VE ŞARJ",14,true,AQUA));
-        LinearLayout r1=new LinearLayout(this);page.addView(r1);
-        soc=addCard(r1,"Batarya SoC","—",true);
-        charge=addCard(r1,"Şarj durumu","—",true);
+        page.addView(text("BATARYA VE TÜKETİM • AYRINTILAR",12,true,AQUA));
         LinearLayout r2=new LinearLayout(this);page.addView(r2);
-        voltage=addCard(r2,"HV paket gerilimi","—",true);
+        voltage=addCard(r2,"HV gerilim","—",true);
         temp=addCard(r2,"Batarya sıcaklığı","—",true);
+        power=addCard(r2,"Anlık şarj gücü","—",true);
         LinearLayout r3=new LinearLayout(this);page.addView(r3);
-        cooling=addCard(r3,"Soğutma sıcaklığı","—",true);
-        power=addCard(r3,"Şarj gücü","—",true);
+        cooling=addCard(r3,"Soğutma","—",true);
+        consumption=addCard(r3,"Tüketim","—",true);
+        page.addView(text("Menzil, tüketim ve şarj gücü: güvenilir araç ölçümü yoksa gösterilmez. Maliyet için faturalandırılan kWh ve güncel tarife gerekir.",11,false,0xffa6c7d0));
 
-        page.addView(text("MENZİL VE TÜKETİM",14,true,AQUA));
-        LinearLayout r4=new LinearLayout(this);page.addView(r4);
-        range=addCard(r4,"Kalan menzil","—",true);
-        consumption=addCard(r4,"Tüketim (kWh/100 km)","—",true);
-        page.addView(text("Güvenilir tüketim veya menzil ölçümü olmadan varsayılan 18 kWh/100 km kullanılmaz.",11,false,0xffa6c7d0));
-
-        page.addView(text("ROTA VE YOLCULUK",14,true,AQUA));
-        LinearLayout r5=new LinearLayout(this);page.addView(r5);
-        lastRoute=addCard(r5,"Son planlanan rota","—",true);
-        cost=addCard(r5,"Gerçek şarj maliyeti","—",true);
-        lastRouteInfo=text("Henüz kaydedilmiş rota yok.",12,false,0xffa6c7d0);
-        page.addView(lastRouteInfo);
-        routeEnergy=text("Rota tüketimi: ölçüm yok",13,true,AQUA);
-        page.addView(routeEnergy);
-        page.addView(text("Maliyet için doğrulanmış operatör tarifesi ve faturalandırılan kWh gerekir. Hava/rota kartları navigasyon ekranındadır.",12,false,0xffa6c7d0));
-
-        page.addView(text("TÜM ÖLÇÜMLER",14,true,AQUA));
-        Button sensors=new Button(this);sensors.setText("25 MEB sorgusu ve şarj kayıtlarını aç  ›");
+        page.addView(text("TÜM ÖLÇÜMLER",12,true,AQUA));
+        Button sensors=new Button(this);sensors.setText("25 MEB sorgusu ve şarj kayıtları  ›");
         sensors.setAllCaps(false);
         sensors.setOnClickListener(v->startActivity(new Intent(this,Id4ObdActivity.class)));
         page.addView(sensors);
-        page.addView(text("Kaynak: Bluetooth ELM327 · salt-okunur MEB deneysel sorgular. Car Scanner ile eşzamanlı bağlantı kurma. Çalışmayan sensörler boş bırakılır.",11,false,0xff89aab5));
+        page.addView(text("Kaynak: Bluetooth ELM327 · salt-okunur deneysel MEB sorguları. Car Scanner ile aynı anda bağlanma. Çalışmayan sensörler boş bırakılır.",11,false,0xff89aab5));
         render(latest);
     }
     private TextView text(String s,int sp,boolean bold,int color){
         TextView t=new TextView(this);t.setText(s);t.setTextColor(color);t.setTextSize(sp);
         if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        t.setPadding(dp(4),dp(8),dp(4),dp(7));return t;
+        t.setPadding(dp(3),dp(4),dp(3),dp(3));return t;
     }
     private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
     private void addAction(LinearLayout row,String label,Runnable action){
         Button b=new Button(this);b.setAllCaps(false);b.setText(label);
         b.setTextSize(12);b.setOnClickListener(v->action.run());
-        row.addView(b,new LinearLayout.LayoutParams(0,dp(55),1f));
+        row.addView(b,new LinearLayout.LayoutParams(0,dp(45),1f));
     }
     private TextView addCard(LinearLayout row,String label,String init,boolean wide){
         LinearLayout container=new LinearLayout(this);container.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable shape=new GradientDrawable();shape.setColor(CARD);
         shape.setCornerRadius(dp(14));container.setBackground(shape);
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(115),1f);
-        lp.setMargins(dp(3),dp(5),dp(3),dp(5));
-        row.addView(container,lp);container.setPadding(dp(12),dp(10),dp(8),dp(7));
-        container.addView(text(label,12,false,0xffa9c9d2));
-        TextView value=text(init,wide?20:18,true,Color.WHITE);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(78),1f);
+        lp.setMargins(dp(2),dp(3),dp(2),dp(3));
+        row.addView(container,lp);container.setPadding(dp(7),dp(5),dp(4),dp(4));
+        container.addView(text(label,10,false,0xffa9c9d2));
+        TextView value=text(init,wide?17:16,true,Color.WHITE);
         value.setMaxLines(2);value.setEllipsize(android.text.TextUtils.TruncateAt.END);
         container.addView(value);return value;
     }
@@ -146,7 +150,7 @@ public final class Id4OverviewActivity extends Activity {
         charge.setText(fresh?latest.chargeMode:"—");
         cooling.setText(fresh?latest.cooling:"—");
         // These are NOT defined by the currently validated VW MEB PID formulas.
-        power.setText("Doğrulanmadı");
+        power.setText("Veri yok");
         range.setText("Ölçüm yok");
         consumption.setText("Ölçüm yok");
         cost.setText("Tarife/veri yok");
