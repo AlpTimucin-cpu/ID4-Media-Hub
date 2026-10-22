@@ -361,6 +361,8 @@ public final class Id4EvActivity extends Activity {
                                     alert("İstasyon konumu","Geçerli istasyon koordinatı bulunamadı.");
                                     return;
                                 }
+                                Id4EnergyData.saveStation(this,
+                                    s.optString("name",""),s.optString("operator",""));
                                 Intent intent=new Intent(this,Id4NavigatorActivity.class);
                                 intent.putExtra("toLat",lat);
                                 intent.putExtra("toLon",lon);
