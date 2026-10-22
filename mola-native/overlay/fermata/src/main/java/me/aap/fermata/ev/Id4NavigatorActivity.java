@@ -2,12 +2,16 @@ package me.aap.fermata.ev;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
@@ -29,6 +33,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -42,6 +48,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
+    private Id4LiveTelemetry telemetry;
+    private Id4LiveTelemetry.Data latestObd=new Id4LiveTelemetry.Data();
     private LocationManager locationManager;
     private TextToSpeech tts;
     private Location position;
@@ -60,6 +68,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         getWindow().setStatusBarColor(0xff061e2b);
         getWindow().setNavigationBarColor(0xff061e2b);
         locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
+        telemetry=new Id4LiveTelemetry(this,data->{
+            latestObd=data;
+            send("molaTelemetry",obdPacket(data));
+        });
         tts=new TextToSpeech(this,status->{
             if(status==TextToSpeech.SUCCESS)tts.setLanguage(new Locale("tr","TR"));
         });
@@ -84,6 +96,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             }
             @Override public void onPageFinished(WebView v,String url){
                 if(!PAGE.equals(url) || destroyed)return;
+                send("molaTelemetry",obdPacket(latestObd));
                 Intent source=getIntent();
                 if(source==null || !source.hasExtra("toLat") || !source.hasExtra("toLon"))return;
                 double lat=source.getDoubleExtra("toLat",Double.NaN);
@@ -111,6 +124,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
+        @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
         @JavascriptInterface public void back() {ui.post(()->finish());}
         @JavascriptInterface public void stations() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
@@ -130,6 +144,76 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             plan(fromLat,fromLon,toLat,toLon,useGps);
         }
     }
+    /** Only known, freshly read ECU measurements reach the map HUD. */
+    private JSONObject obdPacket(Id4LiveTelemetry.Data d) {
+        JSONObject p=new JSONObject();
+        boolean fresh=d.connected && d.updatedAt>0 &&
+            System.currentTimeMillis()-d.updatedAt<25000;
+        try{
+            p.put("fresh",fresh);
+            p.put("soc",fresh?d.soc:"—");
+            p.put("voltage",fresh?d.voltage:"—");
+            p.put("temperature",fresh?d.batteryTemp:"—");
+            p.put("chargeMode",fresh?d.chargeMode:"—");
+            p.put("status",d.status);
+        }catch(Exception ignored){}
+        return p;
+    }
+    /** Explicit first selection; only paired adapters, no background scan. */
+    @SuppressWarnings("deprecation")
+    private void selectObdAdapter() {
+        if(Build.VERSION.SDK_INT>=31 &&
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},72);return;
+        }
+        try{
+            BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
+            if(adapter==null || !adapter.isEnabled()){
+                send("molaTelemetry",obdStatus("Önce Bluetooth'u açıp ELM327'yi eşleştir."));return;
+            }
+            Set<BluetoothDevice> paired=adapter.getBondedDevices();
+            if(paired==null || paired.isEmpty()){
+                send("molaTelemetry",obdStatus("Eşleştirilmiş OBD cihazı bulunamadı."));return;
+            }
+            List<BluetoothDevice> devices=new ArrayList<>(paired);
+            String[] labels=new String[devices.size()];
+            for(int i=0;i<devices.size();i++){
+                String name=devices.get(i).getName();
+                labels[i]=name==null?"Eşleştirilmiş cihaz "+(i+1):name;
+            }
+            new AlertDialog.Builder(this)
+                .setTitle("OBD adaptörünü seç")
+                .setItems(labels,(dialog,index)->{
+                    BluetoothDevice d=devices.get(index);
+                    getSharedPreferences("Id4OverviewActivity",MODE_PRIVATE).edit()
+                        .putString("paired_mac",d.getAddress()).apply();
+                    telemetry.start(d);
+                })
+                .setNegativeButton("Vazgeç",null).show();
+        }catch(SecurityException e){
+            send("molaTelemetry",obdStatus("Bluetooth erişim izni gerekli."));
+        }
+    }
+    private JSONObject obdStatus(String status){
+        JSONObject j=obdPacket(new Id4LiveTelemetry.Data());
+        try{j.put("status",status);}catch(Exception ignored){}
+        return j;
+    }
+    @SuppressWarnings("deprecation")
+    private void autoConnectObd(){
+        if(Build.VERSION.SDK_INT>=31 &&
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
+        String address=getSharedPreferences("Id4OverviewActivity",MODE_PRIVATE)
+            .getString("paired_mac",null);
+        if(address==null)return;
+        try{
+            BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
+            if(adapter==null || !adapter.isEnabled())return;
+            for(BluetoothDevice d:adapter.getBondedDevices()){
+                if(address.equals(d.getAddress())){telemetry.start(d);return;}
+            }
+        }catch(SecurityException ignored){}
+    }
     private void requestGps() {
         if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;
@@ -143,8 +227,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
         super.onRequestPermissionsResult(code,permissions,results);
+        if(code==72){
+            if(results.length>0 && results[0]==PackageManager.PERMISSION_GRANTED)selectObdAdapter();
+            else send("molaTelemetry",obdStatus("Bluetooth izni verilmedi."));
+            return;
+        }
         if(code==41 && results.length>0 && results[0]==PackageManager.PERMISSION_GRANTED)requestGps();
-        else send("molaStatus",record("error","Konum izni olmadan canlı yönlendirme yapılamaz"));
+        else if(code==41)send("molaStatus",record("error","Konum izni olmadan canlı yönlendirme yapılamaz"));
     }
     @Override public void onLocationChanged(Location location) {
         if(destroyed)return;
@@ -438,15 +527,17 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     // Never start GPS merely because the user opened a manual route preview.
     // Location is requested explicitly via the "Konumumu başlangıç yap" button.
-    @Override protected void onResume(){super.onResume();}
+    @Override protected void onResume(){super.onResume();if(telemetry!=null)autoConnectObd();}
     @Override protected void onPause(){
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        running=false; if(tts!=null)tts.stop();super.onPause();
+        running=false; if(tts!=null)tts.stop();
+        if(telemetry!=null)telemetry.stop();super.onPause();
     }
     @Override protected void onDestroy(){
         destroyed=true;running=false;generation++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
+        if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();
     }
