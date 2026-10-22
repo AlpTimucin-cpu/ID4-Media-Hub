@@ -69,6 +69,8 @@ public final class Id4EvActivity extends Activity {
     private boolean mapReady;
     private boolean stopped;
     private int generation;
+    private int energyPage=-1;
+    private TextView autoEnergyFacts,autoEnergyModel,autoEnergyPrice;
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
@@ -384,6 +386,7 @@ public final class Id4EvActivity extends Activity {
      */
     private void energyScreen(){
         final int currentPage=++generation;
+        energyPage=currentPage;
         LinearLayout container=content();
         ScrollView sc=new ScrollView(this);
         LinearLayout panel=new LinearLayout(this);
@@ -398,6 +401,7 @@ public final class Id4EvActivity extends Activity {
         final TextView model=text("",15,false);
         final TextView tariff=text("Fiyat kaynağı kontrol ediliyor…",14,false);
         panel.addView(data);panel.addView(model);panel.addView(tariff);
+        autoEnergyFacts=data;autoEnergyModel=model;autoEnergyPrice=tariff;
         panel.addView(text("Model varsayımı: ID.4 Pure kullanılabilir batarya "+
             "52 kWh, tüketim 16–24 kWh/100 km, varış rezervi %15. "+
             "Bunlar araçtan ölçülmemiştir; gerçek SoH, tüketim, "+
@@ -660,6 +664,14 @@ public final class Id4EvActivity extends Activity {
         g.setColor(0xff22566a);g.setCornerRadius(dp(11));
         b.setBackground(g);b.setOnClickListener(v->r.run());
         return b;
+    }
+    @Override public void onResume(){
+        super.onResume();
+        // Recompute whenever returning from the OBD or navigation Activity.
+        if(energyPage==generation && autoEnergyFacts!=null && !stopped){
+            renderAutoEnergy(autoEnergyFacts,autoEnergyModel);
+            fetchAutomaticPrice(energyPage,autoEnergyPrice);
+        }
     }
     @Override public void onDestroy(){
         stopped=true;generation++;work.shutdownNow();
