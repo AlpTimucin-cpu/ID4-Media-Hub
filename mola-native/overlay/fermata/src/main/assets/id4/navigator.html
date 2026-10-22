@@ -69,6 +69,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 #route-compact{display:none}
 .compact-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .compact-distance{font-size:23px;font-weight:800;color:#103448}
+.station-summary{font-size:11px;line-height:1.35;background:#edf0ff;color:#28395c;padding:8px 10px;border-radius:10px;margin:5px 0}
+.station-actions{display:flex;gap:7px;margin:8px 0}
+.station-actions button{background:#e6eef3;color:#17495e;font-size:12px;font-weight:650;padding:10px;border-radius:10px;flex:1}
+.station-map-note{font-size:11px;color:#687a86;margin:4px 0}
 .route-energy{font-size:11px;line-height:1.35;background:#e6f4ee;padding:7px 10px;border-radius:10px;color:#0f5a48;margin:6px 0}
 .mini-weather{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:10px 0}
 .mini-weather span{font-size:10px;line-height:1.3;text-align:center;background:#eaf4f5;border-radius:9px;padding:8px 3px;color:#234f60}
@@ -76,7 +80,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .compact-actions button{flex:1;min-height:42px;border-radius:11px;font-size:12px;font-weight:700}
 #route-details{background:#08798a;color:#fff}
 #route-edit{background:#e7edf1;color:#1c4657}
-.sheet.route-active{height:276px;min-height:0;padding:10px 15px 20px;overflow:hidden}
+.sheet.route-active{height:306px;min-height:0;padding:10px 15px 20px;overflow:hidden}
 .sheet.route-active #route-compact{display:block}
 .sheet.route-active:not(.details-open)>:not(.grip):not(#route-compact){display:none!important}
 .sheet.route-active.details-open{height:74%;max-height:92%;padding-bottom:110px;overflow-y:auto}
@@ -98,8 +102,9 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div id="route-compact" aria-label="Rota özeti">
 <div class="compact-row"><div><span class="label">GÜZERGÂH</span><div class="compact-distance" id="compact-trip">—</div></div><span class="tag">Trafik verisi yok</span></div>
 <div class="route-energy" id="trip-energy">Enerji: rota bekleniyor</div>
+<div class="station-summary" id="station-summary">⚡ EPDK şarj istasyonları: rota bekleniyor</div>
 <div class="mini-weather" id="compact-weather"><span>+1 dk · hava bekleniyor</span><span>+5 dk · hava bekleniyor</span><span>+10 dk · hava bekleniyor</span><span>+15 dk · hava bekleniyor</span></div>
-<div class="compact-actions"><button id="route-details" type="button">Hava ve rota ayrıntıları</button><button id="route-edit" type="button">Yeni rota</button></div></div>
+<div class="compact-actions"><button id="route-details" type="button">Rota ayrıntıları</button><button id="route-edit" type="button">Yeni rota</button></div></div>
 <div id="route-form">
 <div class="flex"><h1 class="title">Nereye gidiyoruz?</h1><span class="tag">BETA · MANUEL/GPS</span></div>
 <div class="lookup">
@@ -119,7 +124,11 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div id="status" role="status">Harita açılıyor. GPS isteğe bağlı.</div>
 </div>
 <div class="trip" id="trip"><div class="flex"><div><div class="label">Tahmini rota</div><strong id="tripdata">—</strong></div><span class="tag" id="alternatives">—</span></div><div id="directions"></div></div>
-<div class="tools"><button id="charge"><span>⚡</span>Şarj istasyonları</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
+<div class="station-actions">
+<button id="charge-map" type="button">⚡ Haritadaki şarjları göster</button>
+<button id="charge-list" type="button">Tüm istasyonlar</button>
+</div><div class="station-map-note" id="station-note">EPDK konum listesi, canlı soket doluluğu içermez.</div>
+<div class="tools"><button id="charge"><span>⚡</span>Harita üzeri şarj</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
 <div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge" id="obd-status">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value" id="vehicle-soc">—</div></div><div><div class="label">Menzil</div><div class="value">Doğrulanmadı</div></div></div></div>
 <div><strong>Yol boyunca hava</strong>
 <div class="weather" id="weather-cards">
@@ -137,6 +146,68 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 (function(){
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
+var stationMarkers=[],stationKind='',stationRequestPending=false;
+function clearStationMarkers(){
+ if(map)stationMarkers.forEach(function(marker){map.removeLayer(marker)});
+ stationMarkers=[];
+}
+function showVisibleStations(){
+ if(!map || !map.getBounds){msg('Harita hazır değil.');return}
+ var b=map.getBounds();
+ if(!b)return;
+ stationRequestPending=true;
+ $('station-note').textContent='EPDK harita istasyonları yükleniyor...';
+ if(!native('visibleStations',b.getSouth(),b.getWest(),b.getNorth(),b.getEast())){
+  stationRequestPending=false;
+ }
+}
+window.molaStations=function(packet){
+ if(!packet||!Array.isArray(packet.items))return;
+ stationRequestPending=false;
+ clearStationMarkers();
+ stationKind=String(packet.kind||'visible');
+ packet.items.slice(0,55).forEach(function(station){
+  if(!station||!valid(station.lat,station.lon)||!map)return;
+  var mark=L.circleMarker([station.lat,station.lon],{
+   radius:7,fillOpacity:.94,fillColor:station.ccs?'#168d7c':'#647ca2',
+   color:'#ffffff',weight:2
+  }).addTo(map);
+  var content=document.createElement('div');
+  var title=document.createElement('strong');
+  title.textContent=String(station.title||'Şarj istasyonu').slice(0,100);
+  content.appendChild(title);
+  var desc=document.createElement('div');
+  desc.textContent=String(station.operator||'')+' · '+String(station.sockets||'Soket türü bilinmiyor');
+  content.appendChild(desc);
+  var pick=document.createElement('button');
+  pick.textContent='Varış noktası yap';
+  pick.type='button';
+  pick.onclick=function(){
+   var label=String(station.title||'Şarj istasyonu');
+   if(document.querySelector('.sheet').classList.contains('route-active'))wipeRoute();
+   selectPoint('to',station.lat,station.lon,label,false);
+   native('saveStation',label,String(station.operator||''));
+   if(map&&map.closePopup)map.closePopup();
+   msg('Şarj istasyonu hedef seçildi. Rotayı hesapla.');
+  };
+  content.appendChild(pick);
+  mark.bindPopup(content);
+  stationMarkers.push(mark);
+ });
+ var count=Number.isFinite(packet.total)?packet.total:packet.items.length;
+ var timestamp=String(packet.updatedAt||'Tarih bilinmiyor');
+ var stale=Number(packet.snapshotAgeHours)>72?' (ESKİ KAYITLAR)':'';
+ var detail='⚡ EPDK: '+count+' '+(stationKind==='route'?'rota yakınında CCS istasyonu':'haritada istasyon')+
+   ' · '+stationMarkers.length+' işaret'+stale;
+ $('station-summary').textContent=detail;
+ $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
+};
+window.molaStationError=function(packet){
+ stationRequestPending=false;
+ var detail=packet&&packet.detail?String(packet.detail):'EPDK erişimi başarısız.';
+ $('station-summary').textContent='⚡ İstasyon verisi alınamadı';
+ $('station-note').textContent=detail;
+};
 // City-centre coordinates: mevlutcelik/turkey-cities-data, MIT license.
 var CITY_DATA=[["Adana",37,35.3213],["Adıyaman",37.7648,38.2786],["Afyonkarahisar",38.7569,30.5387],["Aksaray",38.3687,34.0369],["Amasya",40.6499,35.8353],["Ankara",39.9208,32.8541],["Antalya",36.8841,30.7056],["Ardahan",41.1109,42.7022],["Artvin",41.1828,41.8174],["Aydın",37.856,27.8416],["Ağrı",39.7217,43.0567],["Balıkesir",39.6484,27.8826],["Bartın",41.633,32.3378],["Batman",37.8812,41.1351],["Bayburt",40.2552,40.2237],["Bilecik",40.1469,30.4086],["Bingöl",38.8846,40.4939],["Bitlis",38.3943,42.1237],["Bolu",40.7399,31.6116],["Burdur",37.7244,30.2889],["Bursa",40.1826,29.0669],["Denizli",37.7765,29.0864],["Diyarbakır",37.9134,40.2179],["Düzce",40.8438,31.1565],["Edirne",41.6818,26.5623],["Elazığ",38.681,39.2264],["Erzincan",39.75,39.5],["Erzurum",39.9042,41.2676],["Eskişehir",39.766,30.526],["Gaziantep",37.0662,37.3833],["Giresun",40.9144,38.3908],["Gümüşhane",40.4602,39.4818],["Hakkari",37.5833,43.7333],["Hatay",36.2063,36.1601],["Isparta",37.7648,30.556],["Iğdır",39.888,44.0049],["Kahramanmaraş",37.5833,36.9333],["Karabük",41.196,32.625],["Karaman",37.1759,33.2287],["Kars",40.6066,43.0975],["Kastamonu",41.3887,33.7827],["Kayseri",38.7223,35.4853],["Kilis",36.7167,37.1167],["Kocaeli",40.8533,29.8815],["Konya",37.8651,32.482],["Kütahya",39.4168,29.983],["Kırklareli",41.7355,27.2255],["Kırıkkale",39.8468,33.5153],["Kırşehir",39.15,34.1667],["Malatya",38.3552,38.3095],["Manisa",38.6191,27.4289],["Mardin",37.3124,40.7357],["Mersin",36.8,34.6333],["Muğla",37.2153,28.3636],["Muş",38.9462,41.7539],["Nevşehir",38.625,34.712],["Niğde",37.9667,34.6833],["Ordu",40.9849,37.8785],["Osmaniye",37.0742,36.2475],["Rize",41.0201,40.5234],["Sakarya",40.7569,30.3782],["Samsun",41.2928,36.3313],["Siirt",37.93,41.94],["Sinop",42.0231,35.1531],["Sivas",39.7477,37.0179],["Tekirdağ",40.9833,27.5167],["Tokat",40.3167,36.55],["Trabzon",41.0015,39.7178],["Tunceli",39.108,39.5473],["Uşak",38.68,29.4081],["Van",38.5018,43.3748],["Yalova",40.65,29.2667],["Yozgat",39.82,34.8048],["Zonguldak",41.4564,31.7987],["Çanakkale",40.1553,26.4142],["Çankırı",40.6013,33.6134],["Çorum",40.5497,34.953],["İstanbul",41.0082,28.9784],["İzmir",38.4192,27.1287],["Şanlıurfa",37.1671,38.7939],["Şırnak",37.5164,42.4614]];
 var points={from:null,to:null},usingGps=false,pendingGps=false,voice=true;
@@ -185,6 +256,8 @@ function native(name){
    case 'stations':bridge.stations();break;
    case 'sensors':bridge.sensors();break;
    case 'selectObd':bridge.selectObd();break;
+   case 'visibleStations':bridge.visibleStations(a[0],a[1],a[2],a[3]);break;
+   case 'saveStation':bridge.saveStation(a[0],a[1]);break;
    default:return false;
   }
   return true;
@@ -204,6 +277,7 @@ function wipeRoute(){
  });
  $('weather-source').textContent='Hava: Rota seçilmedi.';
  $('trip-energy').textContent='Enerji: rota bekleniyor';
+ $('station-summary').textContent='⚡ EPDK şarj istasyonları: rota bekleniyor';
  [...$('weather-cards').children].forEach(function(c){c.children[1].textContent='Rota bekleniyor'});
  native('stop');
 }
@@ -341,6 +415,7 @@ window.molaRoute=function(o){
  $('trip').style.display='block';
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
  $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
+ $('station-summary').textContent='⚡ Rota çevresindeki CCS istasyonları yükleniyor...';
  $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
   ' · kaza ve yol çalışması bilgisi içermez.';
  $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
@@ -425,7 +500,8 @@ $('tts').onclick=function(){
  $('tts').textContent=voice?'Kapat':'Aç';
 };
 $('back').onclick=function(){native('back')};
-$('charge').onclick=function(){native('stations')};
+$('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
+$('charge-list').onclick=function(){native('stations')};
 $('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
 $('allSensors').onclick=function(){native('sensors')};
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
