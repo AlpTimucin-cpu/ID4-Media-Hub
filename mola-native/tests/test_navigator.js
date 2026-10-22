@@ -150,6 +150,8 @@ assert.equal(get('live-voltage').textContent,'370 V');
 assert.equal(get('live-temp').textContent,'23 °C');
 assert.equal(get('vehicle-soc').textContent,'64 %');
 assert.equal(get('co-soc').textContent,'64 %','full-screen SoC does not use real packet');
+assert(get('co-sensor-age').textContent.includes('ölçüm yeni'),
+ 'measured SoC must show verified freshness status');
 assert.equal(get('co-soc-fill').style.width,'64%','battery progress is not linked to BMS SoC');
 assert.equal(get('co-voltage').textContent,'370 V');
 assert.equal(get('co-temp').textContent,'23 °C');
@@ -168,6 +170,8 @@ win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
 assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
+assert(get('co-sensor-age').textContent.includes('güncel değil'),
+ 'missing SoC must not claim a fresh measured value');
 assert.equal(get('co-trip-battery').textContent,'OBD SoC: —',
  'trip bar should clear stale measured battery');
 assert.equal(get('co-trip-arrival').textContent,'—',
