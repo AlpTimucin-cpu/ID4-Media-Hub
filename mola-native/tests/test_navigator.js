@@ -185,6 +185,8 @@ win.molaRoute({coordinates:[[34.68,37.96],[34.9,37.8],[30.7,36.9]],
  energyLowKwh:82,energyHighKwh:123,steps:[]});
 assert(get('compact-trip').textContent.includes('1 şarj molası'),
  'waypoint route must show charging stop label');
+assert(get('trip-energy').textContent.includes('Mola şarj miktarı bilinmiyor'),
+ 'charging stop must never invent terminal SoC');
 // Same-map charging: request viewport only on user action; never show invented availability.
 get('charge-map').onclick();
 assert.equal(calls.visible.length,1,'EPDK viewport bridge never invoked');
