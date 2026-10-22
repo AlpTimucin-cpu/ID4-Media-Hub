@@ -69,6 +69,9 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 #route-compact{display:none}
 .compact-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .compact-distance{font-size:23px;font-weight:800;color:#103448}
+.station-suggestion{display:none;align-items:center;gap:6px;margin:4px 0;font-size:11px;line-height:1.25}
+.station-suggestion button{flex-shrink:0;padding:8px 10px;border-radius:9px;background:#126c69;color:white;font-weight:700;font-size:11px}
+.station-suggestion span{flex:1;overflow-wrap:anywhere}
 .station-summary{font-size:11px;line-height:1.35;background:#edf0ff;color:#28395c;padding:8px 10px;border-radius:10px;margin:5px 0}
 .station-actions{display:flex;gap:7px;margin:8px 0}
 .station-actions button{background:#e6eef3;color:#17495e;font-size:12px;font-weight:650;padding:10px;border-radius:10px;flex:1}
@@ -80,7 +83,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .compact-actions button{flex:1;min-height:42px;border-radius:11px;font-size:12px;font-weight:700}
 #route-details{background:#08798a;color:#fff}
 #route-edit{background:#e7edf1;color:#1c4657}
-.sheet.route-active{height:306px;min-height:0;padding:10px 15px 20px;overflow:hidden}
+.sheet.route-active{height:347px;min-height:0;padding:10px 15px 20px;overflow:hidden}
 .sheet.route-active #route-compact{display:block}
 .sheet.route-active:not(.details-open)>:not(.grip):not(#route-compact){display:none!important}
 .sheet.route-active.details-open{height:74%;max-height:92%;padding-bottom:110px;overflow-y:auto}
@@ -103,6 +106,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div class="compact-row"><div><span class="label">GÜZERGÂH</span><div class="compact-distance" id="compact-trip">—</div></div><span class="tag">Trafik verisi yok</span></div>
 <div class="route-energy" id="trip-energy">Enerji: rota bekleniyor</div>
 <div class="station-summary" id="station-summary">⚡ EPDK şarj istasyonları: rota bekleniyor</div>
+<div class="station-suggestion" id="station-suggestion"><span id="station-suggestion-label">Rota bekleniyor</span><button id="station-suggestion-choose" type="button">Mola ekle</button></div>
 <div class="mini-weather" id="compact-weather"><span>+1 dk · hava bekleniyor</span><span>+5 dk · hava bekleniyor</span><span>+10 dk · hava bekleniyor</span><span>+15 dk · hava bekleniyor</span></div>
 <div class="compact-actions"><button id="route-details" type="button">Rota ayrıntıları</button><button id="route-edit" type="button">Yeni rota</button></div></div>
 <div id="route-form">
@@ -147,6 +151,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
+var suggestedCharge=null;
 function clearStationMarkers(){
  if(map)stationMarkers.forEach(function(marker){map.removeLayer(marker)});
  stationMarkers=[];
@@ -221,11 +226,31 @@ window.molaStations=function(packet){
    ' · '+stationMarkers.length+' işaret'+stale;
  $('station-summary').textContent=detail;
  $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
+ suggestedCharge=null;
+ $('station-suggestion').style.display='none';
+ if(stationKind==='route' && packet.suggested &&
+    packet.chargeModel==='charge-likely' && !packet.stopIncluded){
+  var station=packet.suggested;
+  if(valid(station.lat,station.lon) && points.from && points.to){
+   suggestedCharge=station;
+   var label=String(station.title||'CCS istasyonu');
+   var km=Number(station.routeProgressKm);
+   $('station-suggestion-label').textContent='⚡ Model önerisi: '+label+
+     (Number.isFinite(km)?' · yaklaşık '+km.toFixed(0)+' km sonra':'')+
+     ' · Konum, sapma ve müsaitlik doğrulanmalı';
+   $('station-suggestion').style.display='flex';
+  }
+ }else if(stationKind==='route' && packet.chargeModel==='no-soc'){
+  $('station-summary').textContent=detail+' · OBD SoC olmadan mola önerilmez';
+ }else if(stationKind==='route' && packet.chargeModel==='charge-likely' && !packet.stopIncluded){
+  $('station-summary').textContent=detail+' · Modele uygun güvenilir mola bulunamadı';
+ }
 };
 window.molaStationError=function(packet){
  stationRequestPending=false;
  var detail=packet&&packet.detail?String(packet.detail):'EPDK erişimi başarısız.';
  $('station-summary').textContent='⚡ İstasyon verisi alınamadı';
+ suggestedCharge=null;$('station-suggestion').style.display='none';
  $('station-note').textContent=detail;
 };
 // City-centre coordinates: mevlutcelik/turkey-cities-data, MIT license.
@@ -299,6 +324,7 @@ function wipeRoute(){
  $('weather-source').textContent='Hava: Rota seçilmedi.';
  $('trip-energy').textContent='Enerji: rota bekleniyor';
  $('station-summary').textContent='⚡ EPDK şarj istasyonları: rota bekleniyor';
+ suggestedCharge=null;$('station-suggestion').style.display='none';
  [...$('weather-cards').children].forEach(function(c){c.children[1].textContent='Rota bekleniyor'});
  native('stop');
 }
@@ -439,6 +465,7 @@ window.molaRoute=function(o){
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
  $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
  $('station-summary').textContent='⚡ Rota çevresindeki CCS istasyonları yükleniyor...';
+ suggestedCharge=null;$('station-suggestion').style.display='none';
  $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
   ' · kaza ve yol çalışması bilgisi içermez.';
  $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
@@ -525,6 +552,15 @@ $('tts').onclick=function(){
 $('back').onclick=function(){native('back')};
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
+$('station-suggestion-choose').onclick=function(){
+ var station=suggestedCharge;
+ if(!station||!points.from||!points.to)return;
+ native('saveStation',String(station.title||'CCS şarj istasyonu'),
+   String(station.operator||''));
+ msg('Önerilen CCS istasyonu üzerinden yeni rota sorgulanıyor. Gerçek sapma/uygunluğu kontrol et.');
+ native('routeVia',points.from.lat,points.from.lon,
+   station.lat,station.lon,points.to.lat,points.to.lon,usingGps);
+};
 $('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
 $('allSensors').onclick=function(){native('sensors')};
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
