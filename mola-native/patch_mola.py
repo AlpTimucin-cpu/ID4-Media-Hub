@@ -65,7 +65,7 @@ source=source.replace(anchor,
                     ? View.GONE : View.VISIBLE);
             id4Entry.setOnClickListener(button ->
                 requireContext().startActivity(new android.content.Intent(
-                    requireContext(), me.aap.fermata.ev.Id4OverviewActivity.class)));
+                    requireContext(), me.aap.fermata.ev.Id4NavigatorActivity.class)));
         }
 ''' + anchor)
 fragment.write_text(source,encoding="utf-8")
