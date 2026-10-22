@@ -83,7 +83,7 @@ public final class Id4EvActivity extends Activity {
         addTab(tabs,"‹ Mola",()->finish());
         addTab(tabs,"🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         addTab(tabs,"⚡ İstasyon",this::stationsScreen);
-        addTab(tabs,"🔋 Enerji",this::energyScreen);
+        addTab(tabs,"🔋 Araç",()->startActivity(new Intent(this,Id4ObdActivity.class)));
         addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)));
         status=text("ID.4 • Mola eklentisi • Resmî EPDK verileri",11,false);
         root.addView(status);
@@ -378,72 +378,6 @@ public final class Id4EvActivity extends Activity {
         body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
     }
 
-    private void energyScreen(){
-        ++generation;
-        LinearLayout body=content();
-        ScrollView scroll=new ScrollView(this);
-        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(12),dp(10),dp(12),dp(24));
-        scroll.addView(form);
-        body.addView(scroll);
-        form.addView(text("ID.4 ENERJİ & TESLA-BENZERİ YOL PLANLAMA",16,true));
-        form.addView(text("Tamamen manuel hesaplar. Batarya, uzaktan klima, "+
-            "SoH/BMS, Autopilot veya aracın OTA özelliklerine erişim yok.",12,false));
-        EditText capacity=field(form,"Kullanılabilir kapasite (kWh)","52");
-        EditText soc=field(form,"Mevcut şarj (%)","65");
-        EditText target=field(form,"Hedef şarj (%)","80");
-        EditText reserve=field(form,"Varış rezervi (%)","15");
-        EditText consumption=field(form,"Tüketim (kWh/100 km)","18");
-        EditText distance=field(form,"Planlanan yol (km)","210");
-        EditText power=field(form,"Ortalama şarj gücü (kW)","60");
-        EditText price=field(form,"TL/kWh operatör fiyatı","13");
-        TextView result=text("",14,false);
-        form.addView(button("🔋 Enerjiyi ve şarj molasını hesapla",()->{
-            try{
-                double cap=read(capacity,10,150),current=read(soc,0,100);
-                double end=read(target,0,100),r=read(reserve,0,50);
-                double consume=read(consumption,5,45),km=read(distance,0,4000);
-                double kw=read(power,1,350),tl=read(price,0,100);
-                if(end<current)throw new Exception();
-                double batteryTravel=km*consume/100.0;
-                double percentDrop=100*batteryTravel/cap;
-                double arrival=current-percentDrop;
-                double usableKm=Math.max(0,(current-r)/100.0*cap/consume*100.0);
-                double deficit=Math.max(0,(r-arrival)/100.0*cap);
-                double added=(end-current)/100.0*cap;
-                double hours=added/kw;
-                double billingKwh=added/0.92;
-                double cost=billingKwh*tl;
-                result.setText(String.format(Locale.forLanguageTag("tr-TR"),
-                    "Mevcut rezervli menzil: %.0f km\nŞarjsız varış SoC: %%%.1f\n"+
-                    "Rezerve yetişmek için gereken ek enerji: %.1f kWh\n"+
-                    "Şarj hedefi: %.1f kWh (bataryada)\n"+
-                    "Şebeke: %.1f kWh • Tahmini tutar: %.0f TL\n"+
-                    "Ortalama şarj gücüyle teorik süre: %.0f dk\n"+
-                    "Gerçek şarj eğrisi, trafik, sıcaklık, yokuş ve hız dahil değil.",
-                    usableKm,arrival,deficit,added,billingKwh,cost,hours*60));
-            }catch(Exception ex){result.setText("Geçerli ve tutarlı değerler gir.");}
-        }));
-        form.addView(result);
-        form.addView(button("₺ Resmî operatör fiyatlarını gör",this::showPrices));
-    }
-    private EditText field(LinearLayout group,String title,String initial){
-        group.addView(text(title,13,false));
-        EditText input=new EditText(this);
-        input.setText(initial);
-        input.setSingleLine(true);
-        input.setTextColor(Color.WHITE);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER|
-            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL|
-            android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
-        group.addView(input);
-        return input;
-    }
-    private static double read(EditText input,double min,double max)throws Exception {
-        double v=Double.parseDouble(input.getText().toString().trim().replace(',','.'));
-        if(!Double.isFinite(v)||v<min||v>max)throw new Exception();
-        return v;
-    }
     private void showPrices(){
         setStatus("Resmî Trugo/ZES tarifeleri kontrol ediliyor…");
         work.execute(()->{
