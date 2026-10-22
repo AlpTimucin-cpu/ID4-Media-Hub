@@ -194,6 +194,23 @@ window.molaStations=function(packet){
    }else msg('Şarj istasyonu hedef seçildi. Başlangıç belirle.');
   };
   content.appendChild(pick);
+  if(station.ccs){
+   var stop=document.createElement('button');
+   stop.type='button';
+   stop.textContent='Şarj molası olarak ekle';
+   stop.onclick=function(){
+    if(!points.from || !points.to){
+     msg('Önce başlangıç ve asıl varış hedefini seç.');return;
+    }
+    var name=String(station.title||'CCS şarj istasyonu');
+    native('saveStation',name,String(station.operator||''));
+    if(map&&map.closePopup)map.closePopup();
+    msg('CCS şarj molası üzerinden yeni rota hesaplanıyor...');
+    native('routeVia',points.from.lat,points.from.lon,
+      station.lat,station.lon,points.to.lat,points.to.lon,usingGps);
+   };
+   content.appendChild(stop);
+  }
   mark.bindPopup(content);
   stationMarkers.push(mark);
  });
@@ -252,6 +269,7 @@ function native(name){
   switch(name){
    case 'suggest':bridge.suggest(a[0],a[1],a[2]);break;
    case 'route':bridge.route(a[0],a[1],a[2],a[3],a[4]);break;
+   case 'routeVia':bridge.routeVia(a[0],a[1],a[2],a[3],a[4],a[5],a[6]);break;
    case 'location':bridge.location();break;
    case 'voice':bridge.voice(a[0]);break;
    case 'stop':bridge.stop();break;
@@ -391,7 +409,8 @@ window.molaRoute=function(o){
  sheet.classList.remove('details-open');
  sheet.scrollTop=0;
  $('map-note').style.display='none';
- $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
+ $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk'+
+   (o.stopIncluded?' · 1 şarj molası':'');
  if(Number.isFinite(o.energyLowKwh) && Number.isFinite(o.energyHighKwh)){
   var energyText='Enerji '+o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh (profil tahmini)';
   if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
