@@ -42,6 +42,7 @@ const doc={body,
  createElement:tag=>new MockNode(tag),
  querySelector:s=>s==='.sheet'?sheet:null};
 const win={
+ setInterval:fn=>{interval=fn},
  molaRoute:()=>{routeCalls++},
  molaTelemetry:()=>{},
  molaWeather:()=>{},
