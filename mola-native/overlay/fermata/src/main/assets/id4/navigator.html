@@ -567,6 +567,8 @@ function showRouteGpsProgress(x){
     Date.now()-x.timeMs>30000||x.timeMs>Date.now()+3000){
   $('route-progress-fill').style.width='0%';
   $('route-progress-text').textContent='GPS rota ilerlemesi yok';
+  $('co-trip-fill').style.width='0%';
+  $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
   refreshTripArrivalModel(NaN);
   return;
  }
@@ -1019,6 +1021,9 @@ window.molaRoute=function(o){
   ' · kaza ve yol çalışması bilgisi içermez.';
  $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
  $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
+ // The route handler resets its HUD labels; now reapply verified current
+ // GPS/SoC only after the new route UI is fully initialized.
+ showRouteGpsProgress(lastGpsFix);
  msg(o.navigationActive?'GPS yönlendirme deneysel olarak açık.':
  'Manuel noktalarla rota önizlemesi hazır. GPS gerektirmez; sesli yönlendirme kapalı.');
 };
