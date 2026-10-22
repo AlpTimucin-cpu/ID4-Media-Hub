@@ -140,15 +140,16 @@ public final class Id4OverviewActivity extends Activity {
         if(incoming!=null)latest=incoming;
         if(state==null)return;
         long age=System.currentTimeMillis()-latest.updatedAt;
+        Id4LiveTelemetry.Data shown=latest.displayAt(System.currentTimeMillis());
         boolean fresh=latest.connected && latest.updatedAt>0 && age<25000;
         state.setText(latest.status);
         updated.setText(fresh?"Canlı OBD ölçümü · "+Math.max(0,age/1000)+" sn önce":
             "Geçerli canlı ölçüm yok · sayı uydurulmaz");
-        soc.setText(fresh?latest.soc:"—");
-        voltage.setText(fresh?latest.voltage:"—");
-        temp.setText(fresh?latest.batteryTemp:"—");
-        charge.setText(fresh?latest.chargeMode:"—");
-        cooling.setText(fresh?latest.cooling:"—");
+        soc.setText(fresh?shown.soc:"—");
+        voltage.setText(fresh?shown.voltage:"—");
+        temp.setText(fresh?shown.batteryTemp:"—");
+        charge.setText(fresh?shown.chargeMode:"—");
+        cooling.setText(fresh?shown.cooling:"—");
         // These are NOT defined by the currently validated VW MEB PID formulas.
         power.setText("Veri yok");
         range.setText("Ölçüm yok");
