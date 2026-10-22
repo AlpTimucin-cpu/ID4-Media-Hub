@@ -27,14 +27,16 @@ function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
 const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[]};
 const drawnMarkers=[];
+const mapActions={pans:[],events:{}};
 const L={
- map(){return {setView(){return this},on(){return this},removeLayer(){},
+ map(){return {setView(){return this},
+  on(event,handler){mapActions.events[event]=handler;return this},removeLayer(){},
   fitBounds(bounds,opts){globalThis.lastRouteBoundsOptions=opts},
   getSize(){return {x:390,y:780}},
   getBounds(){return {getSouth(){return 36},getWest(){return 30},
      getNorth(){return 40},getEast(){return 35}}},
   invalidateSize(){return this},
-  zoomIn(){},zoomOut(){},panTo(){},closePopup(){}}},
+  zoomIn(){},zoomOut(){},panTo(coords,opts){mapActions.pans.push({coords,opts})},closePopup(){}}},
  tileLayer(){return {addTo(){return this}}},
  circleMarker(){return {popup:null,
   addTo(){drawnMarkers.push(this);return this},
@@ -110,6 +112,22 @@ win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
 assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
+assert(html.includes('id="follow-map"'),'GPS follow button is missing');
+get('follow-map').onclick();
+assert.equal(calls.location,1,'GPS follow must request location only on explicit click');
+assert.equal(get('follow-map').title,'GPS takibini kapat');
+win.molaPosition({lat:37.9667,lon:34.6833,accuracy:8,timeMs:Date.now()});
+assert.equal(mapActions.pans.length,1,'valid GPS must move followed map');
+assert.equal(mapActions.pans[0].coords[0],37.9667);
+const oldPanCount=mapActions.pans.length;
+win.molaPosition({lat:37.5,lon:34.1,accuracy:8,timeMs:Date.now()-120000});
+assert.equal(mapActions.pans.length,oldPanCount,'old GPS must never drag map');
+mapActions.events.dragstart();
+win.molaPosition({lat:37.8,lon:34.0,accuracy:8,timeMs:Date.now()});
+assert.equal(mapActions.pans.length,oldPanCount,'user map drag should suspend following');
+get('follow-map').onclick();
+assert.equal(mapActions.pans.length,oldPanCount+1,'follow button must re-center on last good fix');
+get('follow-map').onclick();
 assert.equal(get('co-voltage').textContent,'— V','cockpit must clear stale voltage');
 assert.equal(get('co-soc-fill').style.width,'0%','battery bar must clear when stale');
 // Offline fallback works even if Photon returns errors.
