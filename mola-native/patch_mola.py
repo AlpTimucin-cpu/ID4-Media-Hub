@@ -43,7 +43,7 @@ source=source.replace(anchor,
     '''<Button android:id="@+id/id4_ev_hub_entry"
         android:layout_width="match_parent" android:layout_height="48dp"
         android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
-        android:text="⚡ ID.4 • Navigasyon ve Şarj"
+        android:text="⚡ ID.4 • Araç Merkezi"
         android:textAllCaps="false" android:textSize="15sp" />
  '''+anchor)
 ET.fromstring(source)
@@ -65,7 +65,7 @@ source=source.replace(anchor,
                     ? View.GONE : View.VISIBLE);
             id4Entry.setOnClickListener(button ->
                 requireContext().startActivity(new android.content.Intent(
-                    requireContext(), me.aap.fermata.ev.Id4NavigatorActivity.class)));
+                    requireContext(), me.aap.fermata.ev.Id4ObdActivity.class)));
         }
 ''' + anchor)
 fragment.write_text(source,encoding="utf-8")
