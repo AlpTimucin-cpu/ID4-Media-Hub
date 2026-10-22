@@ -462,6 +462,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
    <div id="co-trip-arrival" class="tripbar-number">—</div>
    <div id="co-trip-arrival-note" class="tripbar-sub">Güncel OBD gerekli</div>
    <button id="co-trip-charge-button" class="tripbar-smallbutton" type="button">⚡ Mola ekle</button>
+   <button id="co-reroute" class="tripbar-smallbutton" type="button" style="display:none">↻ Konumdan rota</button>
    <button id="co-trip-details" class="tripbar-smallbutton" type="button">Rota ayrıntıları</button>
   </div>
  </div>
@@ -596,6 +597,7 @@ function showRouteGpsProgress(x){
   $('route-progress-text').textContent='GPS rota ilerlemesi yok';
   $('co-trip-fill').style.width='0%';
   $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
+  $('co-reroute').style.display='none';
   refreshTripArrivalModel(NaN);
   return;
  }
@@ -615,10 +617,12 @@ function showRouteGpsProgress(x){
   $('route-progress-fill').style.width='0%';
   $('route-progress-text').textContent='GPS rota dışında / belirsiz';
   $('co-trip-progress-label').textContent='Konum rota dışında';
+  $('co-reroute').style.display=goodGps(x)&&!!points.to?'inline-block':'none';
   $('co-trip-fill').style.width='0%';
   refreshTripArrivalModel(NaN);
   return;
  }
+ $('co-reroute').style.display='none';
  var pct=Math.max(0,Math.min(100,position*100));
  var remaining=Math.max(0,data.roadKm*(1-position));
  $('route-progress-fill').style.width=pct.toFixed(1)+'%';
@@ -805,6 +809,7 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ $('co-reroute').style.display='none';
  routeHasChargeStop=false;
  lastManeuverAt=0;
  currentRouteProgress=null;
@@ -1265,6 +1270,16 @@ $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
 $('co-trip-details').onclick=function(){
  document.querySelector('.sheet').classList.add('details-open');
+};
+$('co-reroute').onclick=function(){
+ if(!currentRouteProgress||!goodGps(lastGpsFix)||!points.to){
+  msg('Güncel ve doğru GPS konumu olmadan rota yenilenmez.');return;
+ }
+ var x=lastGpsFix,target=points.to;
+ // Only a deliberate tap can request a new OSRM route. No silent auto reroute.
+ selectPoint('from',x.lat,x.lon,'Konumum (GPS ±'+Math.round(x.accuracy)+' m)',true);
+ msg('Güncel GPS konumundan hedefe rota tekrar hesaplanıyor...');
+ native('route',x.lat,x.lon,target.lat,target.lon,true);
 };
 $('co-trip-charge-button').onclick=function(){$('station-suggestion-choose').onclick()};
 $('station-suggestion-choose').onclick=function(){
