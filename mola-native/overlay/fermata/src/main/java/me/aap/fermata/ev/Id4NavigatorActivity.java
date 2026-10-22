@@ -438,7 +438,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     packet.put("energyLowKwh",energy.lowRouteKwh);
                     packet.put("energyHighKwh",energy.highRouteKwh);
                     packet.put("energyProfile","ID.4 Pure profil tahmini: 16–24 kWh/100 km");
-                    if(energy.hasSoc){
+                    // On a route with a charger waypoint we do not know how
+                    // many kWh will be added, so a terminal SoC would be fictitious.
+                    if(energy.hasSoc && !hasStop){
                         packet.put("socMeasuredAt",facts.socAt);
                         double arrivalLow=facts.soc-
                             (100.0*energy.highRouteKwh/Id4EnergyModel.ASSUMED_USABLE_KWH);
