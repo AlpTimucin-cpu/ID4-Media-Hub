@@ -195,6 +195,9 @@ popupMarker.popup.children[2].onclick();
 assert.equal(calls.saved.length,1,'selected operator not saved');
 assert.equal(calls.saved[0][1],'ŞarjAğı');
 assert.equal(get('to').value,'Deneme CCS','chosen charger not set as destination');
+assert.equal(calls.route.length,3,'choosing a station must replan the route automatically');
+assert.equal(calls.route[2][2],37.8,'new route target latitude wrong');
+assert.equal(calls.route[2][3],34.9,'new route target longitude wrong');
 win.molaStationError({detail:'Ağ erişimi yok'});
 assert(get('station-summary').textContent.includes('alınamadı'),
  'station failure must be visible');
