@@ -111,3 +111,31 @@ navigasyon motoru **değildir**.
    yöntemle alma; operatör bazlı canlı CCS doluluğu ayrı sözleşme/izin.
 5. Türkiye'de üretim dağıtımı için SLA'lı harita/routing ve
    yasal/teknik tile önbellekleme mimarisi.
+
+
+## 22.10.2026 — Volkswagen API güncelliği (önemli düzeltme)
+
+Volkswagen uzaktan telemetri entegrasyonunu `WeConnect` hesabıyla
+telefon uygulamasına hemen eklemek **doğru değildir**. 2026-07-05
+tarihli CarConnectivity Volkswagen konektörü 0.10.6 sürüm notları,
+Volkswagen tarafındaki API değişikliklerinden kaynaklanan bağlantı
+hatalarının sürümde **düzeltilmediğini** açıkça belirtiyor.
+Ayrıca `mikrohard/CarConnectivity-connector-vw-eu-data-act` projesi,
+2026'da üçüncü taraf WeConnect erişiminin engellendiğini bildiriyor.
+Bu topluluk projesinin sunduğu AB Veri Yasası portalı bağlantısı
+**yalnızca okuma**, yaklaşık **15 dakika aralık** ve **eksik veri**
+(GPS / menzil yokluğu olabilir) olarak belgelenmiş.
+
+Bu yüzden ürün kararları:
+- ELM327 + doğrulanmış MEB ECU cevapları, mevcut kokpitin canlı veri
+  kaynağı olmaya devam edecek; Volkswagen kullanıcı parolasını
+  uygulamada toplamak veya doğrulanmamış remote komut vermek yok.
+- AB Data Act bir gün ayrı bir modül olarak değerlendirilecekse ülke,
+  hesap uygunluğu, izin/kullanım koşulları ve ölçümlerin zaman damgası
+  doğrulanacak. 15 dakikalık portal verisine **canlı** etiketi konmayacak.
+- Şarj, sürüş, SoC ve HVAC panelleri kaynak ve doğruluk durumuna göre
+  bağımsız gösterilecek; eksik PID için örnek sayı doldurulmayacak.
+
+Kaynaklar:
+- https://github.com/tillsteinbach/CarConnectivity-connector-volkswagen/blob/main/CHANGELOG.md
+- https://github.com/mikrohard/CarConnectivity-connector-vw-eu-data-act
