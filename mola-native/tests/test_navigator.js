@@ -192,6 +192,8 @@ assert(get('weather-source').textContent.includes('model'),
 assert(get('co-weather').textContent.includes('+1 dk 12°C'),
  'cockpit weather must be from real returned forecast, not a fake value');
 // Real route callback must update visible polyline, not merely route inputs.
+// The older GPS fix from the follow-map test is now stale: route cannot invent progress.
+win.molaPosition({lat:37.8,lon:34.0,accuracy:8,timeMs:Date.now()-120000});
 win.molaRoute({
  coordinates:[[34.6833,37.9667],[33.8,37.4],[30.7056,36.8841]],
  distanceKm:510,durationMin:385,alternatives:2,provider:'OSRM test',
