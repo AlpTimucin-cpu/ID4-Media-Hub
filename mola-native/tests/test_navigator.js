@@ -75,6 +75,14 @@ function typing(field,query){
  return calls.suggest[calls.suggest.length-1];
 }
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
+assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
+assert(html.includes('id="co-soc"')&&html.includes('id="co-voltage"')&&
+ html.includes('id="co-energy"'),'transparent cockpit missing core measurements');
+assert(html.includes('backdrop-filter:blur'),'cockpit overlays must be translucent');
+assert(html.includes('text-shadow:-1px -1px 0 #000'),
+ 'large telemetry numbers must have high contrast black outline');
+assert(html.includes('@media (orientation:landscape)'),
+ 'full-screen cockpit must be landscape responsive');
 assert(html.includes('id="live-soc"'),'live battery HUD missing');
 assert(html.includes('id="live-voltage"'),'live HV voltage HUD missing');
 assert(html.includes('id="live-temp"'),'live battery temperature HUD missing');
@@ -86,9 +94,23 @@ assert.equal(get('live-soc').textContent,'64 %');
 assert.equal(get('live-voltage').textContent,'370 V');
 assert.equal(get('live-temp').textContent,'23 °C');
 assert.equal(get('vehicle-soc').textContent,'64 %');
+assert.equal(get('co-soc').textContent,'64 %','full-screen SoC does not use real packet');
+assert.equal(get('co-soc-fill').style.width,'64%','battery progress is not linked to BMS SoC');
+assert.equal(get('co-voltage').textContent,'370 V');
+assert.equal(get('co-temp').textContent,'23 °C');
+assert.equal(get('co-mode').textContent,'Ready');
+assert.equal(get('co-range').textContent,'— km','unverified range must never be inferred');
+assert.equal(get('co-power').textContent,'— kW','unverified kW must stay blank');
+get('co-connect').onclick();
+assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
+get('co-station-tab').onclick();
+assert.equal(calls.visible.length,1,'cockpit charger tab must show map stations');
 win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
+assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
+assert.equal(get('co-voltage').textContent,'— V','cockpit must clear stale voltage');
+assert.equal(get('co-soc-fill').style.width,'0%','battery bar must clear when stale');
 // Offline fallback works even if Photon returns errors.
 const first=typing('from','Niğde');
 assert.equal(first.field,'from');assert.equal(first.q,'Niğde');
@@ -156,6 +178,11 @@ win.molaRoute({
 });
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
+assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not updated');
+assert.equal(get('co-energy').textContent,'81.6–122.4 kWh',
+ 'cockpit route energy not labeled as model');
+assert(get('vehicle-cockpit').classList.contains('has-route'),
+ 'landscape route progress panel should replace placeholder');
 assert(get('trip-energy').textContent.includes('81.6–122.4 kWh'),
  'automatic route energy model not displayed');
 assert(get('trip-energy').textContent.includes('şarj'),
@@ -244,5 +271,12 @@ assert.equal(calls.route[2][3],34.9,'new route target longitude wrong');
 win.molaStationError({detail:'Ağ erişimi yok'});
 assert(get('station-summary').textContent.includes('alınamadı'),
  'station failure must be visible');
+assert(get('co-destination').textContent.includes('Deneme CCS'),
+ 'cockpit destination must update when charging station chosen');
+get('route-edit').onclick();
+assert(!get('vehicle-cockpit').classList.contains('has-route'),
+ 'route reset must also reset cockpit state');
+assert.equal(get('co-route-km').textContent,'— km',
+ 'route reset must clear out-of-date dashboard distance');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
