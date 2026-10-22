@@ -635,7 +635,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
-var stationLayerMode='none',cachedRouteStations=null,viewportRefreshTimer=null;
+var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
 var liveSoc=NaN,routeHasChargeStop=false;
@@ -788,10 +788,23 @@ window.molaStations=function(packet){
  }
  if(stationKind==='visible' && stationLayerMode==='route')return;
  if(stationLayerMode==='none' && stationKind==='visible')return;
- if(stationLayerMode==='none' && stationKind==='route')stationLayerMode='route';
+ if(stationLayerMode==='none')return;
  clearStationMarkers();
  packet.items.slice(0,180).forEach(function(station){
   if(!station||!valid(station.lat,station.lon)||!map)return;
+  if(station.cluster){
+   var cluster=L.marker([station.lat,station.lon],{
+     icon:L.divIcon({className:'charge-map-pin',html:'<div class="charge-cluster-icon">'+
+      Math.max(0,Math.round(Number(station.count)||0))+'</div>',
+      iconSize:[44,44],iconAnchor:[22,22]})
+   }).addTo(map);
+   if(cluster.on)cluster.on('click',function(){
+     if(map && map.setView && map.getZoom)
+       map.setView([station.lat,station.lon],Math.min(18,map.getZoom()+3));
+   });
+   stationMarkers.push(cluster);
+   return;
+  }
   // CCS fast chargers are visible as mint lightning icons on the live map.
   var mark=station.ccs?L.marker([station.lat,station.lon],{
    icon:L.divIcon({className:'charge-map-pin',html:'<span>ϟ</span>',
@@ -846,7 +859,9 @@ window.molaStations=function(packet){
  var timestamp=String(packet.updatedAt||'Tarih bilinmiyor');
  var stale=Number(packet.snapshotAgeHours)>72?' (ESKİ KAYITLAR)':'';
  var detail='⚡ EPDK: '+count+' '+(stationKind==='route'?'rota yakınında CCS istasyonu':'haritada istasyon')+
-   ' · '+stationMarkers.length+' işaret'+stale;
+   ' · '+stationMarkers.length+(packet.clustered?' küme (yakınlaştır)':' işaret')+stale;
+ $('layer-status').textContent=detail+
+  (stationKind==='route'?' · Rota koridoru: 12 km':' · Haritada kaydır/yakınlaştır');
  $('station-summary').textContent=detail;
  $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
  suggestedCharge=null;
@@ -940,6 +955,8 @@ function native(name){
    case 'sensors':bridge.sensors();break;
    case 'selectObd':bridge.selectObd();break;
    case 'visibleStations':bridge.visibleStations(a[0],a[1],a[2],a[3]);break;
+   case 'visibleStationsFiltered':
+    bridge.visibleStationsFiltered(a[0],a[1],a[2],a[3],a[4]);break;
    case 'saveStation':bridge.saveStation(a[0],a[1]);break;
    default:return false;
   }
@@ -948,6 +965,10 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ cachedRouteStations=null;
+ if(stationLayerMode==='route'){clearStationMarkers();
+   $('layer-status').textContent='Rota CCS için yeni rota hesapla';
+ }
  routeOptions=[];chosenRouteIndex=0;
  $('co-alts').classList.remove('open');
  $('co-alts-list').textContent='Rota bekleniyor';
@@ -1170,6 +1191,10 @@ window.molaAlternativeError=function(o){
 };
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
+ cachedRouteStations=null;
+ // On a new route show route-corridor CCS without requiring a second tap,
+ // unless the driver deliberately chose a different map layer.
+ if(stationLayerMode==='route')$('layer-status').textContent='Rota çevresi CCS taranıyor';
  $('co-cost').textContent='Maliyet ve alternatifler hesaplanıyor...';
  $('co-cost-note').textContent='OBD SoC ve EPDK istasyonları inceleniyor';
  $('co-alts').classList.remove('open');
@@ -1471,7 +1496,33 @@ $('co-focus').onclick=function(){
 $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
 
-$('co-station-tab').onclick=function(){showVisibleStations()};
+$('co-station-tab').onclick=function(){setStationLayer('all')};
+$('layer-all').onclick=function(){setStationLayer('all')};
+$('layer-ccs').onclick=function(){setStationLayer('ccs')};
+$('layer-route').onclick=function(){setStationLayer('route')};
+$('layer-hide').onclick=function(){setStationLayer('none')};
+$('layer-traffic').onclick=function(){
+ $('layer-status').classList.add('warning');
+ $('layer-status').textContent='🚦 Canlı trafik sağlayıcısı bağlı değil. '
+  +'Trafik yoğunluğu ve gecikme gösterilemiyor; OSRM süresi trafiksizdir.';
+ $('traffic-source').textContent='Canlı trafik için lisanslı veri sağlayıcısı gerekir. '
+  +'Tahmini/kurgusal trafik katmanı çizilmiyor.';
+};
+$('layer-weather').onclick=function(){
+ if(!currentRouteProgress){msg('Hava için önce rota oluştur.');return}
+ $('journey-weather').classList.toggle('open');
+};
+$('journey-close').onclick=function(){$('journey-weather').classList.remove('open')};
+if(map&&map.on){
+ map.on('moveend',function(){
+  if(stationLayerMode!=='all'&&stationLayerMode!=='ccs')return;
+  if(viewportRefreshTimer)clearTimeout(viewportRefreshTimer);
+  viewportRefreshTimer=setTimeout(function(){
+    viewportRefreshTimer=null;showVisibleStations();
+  },400);
+ });
+}
+
 $('co-connect').onclick=function(){native('selectObd')};
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
