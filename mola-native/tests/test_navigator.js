@@ -105,6 +105,7 @@ get('co-connect').onclick();
 assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
 get('co-station-tab').onclick();
 assert.equal(calls.visible.length,1,'cockpit charger tab must show map stations');
+calls.visible.length=0; // isolate previous HUD-action smoke test from map-toolbar checks
 win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
