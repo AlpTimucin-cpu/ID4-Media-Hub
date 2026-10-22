@@ -206,7 +206,6 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .sheet{top:62px;bottom:6px}
 }
 </style>
-<link rel="stylesheet" href="cockpit.css">
 </head><body>
 <div id="map"></div>
 <div id="vehicle-cockpit" class="vehicle-cockpit" aria-label="ID.4 saydam araç göstergeleri">
@@ -679,6 +678,11 @@ function clearTelemetry(){
 }
 window.molaTelemetry=function(data){
  var d=data||{},fresh=!!d.fresh;
+ // A visual mock DOM may start empty; never infer these unsupported sensors.
+ // No validated PID exists yet for displayed real-world range, power or consumption.
+ $('co-range').textContent='— km';
+ $('co-power').textContent='— kW';
+ $('co-consumption').textContent='— kWh/100 km';
  lastTelemetryAt=fresh?Date.now():0;
  if(fresh){
   $('live-soc').textContent=String(d.soc||'—');
@@ -783,5 +787,4 @@ $('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
 $('allSensors').onclick=function(){native('sensors')};
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
-</script>
-<script src="cockpit.js"></script></body></html>
+</script></body></html>
