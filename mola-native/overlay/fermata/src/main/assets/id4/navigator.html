@@ -461,7 +461,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <script>
 (function(){
 'use strict';
-var map=null,markers={from:null,to:null},liveMarker=null,line=null;
+var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
@@ -709,6 +709,7 @@ function wipeRoute(){
  $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
  if(line&&map){map.removeLayer(line);line=null}
+ if(routeGlow&&map){map.removeLayer(routeGlow);routeGlow=null}
  $('trip').style.display='none';
  var sheet=document.querySelector('.sheet');
  sheet.classList.remove('route-active');sheet.classList.remove('details-open');
@@ -915,8 +916,10 @@ window.molaRoute=function(o){
  }
  $('route-details').textContent='Hava ve rota ayrıntıları';
  if(line&&map)map.removeLayer(line);
+ if(routeGlow&&map)map.removeLayer(routeGlow);
  if(map){
-  line=L.polyline(pts,{weight:6,opacity:.94,color:'#1378cf'}).addTo(map);
+  routeGlow=L.polyline(pts,{weight:15,opacity:.33,color:'#00c7ff'}).addTo(map);
+  line=L.polyline(pts,{weight:6,opacity:.98,color:'#1678fc'}).addTo(map);
   map.invalidateSize();
   var size=map.getSize(),landscape=window.innerWidth>=640&&window.innerWidth>window.innerHeight;
   var portrait=window.innerWidth<950&&!landscape;
@@ -934,6 +937,8 @@ window.molaRoute=function(o){
  $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
  $('co-weather').textContent='Open-Meteo model verisi isteniyor';
  $('station-summary').textContent='⚡ Rota çevresindeki CCS istasyonları yükleniyor...';
+ $('co-trip-charge-button').style.display='none';
+ $('co-trip-charge-km').textContent='Mola km: —';
  suggestedCharge=null;$('station-suggestion').style.display='none';
  $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
   ' · kaza ve yol çalışması bilgisi içermez.';
@@ -949,6 +954,7 @@ function clearTelemetry(){
  $('live-temp').textContent='—';
  $('vehicle-soc').textContent='—';
  $('co-soc').textContent='— %';
+ $('co-trip-battery').textContent='OBD SoC: —';
  $('co-soc-fill').style.width='0%';
  $('co-voltage').textContent='— V';
  $('co-temp').textContent='— °C';
@@ -979,6 +985,7 @@ window.molaTelemetry=function(data){
    value.trim()!=='—'&&value.trim().indexOf('—')<0;}
  if(fresh&&ready(d.soc)){
   $('co-soc').textContent=String(d.soc);
+  $('co-trip-battery').textContent='OBD SoC: '+String(d.soc);
   var n=Number.parseFloat(String(d.soc).replace(',','.'));
   $('co-soc-fill').style.width=Number.isFinite(n)&&n>=0&&n<=100?n+'%':'0%';
   if(Number.isFinite(n)&&n>=0&&n<=100){
@@ -989,7 +996,9 @@ window.molaTelemetry=function(data){
    $('co-range').textContent=Math.round(lowKm)+'–'+Math.round(highKm)+' km';
   }
  }else{
-  $('co-soc').textContent='— %';$('co-soc-fill').style.width='0%';
+  $('co-soc').textContent='— %';
+  $('co-trip-battery').textContent='OBD SoC: —';
+  $('co-soc-fill').style.width='0%';
  }
  $('co-voltage').textContent=fresh&&ready(d.voltage)?String(d.voltage):'— V';
  $('co-temp').textContent=fresh&&ready(d.temperature)?String(d.temperature):'— °C';
