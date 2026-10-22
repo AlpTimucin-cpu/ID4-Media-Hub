@@ -287,6 +287,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     if(myGeneration!=generation||destroyed)return;
                     steps.clear();steps.addAll(parsed);nextStep=0;
                     running=verifiedGps;
+                    Id4EnergyData.saveRoute(this,
+                        packet.optDouble("distanceKm",Double.NaN),
+                        packet.optDouble("durationMin",Double.NaN),
+                        System.currentTimeMillis());
                     send("molaRoute",packet);
                     // Weather is a separate best-effort request after the drawn route.
                     final JSONObject routeData=selected;
