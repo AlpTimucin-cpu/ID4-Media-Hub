@@ -12,8 +12,8 @@ for term in ["Kullanılabilir kapasite (kWh)","Mevcut şarj (%)","TL/kWh operat�
     assert term not in ev, "Manual energy screen remains: " + term
 assert 'addTab(tabs,"🔋 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)))' in ev
 assert 'addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)))' in ev
-assert "Id4ObdActivity.class" in patch
-assert "Id4NavigatorActivity.class" in patch
+assert "Id4ObdActivity.java" in patch
+assert "Id4NavigatorActivity.java" in patch
 assert "Id4LiveTelemetry" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
 for term in [
     'heroSoc=label("— %"', 'heroRange=label("— km  •  Veri yok"',
