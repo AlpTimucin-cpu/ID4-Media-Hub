@@ -1018,6 +1018,21 @@ setInterval(function(){
   $('co-status').textContent='OBD ölçümü güncel değil';
  }
 },5000);
+window.molaLayout=function(){
+ if(map){
+  map.invalidateSize();
+  // Preserve the existing route rather than reloading/recalculating it
+  // each time the user switches between phone and cockpit display modes.
+  if(line && line.getBounds){
+   var wide=window.innerWidth>=640&&window.innerWidth>window.innerHeight;
+   var sz=map.getSize();
+   map.fitBounds(line.getBounds(),{paddingTopLeft:[wide?Math.round(sz.x*.34):20,80],
+    paddingBottomRight:[wide?Math.round(sz.x*.23):20,
+     wide?Math.max(125,Math.round(sz.y*.2)):Math.max(260,Math.round(sz.y*.3))],
+    animate:false,maxZoom:15});
+  }
+ }
+};
 window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))selectPoint('to',x.lat,x.lon,x.label,false)};
 bindAutocomplete('from');bindAutocomplete('to');
 try{
