@@ -324,6 +324,20 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .tripbar-smallbutton{padding:4px 7px}
  .cockpit-right{max-height:calc(100% - 106px)}
 }
+
+/* Native Leaflet map markers; icons reflect real coordinates, not a drawn scene. */
+.charge-map-pin{background:none;border:none}
+.charge-map-pin span{display:flex;width:33px;height:33px;align-items:center;
+ justify-content:center;border:2px solid #21eec0;border-radius:50%;
+ background:#073a48f0;box-shadow:0 0 0 2px #001625,0 0 16px #0cf5b88c;
+ color:#3effc8;font-size:21px;font-weight:900;line-height:1;
+ text-shadow:1px 1px 0 black}
+.vehicle-map-pin{background:none;border:none}
+.vehicle-map-pin span{display:flex;width:32px;height:32px;align-items:center;
+ justify-content:center;background:#0c5a9dcc;border:3px solid #fff;
+ color:#fff;transform:rotate(-45deg);border-radius:6px 6px 14px 6px;
+ box-shadow:0 0 0 3px #024fa8,0 0 18px #0ca9ffdd;
+ font-size:20px;font-weight:950;text-shadow:1px 1px 0 #000}
 </style>
 </head><body>
 <div id="map"></div>
@@ -552,8 +566,12 @@ window.molaStations=function(packet){
  stationKind=String(packet.kind||'visible');
  packet.items.slice(0,55).forEach(function(station){
   if(!station||!valid(station.lat,station.lon)||!map)return;
-  var mark=L.circleMarker([station.lat,station.lon],{
-   radius:7,fillOpacity:.94,fillColor:station.ccs?'#168d7c':'#647ca2',
+  // CCS fast chargers are visible as mint lightning icons on the live map.
+  var mark=station.ccs?L.marker([station.lat,station.lon],{
+   icon:L.divIcon({className:'charge-map-pin',html:'<span>ϟ</span>',
+     iconSize:[33,33],iconAnchor:[16,16]})
+  }).addTo(map):L.circleMarker([station.lat,station.lon],{
+   radius:7,fillOpacity:.94,fillColor:'#647ca2',
    color:'#ffffff',weight:2
   }).addTo(map);
   var content=document.createElement('div');
@@ -829,8 +847,10 @@ window.molaPosition=function(x){
  showRouteGpsProgress(x);
  if(followMap && goodGps(x) && map)map.panTo([x.lat,x.lon],{animate:false});
  if(map){
-  if(!liveMarker)liveMarker=L.circleMarker([x.lat,x.lon],{
-   radius:7,color:'#fff',weight:2,fillColor:'#2b86eb',fillOpacity:1
+  // Fixed shape indicates GPS location only; it is not a measured heading.
+  if(!liveMarker)liveMarker=L.marker([x.lat,x.lon],{
+   icon:L.divIcon({className:'vehicle-map-pin',html:'<span>◆</span>',
+     iconSize:[34,34],iconAnchor:[17,17]})
   }).addTo(map);
   else liveMarker.setLatLng([x.lat,x.lon]);
  }
@@ -955,6 +975,10 @@ function clearTelemetry(){
  $('vehicle-soc').textContent='—';
  $('co-soc').textContent='— %';
  $('co-trip-battery').textContent='OBD SoC: —';
+ // Arrival SoC band was calculated at route time. A stale BMS SoC cannot
+ // support a still-live battery prediction and must be invalidated.
+ $('co-trip-arrival').textContent='—';
+ $('co-trip-arrival-note').textContent='Güncel OBD gerekli';
  $('co-soc-fill').style.width='0%';
  $('co-voltage').textContent='— V';
  $('co-temp').textContent='— °C';
