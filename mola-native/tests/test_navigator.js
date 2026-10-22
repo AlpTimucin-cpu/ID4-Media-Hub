@@ -137,10 +137,15 @@ assert(get('weather-source').textContent.includes('model'),
 win.molaRoute({
  coordinates:[[34.6833,37.9667],[33.8,37.4],[30.7056,36.8841]],
  distanceKm:510,durationMin:385,alternatives:2,provider:'OSRM test',
+ energyLowKwh:81.6,energyHighKwh:122.4,chargingNeededByModel:true,
  navigationActive:false,steps:['Devam et','Sola dön']
 });
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
+assert(get('trip-energy').textContent.includes('81.6–122.4 kWh'),
+ 'automatic route energy model not displayed');
+assert(get('trip-energy').textContent.includes('şarj'),
+ 'route model should flag needed charging without fabricated SoC');
 assert(get('sheet').classList.contains('route-active'),'route panel did not collapse');
 assert(get('map-note').style.display==='none','old map hint still overlays the route');
 get('route-details').onclick();
@@ -153,5 +158,13 @@ assert(get('traffic-source').textContent.includes('Canlı trafik'),
 assert(get('tripdata').textContent.includes('510 km'),'route distance absent');
 assert(globalThis.lastRouteBoundsOptions.paddingBottomRight[1]>=200,
   'route viewport hides map beneath info sheet');
+win.molaRoute({
+ coordinates:[[34.6833,37.9667],[34.7000,37.9800]],
+ distanceKm:12,durationMin:15,alternatives:1,provider:'OSRM test',
+ energyLowKwh:1.92,energyHighKwh:2.88,
+ arrivalSocLower:74.5,arrivalSocUpper:76.0,chargingNeededByModel:false,steps:[]
+});
+assert(get('trip-energy').textContent.includes('Varış SoC ~%75–%76'),
+ 'recent BMS SoC arrival range missing');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
