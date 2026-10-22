@@ -53,6 +53,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Ensure Tesla-style vehicle overview has no manual energy form
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 integration/mola-native/tests/test_vehicle_dashboard.py \
+            integration/mola-native/overlay \
+            integration/mola-native/patch_mola.py
       - name: Validate embedded navigation, dual search and no-GPS route
         shell: bash
         run: |
