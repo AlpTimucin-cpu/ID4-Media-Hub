@@ -499,6 +499,7 @@ var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=nul
 var stationMarkers=[],stationKind='',stationRequestPending=false;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
+var liveSoc=NaN,routeHasChargeStop=false;
 function goodGps(x){
  return !!x&&valid(x.lat,x.lon)&&Number.isFinite(x.accuracy)&&
    x.accuracy<=60&&Number.isFinite(x.timeMs)&&
@@ -528,12 +529,34 @@ function routeProgressGeometry(pts,totalRoadKm){
  for(var j=1;j<nodes.length;j++)cum.push(cum[j-1]+greatCircleKm(nodes[j-1],nodes[j]));
  return cum[cum.length-1]>0?{nodes:nodes,cum:cum,lengthKm:cum[cum.length-1],roadKm:totalRoadKm}:null;
 }
+function refreshTripArrivalModel(remainingKm){
+ var label=$('co-trip-arrival'),note=$('co-trip-arrival-note');
+ if(!currentRouteProgress){label.textContent='—';note.textContent='Rota gerekli';return}
+ if(routeHasChargeStop){
+  label.textContent='—';note.textContent='Mola sonrası şarj miktarı bilinmiyor';return;
+ }
+ if(!Number.isFinite(liveSoc) || !Number.isFinite(remainingKm) || remainingKm<0){
+  label.textContent='—';note.textContent='Güncel OBD SoC ve rota üzeri GPS gerekli';return;
+ }
+ // 52-kWh pack and 16–24kWh/100km are a model, not real BMS range.
+ var low=liveSoc-remainingKm*24/52;
+ var high=liveSoc-remainingKm*16/52;
+ if(low<0 || high<0){
+  label.textContent='⚡ Şarj gerekebilir';
+  note.textContent='Model: batarya varışa yetmeyebilir';
+  return;
+ }
+ label.textContent='%'+Math.round(low)+'–%'+Math.round(high);
+ note.textContent=low<15?'⚠️ Model rezerv %15 altına düşebilir':
+   'Tahmin: 52 kWh, 16–24 kWh/100 km · trafiksiz';
+}
 function showRouteGpsProgress(x){
  if(!currentRouteProgress||!x||!valid(x.lat,x.lon)||!Number.isFinite(x.accuracy)||
     x.accuracy>60||!Number.isFinite(x.timeMs)||
     Date.now()-x.timeMs>30000||x.timeMs>Date.now()+3000){
   $('route-progress-fill').style.width='0%';
   $('route-progress-text').textContent='GPS rota ilerlemesi yok';
+  refreshTripArrivalModel(NaN);
   return;
  }
  var data=currentRouteProgress,p=data.nodes,km=data.cum,total=data.lengthKm;
@@ -553,6 +576,7 @@ function showRouteGpsProgress(x){
   $('route-progress-text').textContent='GPS rota dışında / belirsiz';
   $('co-trip-progress-label').textContent='Konum rota dışında';
   $('co-trip-fill').style.width='0%';
+  refreshTripArrivalModel(NaN);
   return;
  }
  var pct=Math.max(0,Math.min(100,position*100));
@@ -561,6 +585,7 @@ function showRouteGpsProgress(x){
  $('co-trip-fill').style.width=pct.toFixed(1)+'%';
  $('co-trip-progress-label').textContent='GPS yaklaşık %'+Math.round(pct)+
    ' · '+remaining.toFixed(1)+' km kaldı';
+ refreshTripArrivalModel(remaining);
  $('route-progress-text').textContent='GPS yaklaşık %'+Math.round(pct)+
    ' · '+remaining.toFixed(1)+' km kaldı';
 }
@@ -740,6 +765,7 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ routeHasChargeStop=false;
  lastManeuverAt=0;
  currentRouteProgress=null;
  $('route-progress-fill').style.width='0%';
@@ -900,6 +926,7 @@ window.molaRoute=function(o){
  }).map(function(c){return [c[1],c[0]]});
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
  lastManeuverAt=0;
+ routeHasChargeStop=!!o.stopIncluded;
  currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
  showRouteGpsProgress(lastGpsFix);
  var sheet=document.querySelector('.sheet');
@@ -940,10 +967,7 @@ window.molaRoute=function(o){
   if(o.stopIncluded){
    energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
   }else if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
-   $('co-trip-arrival').textContent='%'+Math.round(o.arrivalSocLower)+
-     '–%'+Math.round(o.arrivalSocUpper);
-   $('co-trip-arrival-note').textContent='52 kWh / 16–24 kWh model tahmini';
-   energyText+=' · Varış SoC ~%'+o.arrivalSocLower.toFixed(0)+'–%'+o.arrivalSocUpper.toFixed(0);
+   energyText+=' · Varış SoC için güncel GPS ve OBD gerekir';
   }else if(o.chargingNeededByModel){
    energyText+=' · Yolda şarj gerekebilir';
   }else{
@@ -989,6 +1013,7 @@ window.molaRoute=function(o){
 };
 var lastTelemetryAt=0;
 function clearTelemetry(){
+ liveSoc=NaN;
  $('live-soc').textContent='—';
  $('live-voltage').textContent='—';
  $('live-temp').textContent='—';
@@ -1033,6 +1058,7 @@ window.molaTelemetry=function(data){
   var n=Number.parseFloat(String(d.soc).replace(',','.'));
   $('co-soc-fill').style.width=Number.isFinite(n)&&n>=0&&n<=100?n+'%':'0%';
   if(Number.isFinite(n)&&n>=0&&n<=100){
+   liveSoc=n;
    // Model only, NOT a vehicle-measured range. Uses the same 52kWh,
    // 16–24kWh/100km, 15% reserve assumptions as Id4EnergyModel.java.
    var usableAfterReserve=Math.max(0,n-15)*.01*52;
@@ -1040,10 +1066,13 @@ window.molaTelemetry=function(data){
    $('co-range').textContent=Math.round(lowKm)+'–'+Math.round(highKm)+' km';
   }
  }else{
+  liveSoc=NaN;
   $('co-soc').textContent='— %';
   $('co-trip-battery').textContent='OBD SoC: —';
   $('co-soc-fill').style.width='0%';
  }
+ if(!fresh)liveSoc=NaN;
+ if(currentRouteProgress)showRouteGpsProgress(lastGpsFix);
  $('co-voltage').textContent=fresh&&ready(d.voltage)?String(d.voltage):'— V';
  $('co-temp').textContent=fresh&&ready(d.temperature)?String(d.temperature):'— °C';
  $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
