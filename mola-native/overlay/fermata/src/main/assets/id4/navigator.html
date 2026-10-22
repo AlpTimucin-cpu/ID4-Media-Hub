@@ -422,6 +422,47 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 @media (orientation:portrait), (max-width:639px){
  .cockpit-alts{left:5%;right:5%;bottom:20%;max-height:65vh}
 }
+
+/* Selectable map layers: stations are EPDK snapshot, weather is Open-Meteo
+   model, traffic is explicitly unavailable without licensed live data. */
+.map-layers-panel{position:fixed;top:84px;left:36%;right:25%;
+ z-index:1090;padding:8px 10px;border:1px solid #378da2;border-radius:13px;
+ color:#dff8ff;background:rgba(3,33,49,.89);pointer-events:auto}
+.map-layer-buttons{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.map-layer-buttons button{padding:7px 9px;border-radius:8px;
+ color:#d6eef6;background:#15465b;font-size:11px;font-weight:750}
+.map-layer-buttons button.active{background:#20c8ad;color:#00262f}
+.map-layer-status{font-size:10px;color:#cbdce8;margin-top:4px}
+.map-layer-status.warning{color:#ffd18e}
+.map-weather-journey{display:none;position:fixed;top:154px;left:36%;
+ max-width:44%;z-index:1091;background:rgba(2,28,43,.94);
+ border:1px solid #378da2;border-radius:12px;color:#f0fbff;padding:10px;
+ max-height:62vh;overflow-y:auto;pointer-events:auto}
+.map-weather-journey.open{display:block}
+.journey-title{display:flex;justify-content:space-between;align-items:center;
+ font-size:13px;font-weight:850}
+.journey-title button{background:#0d5d75;color:#fff;border-radius:7px;padding:6px}
+.journey-points{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:4px;margin-top:8px}
+.journey-point{background:#11485d;border:1px solid #287e94;padding:6px 3px;
+ text-align:center;border-radius:8px;font-size:10px;line-height:1.4}
+.journey-point strong{font-size:12px;display:block}
+.journey-note{font-size:10px;color:#bad1dd;margin-top:7px}
+.charge-cluster-icon{border:2px solid #b0ffe5;background:#0d6b79;
+ color:#fff;font-weight:900;font-size:12px;border-radius:22px;
+ height:40px;min-width:40px;display:flex;align-items:center;justify-content:center;
+ padding:0 4px;box-shadow:0 0 0 2px #032633,0 1px 11px #004a54}
+@media (orientation:portrait), (max-width:639px){
+ .map-layers-panel{top:85px;left:12px;right:77px}
+ .map-weather-journey{top:200px;left:12px;right:15px;max-width:none}
+}
+@media (orientation:landscape) and (max-height:520px){
+ .map-layers-panel{top:60px;padding:5px 7px}
+ .map-layer-buttons button{font-size:9px;padding:5px 6px}
+ .map-weather-journey{top:116px;left:35%;max-width:57%}
+ .journey-points{gap:3px}
+ .journey-point{font-size:9px;padding:4px 2px}
+}
 </style>
 </head><body>
 <div id="map"></div><div class="map-credit" id="map-credit">© OpenStreetMap contributors · Çevrimiçi harita</div>
@@ -524,6 +565,23 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button><button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
+<div class="map-layers-panel" id="map-layers">
+ <div class="map-layer-buttons">
+  <button type="button" id="layer-all">⚡ Tüm Türkiye</button>
+  <button type="button" id="layer-ccs">⚡ CCS</button>
+  <button type="button" id="layer-route">🛣 Rota CCS</button>
+  <button type="button" id="layer-hide">Gizle</button>
+  <button type="button" id="layer-weather">☁ Yol havası</button>
+  <button type="button" id="layer-traffic">🚦 Trafik</button>
+ </div>
+ <div id="layer-status" class="map-layer-status">Şarj katmanını seç · EPDK kayıtları</div>
+</div>
+<div class="map-weather-journey" id="journey-weather">
+ <div class="journey-title"><span>Yol boyunca hava · saatlik model</span>
+  <button type="button" id="journey-close">Kapat</button></div>
+ <div class="journey-points" id="journey-points">Rota oluşturulduğunda 5 hava noktası gösterilir.</div>
+ <div class="journey-note">Open-Meteo tahmini · Trafik gecikmeleri ve şarj bekleme süresi dahil değildir.</div>
+</div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
 <div id="route-compact" aria-label="Rota özeti">
@@ -577,6 +635,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
+var stationLayerMode='none',cachedRouteStations=null,viewportRefreshTimer=null;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
 var liveSoc=NaN,routeHasChargeStop=false;
@@ -683,22 +742,55 @@ function clearStationMarkers(){
  if(map)stationMarkers.forEach(function(marker){map.removeLayer(marker)});
  stationMarkers=[];
 }
+function setStationLayer(mode){
+ if(['all','ccs','route','none'].indexOf(mode)<0)return;
+ stationLayerMode=mode;
+ ['all','ccs','route','hide'].forEach(function(name){
+  $('layer-'+name).classList[name===(mode==='none'?'hide':mode)?'add':'remove']('active');
+ });
+ if(mode==='none'){
+  clearStationMarkers();
+  $('layer-status').textContent='Şarj işaretleri gizlendi';return;
+ }
+ if(mode==='route'){
+  if(cachedRouteStations){
+   window.molaStations(cachedRouteStations);
+   return;
+  }
+  $('layer-status').textContent=currentRouteProgress?
+   'Rota şarj istasyonları yükleniyor...':'Önce rota hesapla';
+  if(!currentRouteProgress)clearStationMarkers();
+  return;
+ }
+ showVisibleStations();
+}
 function showVisibleStations(){
  if(!map || !map.getBounds){msg('Harita hazır değil.');return}
+ if(stationLayerMode!=='all' && stationLayerMode!=='ccs')stationLayerMode='all';
  var b=map.getBounds();
  if(!b)return;
  stationRequestPending=true;
  $('station-note').textContent='EPDK harita istasyonları yükleniyor...';
- if(!native('visibleStations',b.getSouth(),b.getWest(),b.getNorth(),b.getEast())){
+ $('layer-status').textContent='Haritada seçilen bölgenin kayıtları yükleniyor...';
+ if(!native('visibleStationsFiltered',b.getSouth(),b.getWest(),b.getNorth(),b.getEast(),
+      stationLayerMode==='ccs')){
   stationRequestPending=false;
  }
 }
 window.molaStations=function(packet){
  if(!packet||!Array.isArray(packet.items))return;
  stationRequestPending=false;
- clearStationMarkers();
  stationKind=String(packet.kind||'visible');
- packet.items.slice(0,55).forEach(function(station){
+ if(stationKind==='route')cachedRouteStations=packet;
+ // Retain computed charging recommendations even if the user is viewing AC pins.
+ if(stationKind==='route' && stationLayerMode!=='route' && stationLayerMode!=='none'){
+  return;
+ }
+ if(stationKind==='visible' && stationLayerMode==='route')return;
+ if(stationLayerMode==='none' && stationKind==='visible')return;
+ if(stationLayerMode==='none' && stationKind==='route')stationLayerMode='route';
+ clearStationMarkers();
+ packet.items.slice(0,180).forEach(function(station){
   if(!station||!valid(station.lat,station.lon)||!map)return;
   // CCS fast chargers are visible as mint lightning icons on the live map.
   var mark=station.ccs?L.marker([station.lat,station.lon],{
