@@ -1,4 +1,4 @@
-import me.aap.fermata.ev.Id4ChargeCost;
+package me.aap.fermata.ev;
 import java.time.LocalDate;
 
 /** No network or car data required; prices intentionally expire. */
