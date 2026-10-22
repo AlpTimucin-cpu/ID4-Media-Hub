@@ -378,6 +378,146 @@ public final class Id4EvActivity extends Activity {
         body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
     }
 
+    /**
+     * Fully automatic energy page. No sample SoC, battery %, trip length or tariff
+     * can be mistaken for measured vehicle telemetry.
+     */
+    private void energyScreen(){
+        final int currentPage=++generation;
+        LinearLayout container=content();
+        ScrollView sc=new ScrollView(this);
+        LinearLayout panel=new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(12),dp(10),dp(12),dp(38));
+        sc.addView(panel);
+        container.addView(sc,new LinearLayout.LayoutParams(-1,0,1f));
+        panel.addView(text("ID.4 • OTOMATİK ENERJİ & MALİYET",18,true));
+        panel.addView(text("Manuel giriş yok. Seçilen rota, son doğrulanmış OBD "+
+            "batarya ölçümü ve seçilen operatörün kaynaklı tarifesi kullanılır.",13,false));
+        final TextView data=text("",15,false);
+        final TextView model=text("",15,false);
+        final TextView tariff=text("Fiyat kaynağı kontrol ediliyor…",14,false);
+        panel.addView(data);panel.addView(model);panel.addView(tariff);
+        panel.addView(text("Model varsayımı: ID.4 Pure kullanılabilir batarya "+
+            "52 kWh, tüketim 16–24 kWh/100 km, varış rezervi %15. "+
+            "Bunlar araçtan ölçülmemiştir; gerçek SoH, tüketim, "+
+            "şarj kayıpları ve soket ücreti doğrulanmış değildir.",12,false));
+        panel.addView(button("🔄 Verileri otomatik güncelle",()->{
+            if(stopped||currentPage!=generation)return;
+            renderAutoEnergy(data,model);
+            fetchAutomaticPrice(currentPage,tariff);
+        }));
+        panel.addView(button("🔌 OBD batarya ölçümlerini aç",()->
+            startActivity(new Intent(this,Id4ObdActivity.class))));
+        panel.addView(button("🗺 Otomatik rota mesafesi al",()->
+            startActivity(new Intent(this,Id4NavigatorActivity.class))));
+        panel.addView(button("⚡ Şarj istasyonu seç",this::stationsScreen));
+        renderAutoEnergy(data,model);
+        fetchAutomaticPrice(currentPage,tariff);
+    }
+
+    private void renderAutoEnergy(TextView data,TextView model){
+        Id4EnergyData.Snapshot snapshot=Id4EnergyData.load(this,System.currentTimeMillis());
+        String route=snapshot.hasRoute()?String.format(Locale.forLanguageTag("tr-TR"),
+            "Haritadan rota: %.1f km / %.0f dk",snapshot.routeKm,snapshot.routeMinutes):
+            "Rota bulunamadı. Önce haritada rota oluştur.";
+        String soc=snapshot.hasSoc()?String.format(Locale.forLanguageTag("tr-TR"),
+            "Son doğrulanmış OBD doluluk: %%%.1f (%d sn önce)",snapshot.soc,
+            (System.currentTimeMillis()-snapshot.socAt)/1000L):
+            "GÜNCEL OBD SoC YOK • %65 gibi örnek değer gösterilmez.";
+        data.setText("OTOMATİK VERİ KAYNAKLARI\n"+route+"\n"+soc+"\n"+
+            (snapshot.station.isEmpty()?"Şarj istasyonu seçilmedi":
+             "Seçilen istasyon: "+snapshot.station+" • "+snapshot.operator));
+        if(!snapshot.hasRoute()){
+            model.setText("ROTA ENERJİSİ\nHesap için önce gerçek rota mesafesi gerekli.");
+            return;
+        }
+        Id4EnergyModel.Result estimate=Id4EnergyModel.estimate(snapshot.routeKm,
+            snapshot.hasSoc()?snapshot.soc:Double.NaN);
+        if(estimate==null){model.setText("Model için geçerli rota bulunamadı");return;}
+        String line=String.format(Locale.forLanguageTag("tr-TR"),
+            "MODEL TAHMİNİ (ÖLÇÜM DEĞİL)\nYol tüketimi: %.1f – %.1f kWh",
+            estimate.lowRouteKwh,estimate.highRouteKwh);
+        if(estimate.hasSoc)line+=String.format(Locale.forLanguageTag("tr-TR"),
+            "\n%%15 rezerv varsayımıyla ilave batarya enerjisi: %.1f – %.1f kWh",
+            estimate.lowRequiredChargeKwh,estimate.highRequiredChargeKwh);
+        else line+="\nİlave şarj ihtiyacını hesaplamak için güncel OBD verisi gerekir.";
+        model.setText(line);
+    }
+
+    private void fetchAutomaticPrice(int page,TextView target){
+        Id4EnergyData.Snapshot selected=Id4EnergyData.load(this,System.currentTimeMillis());
+        if(selected.operator.trim().isEmpty()){
+            target.setText("OTOMATİK FİYAT\nOperatör seçilmedi; bir şarj "+
+                "istasyonu seçtiğinde tarifesi kontrol edilir.");
+            return;
+        }
+        target.setText("OTOMATİK FİYAT\n"+selected.operator+" güncel tarife aranıyor…");
+        work.execute(()->{
+            String answer;
+            try{
+                JSONObject root=new JSONObject(download("raw.githubusercontent.com",
+                    "/AlpTimucin-cpu/ID4-Media-Hub/feature/mola-32-migration/data/charging/operator_prices.json",150000));
+                JSONArray operators=root.optJSONArray("operators");
+                double cheapest=Double.POSITIVE_INFINITY,highest=Double.NEGATIVE_INFINITY;
+                String from="";
+                if(operators!=null)for(int i=0;i<operators.length();i++){
+                    JSONObject op=operators.optJSONObject(i);
+                    if(op==null||!operatorMatches(selected.operator,op.optString("operator")))continue;
+                    JSONArray tariffs=op.optJSONArray("tariffs");
+                    if(tariffs==null)continue;
+                    for(int j=0;j<tariffs.length();j++){
+                        JSONObject t=tariffs.optJSONObject(j);if(t==null)continue;
+                        long hours=Long.MAX_VALUE;
+                        try{hours=Duration.between(Instant.parse(t.getString("verified_at_utc")),
+                            Instant.now()).toHours();}catch(Exception ignored){}
+                        if(hours<0||hours>36)continue;
+                        double price=t.optDouble("price_try_per_kwh",Double.NaN);
+                        if(!Double.isFinite(price)||price<=0)continue;
+                        cheapest=Math.min(cheapest,price);highest=Math.max(highest,price);
+                        from=t.optString("source_url");
+                    }
+                }
+                if(!Double.isFinite(cheapest)||!Double.isFinite(highest)){
+                    answer="OTOMATİK FİYAT\n"+selected.operator+
+                        ": Güncel doğrulanmış tarife yok. Eski veya "+
+                        "manuel fiyatla maliyet üretilmedi.";
+                }else{
+                    Id4EnergyData.Snapshot latest=Id4EnergyData.load(this,System.currentTimeMillis());
+                    Id4EnergyModel.Result result=Id4EnergyModel.estimate(latest.routeKm,
+                        latest.hasSoc()?latest.soc:Double.NaN);
+                    if(result==null||!result.hasSoc){
+                        answer="OTOMATİK FİYAT\n"+selected.operator+" yayımlanmış "+
+                            "genel AC/DC tarifeleri: "+fmt(cheapest)+" – "+
+                            fmt(highest)+" TL/kWh. Güncel SoC ve rota birlikte "+
+                            "olmadığı için toplam TL çıkarılamaz. Kaynak: "+from;
+                    }else{
+                        double[] cost=result.indicativeCost(cheapest,highest);
+                        answer="OTOMATİK FİYAT\n"+selected.operator+" genel AC/DC "+
+                            "tarife aralığı: "+fmt(cheapest)+" – "+fmt(highest)+
+                            " TL/kWh\nTEORİK ek şarj bedeli: "+
+                            fmt(cost[0])+" – "+fmt(cost[1])+
+                            " TL\nGerçek fatura değildir; soket fiyatı ve kayıplar "+
+                            "belirsiz. Kaynak: "+from;
+                    }
+                }
+            }catch(Exception e){
+                answer="OTOMATİK FİYAT\nTarife kaynağına ulaşılamadı. "+
+                    "Sabit 13 TL/kWh gibi fiyat kullanılmadı.";
+            }
+            final String output=answer;
+            runOnUiThread(()->{if(!stopped&&page==generation)target.setText(output);});
+        });
+    }
+    private static boolean operatorMatches(String selected,String source){
+        String a=selected.trim().toLowerCase(Locale.ROOT);
+        String b=source.trim().toLowerCase(Locale.ROOT);
+        return !a.isEmpty()&&!b.isEmpty()&&(a.equals(b)||a.contains(b)||b.contains(a));
+    }
+    private static String fmt(double v){
+        return String.format(Locale.forLanguageTag("tr-TR"),"%.1f",v);
+    }
+
     private void showPrices(){
         setStatus("Resmî Trugo/ZES tarifeleri kontrol ediliyor…");
         work.execute(()->{
