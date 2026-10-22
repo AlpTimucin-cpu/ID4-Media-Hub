@@ -1127,9 +1127,19 @@ bindAutocomplete('from');bindAutocomplete('to');
 try{
  if(typeof L==='undefined')throw new Error('Harita kitaplığı yüklenmedi');
  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([38.9,35.1],6);
- L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ // Public OSM tile server is best-effort; keep map attribution visible
+ // and say clearly when the network tiles cannot be displayed.
+ var baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
   attribution:'© OpenStreetMap katkıcıları',maxZoom:18
  }).addTo(map);
+ if(baseTiles.on){
+  baseTiles.on('tileerror',function(){
+   $('map-credit').textContent='© OpenStreetMap contributors · Harita karoları yüklenemedi';
+  });
+  baseTiles.on('tileload',function(){
+   $('map-credit').textContent='© OpenStreetMap contributors · Çevrimiçi harita';
+  });
+ }
  map.on('click',function(e){selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false)});
  map.on('dragstart',function(){setFollowMap(false)});
  msg('Başlangıç ve varış için yer adı yazabilirsin; GPS isteğe bağlı.');
