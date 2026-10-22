@@ -211,7 +211,7 @@ assert.equal(calls.routeVia[0][3],34.9,'waypoint longitude wrong');
 assert(Math.abs(calls.routeVia[0][4]-36.8841)<0.002,
  'original final destination must be kept');
 popupMarker.popup.children[2].onclick();
-assert.equal(calls.saved.length,1,'selected operator not saved');
+assert.equal(calls.saved.length,2,'both waypoint and destination choices must save operator');
 assert.equal(calls.saved[0][1],'ŞarjAğı');
 assert.equal(get('to').value,'Deneme CCS','chosen charger not set as destination');
 assert.equal(calls.route.length,3,'choosing a station must replan the route automatically');
