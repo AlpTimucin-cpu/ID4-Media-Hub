@@ -365,6 +365,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 @media (orientation:landscape) and (min-width:640px) and (max-height:520px){
  .map-credit{top:58px;left:36%;font-size:9px}
 }
+
+/* Compact measured-versus-model freshness status in the battery card. */
+.cockpit-age{font-size:10px;color:#ffe0a4;margin:3px 0 0;font-weight:700}
+.cockpit-age.fresh{color:#4af5bd}
 </style>
 </head><body>
 <div id="map"></div><div class="map-credit" id="map-credit">© OpenStreetMap contributors · Çevrimiçi harita</div>
@@ -372,6 +376,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  <div class="cockpit-left">
   <div class="cockpit-panel">
    <div class="cockpit-title">BATARYA DOLULUK · OBD</div>
+   <div class="cockpit-age" id="co-sensor-age">Ölçüm bekleniyor</div>
    <div id="co-soc" class="cockpit-value cockpit-main-value cockpit-soc">— %</div>
    <div class="cockpit-bar"><div id="co-soc-fill"></div></div>
   </div>
@@ -1035,6 +1040,8 @@ function clearTelemetry(){
  $('live-temp').textContent='—';
  $('vehicle-soc').textContent='—';
  $('co-soc').textContent='— %';
+ $('co-sensor-age').textContent='OBD SoC güncel değil';
+ $('co-sensor-age').classList.remove('fresh');
  $('co-trip-battery').textContent='OBD SoC: —';
  // Arrival SoC band was calculated at route time. A stale BMS SoC cannot
  // support a still-live battery prediction and must be invalidated.
@@ -1069,6 +1076,8 @@ window.molaTelemetry=function(data){
  function ready(value){return typeof value==='string'&&value.trim()!==''&&
    value.trim()!=='—'&&value.trim().indexOf('—')<0;}
  if(fresh&&ready(d.soc)){
+  $('co-sensor-age').classList.add('fresh');
+  $('co-sensor-age').textContent='OBD • ölçüm yeni';
   $('co-soc').textContent=String(d.soc);
   $('co-trip-battery').textContent='OBD SoC: '+String(d.soc);
   var n=Number.parseFloat(String(d.soc).replace(',','.'));
@@ -1083,6 +1092,8 @@ window.molaTelemetry=function(data){
   }
  }else{
   liveSoc=NaN;
+  $('co-sensor-age').classList.remove('fresh');
+  $('co-sensor-age').textContent='SoC doğrulanamadı';
   $('co-soc').textContent='— %';
   $('co-trip-battery').textContent='OBD SoC: —';
   $('co-soc-fill').style.width='0%';
@@ -1094,6 +1105,11 @@ window.molaTelemetry=function(data){
  $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
 };
 setInterval(function(){
+ if(lastTelemetryAt){
+  var age=Math.floor((Date.now()-lastTelemetryAt)/1000);
+  if(age>=0 && age<=25 && Number.isFinite(liveSoc))
+   $('co-sensor-age').textContent='OBD • son paket '+age+' sn önce';
+ }
  // Clear progress after the last location update expires; do not display a frozen percent.
  if(currentRouteProgress && lastGpsFix && !goodGps(lastGpsFix))showRouteGpsProgress(lastGpsFix);
  if(lastManeuverAt && Date.now()-lastManeuverAt>30000){
