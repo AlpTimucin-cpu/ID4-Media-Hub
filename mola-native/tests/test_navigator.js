@@ -204,6 +204,20 @@ assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not
 assert(get('co-eta').textContent!=='—','real route must derive a traffic-free local ETA');
 assert.equal(get('co-maneuver').textContent,'Devam et',
  'cockpit first maneuver must be drawn from OSRM instructions');
+win.molaManeuver({instruction:'Sağa dön',straightLineMeters:420,
+ fixTimeMs:Date.now(),accuracy:12});
+assert(get('co-maneuver').textContent.includes('Sağa dön · yaklaşık 420 m'),
+ 'real GPS maneuver proximity must update HUD');
+assert(get('co-maneuver').textContent.includes('kuş uçuşu'),
+ 'straight-line maneuver proximity must not claim road distance');
+win.molaManeuver({instruction:'Eski talimat',straightLineMeters:30,
+ fixTimeMs:Date.now()-80000,accuracy:12});
+assert(!get('co-maneuver').textContent.includes('Eski talimat'),
+ 'old GPS fix must not overwrite current navigation guidance');
+win.molaManeuver({instruction:'Yanlış konum',straightLineMeters:30,
+ fixTimeMs:Date.now(),accuracy:170});
+assert(!get('co-maneuver').textContent.includes('Yanlış konum'),
+ 'inaccurate GPS fix must never render as a real maneuver');
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
  'do not simulate trip progress without a GPS observation');
 win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()});
