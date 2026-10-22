@@ -56,6 +56,7 @@ final class Id4LiveTelemetry {
     private volatile boolean enabled=false;
     private volatile BluetoothSocket socket;
     private Thread thread;
+    private long sessionId;
     private Data data=new Data();
     private static final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     Id4LiveTelemetry(Context context,Listener listener){
@@ -64,9 +65,16 @@ final class Id4LiveTelemetry {
     synchronized void start(BluetoothDevice device){
         stop();
         enabled=true;
+        final long session=++sessionId;
         publish("ELM327 bağlanıyor...",false);
-        thread=new Thread(()->loop(device),"Mola-ID4-dashboard-readonly");
+        thread=new Thread(()->loop(device,session),"Mola-ID4-dashboard-readonly");
         thread.start();
+    }
+    private synchronized boolean active(long session){
+        return enabled && sessionId==session;
+    }
+    private synchronized void publishForSession(long session,String status,boolean connected){
+        if(active(session))publish(status,connected);
     }
     private synchronized void publish(String status,boolean connected){
         data.status=status;
@@ -80,8 +88,8 @@ final class Id4LiveTelemetry {
         Data result=data.displayAt(System.currentTimeMillis());
         main.post(()->listener.onData(result));
     }
-    private synchronized void measurement(String did,String response){
-        if(!enabled)return;
+    private synchronized void measurement(long session,String did,String response){
+        if(!active(session))return;
         String decoded=null;
         for(Id4MebDecoder.Sensor sensor:Id4MebDecoder.SENSORS){
             if(did.equals(sensor.did)) {decoded=Id4MebDecoder.decode(sensor,response);break;}
@@ -103,33 +111,44 @@ final class Id4LiveTelemetry {
         data.updatedAt=now;
         Data result=data.displayAt(now);main.post(()->listener.onData(result));
     }
-    private void loop(BluetoothDevice device){
+    private void loop(BluetoothDevice device,long session){
         try{
             BluetoothSocket s=device.createRfcommSocketToServiceRecord(SPP);
-            socket=s;s.connect();
+            synchronized(this){
+                if(!active(session)){
+                    try{s.close();}catch(Exception ignored){}
+                    return;
+                }
+                socket=s;
+            }
+            s.connect();
+            if(!active(session))return;
             InputStream in=s.getInputStream();OutputStream out=s.getOutputStream();
             for(String cmd:new String[]{"ATZ","ATE0","ATL0","ATS0","ATH0","ATSP7","ATSH17FC007B","ATCRA17FE007B"}){
-                String answer=ask(in,out,cmd);
+                String answer=ask(s,in,out,cmd);
                 if(answer.toUpperCase(Locale.ROOT).contains("ERROR")||
                     answer.contains("?"))throw new IllegalStateException("Adaptör komutu reddedildi");
             }
-            publish("ELM327 bağlı · veriler okunuyor",true);
+            publishForSession(session,"ELM327 bağlı · veriler okunuyor",true);
             String[] dids={"028C","7448","1E3B","2A0B","189D"};
-            while(enabled){
+            while(active(session)){
                 for(String did:dids){
-                    if(!enabled)break;
-                    String answer=ask(in,out,"22"+did);
-                    measurement(did,answer);
+                    if(!active(session))break;
+                    String answer=ask(s,in,out,"22"+did);
+                    measurement(session,did,answer);
                     Thread.sleep(90);
                 }
                 Thread.sleep(1600);
             }
         }catch(Exception e){
-            if(enabled)publish("OBD verisi alınamadı: "+e.getClass().getSimpleName(),false);
-        }finally{stop();}
+            publishForSession(session,"OBD verisi alınamadı: "+e.getClass().getSimpleName(),false);
+        }finally{
+            // Previous worker must never disconnect a newly opened OBD session.
+            synchronized(this){if(sessionId==session)stop();}
+        }
     }
-    private String ask(InputStream in,OutputStream out,String command)throws Exception{
-        final BluetoothSocket current=socket;
+    private String ask(BluetoothSocket current,InputStream in,OutputStream out,String command)
+            throws Exception{
         ScheduledFuture<?> timeout=watchdog.schedule(()->{
             try{if(current!=null)current.close();}catch(Exception ignored){}
         },8,TimeUnit.SECONDS);
@@ -145,6 +164,7 @@ final class Id4LiveTelemetry {
         }finally{timeout.cancel(false);}
     }
     synchronized void stop(){
+        sessionId++;
         enabled=false;
         BluetoothSocket s=socket;socket=null;
         if(s!=null)try{s.close();}catch(Exception ignored){}
