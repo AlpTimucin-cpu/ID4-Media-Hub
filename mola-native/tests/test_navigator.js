@@ -118,7 +118,10 @@ assert.equal(get('co-soc-fill').style.width,'64%','battery progress is not linke
 assert.equal(get('co-voltage').textContent,'370 V');
 assert.equal(get('co-temp').textContent,'23 °C');
 assert.equal(get('co-mode').textContent,'Ready');
-assert.equal(get('co-range').textContent,'— km','unverified range must never be inferred');
+assert.equal(get('co-range').textContent,'106–159 km',
+ 'only verified SoC may generate clearly-labelled model range');
+assert(html.includes('MENZİL · PROFİL MODELİ (%15 REZERV)'),
+ 'the model-range HUD label must not claim real BMS range');
 assert.equal(get('co-power').textContent,'— kW','unverified kW must stay blank');
 get('co-connect').onclick();
 assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
@@ -129,6 +132,7 @@ win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
 assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
+assert.equal(get('co-range').textContent,'— km','model range must disappear with stale SoC');
 assert(html.includes('id="follow-map"'),'GPS follow button is missing');
 get('follow-map').onclick();
 assert.equal(calls.location,1,'GPS follow must request location only on explicit click');
