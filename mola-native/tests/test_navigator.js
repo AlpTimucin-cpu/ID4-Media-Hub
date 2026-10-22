@@ -25,15 +25,20 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],location:0,stop:0,selectObd:0};
+const calls={suggest:[],route:[],location:0,stop:0,selectObd:0,visible:[],saved:[]};
+const drawnMarkers=[];
 const L={
  map(){return {setView(){return this},on(){return this},removeLayer(){},
   fitBounds(bounds,opts){globalThis.lastRouteBoundsOptions=opts},
   getSize(){return {x:390,y:780}},
+  getBounds(){return {getSouth(){return 36},getWest(){return 30},
+     getNorth(){return 40},getEast(){return 35}}},
   invalidateSize(){return this},
-  zoomIn(){},zoomOut(){},panTo(){}}},
+  zoomIn(){},zoomOut(){},panTo(){},closePopup(){}}},
  tileLayer(){return {addTo(){return this}}},
- circleMarker(){return {addTo(){return this},bindPopup(){return this},setLatLng(){}}},
+ circleMarker(){return {popup:null,
+  addTo(){drawnMarkers.push(this);return this},
+  bindPopup(content){this.popup=content;return this},setLatLng(){}}},
  polyline(){return {addTo(){return this},getBounds(){return []}}}
 };
 const win={
@@ -41,7 +46,9 @@ const win={
   suggest(field,q,id){calls.suggest.push({field,q,id})},
   route(...args){calls.route.push(args)},
   location(){calls.location++},stop(){calls.stop++},
-  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++}
+  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
+  visibleStations(...args){calls.visible.push(args)},
+  saveStation(...args){calls.saved.push(args)}
  }
 };
 const context={
@@ -166,5 +173,30 @@ win.molaRoute({
 });
 assert(get('trip-energy').textContent.includes('Varış SoC ~%75–%76'),
  'recent BMS SoC arrival range missing');
+// Same-map charging: request viewport only on user action; never show invented availability.
+get('charge-map').onclick();
+assert.equal(calls.visible.length,1,'EPDK viewport bridge never invoked');
+assert.equal(calls.visible[0][0],36);
+win.molaStations({kind:'route',items:[
+ {lat:37.8,lon:34.9,title:'Deneme CCS',operator:'ŞarjAğı',
+  sockets:'CCS 2 · Type 2 1',ccs:true,distanceKm:3.2},
+ {lat:37.7,lon:34.7,title:'Deneme AC',operator:'ŞarjB',
+  sockets:'CCS 0 · Type 2 2',ccs:false,distanceKm:4.1}
+ ],total:2,updatedAt:'2026-10-20T08:00:00Z',
+ snapshotAgeHours:48,liveAvailability:false,livePrices:false});
+assert(get('station-summary').textContent.includes('2 rota yakınında'),
+ 'route CCS stations summary missing');
+assert(get('station-note').textContent.includes('Canlı soket doluluğu/fiyat yok'),
+ 'snapshot incorrectly claims real-time status');
+const popupMarker=drawnMarkers.find(x=>x.popup && x.popup.children &&
+ x.popup.children.some(c=>c.textContent==='Deneme CCS'));
+assert(popupMarker,'station marker popup was not rendered');
+popupMarker.popup.children[2].onclick();
+assert.equal(calls.saved.length,1,'selected operator not saved');
+assert.equal(calls.saved[0][1],'ŞarjAğı');
+assert.equal(get('to').value,'Deneme CCS','chosen charger not set as destination');
+win.molaStationError({detail:'Ağ erişimi yok'});
+assert(get('station-summary').textContent.includes('alınamadı'),
+ 'station failure must be visible');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
