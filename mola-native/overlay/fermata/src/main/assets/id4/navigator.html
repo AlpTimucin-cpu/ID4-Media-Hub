@@ -439,7 +439,9 @@ window.molaRoute=function(o){
    (o.stopIncluded?' · 1 şarj molası':'');
  if(Number.isFinite(o.energyLowKwh) && Number.isFinite(o.energyHighKwh)){
   var energyText='Enerji '+o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh (profil tahmini)';
-  if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
+  if(o.stopIncluded){
+   energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
+  }else if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
    energyText+=' · Varış SoC ~%'+o.arrivalSocLower.toFixed(0)+'–%'+o.arrivalSocUpper.toFixed(0);
   }else if(o.chargingNeededByModel){
    energyText+=' · Yolda şarj gerekebilir';
