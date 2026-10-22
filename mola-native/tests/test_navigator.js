@@ -128,6 +128,7 @@ assert.equal(mapActions.pans.length,oldPanCount,'user map drag should suspend fo
 get('follow-map').onclick();
 assert.equal(mapActions.pans.length,oldPanCount+1,'follow button must re-center on last good fix');
 get('follow-map').onclick();
+calls.location=0; // prior request was explicit; subsequent search/plan must not trigger GPS
 assert.equal(get('co-voltage').textContent,'— V','cockpit must clear stale voltage');
 assert.equal(get('co-soc-fill').style.width,'0%','battery bar must clear when stale');
 // Offline fallback works even if Photon returns errors.
