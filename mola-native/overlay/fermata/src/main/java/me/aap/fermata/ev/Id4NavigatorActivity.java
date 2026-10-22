@@ -65,6 +65,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private boolean running, voice=true, destroyed, gpsTrackingRequested, resumeRouteAfterPause;
     private volatile String activeRouteProvider="OSRM demo";
     private int generation, nextStep;
+    private volatile JSONArray cachedAlternatives;
+    private volatile boolean cachedRouteGps, cachedHasStop;
     private long lastSpeech;
     private static final class Step {
         final double lat, lon;
@@ -189,6 +191,25 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void route(double fromLat,double fromLon,
               double toLat,double toLon,boolean useGps){
             plan(fromLat,fromLon,toLat,toLon,useGps);
+        }
+        @JavascriptInterface public void chooseAlternative(int index){
+            ui.post(()->{
+                JSONArray available=cachedAlternatives;
+                if(available==null||index<0||index>=available.length()){
+                    send("molaStatus",record("route","Alternatif rota güncel değil."));
+                    return;
+                }
+                int selectionGeneration=++generation;
+                stationRequestId++;
+                final boolean gps=cachedRouteGps,stop=cachedHasStop;
+                jobs.execute(()->{
+                    try{renderRouteOption(available,index,gps,stop,selectionGeneration);}
+                    catch(Exception e){
+                        send("molaStatus",record("error",
+                            "Alternatif rota açılamadı: "+e.getClass().getSimpleName()));
+                    }
+                });
+            });
         }
         @JavascriptInterface public void routeVia(double fromLat,double fromLon,
               double viaLat,double viaLon,double toLat,double toLon,boolean useGps){
@@ -467,12 +488,23 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 }
                 if(out==null)throw new IllegalStateException(problems.toString());
                 JSONArray routes=out.getJSONArray("routes");
-                JSONObject selected=routes.getJSONObject(0);
+                cachedAlternatives=routes;
+                cachedRouteGps=verifiedGps;
+                cachedHasStop=hasStop;
+                renderRouteOption(routes,0,verifiedGps,hasStop,myGeneration);
+            }catch(Exception e){send("molaStatus",record("error",
+                "Rota çizilemedi: "+e.getMessage()+". Ağ veya rota servisini kontrol et."));}
+        });
+    }
+    private void renderRouteOption(JSONArray routes,int optionIndex,boolean verifiedGps,
+                                   boolean hasStop,int myGeneration)throws Exception{
+                JSONObject selected=routes.getJSONObject(optionIndex);
                 JSONObject packet=new JSONObject();
                 packet.put("coordinates",selected.getJSONObject("geometry").getJSONArray("coordinates"));
                 packet.put("distanceKm",Math.round(selected.getDouble("distance")/100.0)/10.0);
                 packet.put("durationMin",Math.round(selected.getDouble("duration")/60.0));
                 packet.put("alternatives",routes.length());
+                packet.put("routeIndex",optionIndex);
                 packet.put("provider",activeRouteProvider);
                 packet.put("trafficAvailable",false);
                 packet.put("navigationActive",verifiedGps);
@@ -539,13 +571,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     // Read-only EPDK snapshot route corridor; never block route rendering.
                     final int stationTicket=++stationRequestId;
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
+                    stationJobs.execute(()->loadAlternativeCards(routes,myGeneration,stationTicket,
+                        optionIndex,hasStop));
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
-            }catch(Exception e){send("molaStatus",record("error",
-                "Rota çizilemedi: "+e.getMessage()+". Ağ veya rota servisini kontrol et."));}
-        });
     }
+
     /**
      * Open-Meteo 15-minute MODEL forecast, evaluated at predicted positions
      * along the route for +1,+5,+10,+15 min. Not minute-by-minute observations.
