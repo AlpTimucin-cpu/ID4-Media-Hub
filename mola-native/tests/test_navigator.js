@@ -404,5 +404,44 @@ assert.equal(get('co-maneuver').textContent,'Rota bekleniyor',
  'old turn instructions must disappear when route is reset');
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
  'route reset must clear the progress bar');
+// Arrival SoC must recompute from the CURRENT fresh BMS SoC and
+// matched remaining route, never display stale/static route planning SoC.
+win.molaRoute({
+ coordinates:[[34.6833,37.9667],[34.6,37.95]],distanceKm:40,
+ durationMin:50,energyLowKwh:6.4,energyHighKwh:9.6,
+ steps:['İlerleyin'],navigationActive:false
+});
+win.molaPosition({lat:37.9667,lon:34.6833,accuracy:5,timeMs:Date.now()});
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'without fresh BMS SoC, route GPS alone must not imply arrival SoC');
+win.molaTelemetry({fresh:true,soc:'64 %',voltage:'370 V',temperature:'23 °C',
+ chargeMode:'Ready',status:'ELM327 bağlı'});
+assert.equal(get('co-trip-arrival').textContent,'%46–%52',
+ 'fresh BMS + 40km remaining should show 52kWh/16-24kWh model band');
+win.molaTelemetry({fresh:true,soc:'70 %',voltage:'370 V',temperature:'23 °C',
+ chargeMode:'Ready',status:'ELM327 bağlı'});
+assert.equal(get('co-trip-arrival').textContent,'%52–%58',
+ 'arrival SoC should respond to actual SoC updates');
+win.molaPosition({lat:37.9667,lon:34.6833,accuracy:5,timeMs:Date.now()-120000});
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'stale GPS must hide predicted arrival despite a fresh SoC');
+win.molaPosition({lat:37.9667,lon:34.6833,accuracy:5,timeMs:Date.now()});
+assert.equal(get('co-trip-arrival').textContent,'%52–%58',
+ 'arrival model may return after a new accurate GPS fix');
+win.molaTelemetry({fresh:false,status:'OBD bağlantısı koptu'});
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'stale OBD must clear model arrival SoC');
+win.molaRoute({
+ coordinates:[[34.6833,37.9667],[34.6,37.95]],distanceKm:40,
+ durationMin:50,stopIncluded:true,energyLowKwh:6.4,energyHighKwh:9.6,
+ steps:['Şarj molasına devam'],navigationActive:false
+});
+win.molaTelemetry({fresh:true,soc:'70 %',voltage:'370 V',
+ temperature:'23 °C',chargeMode:'Ready',status:'ELM327 bağlı'});
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'model cannot predict arrival SoC after a charger without charge amount');
+assert(get('co-trip-arrival-note').textContent.includes('Mola sonrası'),
+ 'missing post-charge amount must be explained');
+
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
