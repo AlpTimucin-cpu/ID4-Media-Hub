@@ -333,6 +333,93 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     "Rota çevresi EPDK verisi yüklenemedi: "+e.getClass().getSimpleName()));
         }
     }
+    private void loadAlternativeCards(JSONArray alternatives,int routeGeneration,
+                                      int stationTicket,int selectedIndex,boolean hasStop){
+        JSONArray rows=new JSONArray();
+        double fastest=Double.POSITIVE_INFINITY,shortest=Double.POSITIVE_INFINITY;
+        int fastIndex=0,shortIndex=0,chargeIndex=-1;
+        double chargeScore=Double.NEGATIVE_INFINITY;
+        Id4EnergyData.Snapshot facts=Id4EnergyData.load(this,System.currentTimeMillis());
+        double soc=facts.hasSoc()?facts.soc:Double.NaN;
+        int count=Math.min(3,alternatives.length());
+        try{
+            for(int k=0;k<count;k++){
+                JSONObject route=alternatives.getJSONObject(k);
+                double roadKm=route.getDouble("distance")/1000.0;
+                double minutes=route.getDouble("duration")/60.0;
+                if(roadKm<=0||roadKm>5000||minutes<=0)continue;
+                if(minutes<fastest){fastest=minutes;fastIndex=k;}
+                if(roadKm<shortest){shortest=roadKm;shortIndex=k;}
+                JSONObject item=new JSONObject();
+                item.put("index",k).put("km",Math.round(roadKm*10)/10.0)
+                    .put("minutes",Math.round(minutes))
+                    .put("energyLowKwh",Math.round(roadKm*.16*10)/10.0)
+                    .put("energyHighKwh",Math.round(roadKm*.24*10)/10.0)
+                    .put("socKnown",Double.isFinite(soc)).put("ccsCount",0)
+                    .put("reachableCcsModel",false);
+                Id4ChargeCost.Estimate cost=Id4ChargeCost.estimate(
+                    roadKm,soc,"",java.time.LocalDate.now());
+                item.put("chargeNeededModel",cost.needsStop);
+                if(cost.socKnown) {
+                    item.put("chargeLowKwh",Math.round(cost.purchasedLowKwh*10)/10.0);
+                    item.put("chargeHighKwh",Math.round(cost.purchasedHighKwh*10)/10.0);
+                }
+                try{
+                    JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
+                    ArrayList<Id4StationCatalog.Point> line=new ArrayList<>();
+                    int stride=Math.max(1,coords.length()/2000);
+                    for(int j=0;j<coords.length();j+=stride){
+                        JSONArray c=coords.getJSONArray(j);
+                        line.add(new Id4StationCatalog.Point(c.getDouble(1),c.getDouble(0)));
+                    }
+                    if(coords.length()>1){
+                        JSONArray last=coords.getJSONArray(coords.length()-1);
+                        line.add(new Id4StationCatalog.Point(last.getDouble(1),last.getDouble(0)));
+                    }
+                    JSONObject stationData=stationCatalog.alongRoute(line,roadKm,soc);
+                    item.put("stationsKnown",true);
+                    item.put("ccsCount",stationData.optInt("total",0));
+                    JSONObject suggested=stationData.optJSONObject("suggested");
+                    if(suggested!=null&&!hasStop){
+                        item.put("reachableCcsModel",true);
+                        item.put("firstCcs",suggested.optString("title"));
+                        item.put("firstCcsOperator",suggested.optString("operator"));
+                        item.put("firstCcsKm",suggested.optDouble("routeProgressKm",0));
+                        double score=1000.0-Math.abs(roadKm-shortest)*.05-
+                            minutes*.18+Math.min(100,stationData.optInt("total",0))*.25;
+                        if(score>chargeScore){chargeScore=score;chargeIndex=k;}
+                        cost=Id4ChargeCost.estimate(
+                            roadKm,soc,suggested.optString("operator"),
+                            java.time.LocalDate.now());
+                        if(cost.tariffKnown){
+                            item.put("costMinTry",cost.minTry)
+                                .put("costMaxTry",cost.maxTry)
+                                .put("tariffOperator",cost.operator)
+                                .put("tariffSource",cost.tariffSource)
+                                .put("tariffChecked","2026-10-22");
+                        }
+                    }
+                }catch(Exception unavailable){
+                    item.put("stationsKnown",false);
+                }
+                rows.put(item);
+            }
+            JSONObject response=new JSONObject().put("options",rows)
+                .put("selectedIndex",selectedIndex)
+                .put("fastestIndex",fastIndex).put("shortestIndex",shortIndex)
+                .put("chargeAwareIndex",chargeIndex)
+                .put("livePrices",false).put("liveAvailability",false)
+                .put("modelNote","OSRM alternatifleri, 16–24 kWh/100 km, "
+                   +"52 kWh batarya ve %15 rezerv. CCS yakınlığı yol erişimi değildir.");
+            if(!destroyed && generation==routeGeneration && stationRequestId==stationTicket)
+                send("molaAlternatives",response);
+        }catch(Exception e){
+            if(!destroyed && generation==routeGeneration && stationRequestId==stationTicket)
+                send("molaAlternativeError",record("alternatives",
+                    "Alternatiflerin şarj analizi yüklenemedi."));
+        }
+    }
+
     private void requestGps() {
         if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;
