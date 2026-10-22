@@ -3,6 +3,7 @@ package me.aap.fermata.ev;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.pm.ActivityInfo;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
@@ -133,6 +134,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
+        @JavascriptInterface public void landscape(boolean enabled){
+            ui.post(()->{
+                if(destroyed || isFinishing())return;
+                setRequestedOrientation(enabled?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                send("molaStatus",record("display",
+                    enabled?"Yatay tam ekran açılıyor.":"Ekran yönü serbest bırakıldı."));
+            });
+        }
         @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
         @JavascriptInterface public void visibleStations(
               double south,double west,double north,double east){
