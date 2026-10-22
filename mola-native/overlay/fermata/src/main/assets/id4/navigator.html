@@ -216,6 +216,69 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .sheet.route-active{bottom:6px;height:138px;max-height:138px}
  .sheet{top:62px;bottom:6px}
 }
+
+/* Single screen first: navigation and telemetry do NOT hide under the old route form. */
+@media (orientation:landscape) and (min-width:640px){
+ .sheet:not(.route-active):not(.search-open){display:none!important}
+ .sheet.search-open:not(.route-active){
+   display:block;top:88px;bottom:14px;right:14px;left:auto;
+   width:min(390px,45vw);height:auto;min-height:0;
+   overflow-y:auto;padding:16px;background:rgba(2,25,42,.97);
+   border:1px solid rgba(116,211,230,.55);z-index:1100;
+ }
+ .sheet.search-open #route-form{display:block}
+ .sheet.search-open .lookup label{color:#c9ebf6}
+ .sheet.search-open .lookup input{background:#f7fdff;color:#1c3545}
+ .sheet.search-open .suggestions{max-height:180px}
+ .sheet.search-open .station-actions,.sheet.search-open .tools,
+ .sheet.search-open .vehicle,.sheet.search-open .weather,
+ .sheet.search-open .notice,.sheet.search-open .state-line{display:none}
+ .sheet.search-open .grip{display:none}
+ .cockpit-right{right:13px;top:12px;width:min(23%,275px);max-height:calc(100% - 205px);
+   overflow:hidden}
+ .cockpit-right .cockpit-panel{padding:10px 12px}
+ .cockpit-right .cockpit-value{font-size:clamp(17px,2.2vw,28px);line-height:1.08}
+ .cockpit-right .cockpit-title{font-size:10px;margin-top:4px}
+ .buttons{right:calc(min(23%,275px) + 25px);top:89px}
+ .cockpit-bottom{bottom:15px;left:35%;right:26%;grid-template-columns:1fr}
+ .cockpit-bottom .cockpit-panel{background:rgba(2,28,47,.63)}
+ .cockpit-bottom .cockpit-value{font-size:clamp(15px,2vw,24px)}
+ .sheet.route-active:not(.details-open){
+   left:35%;right:14px;bottom:10px;top:auto;
+   height:166px;max-height:166px;width:auto
+ }
+ .sheet.route-active:not(.details-open) .compact-actions{right:14px;top:12px}
+ .sheet.route-active:not(.details-open) .compact-row{margin-right:210px}
+ .sheet.route-active:not(.details-open) .route-progress{max-width:100%;margin:5px 0}
+ .sheet.route-active:not(.details-open) .station-summary{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+ .sheet.route-active.details-open{
+   top:85px;right:14px;left:auto;bottom:12px;
+   width:min(430px,45vw);height:auto;max-height:calc(100% - 98px);
+ }
+ .vehicle-cockpit.has-route .cockpit-bottom{display:none}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .cockpit-left{width:33%;top:5px;gap:4px}
+ .cockpit-left .cockpit-panel{padding:6px 8px}
+ .cockpit-left .cockpit-title{font-size:9px}
+ .cockpit-left .cockpit-main-value{font-size:clamp(24px,4.3vw,46px)}
+ .cockpit-left .cockpit-value{font-size:clamp(12px,1.9vw,19px)}
+ .cockpit-slim{min-height:0}
+ .cockpit-slim small{max-height:26px;overflow:hidden}
+ .cockpit-right{width:24%;right:8px;top:5px;max-height:calc(100% - 155px)}
+ .cockpit-right .cockpit-panel{padding:6px 8px}
+ .cockpit-right .cockpit-title{font-size:9px;margin-top:3px}
+ .cockpit-right .cockpit-value{font-size:clamp(13px,2vw,20px)}
+ .cockpit-right .cockpit-condition,.cockpit-right #co-maneuver,
+ .cockpit-right #co-weather{display:none}
+ .buttons{right:calc(24% + 20px);top:65px}
+ .sheet.search-open:not(.route-active){top:62px;bottom:6px}
+ .sheet.route-active:not(.details-open){left:35%;bottom:6px;height:129px;max-height:129px}
+ .sheet.route-active:not(.details-open) .compact-actions button{min-height:26px;padding:3px 6px}
+ .sheet.route-active:not(.details-open) .station-summary{display:none}
+}
+#open-route{font-weight:780}
+#co-expand{font-weight:780}
 </style>
 </head><body>
 <div id="map"></div>
@@ -272,9 +335,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 </div><div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
 </div><div class="cockpit-tabs" aria-label="Araç üst menüsü" style="display:none">
 <button id="co-media" type="button">‹ Mola</button>
-<button id="co-route-tab" class="current" type="button">▣ Rota</button>
+<button id="co-route-tab" class="current" type="button">⌕ Rota ara</button>
 <button id="co-station-tab" type="button">⚡ İstasyon</button>
-</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
+<button id="co-expand" type="button">⛶ Tam ekran</button>
+</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
@@ -540,6 +604,7 @@ function native(name){
    case 'route':bridge.route(a[0],a[1],a[2],a[3],a[4]);break;
    case 'routeVia':bridge.routeVia(a[0],a[1],a[2],a[3],a[4],a[5],a[6]);break;
    case 'location':bridge.location();break;
+   case 'landscape':bridge.landscape(a[0]);break;
    case 'voice':bridge.voice(a[0]);break;
    case 'stop':bridge.stop();break;
    case 'back':bridge.back();break;
@@ -706,6 +771,7 @@ window.molaRoute=function(o){
  currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
  showRouteGpsProgress(lastGpsFix);
  var sheet=document.querySelector('.sheet');
+ sheet.classList.remove('search-open');
  sheet.classList.add('route-active');
  $('vehicle-cockpit').classList.add('has-route');
  sheet.classList.remove('details-open');
@@ -869,6 +935,7 @@ $('plan').onclick=function(){
   msg('Nereden ve Nereye alanlarında öneri listesinden iki konum seç.');return;
  }
  closeList('from');closeList('to');
+ document.querySelector('.sheet').classList.remove('search-open');
  msg('Seçili başlangıç ve varış için rota hesaplanıyor...');
  native('route',points.from.lat,points.from.lon,points.to.lat,points.to.lon,usingGps);
 };
@@ -881,7 +948,8 @@ $('route-details').onclick=function(){
  $('route-details').textContent=expanded?'Hava ve rota ayrıntıları':'Haritayı büyüt';
 };
 $('route-edit').onclick=function(){
- wipeRoute();msg('Başlangıç ve varışı değiştirebilirsin.');
+ wipeRoute();document.querySelector('.sheet').classList.add('search-open');
+ msg('Başlangıç ve varışı değiştirebilirsin.');
 };
 $('stop').onclick=function(){wipeRoute();msg('Rota durduruldu.')};
 $('tts').onclick=function(){
@@ -890,11 +958,19 @@ $('tts').onclick=function(){
  $('tts').textContent=voice?'Kapat':'Aç';
 };
 $('back').onclick=$('co-media').onclick=function(){native('back')};
-$('co-route-tab').onclick=function(){
+function toggleRouteSearch(){
  var sheet=document.querySelector('.sheet');
- if(sheet.classList.contains('route-active'))sheet.classList.add('details-open');
- else sheet.style.display='block';
-};
+ if(sheet.classList.contains('route-active')){
+  // Keep navigation visible until the user starts changing the route.
+  sheet.classList.toggle('details-open');
+ }else{
+  sheet.classList.toggle('search-open');
+  if(sheet.classList.contains('search-open'))$('to').focus&&$('to').focus();
+ }
+}
+$('co-route-tab').onclick=$('open-route').onclick=toggleRouteSearch;
+$('co-expand').onclick=function(){native('landscape',true)};
+
 $('co-station-tab').onclick=function(){showVisibleStations()};
 $('co-connect').onclick=function(){native('selectObd')};
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
