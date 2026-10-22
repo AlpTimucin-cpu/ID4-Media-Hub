@@ -171,7 +171,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void voice(boolean on) {
             voice=on;if(!on && tts!=null)tts.stop();
         }
-        @JavascriptInterface public void stop() {running=false;generation++;steps.clear();nextStep=0;}
+        @JavascriptInterface public void stop() {
+            running=false;generation++;stationRequestId++;
+            steps.clear();nextStep=0;
+        }
         @JavascriptInterface public void suggest(String field,String query,int requestId){
             suggestPlaces(field,query,requestId);
         }
@@ -272,7 +275,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             }
         });
     }
-    private void loadRouteStations(JSONObject route,int routeGeneration){
+    private void loadRouteStations(JSONObject route,int routeGeneration,int stationRequest){
         try{
             JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
             ArrayList<Id4StationCatalog.Point> points=new ArrayList<>();
@@ -293,9 +296,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.remove("suggested"); // already travelling via a stop; avoid second suggestion
                 packet.put("stopIncluded",true);
             }
-            if(!destroyed && generation==routeGeneration)send("molaStations",packet);
+            if(!destroyed && generation==routeGeneration && stationRequestId==stationRequest)
+                send("molaStations",packet);
         }catch(Exception e){
-            if(!destroyed && generation==routeGeneration)
+            if(!destroyed && generation==routeGeneration && stationRequestId==stationRequest)
                 send("molaStationError",record("stations",
                     "Rota çevresi EPDK verisi yüklenemedi: "+e.getClass().getSimpleName()));
         }
@@ -423,6 +427,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         boolean verifiedGps=useGps && position!=null && position.getAccuracy()<=60 &&
             System.currentTimeMillis()-position.getTime()<=30000;
         final int myGeneration=++generation;
+        stationRequestId++; // Invalidate the previous map/route charger batch.
         jobs.execute(()->{
             try{
                 String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
@@ -524,7 +529,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
-                    stationJobs.execute(()->loadRouteStations(routeData,myGeneration));
+                    final int stationTicket=++stationRequestId;
+                    stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
