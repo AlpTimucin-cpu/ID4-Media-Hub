@@ -79,6 +79,11 @@ function typing(field,query){
 }
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
+assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes('.sheet.route-active:not(.details-open){display:none!important}'),
+ 'old legacy route sheet still covers landscape map');
+assert(html.includes('id="co-trip-arrival"')&&html.includes('id="co-trip-charge-button"'),
+ 'trip bar missing transparent charge and model arrival elements');
 assert(html.includes('id="co-soc"')&&html.includes('id="co-voltage"')&&
  html.includes('id="co-energy"'),'transparent cockpit missing core measurements');
 assert(html.includes('backdrop-filter:blur'),'cockpit overlays must be translucent');
@@ -110,6 +115,8 @@ assert.equal(calls.selectObd,1,'OBD selection must be a direct user action');
 win.molaTelemetry({fresh:true,soc:'64 %',voltage:'370 V',temperature:'23 °C',
  chargeMode:'Ready',status:'ELM327 bağlı'});
 assert.equal(get('live-soc').textContent,'64 %');
+assert.equal(get('co-trip-battery').textContent,'OBD SoC: 64 %',
+ 'trip bar should show fresh measured battery SoC only');
 assert.equal(get('live-voltage').textContent,'370 V');
 assert.equal(get('live-temp').textContent,'23 °C');
 assert.equal(get('vehicle-soc').textContent,'64 %');
@@ -132,6 +139,8 @@ win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
 assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
+assert.equal(get('co-trip-battery').textContent,'OBD SoC: —',
+ 'trip bar should clear stale measured battery');
 assert.equal(get('co-range').textContent,'— km','model range must disappear with stale SoC');
 assert(html.includes('id="follow-map"'),'GPS follow button is missing');
 get('follow-map').onclick();
@@ -224,6 +233,10 @@ win.molaRoute({
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
 assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not updated');
+assert(get('co-trip-kilometers').textContent.includes('510 km'),'bottom route bar distance missing');
+assert(get('vehicle-cockpit').classList.contains('has-route'),'trip bar not enabled for route');
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'must not fabricate arrival SoC without current BMS measurement');
 assert(get('co-eta').textContent!=='—','real route must derive a traffic-free local ETA');
 assert.equal(get('co-maneuver').textContent,'Devam et',
  'cockpit first maneuver must be drawn from OSRM instructions');
@@ -246,11 +259,16 @@ assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'
 win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()});
 assert(get('route-progress-text').textContent.includes('GPS yaklaşık %'),
  'GPS map route progression not displayed');
+assert(get('co-trip-progress-label').textContent.includes('GPS yaklaşık %'),
+ 'new trip bar must use only verified GPS');
+assert(parseFloat(get('co-trip-fill').style.width)>0,
+ 'trip progress bar must advance with real GPS fix');
 assert(parseFloat(get('route-progress-fill').style.width)>0,
  'real GPS route progress bar did not update');
 win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()-120000});
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
  'stale GPS location must be rejected');
+assert.equal(get('co-trip-fill').style.width,'0%','stale GPS must reset trip progress');
 win.molaPosition({lat:40.5,lon:31.7,accuracy:10,timeMs:Date.now()});
 assert(get('route-progress-text').textContent.includes('rota dışında'),
  'off-route GPS must not make up distance progression');
@@ -316,6 +334,10 @@ win.molaStations({kind:'route',items:[],total:1,
   liveAvailability:false,livePrices:false});
 assert(get('station-suggestion').style.display==='flex',
  'charge suggestion should appear in single-screen route summary');
+assert.equal(get('co-trip-charge-button').style.display,'inline-block',
+ 'CCS recommendation must be available from bottom car HUD');
+assert(get('co-trip-charge-km').textContent.includes('75 km'),
+ 'CCS progress distance must be shown as approximate route model');
 assert(get('station-suggestion-label').textContent.toLowerCase().includes('model'),
  'suggestion must explicitly identify model assumptions');
 const savedBeforeCharge=calls.saved.length;
@@ -327,6 +349,8 @@ win.molaStations({kind:'route',items:[],total:0,chargeModel:'no-soc',
  updatedAt:'2026-10-20T08:00:00Z',snapshotAgeHours:48});
 assert(get('station-suggestion').style.display==='none',
  'no SoC must withdraw suggested charging stop');
+assert.equal(get('co-trip-charge-button').style.display,'none',
+ 'bottom bar charging button must vanish when fresh SoC is missing');
 
 const popupMarker=drawnMarkers.find(x=>x.popup && x.popup.children &&
  x.popup.children.some(c=>c.textContent==='Deneme CCS'));
@@ -355,6 +379,8 @@ assert(!get('vehicle-cockpit').classList.contains('has-route'),
  'route reset must also reset cockpit state');
 assert.equal(get('co-route-km').textContent,'— km',
  'route reset must clear out-of-date dashboard distance');
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'route reset must clear old trip arrival');
 assert.equal(get('co-maneuver').textContent,'Rota bekleniyor',
  'old turn instructions must disappear when route is reset');
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
