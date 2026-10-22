@@ -29,4 +29,19 @@ for term in [
     assert term in obd, "Live dashboard field missing: "+term
 assert 'Car Scanner' in obd and 'OBD' in obd
 assert '"028C"' in obd and '"1E3B"' in obd and '"2A0B"' in obd
-print("PASS: manual energy removed; automatic OBD dashboard and missing-data rules present.")
+telemetry=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4LiveTelemetry.java").read_text()
+navigator=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java").read_text()
+html=(root/"fermata/src/main/assets/id4/navigator.html").read_text()
+for rule in [
+    'Data displayAt(long now)', 'recent(socAt,now)', 'recent(voltageAt,now)',
+    'recent(batteryTempAt,now)', 'recent(chargeModeAt,now)',
+    'data.socAt=now', 'data.voltageAt=now',
+]:
+    assert rule in telemetry, "stale sensor protection missing: "+rule
+assert 'd.displayAt(System.currentTimeMillis())' in navigator
+assert 'latest.displayAt(System.currentTimeMillis())' in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
+for rule in ['energyLowKwh', 'energyHighKwh', 'arrivalSocLower',
+             'arrivalSocUpper', 'chargingNeededByModel']:
+    assert rule in navigator and rule in html, "route energy binding absent: "+rule
+assert "case 'selectObd':bridge.selectObd();" in html, "OBD button not bridged"
+print("PASS: no manual energy form; timestamps per OBD sensor; route energy connected.")
