@@ -16,7 +16,9 @@ for term in [
     'heroSoc=label("— %"', 'heroRange=label("— km  •  Veri yok"',
     'heroVoltage=slot(', 'heroTemp=slot(', 'heroMode=slot(',
     'heroCost=slot(', 'heroConsumption=slot(', 'heroHealth=slot(',
-    'heroPower=slot(', 'private void renderCore(',
+    'heroPower=slot(', 'routeDistance=slot(', 'routeEnergyEstimate=slot(',
+    'Id4EnergyModel.estimate(', 'Id4EnergyData.load(',
+    'private void renderCore(',
     'renderCore(did,displayValue);', 'private void resetCore()',
     'getSharedPreferences(ADAPTER_PREFS,MODE_PRIVATE)',
     'ui.post(this::resetCore);'
