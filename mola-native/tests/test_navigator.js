@@ -210,8 +210,9 @@ assert.equal(get('co-power').textContent,'— kW','unverified kW must stay blank
 get('co-connect').onclick();
 assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
 get('co-station-tab').onclick();
-assert.equal(calls.visible.length,1,'cockpit charger tab must show map stations');
-calls.visible.length=0; // isolate previous HUD-action smoke test from map-toolbar checks
+assert.equal(calls.filtered.length,3,
+ 'cockpit charger tab must query all currently visible EPDK stations');
+calls.filtered.length=0; // isolate initial all/CCS map checks
 win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
 assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
 assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
@@ -459,8 +460,9 @@ assert(get('trip-energy').textContent.includes('Mola şarj miktarı bilinmiyor')
  'charging stop must never invent terminal SoC');
 // Same-map charging: request viewport only on user action; never show invented availability.
 get('charge-map').onclick();
-assert.equal(calls.visible.length,1,'EPDK viewport bridge never invoked');
-assert.equal(calls.visible[0][0],36);
+assert.equal(calls.filtered.length,1,'filtered EPDK viewport bridge never invoked');
+assert.equal(calls.filtered[0][0],36);
+get('layer-route').onclick();
 win.molaStations({kind:'route',items:[
  {lat:37.8,lon:34.9,title:'Deneme CCS',operator:'ŞarjAğı',
   sockets:'CCS 2 · Type 2 1',ccs:true,distanceKm:3.2},
