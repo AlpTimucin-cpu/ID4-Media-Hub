@@ -262,7 +262,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 JSONArray finalPt=coords.getJSONArray(coords.length()-1);
                 points.add(new Id4StationCatalog.Point(finalPt.getDouble(1),finalPt.getDouble(0)));
             }
-            JSONObject packet=stationCatalog.alongRoute(points);
+            Id4EnergyData.Snapshot snapshot=Id4EnergyData.load(this,System.currentTimeMillis());
+            double soc=snapshot.hasSoc()?snapshot.soc:Double.NaN;
+            double roadKm=route.getDouble("distance")/1000.0;
+            JSONObject packet=stationCatalog.alongRoute(points,roadKm,soc);
             if(!destroyed && generation==routeGeneration)send("molaStations",packet);
         }catch(Exception e){
             if(!destroyed && generation==routeGeneration)
