@@ -74,6 +74,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        // Enter the requested car-style cockpit at launch, not the tall legacy sheet.
+        // Store a manual portrait choice so that a configuration recreation cannot
+        // silently lock the user back into landscape.
+        boolean wide=getSharedPreferences("id4_presentation",MODE_PRIVATE)
+            .getBoolean("landscape",true);
+        setRequestedOrientation(wide?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         getWindow().setStatusBarColor(0xff061e2b);
         getWindow().setNavigationBarColor(0xff061e2b);
         locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
@@ -137,6 +144,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void landscape(boolean enabled){
             ui.post(()->{
                 if(destroyed || isFinishing())return;
+                getSharedPreferences("id4_presentation",MODE_PRIVATE).edit()
+                    .putBoolean("landscape",enabled).apply();
                 setRequestedOrientation(enabled?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
                     ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                 send("molaStatus",record("display",
