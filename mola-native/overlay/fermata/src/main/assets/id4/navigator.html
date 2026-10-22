@@ -69,6 +69,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 #route-compact{display:none}
 .compact-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .compact-distance{font-size:23px;font-weight:800;color:#103448}
+.route-progress{display:flex;align-items:center;gap:9px;margin:7px 0;color:#406176}
+.route-progress-bar{height:9px;flex:1;border-radius:20px;background:#adc9cf66;overflow:hidden}
+#route-progress-fill{width:0;height:100%;background:#25d5bb;transition:width .5s}
+#route-progress-text{font-weight:700;font-size:11px;white-space:nowrap}
 .station-suggestion{display:none;align-items:center;gap:6px;margin:4px 0;font-size:11px;line-height:1.25}
 .station-suggestion button{flex-shrink:0;padding:8px 10px;border-radius:9px;background:#126c69;color:white;font-weight:700;font-size:11px}
 .station-suggestion span{flex:1;overflow-wrap:anywhere}
@@ -165,7 +169,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .sheet .title,.sheet .label{color:#d1e6ee}
  .sheet .hint,.sheet .notice,#status,.station-map-note{color:#c3d1dc}
  .sheet.route-active{top:auto;left:35%;bottom:15px;right:14px;
-    width:auto;height:150px;min-height:0;max-height:150px;
+    width:auto;height:178px;min-height:0;max-height:178px;
     padding:12px 18px 14px;background:rgba(3,30,47,.87)}
  .sheet.route-active #route-compact{display:block}
  .sheet.route-active .compact-distance{font-size:22px;color:#fff}
@@ -174,6 +178,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
     background:transparent;color:#e6faff;padding:0;margin:5px 0;
     font-size:10px}
  .sheet.route-active .mini-weather{display:none}
+ .sheet.route-active .route-progress{color:#ceeaf4}
+ .sheet.route-active .route-progress-bar{background:#41697e}
  .sheet.route-active .compact-actions{position:absolute;right:15px;top:12px}
  .sheet.route-active .compact-actions button{min-height:37px;padding:5px 10px}
  .sheet.route-active .compact-row{margin-right:220px}
@@ -202,7 +208,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .cockpit-right{top:5px;gap:4px}
  .cockpit-right .cockpit-panel{padding:7px}
  .cockpit-bottom{bottom:7px}
- .sheet.route-active{bottom:6px;height:110px;max-height:110px}
+ .sheet.route-active{bottom:6px;height:138px;max-height:138px}
  .sheet{top:62px;bottom:6px}
 }
 </style>
@@ -267,6 +273,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div id="route-compact" aria-label="Rota özeti">
 <div class="compact-row"><div><span class="label">GÜZERGÂH</span><div class="compact-distance" id="compact-trip">—</div></div><span class="tag">Trafik verisi yok</span></div>
 <div class="route-energy" id="trip-energy">Enerji: rota bekleniyor</div>
+<div class="route-progress" id="route-progress"><span id="route-progress-text">GPS rota ilerlemesi yok</span>
+<div class="route-progress-bar"><div id="route-progress-fill"></div></div></div>
 <div class="station-summary" id="station-summary">⚡ EPDK şarj istasyonları: rota bekleniyor</div>
 <div class="station-suggestion" id="station-suggestion"><span id="station-suggestion-label">Rota bekleniyor</span><button id="station-suggestion-choose" type="button">Mola ekle</button></div>
 <div class="mini-weather" id="compact-weather"><span>+1 dk · hava bekleniyor</span><span>+5 dk · hava bekleniyor</span><span>+10 dk · hava bekleniyor</span><span>+15 dk · hava bekleniyor</span></div>
@@ -314,6 +322,53 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
 var suggestedCharge=null;
+var currentRouteProgress=null,lastGpsFix=null;
+function greatCircleKm(a,b){
+ var r=Math.PI/180,dy=(b[0]-a[0])*r,dx=(b[1]-a[1])*r;
+ var v=Math.sin(dy/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dx/2)**2;
+ return 12742*Math.asin(Math.min(1,Math.sqrt(Math.max(0,v))));
+}
+function routeProgressGeometry(pts,totalRoadKm){
+ if(pts.length<2||!Number.isFinite(totalRoadKm)||totalRoadKm<=0)return null;
+ var step=Math.max(1,Math.ceil(pts.length/1800)),nodes=[];
+ for(var i=0;i<pts.length;i+=step)nodes.push(pts[i]);
+ if(nodes[nodes.length-1]!==pts[pts.length-1])nodes.push(pts[pts.length-1]);
+ var cum=[0];
+ for(var j=1;j<nodes.length;j++)cum.push(cum[j-1]+greatCircleKm(nodes[j-1],nodes[j]));
+ return cum[cum.length-1]>0?{nodes:nodes,cum:cum,lengthKm:cum[cum.length-1],roadKm:totalRoadKm}:null;
+}
+function showRouteGpsProgress(x){
+ if(!currentRouteProgress||!x||!valid(x.lat,x.lon)||!Number.isFinite(x.accuracy)||
+    x.accuracy>60||!Number.isFinite(x.timeMs)||
+    Date.now()-x.timeMs>30000||x.timeMs>Date.now()+3000){
+  $('route-progress-fill').style.width='0%';
+  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
+  return;
+ }
+ var data=currentRouteProgress,p=data.nodes,km=data.cum,total=data.lengthKm;
+ var closest=Infinity,position=0,latr=Math.PI/180;
+ for(var i=1;i<p.length;i++){
+  var a=p[i-1],b=p[i],cos=Math.cos((a[0]+b[0]+x.lat)/3*latr);
+  var dx=(x.lon-a[1])*cos*111.2,dy=(x.lat-a[0])*111.2;
+  var vx=(b[1]-a[1])*cos*111.2,vy=(b[0]-a[0])*111.2;
+  var len=vx*vx+vy*vy;
+  var t=len?Math.max(0,Math.min(1,(dx*vx+dy*vy)/len)):0;
+  var off=Math.hypot(dx-vx*t,dy-vy*t);
+  if(off<closest){closest=off;position=(km[i-1]+(km[i]-km[i-1])*t)/total;}
+ }
+ // Do not claim progress if GPS is too far from the actual route.
+ if(closest>Math.min(.8,Math.max(.25,x.accuracy/1000*3))){
+  $('route-progress-fill').style.width='0%';
+  $('route-progress-text').textContent='GPS rota dışında / belirsiz';
+  return;
+ }
+ var pct=Math.max(0,Math.min(100,position*100));
+ var remaining=Math.max(0,data.roadKm*(1-position));
+ $('route-progress-fill').style.width=pct.toFixed(1)+'%';
+ $('route-progress-text').textContent='GPS yaklaşık %'+Math.round(pct)+
+   ' · '+remaining.toFixed(1)+' km kaldı';
+}
+
 function clearStationMarkers(){
  if(map)stationMarkers.forEach(function(marker){map.removeLayer(marker)});
  stationMarkers=[];
@@ -473,6 +528,9 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ currentRouteProgress=null;
+ $('route-progress-fill').style.width='0%';
+ $('route-progress-text').textContent='GPS rota ilerlemesi yok';
  if(line&&map){map.removeLayer(line);line=null}
  $('trip').style.display='none';
  var sheet=document.querySelector('.sheet');
@@ -579,6 +637,8 @@ function bindAutocomplete(field){
 }
 window.molaPosition=function(x){
  if(!x||!valid(x.lat,x.lon))return;
+ lastGpsFix=x;
+ showRouteGpsProgress(x);
  if(map){
   if(!liveMarker)liveMarker=L.circleMarker([x.lat,x.lon],{
    radius:7,color:'#fff',weight:2,fillColor:'#2b86eb',fillOpacity:1
@@ -599,6 +659,8 @@ window.molaRoute=function(o){
   return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
  }).map(function(c){return [c[1],c[0]]});
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
+ currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
+ showRouteGpsProgress(lastGpsFix);
  var sheet=document.querySelector('.sheet');
  sheet.classList.add('route-active');
  $('vehicle-cockpit').classList.add('has-route');
