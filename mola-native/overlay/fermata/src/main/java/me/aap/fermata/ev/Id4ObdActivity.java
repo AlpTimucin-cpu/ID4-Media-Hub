@@ -188,7 +188,10 @@ public final class Id4ObdActivity extends Activity {
                     long sampleTime=System.currentTimeMillis();
                     if("028C".equals(item.did)){
                         Double soc=Id4MebDecoder.bmsSoc(answer);
-                        if(soc!=null)chargeHistory.acceptSoc(sampleTime,soc);
+                        if(soc!=null){
+                            chargeHistory.acceptSoc(sampleTime,soc);
+                            Id4EnergyData.saveSoc(this,soc,sampleTime);
+                        }
                     }else if("7448".equals(item.did)){
                         Integer mode=Id4MebDecoder.chargeModeCode(answer);
                         if(mode!=null){
