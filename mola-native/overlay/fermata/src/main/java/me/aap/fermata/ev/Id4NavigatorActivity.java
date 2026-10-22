@@ -80,7 +80,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         boolean wide=getSharedPreferences("id4_presentation",MODE_PRIVATE)
             .getBoolean("landscape",true);
         setRequestedOrientation(wide?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         getWindow().setStatusBarColor(0xff061e2b);
         getWindow().setNavigationBarColor(0xff061e2b);
         locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
@@ -147,7 +147,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 getSharedPreferences("id4_presentation",MODE_PRIVATE).edit()
                     .putBoolean("landscape",enabled).apply();
                 setRequestedOrientation(enabled?ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
-                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                 send("molaStatus",record("display",
                     enabled?"Yatay tam ekran açılıyor.":"Ekran yönü serbest bırakıldı."));
             });
