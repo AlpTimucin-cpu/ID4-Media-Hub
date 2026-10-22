@@ -46,8 +46,12 @@ final class Id4StationCatalog {
         final JSONObject station;
         final double rank;
         final int segment;
-        Candidate(JSONObject station,double rank,int segment){
+        final double progressKm;
+        final Id4ChargeAdvisor.Assessment assessment;
+        Candidate(JSONObject station,double rank,int segment,
+                  double progressKm,Id4ChargeAdvisor.Assessment assessment){
             this.station=station;this.rank=rank;this.segment=segment;
+            this.progressKm=progressKm;this.assessment=assessment;
         }
     }
     private static boolean valid(double lat,double lon){
@@ -167,7 +171,18 @@ final class Id4StationCatalog {
         }
         for(Candidate c:selected){
             if(result.length()>=cap)break;
-            result.put(pin(c.station,c.rank));
+            JSONObject item=pin(c.station,c.rank);
+            if("route".equals(kind)){
+                item.put("routeProgressKm",Math.round(c.progressKm*10.0)/10.0);
+                if(c.assessment!=null && c.assessment.hasSoc){
+                    item.put("modelCandidate",c.assessment.modelCandidate);
+                    if(c.assessment.modelCandidate){
+                        item.put("arrivalSocLower",Math.max(0,c.assessment.projectedArrivalSocLower));
+                        item.put("arrivalSocUpper",Math.min(100,c.assessment.projectedArrivalSocUpper));
+                    }
+                }
+            }
+            result.put(item);
         }
         return new JSONObject()
             .put("kind",kind).put("items",result).put("total",total)
@@ -197,13 +212,14 @@ final class Id4StationCatalog {
             double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
             if(!valid(lat,lon)||lat<south||lat>north||lon<west||lon>east)continue;
             total++;
-            candidates.add(new Candidate(s,haversineKm(lat,lon,centerLat,centerLon),0));
+            candidates.add(new Candidate(s,haversineKm(lat,lon,centerLat,centerLon),0,Double.NaN,null));
         }
         return response("visible",candidates,total,false);
     }
 
-    synchronized JSONObject alongRoute(List<Point> path)throws Exception{
-        if(path==null||path.size()<2)throw new IllegalArgumentException("Rota yok");
+    synchronized JSONObject alongRoute(List<Point> path,double roadKm,double observedSoc)throws Exception{
+        if(path==null||path.size()<2 || !Double.isFinite(roadKm)||roadKm<=0)
+            throw new IllegalArgumentException("Rota yok");
         ensureLoaded();
         List<Point> selected=new ArrayList<>();
         final int steps=Math.min(180,path.size()-1);
@@ -212,6 +228,12 @@ final class Id4StationCatalog {
             if(valid(p.lat,p.lon))selected.add(p);
         }
         if(selected.size()<2)throw new IllegalArgumentException("Rota koordinatları geçersiz");
+        double[] cumulative=new double[selected.size()];
+        for(int j=1;j<selected.size();j++)
+            cumulative[j]=cumulative[j-1]+haversineKm(
+                selected.get(j-1).lat,selected.get(j-1).lon,
+                selected.get(j).lat,selected.get(j).lon);
+        if(cumulative[selected.size()-1]<=0)throw new IllegalArgumentException("Boş rota geometrisi");
         double south=90,north=-90,west=180,east=-180;
         for(Point p:selected){
             south=Math.min(south,p.lat);north=Math.max(north,p.lat);
@@ -233,10 +255,40 @@ final class Id4StationCatalog {
             }
             if(nearest>12.0)continue; // straight-line proximity, not detour time
             total++;
-            int sector=(int)(20.0*closestSegment/Math.max(1,selected.size()-1));
-            candidates.add(new Candidate(s,nearest,sector));
+            double frac=projectionFraction(lat,lon,
+                selected.get(closestSegment-1),selected.get(closestSegment));
+            double progress=(cumulative[closestSegment-1]+
+                frac*(cumulative[closestSegment]-cumulative[closestSegment-1]))/
+                cumulative[selected.size()-1]*roadKm;
+            Id4ChargeAdvisor.Assessment advice=Id4ChargeAdvisor.assess(
+                roadKm,observedSoc,Math.min(roadKm,progress),nearest);
+            int sector=(int)(20.0*progress/roadKm);
+            candidates.add(new Candidate(s,nearest,sector,progress,advice));
         }
-        return response("route",candidates,total,true);
+        JSONObject packet=response("route",candidates,total,true);
+        boolean socKnown=Double.isFinite(observedSoc)&&observedSoc>=0&&observedSoc<=100;
+        boolean chargeLikely=socKnown && candidates.size()>0 &&
+            candidates.get(0).assessment.chargeLikely;
+        packet.put("chargeModel",!socKnown?"no-soc":chargeLikely?"charge-likely":"no-stop-model");
+        packet.put("modelReserveSoc",Id4ChargeAdvisor.RESERVE_SOC);
+        packet.put("modelNote","52 kWh, 16–24 kWh/100 km ve %15 rezerv varsayımı. "
+            +"Gerçek sapma, yol erişimi ve soket doluluğu doğrulanmadı.");
+        Candidate recommended=null;
+        for(Candidate c:candidates) {
+            if(c.assessment.modelCandidate &&
+               (recommended==null||c.assessment.score<recommended.assessment.score))
+                recommended=c;
+        }
+        if(recommended!=null){
+            JSONObject p=pin(recommended.station,recommended.rank);
+            p.put("routeProgressKm",Math.round(recommended.progressKm*10)/10.0);
+            p.put("arrivalSocLower",
+                Math.max(0,recommended.assessment.projectedArrivalSocLower));
+            p.put("arrivalSocUpper",
+                Math.min(100,recommended.assessment.projectedArrivalSocUpper));
+            packet.put("suggested",p);
+        }
+        return packet;
     }
 
     private static double haversineKm(double latA,double lonA,double latB,double lonB){
@@ -245,13 +297,20 @@ final class Id4StationCatalog {
             Math.cos(Math.toRadians(latB))*Math.pow(Math.sin(dLon/2),2);
         return 12742.0*Math.asin(Math.min(1,Math.sqrt(Math.max(0,a))));
     }
+    /** Returns the closest projected position on one polyline segment. */
+    private static double projectionFraction(double lat,double lon,Point a,Point b){
+        double scale=111.2,cos=Math.cos(Math.toRadians((lat+a.lat+b.lat)/3.0));
+        double x=(lon-a.lon)*cos*scale, y=(lat-a.lat)*scale;
+        double vx=(b.lon-a.lon)*cos*scale,vy=(b.lat-a.lat)*scale;
+        double len=vx*vx+vy*vy;
+        return len>0?Math.max(0,Math.min(1,(x*vx+y*vy)/len)):0;
+    }
     /** Equirectangular projection is adequate for a 12-km corridor shortlist. */
     static double distanceToSegmentKm(double lat,double lon,Point a,Point b){
         double scale=111.2,cos=Math.cos(Math.toRadians((lat+a.lat+b.lat)/3.0));
         double x=(lon-a.lon)*cos*scale, y=(lat-a.lat)*scale;
         double vx=(b.lon-a.lon)*cos*scale,vy=(b.lat-a.lat)*scale;
-        double len=vx*vx+vy*vy;
-        double t=len>0?Math.max(0,Math.min(1,(x*vx+y*vy)/len)):0;
+        double t=projectionFraction(lat,lon,a,b);
         return Math.hypot(x-t*vx,y-t*vy);
     }
 }
