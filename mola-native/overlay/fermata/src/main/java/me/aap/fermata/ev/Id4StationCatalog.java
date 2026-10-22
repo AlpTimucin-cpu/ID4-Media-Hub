@@ -155,7 +155,7 @@ final class Id4StationCatalog {
                                 boolean onlyCcs)throws Exception {
         candidates.sort(Comparator.comparingDouble(c->c.rank));
         JSONArray result=new JSONArray();
-        int cap="route".equals(kind)?45:55;
+        int cap="route".equals(kind)?120:180;
         List<Candidate> selected=new ArrayList<>();
         if("route".equals(kind)){
             // First choose one nearby CCS stop from each longitudinal route sector.
@@ -192,6 +192,10 @@ final class Id4StationCatalog {
     }
 
     synchronized JSONObject inBounds(double south,double west,double north,double east)throws Exception{
+        return inBounds(south,west,north,east,false);
+    }
+    synchronized JSONObject inBounds(double south,double west,double north,double east,
+                                     boolean onlyCcs)throws Exception{
         if(!Double.isFinite(south)||!Double.isFinite(west)||
            !Double.isFinite(north)||!Double.isFinite(east)||
            south>north||west>east)
@@ -208,13 +212,50 @@ final class Id4StationCatalog {
         int total=0;
         double centerLat=(south+north)/2.0,centerLon=(west+east)/2.0;
         for(int i=0;i<stations.length();i++){
-            JSONObject s=stations.optJSONObject(i);if(s==null)continue;
-            double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
-            if(!valid(lat,lon)||lat<south||lat>north||lon<west||lon>east)continue;
+            JSONObject station=stations.optJSONObject(i);
+            if(station==null)continue;
+            double lat=station.optDouble("lat",Double.NaN);
+            double lon=station.optDouble("lon",Double.NaN);
+            if(!valid(lat,lon)||lat<south||lat>north||lon<west||lon>east||
+                (onlyCcs && !hasCCS(station)))continue;
             total++;
-            candidates.add(new Candidate(s,haversineKm(lat,lon,centerLat,centerLon),0,Double.NaN,null));
+            candidates.add(new Candidate(station,haversineKm(lat,lon,centerLat,centerLon),
+                0,Double.NaN,null));
         }
-        return response("visible",candidates,total,false);
+        // A nationwide map must represent EVERY matching station, not silently
+        // drop all but the 55 geographically central pins. Aggregate into <=96
+        // clickable cells; users zoom to obtain individual pins.
+        if(candidates.size()>160){
+            final int cols=12,rows=8;
+            int[][] counts=new int[rows][cols],ccsCounts=new int[rows][cols];
+            double[][] sumLat=new double[rows][cols],sumLon=new double[rows][cols];
+            double height=Math.max(0.00001,north-south),width=Math.max(0.00001,east-west);
+            for(Candidate c:candidates){
+                double lat=c.station.optDouble("lat"),lon=c.station.optDouble("lon");
+                int row=Math.max(0,Math.min(rows-1,(int)((lat-south)/height*rows)));
+                int col=Math.max(0,Math.min(cols-1,(int)((lon-west)/width*cols)));
+                counts[row][col]++;
+                if(hasCCS(c.station))ccsCounts[row][col]++;
+                sumLat[row][col]+=lat;sumLon[row][col]+=lon;
+            }
+            JSONArray markers=new JSONArray();
+            for(int r=0;r<rows;r++)for(int c=0;c<cols;c++){
+                int count=counts[r][c];
+                if(count==0)continue;
+                markers.put(new JSONObject().put("cluster",true)
+                    .put("count",count).put("ccsCount",ccsCounts[r][c])
+                    .put("lat",sumLat[r][c]/count).put("lon",sumLon[r][c]/count));
+            }
+            return new JSONObject().put("kind","visible").put("items",markers)
+                .put("total",total).put("displayed",markers.length())
+                .put("clustered",true).put("onlyCcs",onlyCcs)
+                .put("updatedAt",verifiedAt).put("snapshotAgeHours",snapshotAgeHours)
+                .put("liveAvailability",false).put("livePrices",false);
+        }
+        JSONObject data=response("visible",candidates,total,onlyCcs);
+        data.put("displayed",data.getJSONArray("items").length())
+            .put("clustered",false);
+        return data;
     }
 
     synchronized JSONObject alongRoute(List<Point> path,double roadKm,double observedSoc)throws Exception{
