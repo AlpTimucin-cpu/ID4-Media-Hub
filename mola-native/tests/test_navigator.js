@@ -210,7 +210,7 @@ win.molaStations({kind:'route',items:[],total:1,
   liveAvailability:false,livePrices:false});
 assert(get('station-suggestion').style.display==='flex',
  'charge suggestion should appear in single-screen route summary');
-assert(get('station-suggestion-label').textContent.includes('model'),
+assert(get('station-suggestion-label').textContent.toLowerCase().includes('model'),
  'suggestion must explicitly identify model assumptions');
 const savedBeforeCharge=calls.saved.length;
 get('station-suggestion-choose').onclick();
