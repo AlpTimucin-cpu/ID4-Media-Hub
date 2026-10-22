@@ -8,6 +8,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.content.Intent;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,6 +17,7 @@ import android.os.Looper;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +47,11 @@ public final class Id4ObdActivity extends Activity {
     private volatile boolean active;
     private volatile BluetoothSocket socket;
     private TextView status;
+    private TextView heroSoc, heroRange, heroSource, heroVoltage, heroTemp, heroMode;
+    private TextView heroConsumption, heroPower, heroCost, heroHealth;
+    private LinearLayout sensorDetails;
+    private boolean detailsVisible;
+    private static final String ADAPTER_PREFS="mola_id4_obd_device";
     private LinearLayout readings;
     private Thread worker;
     private final Id4ChargeHistory chargeHistory=new Id4ChargeHistory();
@@ -54,63 +62,193 @@ public final class Id4ObdActivity extends Activity {
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        LinearLayout root = new LinearLayout(this);
+        getWindow().setStatusBarColor(0xff091e2a);
+        getWindow().setNavigationBarColor(0xff091e2a);
+        LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(0xff091e2a);
-        root.setPadding(14,25,14,20);
+        root.setPadding(dp(14),dp(16),dp(14),dp(8));
         setContentView(root);
-        TextView title = label("ID.4 • CANLI ARAÇ VERİLERİ",22);
-        root.addView(title);
-        root.addView(label("Yalnızca eşleştirilmiş Bluetooth Classic ELM327. Car Scanner'ı önce kapat. Ölçümler VIN bazında doğrulanmadı.",13));
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        Button connect = new Button(this); connect.setText("OBD bağlan");
-        connect.setOnClickListener(v -> selectAdapter());
-        buttons.addView(connect,new LinearLayout.LayoutParams(0,55,1));
-        Button stop = new Button(this); stop.setText("Durdur");
-        stop.setOnClickListener(v -> { disconnect(); showStatus("Bağlantı durduruldu"); });
-        buttons.addView(stop,new LinearLayout.LayoutParams(0,55,1));
-        root.addView(buttons);
-        status=label("OBD bağlı değil; canlı ölçüm yok.",15);
-        root.addView(status);
+
+        LinearLayout navigation=new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(navigation);
+        Button back=button("‹ Mola",()->finish());
+        navigation.addView(back,new LinearLayout.LayoutParams(0,dp(48),1));
+        Button route=button("🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
+        navigation.addView(route,new LinearLayout.LayoutParams(0,dp(48),1));
+        Button stations=button("⚡ İstasyon",()->startActivity(new Intent(this,Id4EvActivity.class)));
+        navigation.addView(stations,new LinearLayout.LayoutParams(0,dp(48),1));
+
+        ScrollView scroll=new ScrollView(this);
+        root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout body=new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(0,dp(6),0,dp(32));
+        scroll.addView(body);
+
+        TextView title=label("VOLKSWAGEN ID.4 PURE",21);
+        title.setTextColor(0xff6de4d2);
+        body.addView(title);
+        TextView subtitle=label("2024 • 125 kW / 170 PS  |  Araç kontrol merkezi",13);
+        subtitle.setTextColor(0xffb7cdd4);
+        body.addView(subtitle);
+
+        LinearLayout hero=panel();
+        body.addView(hero,new LinearLayout.LayoutParams(-1,-2));
+        heroSource=label("● OBD bağlı değil • Güncel veri yok",14);
+        heroSource.setTextColor(0xffffcb78);hero.addView(heroSource);
+        hero.addView(label("BATARYA DOLULUK",12));
+        heroSoc=label("— %",43);heroSoc.setTextColor(0xff70f1cb);hero.addView(heroSoc);
+        hero.addView(label("TAHMİNİ MENZİL",12));
+        heroRange=label("— km  •  Veri yok",19);hero.addView(heroRange);
+        hero.addView(label("Menzil, araçtan veya doğrulanmış tüketim geçmişinden alınır; varsayılan 52 kWh / 18 kWh değerleri kullanılmaz.",11));
+
+        LinearLayout cards=new LinearLayout(this);
+        cards.setOrientation(LinearLayout.VERTICAL);
+        body.addView(cards);
+        LinearLayout row1=new LinearLayout(this);cards.addView(row1);
+        heroVoltage=slot(row1,"HV BATARYA GERİLİMİ","— V");
+        heroTemp=slot(row1,"BATARYA SICAKLIĞI","— °C");
+        LinearLayout row2=new LinearLayout(this);cards.addView(row2);
+        heroMode=slot(row2,"ÇALIŞMA / ŞARJ","—");
+        heroPower=slot(row2,"ANLIK GÜÇ","— kW");
+        LinearLayout row3=new LinearLayout(this);cards.addView(row3);
+        heroConsumption=slot(row3,"ORTALAMA TÜKETİM","— kWh/100 km");
+        heroCost=slot(row3,"ŞARJ MALİYETİ","— TL");
+        LinearLayout row4=new LinearLayout(this);cards.addView(row4);
+        heroHealth=slot(row4,"BATARYA SAĞLIĞI (SOH)","— %");
+        slot(row4,"BAĞLANTI KAYNAĞI","ELM327 / MEB");
+
+        body.addView(label("Maliyet: operatör tarifesi ve ölçülen faturalı kWh olmadan hesaplanmaz. Menzil, SOH, tüketim ve güç için doğrulanmış veriler gereklidir.",12));
+
+        LinearLayout buttons=new LinearLayout(this);
+        body.addView(buttons);
+        Button connect=button("🔌 OBD bağlan",this::selectAdapter);
+        buttons.addView(connect,new LinearLayout.LayoutParams(0,dp(52),2));
+        Button stop=button("Bağlantıyı kes",()->{
+            disconnect();showStatus("Bağlantı kapatıldı");
+        });
+        buttons.addView(stop,new LinearLayout.LayoutParams(0,dp(52),1));
+
+        status=label("OBD bağlı değil. Car Scanner'ı kapatıp eşleştirilmiş ELM327'yi seç.",13);
+        body.addView(status);
         Id4ChargeHistoryStore.load(this,chargeHistory);
-        ScrollView sc = new ScrollView(this); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
-        readings=new LinearLayout(this); readings.setOrientation(LinearLayout.VERTICAL);
-        sc.addView(readings);
-        TextView overviewTitle=label("⚡  ŞARJ OTURUMLARI",18);
-        overviewTitle.setTextColor(0xff6de4d2);
-        readings.addView(overviewTitle);
+
+        TextView overview=label("⚡  ŞARJ GEÇMİŞİ",18);
+        overview.setTextColor(0xff6de4d2);
+        body.addView(overview);
         chargeSummary=label("Şarj algılanmadı · OBD gerekli",15);
-        readings.addView(chargeSummary);
-        pastSessions=label("Kayıt yok",14);
-        readings.addView(pastSessions);
-        Button clearHistory=new Button(this);
-        clearHistory.setText("Yerel şarj geçmişini sil");
-        clearHistory.setOnClickListener(v->new AlertDialog.Builder(this)
-            .setTitle("Şarj kayıtlarını sil")
-            .setMessage("Yalnızca bu uygulamadaki tarih ve SoC kayıtları silinir. Araç verisine müdahale edilmez.")
-            .setNegativeButton("Vazgeç",null)
-            .setPositiveButton("Sil",(d,w)->{
-                chargeHistory.clear();
-                Id4ChargeHistoryStore.clear(this);
-                updateChargeHistory();
-            }).show());
-        readings.addView(clearHistory);
+        body.addView(chargeSummary);
+        pastSessions=label("Henüz kayıt yok",13);
+        body.addView(pastSessions);
         updateChargeHistory();
+
+        Button sensorsButton=button("▤  TÜM SENSÖRLERİ GÖSTER",()->{
+            detailsVisible=!detailsVisible;
+            sensorDetails.setVisibility(detailsVisible?View.VISIBLE:View.GONE);
+        });
+        body.addView(sensorsButton,new LinearLayout.LayoutParams(-1,dp(54)));
+        sensorDetails=new LinearLayout(this);
+        sensorDetails.setOrientation(LinearLayout.VERTICAL);
+        sensorDetails.setVisibility(View.GONE);
+        body.addView(sensorDetails);
+        readings=sensorDetails;
         String category="";
         for(int i=0;i<Id4MebDecoder.SENSORS.size();i++){
             Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
-            if(!category.equals(item.category)){
+            if(!item.category.equals(category)){
                 category=item.category;
                 TextView heading=label("▰ "+category.toUpperCase(Locale.forLanguageTag("tr-TR")),16);
-                heading.setTextColor(0xff6de4d2);
-                readings.addView(heading);
+                heading.setTextColor(0xff6de4d2);readings.addView(heading);
             }
-            fields[i]=label(item.name+": —  (okunmadı)",16);
+            fields[i]=label(item.name+": — (okunmadı)",15);
             readings.addView(fields[i]);
         }
-        readings.addView(label("Bu değerler yalnızca ECU'dan doğrulanmış yanıt geldikten sonra görüntülenir. Anlık güç, kesin SOH ve menzil için ek VIN/protokol doğrulaması gereklidir.",13));
+        body.addView(label("OBD değerleri VIN bazında henüz doğrulanmadı. Uygulama ECU'ya yazmaz, hata silmez, kodlama yapmaz. Car Scanner ile aynı anda bağlanma.",11));
+        Button clearHistory=button("Yerel şarj geçmişini sil",()->{
+            new AlertDialog.Builder(this).setTitle("Şarj geçmişini sil")
+                .setMessage("Yalnızca bu telefondaki şarj kayıtları silinecek.")
+                .setNegativeButton("Vazgeç",null)
+                .setPositiveButton("Sil",(d,w)->{
+                    chargeHistory.clear();Id4ChargeHistoryStore.clear(this);updateChargeHistory();
+                }).show();
+        });
+        body.addView(clearHistory);
+        // Connect automatically only to a device explicitly selected earlier.
+        ui.post(this::autoConnectLastAdapter);
     }
+
+    private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
+    private GradientDrawable background(int color){
+        GradientDrawable shape=new GradientDrawable();
+        shape.setColor(color);shape.setCornerRadius(dp(15));return shape;
+    }
+    private LinearLayout panel(){
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(background(0xff112e42));
+        box.setPadding(dp(10),dp(7),dp(10),dp(9));
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+        p.setMargins(0,dp(7),0,dp(7));box.setLayoutParams(p);
+        return box;
+    }
+    private TextView slot(LinearLayout row,String heading,String initial){
+        LinearLayout card=panel();
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+        lp.setMargins(dp(3),dp(3),dp(3),dp(3));
+        row.addView(card,lp);
+        TextView label=label(heading,11);label.setTextColor(0xffb9d0da);card.addView(label);
+        TextView value=label(initial,18);card.addView(value);
+        return value;
+    }
+    private Button button(String title,Runnable action){
+        Button b=new Button(this);b.setText(title);b.setAllCaps(false);
+        b.setTextColor(Color.WHITE);b.setTextSize(12);
+        b.setBackground(background(0xff13536b));
+        b.setOnClickListener(v->action.run());
+        return b;
+    }
+    private void renderCore(String did,String value){
+        if(!active || isFinishing())return;
+        switch(did){
+            case "028C":heroSoc.setText(value);break;
+            case "1E3B":heroVoltage.setText(value);break;
+            case "2A0B":heroTemp.setText(value);break;
+            case "7448":heroMode.setText(value);break;
+            default:break;
+        }
+        heroSource.setText("● CANLI OBD · Doğrulanmamış MEB profili");
+        heroSource.setTextColor(0xff70f1cb);
+    }
+    private void resetCore(){
+        if(heroSoc==null || isFinishing())return;
+        heroSource.setText("● OBD bağlı değil • Güncel veri yok");
+        heroSource.setTextColor(0xffffcb78);
+        heroSoc.setText("— %");heroRange.setText("— km  •  Veri yok");
+        heroVoltage.setText("— V");heroTemp.setText("— °C");
+        heroMode.setText("—");heroPower.setText("— kW");
+        heroConsumption.setText("— kWh/100 km");
+        heroCost.setText("— TL");heroHealth.setText("— %");
+    }
+    @SuppressWarnings("deprecation")
+    private void autoConnectLastAdapter(){
+        if(active)return;
+        if(Build.VERSION.SDK_INT>=31 &&
+           checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
+        String address=getSharedPreferences(ADAPTER_PREFS,MODE_PRIVATE)
+            .getString("selected_address",null);
+        if(address==null)return;
+        try{
+            BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
+            if(adapter==null || !adapter.isEnabled())return;
+            for(BluetoothDevice d:adapter.getBondedDevices()){
+                if(address.equals(d.getAddress())){connect(d);return;}
+            }
+            showStatus("Önceki OBD cihazı eşleşmiş değil; adaptörü yeniden seç.");
+        }catch(SecurityException e){showStatus("Bluetooth izni gerekli");}
+    }
+
     private void updateChargeHistory(){
         if(chargeSummary==null || pastSessions==null || isFinishing())return;
         if(chargeHistory.isCharging()){
@@ -155,7 +293,12 @@ public final class Id4ObdActivity extends Activity {
                 String n=devices.get(i).getName();names[i]=n==null?"Eşleştirilmiş adaptör "+(i+1):n;
             }
             new AlertDialog.Builder(this).setTitle("ELM327 adaptörünü seç")
-                .setItems(names,(dialog,index)->connect(devices.get(index)))
+                .setItems(names,(dialog,index)->{
+                    BluetoothDevice chosen=devices.get(index);
+                    getSharedPreferences(ADAPTER_PREFS,MODE_PRIVATE).edit()
+                        .putString("selected_address",chosen.getAddress()).apply();
+                    connect(chosen);
+                })
                 .setNegativeButton("Vazgeç",null).show();
         }catch(SecurityException e){showStatus("Bluetooth izinleri gerekli");}
     }
@@ -204,7 +347,13 @@ public final class Id4ObdActivity extends Activity {
                     if(result!=null){
                         updatedAt[i]=System.currentTimeMillis();
                         final String line=item.name+": "+result+" • CANLI";
-                        ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});
+                        final String did=item.did,displayValue=result;
+                        ui.post(()->{
+                            if(active&&!isFinishing()){
+                                fields[idx].setText(line);
+                                renderCore(did,displayValue);
+                            }
+                        });
                     }else if(System.currentTimeMillis()-updatedAt[i]>25000){
                         final String line=item.name+": —  (ECU yanıtı yok)";
                         ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});
@@ -235,6 +384,7 @@ public final class Id4ObdActivity extends Activity {
         active=false;
         chargeHistory.telemetryLost();
         ui.post(this::updateChargeHistory);
+        ui.post(this::resetCore);
         ui.post(()->{
             if(!isFinishing())for(int i=0;i<fields.length;i++){
                 if(fields[i]!=null){
