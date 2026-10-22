@@ -65,7 +65,7 @@ source=source.replace(anchor,
                     ? View.GONE : View.VISIBLE);
             id4Entry.setOnClickListener(button ->
                 requireContext().startActivity(new android.content.Intent(
-                    requireContext(), me.aap.fermata.ev.Id4ObdActivity.class)));
+                    requireContext(), me.aap.fermata.ev.Id4OverviewActivity.class)));
         }
 ''' + anchor)
 fragment.write_text(source,encoding="utf-8")
@@ -90,6 +90,8 @@ source=source.replace(anchor,
             android:exported="false" />
         <activity android:name="me.aap.fermata.ev.Id4NavigatorActivity"
             android:exported="false" />
+        <activity android:name="me.aap.fermata.ev.Id4OverviewActivity"
+            android:exported="false" />
 ''' + anchor)
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
@@ -108,8 +110,10 @@ charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
 charge_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistoryStore.java"
 energy_facts=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyData.java"
 energy_model=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model]:
+live_monitor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4LiveTelemetry.java"
+overview=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -124,7 +128,8 @@ allowed=set(SOURCE_SHA) | {
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),
-    str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay))}
+    str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
+    str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():
