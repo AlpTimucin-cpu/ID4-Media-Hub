@@ -370,6 +370,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .cockpit-age{font-size:10px;color:#ffe0a4;margin:3px 0 0;font-weight:700}
 .cockpit-age.fresh{color:#4af5bd}
 
+.tripbar-number.reserve-warning{color:#ffb75b;-webkit-text-stroke:1.15px #000}
+.tripbar-number.reserve-warning + .tripbar-sub{color:#ffd495}
 /* Driver-selected focus mode. Default is full information, not hidden sensors. */
 @media (orientation:landscape) and (min-width:640px){
  .cockpit-tabs #co-focus{background:#0b4259}
@@ -570,6 +572,7 @@ function routeProgressGeometry(pts,totalRoadKm){
 }
 function refreshTripArrivalModel(remainingKm){
  var label=$('co-trip-arrival'),note=$('co-trip-arrival-note');
+ label.classList.remove('reserve-warning');
  if(!currentRouteProgress){label.textContent='—';note.textContent='Rota gerekli';return}
  if(routeHasChargeStop){
   label.textContent='—';note.textContent='Mola sonrası şarj miktarı bilinmiyor';return;
@@ -581,11 +584,13 @@ function refreshTripArrivalModel(remainingKm){
  var low=liveSoc-remainingKm*24/52;
  var high=liveSoc-remainingKm*16/52;
  if(low<0 || high<0){
+  label.classList.add('reserve-warning');
   label.textContent='⚡ Şarj gerekebilir';
   note.textContent='Model: batarya varışa yetmeyebilir';
   return;
  }
  label.textContent='%'+Math.round(low)+'–%'+Math.round(high);
+ if(low<15)label.classList.add('reserve-warning');
  note.textContent=low<15?'⚠️ Model rezerv %15 altına düşebilir':
    'Tahmin: 52 kWh, 16–24 kWh/100 km · trafiksiz';
 }
@@ -736,6 +741,7 @@ window.molaStations=function(packet){
   $('station-summary').textContent=detail+' · OBD SoC olmadan mola önerilmez';
  }else if(stationKind==='route' && packet.chargeModel==='charge-likely' && !packet.stopIncluded){
   $('station-summary').textContent=detail+' · Modele uygun güvenilir mola bulunamadı';
+  $('co-trip-charge').textContent='⚠️ Modele uygun CCS bulunamadı · farklı rota/istasyon kontrol et';
  }
 };
 window.molaStationError=function(packet){
