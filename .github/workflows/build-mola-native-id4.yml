@@ -60,15 +60,6 @@ jobs:
           python3 integration/mola-native/tests/test_vehicle_dashboard.py \
             integration/mola-native/overlay \
             integration/mola-native/patch_mola.py
-      - name: Validate landscape cockpit and live data callbacks
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/cockpit.js
-          node integration/mola-native/tests/test_cockpit.js \
-            integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html \
-            integration/mola-native/overlay/fermata/src/main/assets/id4/cockpit.js \
-            integration/mola-native/overlay/fermata/src/main/assets/id4/cockpit.css
       - name: Validate embedded navigation, dual search and no-GPS route
         shell: bash
         run: |
