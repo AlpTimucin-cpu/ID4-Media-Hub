@@ -293,7 +293,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
    <div class="cockpit-bar"><div id="co-soc-fill"></div></div>
   </div>
   <div class="cockpit-panel">
-   <div class="cockpit-title">TAHMİNİ MENZİL · DOĞRULANMIŞ VERİ</div>
+   <div class="cockpit-title">MENZİL · PROFİL MODELİ (%15 REZERV)</div>
    <div id="co-range" class="cockpit-value cockpit-main-value">— km</div>
   </div>
   <div class="cockpit-smallgrid">
@@ -881,6 +881,13 @@ window.molaTelemetry=function(data){
   $('co-soc').textContent=String(d.soc);
   var n=Number.parseFloat(String(d.soc).replace(',','.'));
   $('co-soc-fill').style.width=Number.isFinite(n)&&n>=0&&n<=100?n+'%':'0%';
+  if(Number.isFinite(n)&&n>=0&&n<=100){
+   // Model only, NOT a vehicle-measured range. Uses the same 52kWh,
+   // 16–24kWh/100km, 15% reserve assumptions as Id4EnergyModel.java.
+   var usableAfterReserve=Math.max(0,n-15)*.01*52;
+   var lowKm=usableAfterReserve/24*100,highKm=usableAfterReserve/16*100;
+   $('co-range').textContent=Math.round(lowKm)+'–'+Math.round(highKm)+' km';
+  }
  }else{
   $('co-soc').textContent='— %';$('co-soc-fill').style.width='0%';
  }
