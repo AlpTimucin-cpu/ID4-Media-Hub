@@ -186,7 +186,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .setTitle("OBD adaptörünü seç")
                 .setItems(labels,(dialog,index)->{
                     BluetoothDevice d=devices.get(index);
-                    getSharedPreferences("Id4OverviewActivity",MODE_PRIVATE).edit()
+                    getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE).edit()
                         .putString("paired_mac",d.getAddress()).apply();
                     telemetry.start(d);
                 })
@@ -204,7 +204,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private void autoConnectObd(){
         if(Build.VERSION.SDK_INT>=31 &&
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
-        String address=getSharedPreferences("Id4OverviewActivity",MODE_PRIVATE)
+        String address=getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
             .getString("paired_mac",null);
         if(address==null)return;
         try{
