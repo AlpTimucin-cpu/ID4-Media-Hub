@@ -200,18 +200,40 @@ assert(get('station-summary').textContent.includes('2 rota yakınında'),
  'route CCS stations summary missing');
 assert(get('station-note').textContent.includes('Canlı soket doluluğu/fiyat yok'),
  'snapshot incorrectly claims real-time status');
+assert(get('station-suggestion').style.display==='none',
+ 'missing SoC and suggestion must not produce fake charging recommendation');
+win.molaStations({kind:'route',items:[],total:1,
+  updatedAt:'2026-10-20T08:00:00Z',snapshotAgeHours:48,
+  chargeModel:'charge-likely',
+  suggested:{lat:37.8,lon:34.9,title:'Deneme CCS',operator:'ŞarjAğı',
+    ccs:true,routeProgressKm:75.2},
+  liveAvailability:false,livePrices:false});
+assert(get('station-suggestion').style.display==='flex',
+ 'charge suggestion should appear in single-screen route summary');
+assert(get('station-suggestion-label').textContent.includes('model'),
+ 'suggestion must explicitly identify model assumptions');
+const savedBeforeCharge=calls.saved.length;
+get('station-suggestion-choose').onclick();
+assert.equal(calls.routeVia.length,1,'suggestion must invoke explicit charging waypoint route');
+assert.equal(calls.saved.length,savedBeforeCharge+1,'suggested CCS operator should be recorded');
+// Arrival suggestion is not authoritative when no fresh SoC is available.
+win.molaStations({kind:'route',items:[],total:0,chargeModel:'no-soc',
+ updatedAt:'2026-10-20T08:00:00Z',snapshotAgeHours:48});
+assert(get('station-suggestion').style.display==='none',
+ 'no SoC must withdraw suggested charging stop');
+
 const popupMarker=drawnMarkers.find(x=>x.popup && x.popup.children &&
  x.popup.children.some(c=>c.textContent==='Deneme CCS'));
 assert(popupMarker,'station marker popup was not rendered');
 assert.equal(popupMarker.popup.children[3].textContent,'Şarj molası olarak ekle');
 popupMarker.popup.children[3].onclick();
-assert.equal(calls.routeVia.length,1,'CCS station should be usable as a waypoint');
-assert.equal(calls.routeVia[0][2],37.8,'waypoint latitude wrong');
-assert.equal(calls.routeVia[0][3],34.9,'waypoint longitude wrong');
-assert(Math.abs(calls.routeVia[0][4]-36.8841)<0.002,
+assert.equal(calls.routeVia.length,2,'CCS station should be usable as a waypoint');
+assert.equal(calls.routeVia[1][2],37.8,'waypoint latitude wrong');
+assert.equal(calls.routeVia[1][3],34.9,'waypoint longitude wrong');
+assert(Math.abs(calls.routeVia[1][4]-36.8841)<0.002,
  'original final destination must be kept');
 popupMarker.popup.children[2].onclick();
-assert.equal(calls.saved.length,2,'both waypoint and destination choices must save operator');
+assert.equal(calls.saved.length,3,'suggested and chosen waypoints plus destination must persist operator');
 assert.equal(calls.saved[0][1],'ŞarjAğı');
 assert.equal(get('to').value,'Deneme CCS','chosen charger not set as destination');
 assert.equal(calls.route.length,3,'choosing a station must replan the route automatically');
