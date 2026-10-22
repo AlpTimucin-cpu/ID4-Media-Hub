@@ -89,7 +89,8 @@ source=source.replace(anchor,
         <activity android:name="me.aap.fermata.ev.Id4ObdActivity"
             android:exported="false" />
         <activity android:name="me.aap.fermata.ev.Id4NavigatorActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:configChanges="orientation|screenSize" />
         <activity android:name="me.aap.fermata.ev.Id4OverviewActivity"
             android:exported="false" />
 ''' + anchor)
