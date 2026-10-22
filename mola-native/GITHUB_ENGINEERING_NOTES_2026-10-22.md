@@ -139,3 +139,40 @@ Bu yüzden ürün kararları:
 Kaynaklar:
 - https://github.com/tillsteinbach/CarConnectivity-connector-volkswagen/blob/main/CHANGELOG.md
 - https://github.com/mikrohard/CarConnectivity-connector-vw-eu-data-act
+
+
+## 22.10.2026 — harita katmanları (son geliştirme)
+
+- `Tüm Türkiye` EPDK snapshot'ındaki **halka açık** istasyonların
+  seçili harita alanındaki tamamını kapsar: >160 sonuç varsa en çok
+  12×8 sayılı küme işareti üretir, yakınlaşınca bireysel istasyonlar
+  gösterilir. Bu *aynı anda tüm Türkiye'de on binlerce marker çizmek*
+  değildir; kapsam sayısal kümelerle korunur.
+- `CCS` Type 2 AC-only soketleri hariç tutan, harita alanına
+  göre sorgulanan filtre. `Rota CCS` mevcut OSRM güzergahından
+  kuş uçuşu **12 km** yakın CCS istasyonlarını maksimum 120 marker
+  ile gösterir. Yol bağlantısı, gerçek sapma süresi ve müsaitlik
+  doğrulanmamıştır. `Gizle` sadece istasyon katmanını saklar.
+- `Yol havası` Open-Meteo saatlik modelinden başlangıç, %25, %50,
+  %75, varış için rota/navigasyon süresine göre hedeflenen 5
+  konuma ait tahminleri gösterir. Yağış olasılığı, sıcaklık ve
+  rüzgâr alanları kaynak yanıtından alınır, hatalı/eksikse gösterilmez.
+  Önceden var olan +1/+5/+10/+15 dk kartları korunur.
+- `Trafik` **dürüst bağlantı durumu** göstergesidir; TomTom
+  Traffic Flow Tiles API trafik yoğunluğu için lisanslı bir API key
+  gerektirir. Ana uygulamada anahtar veya yetkili servis olmadığı
+  için şu an trafik katmanı ÇİZİLMEZ ve rota ETA'sına gerçek trafik
+  gecikmesi dahil EDİLMEZ. İBB'nin yalnız İstanbul'u kapsayan
+  trafik haritası, Türkiye geneli bir servis yerine geçemez.
+- EPDK 2026 web servis sayfasında yeni
+  `https://apigateway.epdk.gov.tr/sarjIstasyonlari` listelendi;
+  şema / izin erişimi doğrulanmadığı için mevcut uygulamada
+  anlık API olarak kullanıldığı **iddia edilmez**. Anlık istasyon
+  doluluğu, fiyat ve arıza durumu snapshot'a eklenmez.
+
+Kaynaklar:
+- https://epdk.gov.tr/Detay/Icerik/3-34680/enerji-donusum-piyasasi-web-servisleri
+- https://www.epdk.gov.tr/Detay/Icerik/1-3428/serbest-erisim-platformu--sarj%40trserbest-erisim-
+- https://open-meteo.com/en/docs
+- https://docs.tomtom.com/traffic-api/documentation/tomtom-maps/v1/traffic-flow/raster-flow-tiles
+- https://uym.ibb.gov.tr/hizmetler/trafik-bilgilendirme
