@@ -49,6 +49,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
     private Id4LiveTelemetry telemetry;
+    private Id4StationCatalog stationCatalog;
+    private volatile int stationRequestId;
     private Id4LiveTelemetry.Data latestObd=new Id4LiveTelemetry.Data();
     private LocationManager locationManager;
     private TextToSpeech tts;
@@ -68,6 +70,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         getWindow().setStatusBarColor(0xff061e2b);
         getWindow().setNavigationBarColor(0xff061e2b);
         locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
+        stationCatalog=new Id4StationCatalog(this);
         telemetry=new Id4LiveTelemetry(this,data->{
             latestObd=data;
             send("molaTelemetry",obdPacket(data));
@@ -125,6 +128,14 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
         @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
+        @JavascriptInterface public void visibleStations(
+              double south,double west,double north,double east){
+            requestVisibleStations(south,west,north,east);
+        }
+        @JavascriptInterface public void saveStation(String title,String operator){
+            if(title!=null && title.length()<=160 && operator!=null && operator.length()<=120)
+                Id4EnergyData.saveStation(Id4NavigatorActivity.this,title,operator);
+        }
         @JavascriptInterface public void back() {ui.post(()->finish());}
         @JavascriptInterface public void stations() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
@@ -214,6 +225,41 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 if(address.equals(d.getAddress())){telemetry.start(d);return;}
             }
         }catch(SecurityException ignored){}
+    }
+
+    private void requestVisibleStations(double south,double west,double north,double east){
+        final int request=++stationRequestId;
+        jobs.execute(()->{
+            try{
+                JSONObject packet=stationCatalog.inBounds(south,west,north,east);
+                if(!destroyed && request==stationRequestId)send("molaStations",packet);
+            }catch(Exception e){
+                if(!destroyed && request==stationRequestId)
+                    send("molaStationError",record("stations",
+                        "EPDK istasyon verisi alınamadı: "+e.getClass().getSimpleName()));
+            }
+        });
+    }
+    private void loadRouteStations(JSONObject route,int routeGeneration){
+        try{
+            JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
+            ArrayList<Id4StationCatalog.Point> points=new ArrayList<>();
+            int stride=Math.max(1,coords.length()/2400);
+            for(int i=0;i<coords.length();i+=stride){
+                JSONArray coord=coords.getJSONArray(i);
+                points.add(new Id4StationCatalog.Point(coord.getDouble(1),coord.getDouble(0)));
+            }
+            if(coords.length()>1){
+                JSONArray finalPt=coords.getJSONArray(coords.length()-1);
+                points.add(new Id4StationCatalog.Point(finalPt.getDouble(1),finalPt.getDouble(0)));
+            }
+            JSONObject packet=stationCatalog.alongRoute(points);
+            if(!destroyed && generation==routeGeneration)send("molaStations",packet);
+        }catch(Exception e){
+            if(!destroyed && generation==routeGeneration)
+                send("molaStationError",record("stations",
+                    "Rota çevresi EPDK verisi yüklenemedi: "+e.getClass().getSimpleName()));
+        }
     }
     private void requestGps() {
         if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
@@ -409,6 +455,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     // Weather is a separate best-effort request after the drawn route.
                     final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
+                    // Read-only EPDK snapshot route corridor; never block route rendering.
+                    jobs.execute(()->loadRouteStations(routeData,myGeneration));
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
@@ -559,7 +607,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(telemetry!=null)telemetry.stop();super.onPause();
     }
     @Override protected void onDestroy(){
-        destroyed=true;running=false;generation++;
+        destroyed=true;running=false;generation++;stationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
