@@ -106,8 +106,10 @@ leaflet_css=overlay/"fermata/src/main/assets/id4/leaflet.css"
 leaflet_license=overlay/"fermata/src/main/assets/id4/LEAFLET_LICENSE.txt"
 charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
 charge_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistoryStore.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store]:
+energy_facts=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyData.java"
+energy_model=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.java"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -122,7 +124,7 @@ allowed=set(SOURCE_SHA) | {
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),
-    str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay))}
+    str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():
