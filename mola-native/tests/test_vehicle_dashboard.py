@@ -44,4 +44,7 @@ for rule in ['energyLowKwh', 'energyHighKwh', 'arrivalSocLower',
              'arrivalSocUpper', 'chargingNeededByModel']:
     assert rule in navigator and rule in html, "route energy binding absent: "+rule
 assert "case 'selectObd':bridge.selectObd();" in html, "OBD button not bridged"
+assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in navigator
+assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
+
 print("PASS: no manual energy form; timestamps per OBD sensor; route energy connected.")
