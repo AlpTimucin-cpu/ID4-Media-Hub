@@ -330,7 +330,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
 var suggestedCharge=null;
-var currentRouteProgress=null,lastGpsFix=null,followMap=false;
+var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
 function goodGps(x){
  return !!x&&valid(x.lat,x.lon)&&Number.isFinite(x.accuracy)&&
    x.accuracy<=60&&Number.isFinite(x.timeMs)&&
@@ -555,6 +555,7 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ lastManeuverAt=0;
  currentRouteProgress=null;
  $('route-progress-fill').style.width='0%';
  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
@@ -684,12 +685,24 @@ window.molaPosition=function(x){
  }
 };
 window.molaStatus=function(o){if(o&&o.detail)msg(o.detail)};
+window.molaManeuver=function(o){
+ if(!currentRouteProgress||!o||typeof o.instruction!=='string'||
+    !Number.isFinite(o.straightLineMeters)||o.straightLineMeters<0||
+    !Number.isFinite(o.fixTimeMs)||Date.now()-o.fixTimeMs>30000||
+    Date.now()-o.fixTimeMs<0||!Number.isFinite(o.accuracy)||o.accuracy>60)
+     return;
+ lastManeuverAt=Date.now();
+ // This is proximity in a straight line, never road-driving distance.
+ $('co-maneuver').textContent=o.instruction.slice(0,90)+' · yaklaşık '+
+   Math.round(o.straightLineMeters)+' m (kuş uçuşu)';
+};
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
  var pts=o.coordinates.filter(function(c){
   return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
  }).map(function(c){return [c[1],c[0]]});
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
+ lastManeuverAt=0;
  currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
  showRouteGpsProgress(lastGpsFix);
  var sheet=document.querySelector('.sheet');
@@ -809,6 +822,10 @@ window.molaTelemetry=function(data){
 setInterval(function(){
  // Clear progress after the last location update expires; do not display a frozen percent.
  if(currentRouteProgress && lastGpsFix && !goodGps(lastGpsFix))showRouteGpsProgress(lastGpsFix);
+ if(lastManeuverAt && Date.now()-lastManeuverAt>30000){
+  lastManeuverAt=0;
+  $('co-maneuver').textContent='GPS dönüş bilgisi güncel değil';
+ }
  if(lastTelemetryAt && Date.now()-lastTelemetryAt>25000){
   clearTelemetry();lastTelemetryAt=0;
   $('live-status').textContent='OBD ölçümü güncel değil';
