@@ -99,6 +99,14 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         setContentView(web,new ViewGroup.LayoutParams(-1,-1));
         WebSettings st=web.getSettings();
         st.setJavaScriptEnabled(true);
+        // OSMF tile policy: identify the application instead of sending only the
+        // generic embedded browser UA. Leave the Android WebView capabilities
+        // intact; do not spoof an unrelated application.
+        String standardWebViewAgent=st.getUserAgentString();
+        st.setUserAgentString(standardWebViewAgent+
+            " ID4YolArkadasim/0.5 (+https://github.com/AlpTimucin-cpu/ID4-Media-Hub)");
+        st.setCacheMode(WebSettings.LOAD_DEFAULT); // respect server HTTP caching
+
         st.setDomStorageEnabled(false);
         st.setAllowFileAccess(false);
         st.setAllowContentAccess(false);
