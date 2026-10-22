@@ -27,7 +27,7 @@ function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
 const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[]};
 const drawnMarkers=[];
-const mapActions={pans:[],events:{}};
+const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
  map(){return {setView(){return this},
   on(event,handler){mapActions.events[event]=handler;return this},removeLayer(){},
@@ -37,7 +37,8 @@ const L={
      getNorth(){return 40},getEast(){return 35}}},
   invalidateSize(){return this},
   zoomIn(){},zoomOut(){},panTo(coords,opts){mapActions.pans.push({coords,opts})},closePopup(){}}},
- tileLayer(){return {addTo(){return this}}},
+ tileLayer(){return {addTo(){return this},
+   on(name,callback){mapActions.tileEvents[name]=callback;return this}}},
  circleMarker(){return {popup:null,
   addTo(){drawnMarkers.push(this);return this},
   bindPopup(content){this.popup=content;return this},setLatLng(){}}},
@@ -93,6 +94,17 @@ assert(html.includes('.sheet.route-active:not(.details-open){display:none!import
  'old legacy route sheet still covers landscape map');
 assert(html.includes('id="co-trip-arrival"')&&html.includes('id="co-trip-charge-button"'),
  'trip bar missing transparent charge and model arrival elements');
+assert(html.includes('id="map-credit"'),
+ 'OpenStreetMap attribution must be visible and not hidden by route sheet');
+assert(typeof mapActions.tileEvents.tileerror==='function' &&
+       typeof mapActions.tileEvents.tileload==='function',
+ 'offline/online tile states must be handled');
+mapActions.tileEvents.tileerror();
+assert(get('map-credit').textContent.includes('yüklenemedi'),
+ 'tile failure should tell the driver instead of showing a blank map');
+mapActions.tileEvents.tileload();
+assert(get('map-credit').textContent.includes('Çevrimiçi harita'),
+ 'loaded tiles must clear the temporary warning');
 assert(html.includes('id="co-soc"')&&html.includes('id="co-voltage"')&&
  html.includes('id="co-energy"'),'transparent cockpit missing core measurements');
 assert(html.includes('backdrop-filter:blur'),'cockpit overlays must be translucent');
