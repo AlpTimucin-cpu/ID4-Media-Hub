@@ -790,6 +790,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             double total=cumulative[cumulative.length-1];
             if(total<10)throw new IllegalStateException("Boş güzergah");
             StringBuilder latitudes=new StringBuilder(),longitudes=new StringBuilder();
+            double[] routeLats=new double[5],routeLons=new double[5];
             double[] fractions={0,.25,.5,.75,1};
             long now=System.currentTimeMillis()/1000L;
             for(double fraction:fractions){
@@ -800,6 +801,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 double t=Math.max(0,Math.min(1,(desired-cumulative[j-1])/divisor));
                 double latitude=a.getDouble(1)+(b.getDouble(1)-a.getDouble(1))*t;
                 double longitude=a.getDouble(0)+(b.getDouble(0)-a.getDouble(0))*t;
+                int waypoint=(int)Math.round(fraction*4);
+                routeLats[waypoint]=latitude;routeLons[waypoint]=longitude;
                 if(latitudes.length()>0){latitudes.append(',');longitudes.append(',');}
                 latitudes.append(String.format(Locale.US,"%.5f",latitude));
                 longitudes.append(String.format(Locale.US,"%.5f",longitude));
@@ -830,8 +833,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 JSONObject item=new JSONObject()
                     .put("percent",(int)Math.round(fractions[i]*100))
                     .put("etaMinutes",(int)Math.round(fractions[i]*durationSec/60.0))
-                    .put("latitude",location.optDouble("latitude",Double.NaN))
-                    .put("longitude",location.optDouble("longitude",Double.NaN))
+                    .put("latitude",routeLats[i])
+                    .put("longitude",routeLons[i])
                     .put("forecastTime",hours.optLong(closest));
                 double celsius=temp.optDouble(closest,Double.NaN);
                 double precipitation=rain.optDouble(closest,Double.NaN);
