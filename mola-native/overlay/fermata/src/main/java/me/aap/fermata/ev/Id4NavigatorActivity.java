@@ -165,7 +165,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
         @JavascriptInterface public void visibleStations(
               double south,double west,double north,double east){
-            requestVisibleStations(south,west,north,east);
+            requestVisibleStations(south,west,north,east,false);
+        }
+        @JavascriptInterface public void visibleStationsFiltered(
+              double south,double west,double north,double east,boolean onlyCcs){
+            requestVisibleStations(south,west,north,east,onlyCcs);
         }
         @JavascriptInterface public void saveStation(String title,String operator){
             if(title!=null && title.length()<=160 && operator!=null && operator.length()<=120)
@@ -291,11 +295,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }catch(SecurityException ignored){}
     }
 
-    private void requestVisibleStations(double south,double west,double north,double east){
+    private void requestVisibleStations(double south,double west,double north,double east,
+                                        boolean onlyCcs){
         final int request=++stationRequestId;
         stationJobs.execute(()->{
             try{
-                JSONObject packet=stationCatalog.inBounds(south,west,north,east);
+                JSONObject packet=stationCatalog.inBounds(south,west,north,east,onlyCcs);
                 if(!destroyed && request==stationRequestId)send("molaStations",packet);
             }catch(Exception e){
                 if(!destroyed && request==stationRequestId)
