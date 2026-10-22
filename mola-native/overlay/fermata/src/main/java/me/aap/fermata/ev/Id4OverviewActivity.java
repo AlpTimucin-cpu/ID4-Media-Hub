@@ -202,7 +202,7 @@ public final class Id4OverviewActivity extends Activity {
             new AlertDialog.Builder(this).setTitle("OBD adaptörünü bir kez seç")
                 .setItems(names,(dialog,index)->{
                     BluetoothDevice device=devices.get(index);
-                    getPreferences(MODE_PRIVATE).edit().putString("paired_mac",device.getAddress()).apply();
+                    getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE).edit().putString("paired_mac",device.getAddress()).apply();
                     telemetry.start(device);
                 })
                 .setNegativeButton("Vazgeç",null).show();
@@ -212,7 +212,14 @@ public final class Id4OverviewActivity extends Activity {
     private void autoConnect(){
         if(Build.VERSION.SDK_INT>=31 &&
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
-        String mac=getPreferences(MODE_PRIVATE).getString("paired_mac",null);
+        String mac=getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
+            .getString("paired_mac",null);
+        // One-time migration from the old Activity-local preference key.
+        if(mac==null){
+            mac=getPreferences(MODE_PRIVATE).getString("paired_mac",null);
+            if(mac!=null)getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
+                .edit().putString("paired_mac",mac).apply();
+        }
         if(mac==null)return;
         try{
             BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
