@@ -15,7 +15,7 @@ const elements={};
 function el(){
  return {
   value:'',style:{},children:[],textContent:'',onclick:null,handlers:{},
-  classList:{_set:new Set(),add(c){this._set.add(c)},remove(c){this._set.delete(c)},contains(c){return this._set.has(c)}},
+  classList:{_set:new Set(),add(c){this._set.add(c)},remove(c){this._set.delete(c)},contains(c){return this._set.has(c)},toggle(c){if(this._set.has(c)){this._set.delete(c);return false}this._set.add(c);return true}},
   addEventListener(name,fn){this.handlers[name]=fn},
   appendChild(child){this.children.push(child)},
   replaceChildren(){this.children=[]},
@@ -25,7 +25,7 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[]};
 const drawnMarkers=[];
 const mapActions={pans:[],events:{}};
 const L={
@@ -51,7 +51,8 @@ const win={
   location(){calls.location++},stop(){calls.stop++},
   voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
   visibleStations(...args){calls.visible.push(args)},
-  saveStation(...args){calls.saved.push(args)}
+  saveStation(...args){calls.saved.push(args)},
+  landscape(...args){calls.orientation.push(args)}
  }
 };
 const context={
@@ -85,6 +86,22 @@ assert(html.includes('text-shadow:-1px -1px 0 #000'),
  'large telemetry numbers must have high contrast black outline');
 assert(html.includes('@media (orientation:landscape)'),
  'full-screen cockpit must be landscape responsive');
+assert(html.includes('.sheet:not(.route-active):not(.search-open){display:none!important}'),
+ 'legacy sidebar must not obscure the map in landscape');
+assert(html.includes('id="go-fullscreen"'),'portrait to landscape button missing');
+get('go-fullscreen').onclick();
+assert.equal(calls.orientation.length,1,'cannot request landscape from portrait');
+assert.equal(calls.orientation[0][0],true,'landscape request must be explicit');
+get('co-expand').onclick();
+assert.equal(calls.orientation[1][0],false,'must be able to return to auto orientation');
+get('co-route-tab').onclick();
+assert(get('sheet').classList.contains('search-open'),
+ 'route search should be opt-in, not obscure initial cockpit');
+get('co-route-tab').onclick();
+assert(!get('sheet').classList.contains('search-open'),'route form should close');
+get('open-route').onclick();
+assert(get('sheet').classList.contains('search-open'),'route search shortcut broken');
+get('open-route').onclick();
 assert(html.includes('id="live-soc"'),'live battery HUD missing');
 assert(html.includes('id="live-voltage"'),'live HV voltage HUD missing');
 assert(html.includes('id="live-temp"'),'live battery temperature HUD missing');
