@@ -266,6 +266,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             double soc=snapshot.hasSoc()?snapshot.soc:Double.NaN;
             double roadKm=route.getDouble("distance")/1000.0;
             JSONObject packet=stationCatalog.alongRoute(points,roadKm,soc);
+            if(route.getJSONArray("legs").length()>1){
+                packet.remove("suggested"); // already travelling via a stop; avoid second suggestion
+                packet.put("stopIncluded",true);
+            }
             if(!destroyed && generation==routeGeneration)send("molaStations",packet);
         }catch(Exception e){
             if(!destroyed && generation==routeGeneration)
