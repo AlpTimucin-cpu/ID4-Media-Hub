@@ -128,6 +128,12 @@ assert(Math.abs(calls.route[1][2]-37.9667)<0.002);
 const accent=typing('from','Nigde');
 assert(get('from-list').children.some(x=>x.textContent.includes('Niğde')),
  'accent-insensitive matching must work');
+get('from-list').children[0].onclick();
+const finalCity=typing('to','Antalya');
+assert(finalCity.field==='to');
+get('to-list').children[0].onclick();
+assert(get('from').value.includes('Niğde'));
+assert(get('to').value.includes('Antalya'));
 // Weather cards update only with an actual provider result.
 win.molaWeather({source:'Open-Meteo',cards:[
  {minutes:1,temperature:12,precipitation:0.2,wind:11,resolution:'15dk model'},
@@ -202,7 +208,7 @@ popupMarker.popup.children[3].onclick();
 assert.equal(calls.routeVia.length,1,'CCS station should be usable as a waypoint');
 assert.equal(calls.routeVia[0][2],37.8,'waypoint latitude wrong');
 assert.equal(calls.routeVia[0][3],34.9,'waypoint longitude wrong');
-assert(Math.abs(calls.routeVia[0][4]-37.9667)<0.002,
+assert(Math.abs(calls.routeVia[0][4]-36.8841)<0.002,
  'original final destination must be kept');
 popupMarker.popup.children[2].onclick();
 assert.equal(calls.saved.length,1,'selected operator not saved');
