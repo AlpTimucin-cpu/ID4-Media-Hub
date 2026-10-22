@@ -147,14 +147,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     /** Only known, freshly read ECU measurements reach the map HUD. */
     private JSONObject obdPacket(Id4LiveTelemetry.Data d) {
         JSONObject p=new JSONObject();
+        Id4LiveTelemetry.Data shown=d.displayAt(System.currentTimeMillis());
         boolean fresh=d.connected && d.updatedAt>0 &&
             System.currentTimeMillis()-d.updatedAt<25000;
         try{
             p.put("fresh",fresh);
-            p.put("soc",fresh?d.soc:"—");
-            p.put("voltage",fresh?d.voltage:"—");
-            p.put("temperature",fresh?d.batteryTemp:"—");
-            p.put("chargeMode",fresh?d.chargeMode:"—");
+            p.put("soc",fresh?shown.soc:"—");
+            p.put("voltage",fresh?shown.voltage:"—");
+            p.put("temperature",fresh?shown.batteryTemp:"—");
+            p.put("chargeMode",fresh?shown.chargeMode:"—");
             p.put("status",d.status);
         }catch(Exception ignored){}
         return p;
