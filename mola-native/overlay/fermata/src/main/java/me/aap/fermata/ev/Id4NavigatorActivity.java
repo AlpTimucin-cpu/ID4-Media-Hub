@@ -45,6 +45,8 @@ import java.util.concurrent.Executors;
 public final class Id4NavigatorActivity extends Activity implements LocationListener {
     private static final String PAGE="https://appassets.androidplatform.net/assets/id4/navigator.html";
     private final ExecutorService jobs=Executors.newSingleThreadExecutor();
+    // Station requests must not hold back route or weather processing.
+    private final ExecutorService stationJobs=Executors.newSingleThreadExecutor();
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
@@ -229,7 +231,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
 
     private void requestVisibleStations(double south,double west,double north,double east){
         final int request=++stationRequestId;
-        jobs.execute(()->{
+        stationJobs.execute(()->{
             try{
                 JSONObject packet=stationCatalog.inBounds(south,west,north,east);
                 if(!destroyed && request==stationRequestId)send("molaStations",packet);
@@ -456,7 +458,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
-                    jobs.execute(()->loadRouteStations(routeData,myGeneration));
+                    stationJobs.execute(()->loadRouteStations(routeData,myGeneration));
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
@@ -609,7 +611,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     @Override protected void onDestroy(){
         destroyed=true;running=false;generation++;stationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        jobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
+        jobs.shutdownNow();stationJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();
