@@ -25,7 +25,7 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],location:0,stop:0,selectObd:0,visible:[],saved:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[]};
 const drawnMarkers=[];
 const L={
  map(){return {setView(){return this},on(){return this},removeLayer(){},
@@ -45,6 +45,7 @@ const win={
  MolaNative:{
   suggest(field,q,id){calls.suggest.push({field,q,id})},
   route(...args){calls.route.push(args)},
+  routeVia(...args){calls.routeVia.push(args)},
   location(){calls.location++},stop(){calls.stop++},
   voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
   visibleStations(...args){calls.visible.push(args)},
@@ -173,6 +174,11 @@ win.molaRoute({
 });
 assert(get('trip-energy').textContent.includes('Varış SoC ~%75–%76'),
  'recent BMS SoC arrival range missing');
+win.molaRoute({coordinates:[[34.68,37.96],[34.9,37.8],[30.7,36.9]],
+ distanceKm:513,durationMin:397,stopIncluded:true,
+ energyLowKwh:82,energyHighKwh:123,steps:[]});
+assert(get('compact-trip').textContent.includes('1 şarj molası'),
+ 'waypoint route must show charging stop label');
 // Same-map charging: request viewport only on user action; never show invented availability.
 get('charge-map').onclick();
 assert.equal(calls.visible.length,1,'EPDK viewport bridge never invoked');
@@ -191,6 +197,13 @@ assert(get('station-note').textContent.includes('Canlı soket doluluğu/fiyat yo
 const popupMarker=drawnMarkers.find(x=>x.popup && x.popup.children &&
  x.popup.children.some(c=>c.textContent==='Deneme CCS'));
 assert(popupMarker,'station marker popup was not rendered');
+assert.equal(popupMarker.popup.children[3].textContent,'Şarj molası olarak ekle');
+popupMarker.popup.children[3].onclick();
+assert.equal(calls.routeVia.length,1,'CCS station should be usable as a waypoint');
+assert.equal(calls.routeVia[0][2],37.8,'waypoint latitude wrong');
+assert.equal(calls.routeVia[0][3],34.9,'waypoint longitude wrong');
+assert(Math.abs(calls.routeVia[0][4]-37.9667)<0.002,
+ 'original final destination must be kept');
 popupMarker.popup.children[2].onclick();
 assert.equal(calls.saved.length,1,'selected operator not saved');
 assert.equal(calls.saved[0][1],'ŞarjAğı');
