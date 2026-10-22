@@ -126,7 +126,7 @@ get('co-focus').onclick();
 assert(!context.document.body.classList.contains('focus-drive'),
  'normal view must restore the full telemetry panel');
 get('co-fit-route').onclick();
-assert(messages.some(x=>String(x).includes('Önce rota')),
+assert(get('status').textContent.includes('Önce rota'),
  'route fit must refuse to claim a non-existent route');
 assert(html.includes('id="co-quick-route"')&&html.includes('id="co-quick-layers"'),
  'reference-style landscape route and layer shortcuts missing');
@@ -324,6 +324,8 @@ assert.equal(get('co-trip-fill').style.width,'0%','stale GPS must reset trip pro
 win.molaPosition({lat:40.5,lon:31.7,accuracy:10,timeMs:Date.now()});
 assert(get('route-progress-text').textContent.includes('rota dışında'),
  'off-route GPS must not make up distance progression');
+assert.equal(get('co-reroute').style.display,'inline-block',
+ 'the user must be offered an explicit reroute when truly off-route');
 assert.equal(get('co-energy').textContent,'81,6–122,4 kWh',
  'cockpit route energy not labeled as model');
 assert(get('vehicle-cockpit').classList.contains('has-route'),
@@ -475,6 +477,26 @@ assert.equal(get('co-trip-arrival').textContent,'—',
  'model cannot predict arrival SoC after a charger without charge amount');
 assert(get('co-trip-arrival-note').textContent.includes('Mola sonrası'),
  'missing post-charge amount must be explained');
+
+// Explicit, not automatic, user-approved reroute from a recent GPS fix.
+win.molaRoute({
+ coordinates:[[34.6833,37.9667],[33.8,37.4]],
+ distanceKm:145,durationMin:125,steps:['İlerle'],
+ energyLowKwh:23.2,energyHighKwh:34.8
+});
+win.molaPosition({lat:40.5,lon:31.7,accuracy:9,timeMs:Date.now()});
+assert.equal(get('co-reroute').style.display,'inline-block',
+ 'offroute reroute shortcut should only appear with fresh accurate GPS');
+const routesBeforeTap=calls.route.length;
+get('co-reroute').onclick();
+assert.equal(calls.route.length,routesBeforeTap+1,
+ 'rerouting requires an explicit user action');
+assert.equal(calls.route[routesBeforeTap][0],40.5,
+ 'reroute must use actual recent GPS latitude');
+assert.equal(calls.route[routesBeforeTap][4],true,
+ 'manual GPS reroute should enable verified position guidance');
+assert.equal(get('co-reroute').style.display,'none',
+ 'rerouting must hide the previous-route warning');
 
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
