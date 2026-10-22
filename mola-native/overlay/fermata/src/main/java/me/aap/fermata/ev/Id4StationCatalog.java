@@ -45,7 +45,10 @@ final class Id4StationCatalog {
     private static final class Candidate {
         final JSONObject station;
         final double rank;
-        Candidate(JSONObject station,double rank){this.station=station;this.rank=rank;}
+        final int segment;
+        Candidate(JSONObject station,double rank,int segment){
+            this.station=station;this.rank=rank;this.segment=segment;
+        }
     }
     private static boolean valid(double lat,double lon){
         return Double.isFinite(lat)&&Double.isFinite(lon)&&
@@ -149,10 +152,22 @@ final class Id4StationCatalog {
         candidates.sort(Comparator.comparingDouble(c->c.rank));
         JSONArray result=new JSONArray();
         int cap="route".equals(kind)?45:55;
+        List<Candidate> selected=new ArrayList<>();
+        if("route".equals(kind)){
+            // First choose one nearby CCS stop from each longitudinal route sector.
+            // This prevents 45 city-centre pins from hiding rural highway stations.
+            java.util.HashSet<Integer> seen=new java.util.HashSet<>();
+            for(Candidate c:candidates) {
+                if(seen.add(c.segment))selected.add(c);
+            }
+        }
         for(Candidate c:candidates){
+            if(selected.size()>=cap)break;
+            if(!selected.contains(c))selected.add(c);
+        }
+        for(Candidate c:selected){
             if(result.length()>=cap)break;
-            JSONObject item=pin(c.station,c.rank);
-            result.put(item);
+            result.put(pin(c.station,c.rank));
         }
         return new JSONObject()
             .put("kind",kind).put("items",result).put("total",total)
@@ -162,8 +177,17 @@ final class Id4StationCatalog {
     }
 
     synchronized JSONObject inBounds(double south,double west,double north,double east)throws Exception{
-        if(!valid(south,west)||!valid(north,east)||south>north||west>east)
+        if(!Double.isFinite(south)||!Double.isFinite(west)||
+           !Double.isFinite(north)||!Double.isFinite(east)||
+           south>north||west>east)
             throw new IllegalArgumentException("Harita sınırları geçersiz");
+        // A wide zoom level often includes Greece/Black Sea: safely clip to Türkiye.
+        south=Math.max(south,35);north=Math.min(north,43);
+        west=Math.max(west,25);east=Math.min(east,46);
+        if(south>north||west>east)
+            return new JSONObject().put("kind","visible").put("items",new JSONArray())
+                .put("total",0).put("updatedAt",verifiedAt).put("snapshotAgeHours",snapshotAgeHours)
+                .put("liveAvailability",false).put("livePrices",false);
         ensureLoaded();
         List<Candidate> candidates=new ArrayList<>();
         int total=0;
@@ -173,7 +197,7 @@ final class Id4StationCatalog {
             double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
             if(!valid(lat,lon)||lat<south||lat>north||lon<west||lon>east)continue;
             total++;
-            candidates.add(new Candidate(s,haversineKm(lat,lon,centerLat,centerLon)));
+            candidates.add(new Candidate(s,haversineKm(lat,lon,centerLat,centerLon),0));
         }
         return response("visible",candidates,total,false);
     }
@@ -202,13 +226,15 @@ final class Id4StationCatalog {
             double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
             if(!valid(lat,lon)||lat<south||lat>north||lon<west||lon>east)continue;
             double nearest=Double.POSITIVE_INFINITY;
+            int closestSegment=0;
             for(int j=1;j<selected.size();j++){
                 double d=distanceToSegmentKm(lat,lon,selected.get(j-1),selected.get(j));
-                nearest=Math.min(nearest,d);
+                if(d<nearest){nearest=d;closestSegment=j;}
             }
-            if(nearest>12.0)continue; // display candidates, not a claimed detour time
+            if(nearest>12.0)continue; // straight-line proximity, not detour time
             total++;
-            candidates.add(new Candidate(s,nearest));
+            int sector=(int)(20.0*closestSegment/Math.max(1,selected.size()-1));
+            candidates.add(new Candidate(s,nearest,sector));
         }
         return response("route",candidates,total,true);
     }
