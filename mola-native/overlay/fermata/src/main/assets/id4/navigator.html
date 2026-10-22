@@ -188,7 +188,10 @@ window.molaStations=function(packet){
    selectPoint('to',station.lat,station.lon,label,false);
    native('saveStation',label,String(station.operator||''));
    if(map&&map.closePopup)map.closePopup();
-   msg('Şarj istasyonu hedef seçildi. Rotayı hesapla.');
+   if(points.from){
+    msg('Şarj istasyonuna yeni rota hesaplanıyor...');
+    native('route',points.from.lat,points.from.lon,points.to.lat,points.to.lon,usingGps);
+   }else msg('Şarj istasyonu hedef seçildi. Başlangıç belirle.');
   };
   content.appendChild(pick);
   mark.bindPopup(content);
@@ -373,6 +376,7 @@ window.molaPosition=function(x){
   pendingGps=false;
   selectPoint('from',x.lat,x.lon,'Konumum (GPS ±'+Math.round(x.accuracy||0)+' m)',true);
   if(map)map.setView([x.lat,x.lon],13);
+  showVisibleStations();
  }
 };
 window.molaStatus=function(o){if(o&&o.detail)msg(o.detail)};
