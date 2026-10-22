@@ -149,7 +149,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .cockpit-right{position:absolute;right:14px;top:14px;width:21.5%;
     max-width:320px;display:flex;flex-direction:column;gap:9px}
  .cockpit-right .cockpit-value{font-size:clamp(19px,2.7vw,36px)}
- .cockpit-right .cockpit-title{margin-top:4px}
+ .cockpit-right .cockpit-title{margin-top:6px}
+ .cockpit-direction{font-size:12px;font-weight:700;color:#e2faff;
+   line-height:1.3;max-height:2.6em;overflow:hidden}
+ .cockpit-weather{font-size:11px;color:#bce7ee;line-height:1.4}
  .vehicle-cockpit.has-route .cockpit-bottom{display:none}
  .cockpit-bottom{position:absolute;bottom:16px;left:35%;right:14px;
     display:grid;grid-template-columns:1fr auto;align-items:center;gap:9px}
@@ -206,6 +209,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .cockpit-title{font-size:9px}
  .cockpit-smallgrid .cockpit-value{font-size:13px}
  .cockpit-right{top:5px;gap:4px}
+ #co-maneuver,#co-weather{display:none}
  .cockpit-right .cockpit-panel{padding:7px}
  .cockpit-bottom{bottom:7px}
  .sheet.route-active{bottom:6px;height:138px;max-height:138px}
@@ -243,7 +247,10 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
    <div class="cockpit-title">ROTA UZUNLUĞU</div><div id="co-route-km" class="cockpit-value">— km</div>
    <div class="cockpit-title">TAHMİNİ SÜRÜŞ</div><div id="co-drive-time" class="cockpit-value">— dk</div>
    <div class="cockpit-title">ŞARJ MOLASI</div><div id="co-stops" class="cockpit-value">—</div>
-   <div class="cockpit-condition">Canlı trafik / şarj soketi doluluk verisi yok.</div>
+   <div class="cockpit-title">TAHMİNİ VARIŞ · TRAFİKSİZ</div><div id="co-eta" class="cockpit-value">—</div>
+   <div class="cockpit-title">İLK ROTA TALİMATI</div><div id="co-maneuver" class="cockpit-direction">Rota bekleniyor</div>
+   <div class="cockpit-title">ROTA BOYUNCA HAVA · MODEL</div><div id="co-weather" class="cockpit-weather">Hava tahmini bekleniyor</div>
+   <div class="cockpit-condition">Canlı trafik, soket doluluğu ve gerçek şarj süresi bağlı değil.</div>
   </div>
  </div>
  <div class="cockpit-bottom">
@@ -490,11 +497,15 @@ window.molaWeather=function(packet){
    Math.round(w.wind)+' km/sa';
   $('compact-weather').children[i].textContent='+'+w.minutes+' dk · '+Math.round(w.temperature)+'°C';
  });
+ $('co-weather').textContent=packet.cards.map(function(w){
+  return Number.isFinite(w.temperature)?'+'+w.minutes+' dk '+Math.round(w.temperature)+'°C':null;
+ }).filter(Boolean).join(' · ')+' · model tahmini';
  $('weather-source').textContent='Kaynak: '+String(packet.source||'Open-Meteo')+
   ' · '+String(packet.cards[0].resolution||'model')+
   ' çözünürlüğünde rota noktası tahmini; 1 dakikalık canlı ölçüm değildir.';
 };
 window.molaWeatherError=function(packet){
+ $('co-weather').textContent='Hava modeli verisi alınamadı';
  $('weather-source').textContent=packet&&packet.detail?
   packet.detail:'Hava tahmini kaynağına ulaşılamıyor.';
  [1,5,10,15].forEach(function(m,i){
@@ -547,6 +558,9 @@ function wipeRoute(){
  $('co-route-km').textContent='— km';
  $('co-drive-time').textContent='— dk';
  $('co-stops').textContent='—';
+ $('co-eta').textContent='—';
+ $('co-maneuver').textContent='Rota bekleniyor';
+ $('co-weather').textContent='Hava tahmini bekleniyor';
  $('co-energy').textContent='— kWh';
  $('co-bottom-trip').textContent='Başlangıç ve varışı seç';
  $('station-summary').textContent='⚡ EPDK şarj istasyonları: rota bekleniyor';
@@ -673,12 +687,18 @@ window.molaRoute=function(o){
  $('co-drive-time').textContent=String(o.durationMin)+' dk · trafiksiz tahmin';
  $('co-stops').textContent=o.stopIncluded?'1 mola seçildi':
    o.chargingNeededByModel?'Şarj gerekebilir':'Henüz planlanmadı';
+ $('co-eta').textContent=Number.isFinite(o.durationMin)&&o.durationMin>=0?
+    new Date(Date.now()+o.durationMin*60000).toLocaleTimeString('tr-TR',
+      {hour:'2-digit',minute:'2-digit'})+(o.stopIncluded?' · şarj hariç':''):'—';
+ $('co-maneuver').textContent=Array.isArray(o.steps)&&o.steps.length?
+   String(o.steps[0]).slice(0,120):'Talimat bulunamadı';
  $('co-destination').textContent=points.to?
    points.to.label.split(' · ')[0].slice(0,58):'Varış noktası';
  $('co-bottom-trip').textContent=$('co-destination').textContent+' · '+String(o.distanceKm)+' km';
  $('co-bottom-detail').textContent='OSRM rota tahmini · Canlı trafik yok · Kesin şarj doluluğu yok';
  if(Number.isFinite(o.energyLowKwh) && Number.isFinite(o.energyHighKwh)){
-  $('co-energy').textContent=o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh';
+  $('co-energy').textContent=o.energyLowKwh.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+
+   '–'+o.energyHighKwh.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kWh';
   var energyText='Enerji '+o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh (profil tahmini)';
   if(o.stopIncluded){
    energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
@@ -713,6 +733,7 @@ window.molaRoute=function(o){
  $('trip').style.display='block';
  $('tripdata').textContent=o.distanceKm+' km · '+o.durationMin+' dk';
  $('weather-source').textContent='Rota boyunca hava modeli yükleniyor...';
+ $('co-weather').textContent='Open-Meteo model verisi isteniyor';
  $('station-summary').textContent='⚡ Rota çevresindeki CCS istasyonları yükleniyor...';
  suggestedCharge=null;$('station-suggestion').style.display='none';
  $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
