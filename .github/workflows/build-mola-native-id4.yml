@@ -76,6 +76,24 @@ jobs:
             integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java \
             integration/mola-native/tests/Id4ChargeHistoryTest.java
           java -ea -cp "$RUNNER_TEMP/charge-tests" Id4ChargeHistoryTest
+      - name: Validate automatic energy has no manual-entry controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          javac -encoding UTF-8 -d "$RUNNER_TEMP/charge-tests" \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.java \
+            integration/mola-native/tests/Id4EnergyModelTest.java
+          java -ea -cp "$RUNNER_TEMP/charge-tests" Id4EnergyModelTest
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java").read_text()
+          a=s[s.index('private void energyScreen()'):s.index('private void showPrices()')]
+          assert 'field(' not in a
+          assert 'EditText' not in a
+          assert 'renderAutoEnergy' in a and 'fetchAutomaticPrice' in a
+          assert 'Id4EnergyData.load' in a
+          print('PASS: no manual energy form; route/OBD/price bound to sources')
+          PY
       - name: Install matching Android toolchain
         uses: android-actions/setup-android@v3
         with:
