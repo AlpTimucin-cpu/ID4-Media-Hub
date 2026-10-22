@@ -38,7 +38,7 @@ public final class Id4OverviewActivity extends Activity {
     private Id4LiveTelemetry telemetry;
     private Id4LiveTelemetry.Data latest=new Id4LiveTelemetry.Data();
     private TextView state, updated, soc, voltage, temp, charge, cooling, range,
-      consumption, power, cost, lastRoute, lastRouteInfo;
+      consumption, power, cost, lastRoute, lastRouteInfo, routeEnergy;
     private boolean resumed, connecting, permissionRequestPending;
     private final Runnable refresh=new Runnable(){
         @Override public void run(){
@@ -52,7 +52,7 @@ public final class Id4OverviewActivity extends Activity {
         super.onCreate(stateBundle);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
-        telemetry=new Id4LiveTelemetry(this::render);
+        telemetry=new Id4LiveTelemetry(this,this::render);
         ScrollView scroll=new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(BG);
@@ -97,6 +97,8 @@ public final class Id4OverviewActivity extends Activity {
         cost=addCard(r5,"Gerçek şarj maliyeti","—",true);
         lastRouteInfo=text("Henüz kaydedilmiş rota yok.",12,false,0xffa6c7d0);
         page.addView(lastRouteInfo);
+        routeEnergy=text("Rota tüketimi: ölçüm yok",13,true,AQUA);
+        page.addView(routeEnergy);
         page.addView(text("Maliyet için doğrulanmış operatör tarifesi ve faturalandırılan kWh gerekir. Hava/rota kartları navigasyon ekranındadır.",12,false,0xffa6c7d0));
 
         page.addView(text("TÜM ÖLÇÜMLER",14,true,AQUA));
@@ -148,16 +150,25 @@ public final class Id4OverviewActivity extends Activity {
         range.setText("Ölçüm yok");
         consumption.setText("Ölçüm yok");
         cost.setText("Tarife/veri yok");
-        Id4TripSnapshot.Trip trip=Id4TripSnapshot.last(this);
-        if(trip!=null){
-            lastRoute.setText(String.format(Locale.forLanguageTag("tr-TR"),"%.1f km",trip.km));
+        Id4EnergyData.Snapshot snapshot=Id4EnergyData.load(this,System.currentTimeMillis());
+        if(snapshot.hasRoute()){
+            lastRoute.setText(String.format(Locale.forLanguageTag("tr-TR"),
+                "%.1f km",snapshot.routeKm));
             lastRouteInfo.setText(String.format(Locale.forLanguageTag("tr-TR"),
-                "Son rota: %.0f dk · %s · Trafik hariç",trip.minutes,
+                "Son rota: %.0f dk · %s · Trafik hariç",snapshot.routeMinutes,
                 new SimpleDateFormat("dd.MM HH:mm",Locale.forLanguageTag("tr-TR"))
-                 .format(new Date(trip.timeMs))));
+                    .format(new Date(snapshot.routeAt))));
+            Id4EnergyModel.Result model=Id4EnergyModel.estimate(snapshot.routeKm,
+                snapshot.hasSoc()?snapshot.soc:Double.NaN);
+            if(model!=null){
+                routeEnergy.setText(String.format(Locale.forLanguageTag("tr-TR"),
+                    "Rota enerjisi: %.1f–%.1f kWh · PROFİL TAHMİNİ (ölçüm değil)",
+                    model.lowRouteKwh,model.highRouteKwh));
+            }else routeEnergy.setText("Rota enerji tahmini hesaplanamadı.");
         }else{
             lastRoute.setText("Rota yok");
             lastRouteInfo.setText("Haritadan rota oluşturulduğunda buraya otomatik gelir.");
+            routeEnergy.setText("Rota enerjisi: planlanan rota yok");
         }
     }
     @SuppressWarnings("deprecation")
