@@ -358,6 +358,30 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("provider",activeRouteProvider);
                 packet.put("trafficAvailable",false);
                 packet.put("navigationActive",verifiedGps);
+                // EV profile model, not an ECU claim. No manual entry.
+                // A recent measured SoC is optional; assumptions are explicit in the UI.
+                Id4EnergyData.Snapshot facts=Id4EnergyData.load(this,System.currentTimeMillis());
+                Id4EnergyModel.Result energy=Id4EnergyModel.estimate(
+                    packet.getDouble("distanceKm"),facts.hasSoc()?facts.soc:Double.NaN);
+                if(energy!=null){
+                    packet.put("energyLowKwh",energy.lowRouteKwh);
+                    packet.put("energyHighKwh",energy.highRouteKwh);
+                    packet.put("energyProfile","ID.4 Pure profil tahmini: 16–24 kWh/100 km");
+                    if(energy.hasSoc){
+                        packet.put("socMeasuredAt",facts.socAt);
+                        double arrivalLow=facts.soc-
+                            (100.0*energy.highRouteKwh/Id4EnergyModel.ASSUMED_USABLE_KWH);
+                        double arrivalHigh=facts.soc-
+                            (100.0*energy.lowRouteKwh/Id4EnergyModel.ASSUMED_USABLE_KWH);
+                        // Negative SoC cannot physically arrive; do not render fake 0% arrival.
+                        packet.put("chargingNeededByModel",
+                            arrivalLow<Id4EnergyModel.ASSUMED_RESERVE_PERCENT);
+                        if(arrivalLow>=0 && arrivalHigh>=0){
+                            packet.put("arrivalSocLower",arrivalLow);
+                            packet.put("arrivalSocUpper",arrivalHigh);
+                        }
+                    }
+                }
                 JSONArray roadSteps=selected.getJSONArray("legs").getJSONObject(0).getJSONArray("steps");
                 ArrayList<Step> parsed=new ArrayList<>();
                 JSONArray labels=new JSONArray();
