@@ -62,7 +62,7 @@ const win={
 };
 const context={
  window:Object.assign(win,{innerWidth:390}),document:{
-  getElementById:get,createElement:el,
+  getElementById:get,createElement:el,body:{classList:el().classList},
   querySelector(){return get('sheet')}
  },
  L,setTimeout(fn){timeouts.push(fn);return timeouts.length},
@@ -103,6 +103,14 @@ assert(html.includes('@media (orientation:landscape)'),
 assert(html.includes('.sheet:not(.route-active):not(.search-open){display:none!important}'),
  'legacy sidebar must not obscure the map in landscape');
 assert(html.includes('id="go-fullscreen"'),'portrait to landscape button missing');
+assert(html.includes('id="co-quick-route"')&&html.includes('id="co-quick-layers"'),
+ 'reference-style landscape route and layer shortcuts missing');
+get('co-quick-layers').onclick();
+assert.equal(get('co-quick-layers').textContent,'▧ Katmanlar: gündüz',
+ 'OSM night/day toggle not reflected in the HUD');
+get('co-quick-layers').onclick();
+assert.equal(get('co-quick-layers').textContent,'▧ Katmanlar: gece',
+ 'OSM night/day toggle should be reversible');
 get('go-fullscreen').onclick();
 assert.equal(calls.orientation.length,1,'cannot request landscape from portrait');
 assert.equal(calls.orientation[0][0],true,'landscape request must be explicit');
