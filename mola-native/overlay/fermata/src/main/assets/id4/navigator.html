@@ -145,6 +145,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
     max-width:320px;display:flex;flex-direction:column;gap:9px}
  .cockpit-right .cockpit-value{font-size:clamp(19px,2.7vw,36px)}
  .cockpit-right .cockpit-title{margin-top:4px}
+ .vehicle-cockpit.has-route .cockpit-bottom{display:none}
  .cockpit-bottom{position:absolute;bottom:16px;left:35%;right:14px;
     display:grid;grid-template-columns:1fr auto;align-items:center;gap:9px}
  .cockpit-bottom .cockpit-value{font-size:clamp(20px,2.7vw,37px)}
@@ -482,6 +483,12 @@ function wipeRoute(){
  });
  $('weather-source').textContent='Hava: Rota seçilmedi.';
  $('trip-energy').textContent='Enerji: rota bekleniyor';
+ $('vehicle-cockpit').classList.remove('has-route');
+ $('co-route-km').textContent='— km';
+ $('co-drive-time').textContent='— dk';
+ $('co-stops').textContent='—';
+ $('co-energy').textContent='— kWh';
+ $('co-bottom-trip').textContent='Başlangıç ve varışı seç';
  $('station-summary').textContent='⚡ EPDK şarj istasyonları: rota bekleniyor';
  suggestedCharge=null;$('station-suggestion').style.display='none';
  [...$('weather-cards').children].forEach(function(c){c.children[1].textContent='Rota bekleniyor'});
@@ -492,6 +499,7 @@ function selectPoint(field,lat,lon,label,gps){
  if(!valid(lat,lon))return;
  points[field]={lat:lat,lon:lon,label:String(label||'Haritadan seçilen konum')};
  if(field==='from')usingGps=!!gps;
+ if(field==='to')$('co-destination').textContent=String(label||'Varış noktası').split(' · ')[0].slice(0,58);
  $(field).value=points[field].label;
  ids[field]++;closeList(field);
  if(map){
@@ -591,12 +599,22 @@ window.molaRoute=function(o){
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
  var sheet=document.querySelector('.sheet');
  sheet.classList.add('route-active');
+ $('vehicle-cockpit').classList.add('has-route');
  sheet.classList.remove('details-open');
  sheet.scrollTop=0;
  $('map-note').style.display='none';
  $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk'+
    (o.stopIncluded?' · 1 şarj molası':'');
+ $('co-route-km').textContent=String(o.distanceKm)+' km';
+ $('co-drive-time').textContent=String(o.durationMin)+' dk · trafiksiz tahmin';
+ $('co-stops').textContent=o.stopIncluded?'1 mola seçildi':
+   o.chargingNeededByModel?'Şarj gerekebilir':'Henüz planlanmadı';
+ $('co-destination').textContent=points.to?
+   points.to.label.split(' · ')[0].slice(0,58):'Varış noktası';
+ $('co-bottom-trip').textContent=$('co-destination').textContent+' · '+String(o.distanceKm)+' km';
+ $('co-bottom-detail').textContent='OSRM rota tahmini · Canlı trafik yok · Kesin şarj doluluğu yok';
  if(Number.isFinite(o.energyLowKwh) && Number.isFinite(o.energyHighKwh)){
+  $('co-energy').textContent=o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh';
   var energyText='Enerji '+o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh (profil tahmini)';
   if(o.stopIncluded){
    energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
@@ -608,17 +626,23 @@ window.molaRoute=function(o){
    energyText+=' · Varış SoC için güncel OBD gerekli';
   }
   $('trip-energy').textContent=energyText;
- }else $('trip-energy').textContent='Enerji: doğrulanmış rota yok';
+ }else {
+  $('trip-energy').textContent='Enerji: doğrulanmış rota yok';
+  $('co-energy').textContent='— kWh';
+ }
  $('route-details').textContent='Hava ve rota ayrıntıları';
  if(line&&map)map.removeLayer(line);
  if(map){
   line=L.polyline(pts,{weight:6,opacity:.94,color:'#1378cf'}).addTo(map);
   map.invalidateSize();
-  var size=map.getSize(),portrait=window.innerWidth<950;
-  var bottom=portrait?Math.max(276,Math.round(size.y*0.30)):20;
-  var right=portrait?20:Math.round(size.x*0.43);
+  var size=map.getSize(),landscape=window.innerWidth>=640&&window.innerWidth>window.innerHeight;
+  var portrait=window.innerWidth<950&&!landscape;
+  var bottom=landscape?Math.max(170,Math.round(size.y*.26)):
+    portrait?Math.max(276,Math.round(size.y*.30)):20;
+  var right=landscape?Math.round(size.x*.23):portrait?20:Math.round(size.x*.43);
+  var left=landscape?Math.round(size.x*.34):30;
   map.fitBounds(line.getBounds(),{
-    paddingTopLeft:[30,Math.max(100,Math.round(size.y*0.13))],
+    paddingTopLeft:[left,Math.max(75,Math.round(size.y*.14))],
     paddingBottomRight:[right,bottom],animate:false,maxZoom:15
   });
  }
@@ -640,6 +664,15 @@ function clearTelemetry(){
  $('live-voltage').textContent='—';
  $('live-temp').textContent='—';
  $('vehicle-soc').textContent='—';
+ $('co-soc').textContent='— %';
+ $('co-soc-fill').style.width='0%';
+ $('co-voltage').textContent='— V';
+ $('co-temp').textContent='— °C';
+ $('co-mode').textContent='—';
+ // Range/power/consumption are not in the validated ELM327 packet.
+ $('co-range').textContent='— km';
+ $('co-power').textContent='— kW';
+ $('co-consumption').textContent='— kWh/100 km';
 }
 window.molaTelemetry=function(data){
  var d=data||{},fresh=!!d.fresh;
@@ -652,12 +685,26 @@ window.molaTelemetry=function(data){
  }else clearTelemetry();
  $('live-status').textContent=String(d.status||'OBD bağlı değil');
  $('obd-status').textContent=fresh?'Canlı OBD':'OBD yok';
+ $('co-status').textContent=String(d.status||'OBD bağlı değil');
+ function ready(value){return typeof value==='string'&&value.trim()!==''&&
+   value.trim()!=='—'&&value.trim().indexOf('—')<0;}
+ if(fresh&&ready(d.soc)){
+  $('co-soc').textContent=String(d.soc);
+  var n=Number.parseFloat(String(d.soc).replace(',','.'));
+  $('co-soc-fill').style.width=Number.isFinite(n)&&n>=0&&n<=100?n+'%':'0%';
+ }else{
+  $('co-soc').textContent='— %';$('co-soc-fill').style.width='0%';
+ }
+ $('co-voltage').textContent=fresh&&ready(d.voltage)?String(d.voltage):'— V';
+ $('co-temp').textContent=fresh&&ready(d.temperature)?String(d.temperature):'— °C';
+ $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
 };
 setInterval(function(){
  if(lastTelemetryAt && Date.now()-lastTelemetryAt>25000){
   clearTelemetry();lastTelemetryAt=0;
   $('live-status').textContent='OBD ölçümü güncel değil';
   $('obd-status').textContent='Veri eski';
+  $('co-status').textContent='OBD ölçümü güncel değil';
  }
 },5000);
 window.molaDestination=function(x){if(x&&valid(x.lat,x.lon))selectPoint('to',x.lat,x.lon,x.label,false)};
@@ -710,7 +757,14 @@ $('tts').onclick=function(){
  $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');
  $('tts').textContent=voice?'Kapat':'Aç';
 };
-$('back').onclick=function(){native('back')};
+$('back').onclick=$('co-media').onclick=function(){native('back')};
+$('co-route-tab').onclick=function(){
+ var sheet=document.querySelector('.sheet');
+ if(sheet.classList.contains('route-active'))sheet.classList.add('details-open');
+ else sheet.style.display='block';
+};
+$('co-station-tab').onclick=function(){showVisibleStations()};
+$('co-connect').onclick=function(){native('selectObd')};
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
 $('station-suggestion-choose').onclick=function(){
