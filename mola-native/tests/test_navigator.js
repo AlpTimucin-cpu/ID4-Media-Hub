@@ -24,8 +24,8 @@ function el(){
  };
 }
 function get(id){return elements[id]||(elements[id]=el());}
-const messages=[],timeouts=[];
-const calls={suggest:[],route:[],location:0,stop:0};
+const messages=[],timeouts=[],intervals=[];
+const calls={suggest:[],route:[],location:0,stop:0,selectObd:0};
 const L={
  map(){return {setView(){return this},on(){return this},removeLayer(){},
   fitBounds(bounds,opts){globalThis.lastRouteBoundsOptions=opts},
@@ -41,7 +41,7 @@ const win={
   suggest(field,q,id){calls.suggest.push({field,q,id})},
   route(...args){calls.route.push(args)},
   location(){calls.location++},stop(){calls.stop++},
-  voice(){},back(){},stations(){},sensors(){}
+  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++}
  }
 };
 const context={
@@ -50,6 +50,7 @@ const context={
   querySelector(){return get('sheet')}
  },
  L,setTimeout(fn){timeouts.push(fn);return timeouts.length},
+ setInterval(fn){intervals.push(fn);return intervals.length},
  clearTimeout(){},console,Number,Array,Object,String,Math,
  };
 const wCards=get('weather-cards');
@@ -65,6 +66,21 @@ function typing(field,query){
  while(timeouts.length)timeouts.shift()();
  return calls.suggest[calls.suggest.length-1];
 }
+// Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
+assert(html.includes('id="live-soc"'),'live battery HUD missing');
+assert(html.includes('id="live-voltage"'),'live HV voltage HUD missing');
+assert(html.includes('id="live-temp"'),'live battery temperature HUD missing');
+get('connect-obd').onclick();
+assert.equal(calls.selectObd,1,'OBD selection must be a direct user action');
+win.molaTelemetry({fresh:true,soc:'64 %',voltage:'370 V',temperature:'23 °C',
+ chargeMode:'Ready',status:'ELM327 bağlı'});
+assert.equal(get('live-soc').textContent,'64 %');
+assert.equal(get('live-voltage').textContent,'370 V');
+assert.equal(get('live-temp').textContent,'23 °C');
+assert.equal(get('vehicle-soc').textContent,'64 %');
+win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
+assert.equal(get('live-soc').textContent,'—','stale SoC was not cleared');
+assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cleared');
 // Offline fallback works even if Photon returns errors.
 const first=typing('from','Niğde');
 assert.equal(first.field,'from');assert.equal(first.q,'Niğde');
