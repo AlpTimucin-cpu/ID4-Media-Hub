@@ -1,0 +1,229 @@
+package me.aap.fermata.ev;
+
+import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * Mola's one-glance ID.4 dashboard. No manual capacity, SoC, price or
+ * consumption inputs, no fabricated fallback numbers. First-time Bluetooth
+ * adapter selection is an explicit user action; later foreground visits
+ * reconnect to the previously selected and still-paired adapter.
+ */
+public final class Id4OverviewActivity extends Activity {
+    private static final int BG=0xff091e2a, CARD=0xff153248, AQUA=0xff75e4d5;
+    private final Handler handler=new Handler(Looper.getMainLooper());
+    private Id4LiveTelemetry telemetry;
+    private Id4LiveTelemetry.Data latest=new Id4LiveTelemetry.Data();
+    private TextView state, updated, soc, voltage, temp, charge, cooling, range,
+      consumption, power, cost, lastRoute, lastRouteInfo;
+    private boolean resumed, connecting, permissionRequestPending;
+    private final Runnable refresh=new Runnable(){
+        @Override public void run(){
+            if(!resumed)return;
+            render(latest);
+            handler.postDelayed(this,5000);
+        }
+    };
+
+    @Override public void onCreate(Bundle stateBundle){
+        super.onCreate(stateBundle);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+        telemetry=new Id4LiveTelemetry(this::render);
+        ScrollView scroll=new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(BG);
+        setContentView(scroll);
+        LinearLayout page=new LinearLayout(this);
+        page.setPadding(dp(15),dp(15),dp(15),dp(28));
+        page.setOrientation(LinearLayout.VERTICAL);scroll.addView(page);
+        TextView heading=text("MOLA  •  ID.4",25,true,AQUA);
+        page.addView(heading);
+        page.addView(text("2024 Volkswagen ID.4 Pure  ·  Araç özeti",13,false,0xffa6c7d0));
+        state=text("OBD bağlı değil",14,true,Color.WHITE);
+        page.addView(state);
+        updated=text("Ölçümler doğrulanmadı",12,false,0xff96b6bf);page.addView(updated);
+
+        LinearLayout actions=new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        page.addView(actions);
+        addAction(actions,"OBD bağla",this::selectAdapter);
+        addAction(actions,"Rota aç",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
+        addAction(actions,"İstasyonlar",()->startActivity(new Intent(this,Id4EvActivity.class)));
+
+        page.addView(text("BATARYA VE ŞARJ",14,true,AQUA));
+        LinearLayout r1=new LinearLayout(this);page.addView(r1);
+        soc=addCard(r1,"Batarya SoC","—",true);
+        charge=addCard(r1,"Şarj durumu","—",true);
+        LinearLayout r2=new LinearLayout(this);page.addView(r2);
+        voltage=addCard(r2,"HV paket gerilimi","—",true);
+        temp=addCard(r2,"Batarya sıcaklığı","—",true);
+        LinearLayout r3=new LinearLayout(this);page.addView(r3);
+        cooling=addCard(r3,"Soğutma sıcaklığı","—",true);
+        power=addCard(r3,"Şarj gücü","—",true);
+
+        page.addView(text("MENZİL VE TÜKETİM",14,true,AQUA));
+        LinearLayout r4=new LinearLayout(this);page.addView(r4);
+        range=addCard(r4,"Kalan menzil","—",true);
+        consumption=addCard(r4,"Tüketim (kWh/100 km)","—",true);
+        page.addView(text("Güvenilir tüketim veya menzil ölçümü olmadan varsayılan 18 kWh/100 km kullanılmaz.",11,false,0xffa6c7d0));
+
+        page.addView(text("ROTA VE YOLCULUK",14,true,AQUA));
+        LinearLayout r5=new LinearLayout(this);page.addView(r5);
+        lastRoute=addCard(r5,"Son planlanan rota","—",true);
+        cost=addCard(r5,"Gerçek şarj maliyeti","—",true);
+        lastRouteInfo=text("Henüz kaydedilmiş rota yok.",12,false,0xffa6c7d0);
+        page.addView(lastRouteInfo);
+        page.addView(text("Maliyet için doğrulanmış operatör tarifesi ve faturalandırılan kWh gerekir. Hava/rota kartları navigasyon ekranındadır.",12,false,0xffa6c7d0));
+
+        page.addView(text("TÜM ÖLÇÜMLER",14,true,AQUA));
+        Button sensors=new Button(this);sensors.setText("25 MEB sorgusu ve şarj kayıtlarını aç  ›");
+        sensors.setAllCaps(false);
+        sensors.setOnClickListener(v->startActivity(new Intent(this,Id4ObdActivity.class)));
+        page.addView(sensors);
+        page.addView(text("Kaynak: Bluetooth ELM327 · salt-okunur MEB deneysel sorgular. Car Scanner ile eşzamanlı bağlantı kurma. Çalışmayan sensörler boş bırakılır.",11,false,0xff89aab5));
+        render(latest);
+    }
+    private TextView text(String s,int sp,boolean bold,int color){
+        TextView t=new TextView(this);t.setText(s);t.setTextColor(color);t.setTextSize(sp);
+        if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        t.setPadding(dp(4),dp(8),dp(4),dp(7));return t;
+    }
+    private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
+    private void addAction(LinearLayout row,String label,Runnable action){
+        Button b=new Button(this);b.setAllCaps(false);b.setText(label);
+        b.setTextSize(12);b.setOnClickListener(v->action.run());
+        row.addView(b,new LinearLayout.LayoutParams(0,dp(55),1f));
+    }
+    private TextView addCard(LinearLayout row,String label,String init,boolean wide){
+        LinearLayout container=new LinearLayout(this);container.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable shape=new GradientDrawable();shape.setColor(CARD);
+        shape.setCornerRadius(dp(14));container.setBackground(shape);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(115),1f);
+        lp.setMargins(dp(3),dp(5),dp(3),dp(5));
+        row.addView(container,lp);container.setPadding(dp(12),dp(10),dp(8),dp(7));
+        container.addView(text(label,12,false,0xffa9c9d2));
+        TextView value=text(init,wide?20:18,true,Color.WHITE);
+        value.setMaxLines(2);value.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        container.addView(value);return value;
+    }
+    private void render(Id4LiveTelemetry.Data incoming){
+        if(incoming!=null)latest=incoming;
+        if(state==null)return;
+        long age=System.currentTimeMillis()-latest.updatedAt;
+        boolean fresh=latest.connected && latest.updatedAt>0 && age<25000;
+        state.setText(latest.status);
+        updated.setText(fresh?"Canlı OBD ölçümü · "+Math.max(0,age/1000)+" sn önce":
+            "Geçerli canlı ölçüm yok · sayı uydurulmaz");
+        soc.setText(fresh?latest.soc:"—");
+        voltage.setText(fresh?latest.voltage:"—");
+        temp.setText(fresh?latest.batteryTemp:"—");
+        charge.setText(fresh?latest.chargeMode:"—");
+        cooling.setText(fresh?latest.cooling:"—");
+        // These are NOT defined by the currently validated VW MEB PID formulas.
+        power.setText("Doğrulanmadı");
+        range.setText("Ölçüm yok");
+        consumption.setText("Ölçüm yok");
+        cost.setText("Tarife/veri yok");
+        Id4TripSnapshot.Trip trip=Id4TripSnapshot.last(this);
+        if(trip!=null){
+            lastRoute.setText(String.format(Locale.forLanguageTag("tr-TR"),"%.1f km",trip.km));
+            lastRouteInfo.setText(String.format(Locale.forLanguageTag("tr-TR"),
+                "Son rota: %.0f dk · %s · Trafik hariç",trip.minutes,
+                new SimpleDateFormat("dd.MM HH:mm",Locale.forLanguageTag("tr-TR"))
+                 .format(new Date(trip.timeMs))));
+        }else{
+            lastRoute.setText("Rota yok");
+            lastRouteInfo.setText("Haritadan rota oluşturulduğunda buraya otomatik gelir.");
+        }
+    }
+    @SuppressWarnings("deprecation")
+    private void selectAdapter(){
+        if(Build.VERSION.SDK_INT>=31 &&
+           checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){
+            permissionRequestPending=true;
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},701);
+            return;
+        }
+        try{
+            BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
+            if(adapter==null||!adapter.isEnabled()){
+                state.setText("Telefon Bluetooth'unu açıp ELM327'yi eşleştir.");return;
+            }
+            Set<BluetoothDevice> paired=adapter.getBondedDevices();
+            if(paired==null || paired.isEmpty()){
+                state.setText("Önce Bluetooth ayarlarında ELM327'yi eşleştir.");return;
+            }
+            List<BluetoothDevice> devices=new ArrayList<>(paired);
+            String[] names=new String[devices.size()];
+            for(int i=0;i<devices.size();i++){
+                BluetoothDevice d=devices.get(i);
+                names[i]=d.getName()==null?"Eşleştirilmiş cihaz "+(i+1):d.getName();
+            }
+            new AlertDialog.Builder(this).setTitle("OBD adaptörünü bir kez seç")
+                .setItems(names,(dialog,index)->{
+                    BluetoothDevice device=devices.get(index);
+                    getPreferences(MODE_PRIVATE).edit().putString("paired_mac",device.getAddress()).apply();
+                    telemetry.start(device);
+                })
+                .setNegativeButton("Vazgeç",null).show();
+        }catch(SecurityException e){state.setText("Bluetooth erişim izni gerekli");}
+    }
+    @SuppressWarnings("deprecation")
+    private void autoConnect(){
+        if(Build.VERSION.SDK_INT>=31 &&
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
+        String mac=getPreferences(MODE_PRIVATE).getString("paired_mac",null);
+        if(mac==null)return;
+        try{
+            BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
+            if(adapter==null||!adapter.isEnabled())return;
+            for(BluetoothDevice device:adapter.getBondedDevices()){
+                if(mac.equals(device.getAddress())){
+                    telemetry.start(device);return;
+                }
+            }
+            state.setText("Önceki OBD artık eşleştirilmiş değil");
+        }catch(SecurityException e){state.setText("Bluetooth izni gerekli");}
+    }
+    @Override public void onRequestPermissionsResult(int request,String[] perms,int[] results){
+        super.onRequestPermissionsResult(request,perms,results);
+        if(request==701 && results.length>0 && results[0]==PackageManager.PERMISSION_GRANTED){
+            permissionRequestPending=false;selectAdapter();
+        }else if(request==701){
+            permissionRequestPending=false;state.setText("Bluetooth izni verilmedi");
+        }
+    }
+    @Override protected void onResume(){
+        super.onResume();resumed=true;handler.post(refresh);autoConnect();
+    }
+    @Override protected void onPause(){
+        resumed=false;handler.removeCallbacks(refresh);telemetry.stop();super.onPause();
+    }
+    @Override protected void onDestroy(){
+        telemetry.close();super.onDestroy();
+    }
+}
