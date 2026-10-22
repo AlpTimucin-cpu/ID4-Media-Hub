@@ -369,6 +369,27 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 /* Compact measured-versus-model freshness status in the battery card. */
 .cockpit-age{font-size:10px;color:#ffe0a4;margin:3px 0 0;font-weight:700}
 .cockpit-age.fresh{color:#4af5bd}
+
+/* Driver-selected focus mode. Default is full information, not hidden sensors. */
+@media (orientation:landscape) and (min-width:640px){
+ .cockpit-tabs #co-focus{background:#0b4259}
+ body.focus-drive .cockpit-left{width:min(26%,370px)}
+ body.focus-drive .cockpit-left .cockpit-smallgrid{display:none}
+ body.focus-drive .cockpit-left .cockpit-slim small{display:none}
+ body.focus-drive .cockpit-left .cockpit-main-value{font-size:clamp(32px,5vw,70px)}
+ body.focus-drive .cockpit-quick{width:min(26%,370px)}
+ body.focus-drive .cockpit-bottom{left:29%}
+ body.focus-drive .vehicle-cockpit.has-route .cockpit-tripbar{left:29%}
+ body.focus-drive .sheet.route-active.details-open{left:auto}
+ #co-fit-route{display:block}
+}
+@media (orientation:portrait), (max-width:639px){
+ #co-fit-route{display:none!important}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ body.focus-drive .cockpit-left{width:26%}
+ body.focus-drive .cockpit-left .cockpit-main-value{font-size:clamp(24px,4.2vw,47px)}
+}
 </style>
 </head><body>
 <div id="map"></div><div class="map-credit" id="map-credit">© OpenStreetMap contributors · Çevrimiçi harita</div>
@@ -458,8 +479,9 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <button id="co-route-tab" class="current" type="button">⌕ Rota ara</button>
 <button id="co-station-tab" type="button">⚡ İstasyon</button>
 <button id="co-expand" type="button">▤ Dikey görünüm</button>
+<button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button><button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
-<div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
+<div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
 <div id="route-compact" aria-label="Rota özeti">
@@ -1171,6 +1193,11 @@ $('follow-map').onclick=function(){
  setFollowMap(enable);
  if(enable && !goodGps(lastGpsFix))native('location');
 };
+$('co-fit-route').onclick=function(){
+ if(!map || !line){msg('Önce rota oluşturmalısın.');return}
+ setFollowMap(false); // honor user-requested complete route view
+ window.molaLayout();
+};
 $('plus').onclick=function(){if(map)map.zoomIn()};
 $('minus').onclick=function(){if(map)map.zoomOut()};
 $('swap').onclick=function(){
@@ -1222,6 +1249,12 @@ $('co-quick-layers').onclick=function(){
  var current=document.body.classList.toggle('map-day');
  $('co-quick-layers').textContent=current?'▧ Katmanlar: gündüz':'▧ Katmanlar: gece';
  $('co-quick-layers').setAttribute('aria-pressed',current?'true':'false');
+};
+$('co-focus').onclick=function(){
+ var focus=document.body.classList.toggle('focus-drive');
+ $('co-focus').textContent=focus?'◉ Tüm göstergeler':'◉ Sürüş odağı';
+ $('co-focus').setAttribute('aria-pressed',focus?'true':'false');
+ if(map)map.invalidateSize();
 };
 $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
