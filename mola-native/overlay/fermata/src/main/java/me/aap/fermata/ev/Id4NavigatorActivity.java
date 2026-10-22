@@ -660,6 +660,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     // Weather is a separate best-effort request after the drawn route.
                     final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
+                    jobs.execute(()->loadJourneyWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
                     final int stationTicket=++stationRequestId;
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
@@ -763,6 +764,97 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             if(!destroyed && routeGeneration==generation)
                 send("molaWeatherError",record("weather",
                     "Hava tahmini alınamadı ("+e.getClass().getSimpleName()+")."));
+        }
+    }
+
+    /**
+     * Whole-journey Open-Meteo forecast at 0/25/50/75/100% of the OSRM
+     * geometry and projected arrival time. Source resolution is hourly;
+     * these are predictions, NOT actual localized weather observations.
+     */
+    private void loadJourneyWeather(JSONObject route,int routeGeneration){
+        try{
+            JSONArray coordinates=route.getJSONObject("geometry").getJSONArray("coordinates");
+            if(coordinates.length()<2)throw new IllegalStateException("Rota geometrisi yok");
+            double durationSec=route.getDouble("duration");
+            if(durationSec<=0 || durationSec>72*3600)
+                throw new IllegalStateException("Hava tahmin aralığı dışında");
+            double[] cumulative=new double[coordinates.length()];
+            for(int i=1;i<coordinates.length();i++){
+                JSONArray p=coordinates.getJSONArray(i-1),q=coordinates.getJSONArray(i);
+                float[] measured=new float[1];
+                Location.distanceBetween(p.getDouble(1),p.getDouble(0),
+                    q.getDouble(1),q.getDouble(0),measured);
+                cumulative[i]=cumulative[i-1]+measured[0];
+            }
+            double total=cumulative[cumulative.length-1];
+            if(total<10)throw new IllegalStateException("Boş güzergah");
+            StringBuilder latitudes=new StringBuilder(),longitudes=new StringBuilder();
+            double[] fractions={0,.25,.5,.75,1};
+            long now=System.currentTimeMillis()/1000L;
+            for(double fraction:fractions){
+                double desired=fraction*total;int j=1;
+                while(j<cumulative.length-1 && cumulative[j]<desired)j++;
+                JSONArray a=coordinates.getJSONArray(j-1),b=coordinates.getJSONArray(j);
+                double divisor=Math.max(.00001,cumulative[j]-cumulative[j-1]);
+                double t=Math.max(0,Math.min(1,(desired-cumulative[j-1])/divisor));
+                double latitude=a.getDouble(1)+(b.getDouble(1)-a.getDouble(1))*t;
+                double longitude=a.getDouble(0)+(b.getDouble(0)-a.getDouble(0))*t;
+                if(latitudes.length()>0){latitudes.append(',');longitudes.append(',');}
+                latitudes.append(String.format(Locale.US,"%.5f",latitude));
+                longitudes.append(String.format(Locale.US,"%.5f",longitude));
+            }
+            int forecastHours=Math.max(5,Math.min(72,(int)Math.ceil(durationSec/3600)+3));
+            String url="https://api.open-meteo.com/v1/forecast?latitude="+latitudes+
+                "&longitude="+longitudes+
+                "&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code"+
+                "&forecast_hours="+forecastHours+"&timeformat=unixtime&timezone=GMT";
+            JSONArray regions=new JSONArray(fetch(url,700000));
+            if(regions.length()!=fractions.length)
+                throw new IllegalStateException("Eksik yol hava tahmini");
+            JSONArray stations=new JSONArray();
+            for(int i=0;i<fractions.length;i++){
+                JSONObject location=regions.getJSONObject(i);
+                JSONObject data=location.getJSONObject("hourly");
+                JSONArray hours=data.getJSONArray("time");
+                JSONArray temp=data.getJSONArray("temperature_2m");
+                JSONArray rain=data.getJSONArray("precipitation_probability");
+                JSONArray wind=data.getJSONArray("wind_speed_10m");
+                JSONArray codes=data.getJSONArray("weather_code");
+                long at=now+(long)(fractions[i]*durationSec);
+                long smallest=Long.MAX_VALUE;int closest=0;
+                for(int j=0;j<hours.length();j++){
+                    long delta=Math.abs(hours.optLong(j)-at);
+                    if(delta<smallest){smallest=delta;closest=j;}
+                }
+                JSONObject item=new JSONObject()
+                    .put("percent",(int)Math.round(fractions[i]*100))
+                    .put("etaMinutes",(int)Math.round(fractions[i]*durationSec/60.0))
+                    .put("latitude",location.optDouble("latitude",Double.NaN))
+                    .put("longitude",location.optDouble("longitude",Double.NaN))
+                    .put("forecastTime",hours.optLong(closest));
+                double celsius=temp.optDouble(closest,Double.NaN);
+                double precipitation=rain.optDouble(closest,Double.NaN);
+                double windKmh=wind.optDouble(closest,Double.NaN);
+                if(smallest<=5400 && Double.isFinite(celsius) &&
+                   Double.isFinite(precipitation) && Double.isFinite(windKmh)) {
+                    item.put("available",true).put("temperature",celsius)
+                        .put("rainProbability",precipitation)
+                        .put("wind",windKmh)
+                        .put("weatherCode",codes.optInt(closest,-1));
+                }else item.put("available",false);
+                stations.put(item);
+            }
+            JSONObject result=new JSONObject().put("cards",stations)
+                .put("source","Open-Meteo").put("resolution","saatlik model")
+                .put("updatedAt",System.currentTimeMillis())
+                .put("liveConditions",false);
+            if(!destroyed && generation==routeGeneration)send("molaJourneyWeather",result);
+        }catch(Exception e){
+            if(!destroyed && generation==routeGeneration)
+                send("molaJourneyWeatherError",record("weather",
+                    "Yol boyunca saatlik hava tahmini alınamadı ("+
+                    e.getClass().getSimpleName()+")."));
         }
     }
 
