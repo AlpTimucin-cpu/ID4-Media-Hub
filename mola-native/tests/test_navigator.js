@@ -41,6 +41,11 @@ const L={
  circleMarker(){return {popup:null,
   addTo(){drawnMarkers.push(this);return this},
   bindPopup(content){this.popup=content;return this},setLatLng(){}}},
+ divIcon(options){return options},
+ marker(coords,options){return {coords,options,popup:null,
+  addTo(){drawnMarkers.push(this);return this},
+  bindPopup(content){this.popup=content;return this},
+  setLatLng(next){this.coords=next}}},
  polyline(){return {addTo(){return this},getBounds(){return []}}}
 };
 const win={
@@ -80,6 +85,10 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes("className:'charge-map-pin'"),
+ 'real coordinates must use visible CCS lightning icons');
+assert(html.includes("className:'vehicle-map-pin'"),
+ 'GPS position needs its own visible map marker');
 assert(html.includes('.sheet.route-active:not(.details-open){display:none!important}'),
  'old legacy route sheet still covers landscape map');
 assert(html.includes('id="co-trip-arrival"')&&html.includes('id="co-trip-charge-button"'),
@@ -141,6 +150,8 @@ assert.equal(get('vehicle-soc').textContent,'—','stale vehicle SoC was not cle
 assert.equal(get('co-soc').textContent,'— %','cockpit must clear stale SoC');
 assert.equal(get('co-trip-battery').textContent,'OBD SoC: —',
  'trip bar should clear stale measured battery');
+assert.equal(get('co-trip-arrival').textContent,'—',
+ 'stale OBD should withdraw SoC arrival model');
 assert.equal(get('co-range').textContent,'— km','model range must disappear with stale SoC');
 assert(html.includes('id="follow-map"'),'GPS follow button is missing');
 get('follow-map').onclick();
