@@ -3,7 +3,6 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://tile.openstreetmap.org data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'">
 <title>Mola • ID.4 Yolculuk</title>
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="cockpit.css">
 <style>
 :root{--ink:#182635;--muted:#627183;--teal:#087f8c;--paper:#fff;--line:#e3e8ed}
 *{box-sizing:border-box}body,html{height:100%;margin:0;font:15px system-ui,-apple-system,Roboto,sans-serif;color:var(--ink);background:#e8eeec}
@@ -206,7 +205,9 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  .sheet.route-active{bottom:6px;height:110px;max-height:110px}
  .sheet{top:62px;bottom:6px}
 }
-</style></head><body>
+</style>
+<link rel="stylesheet" href="cockpit.css">
+</head><body>
 <div id="map"></div>
 <div id="vehicle-cockpit" class="vehicle-cockpit" aria-label="ID.4 saydam araç göstergeleri">
  <div class="cockpit-left">
