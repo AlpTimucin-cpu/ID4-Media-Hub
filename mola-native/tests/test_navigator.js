@@ -115,6 +115,19 @@ assert(html.includes('@media (orientation:landscape)'),
 assert(html.includes('.sheet:not(.route-active):not(.search-open){display:none!important}'),
  'legacy sidebar must not obscure the map in landscape');
 assert(html.includes('id="go-fullscreen"'),'portrait to landscape button missing');
+assert(html.includes('id="co-focus"')&&html.includes('id="co-fit-route"'),
+ 'driving focus and route fit controls must exist');
+get('co-focus').onclick();
+assert(context.document.body.classList.contains('focus-drive'),
+ 'map-focused view must respond to a deliberate tap');
+assert(get('co-focus').textContent.includes('Tüm göstergeler'),
+ 'user must be able to restore all vehicle measurements');
+get('co-focus').onclick();
+assert(!context.document.body.classList.contains('focus-drive'),
+ 'normal view must restore the full telemetry panel');
+get('co-fit-route').onclick();
+assert(messages.some(x=>String(x).includes('Önce rota')),
+ 'route fit must refuse to claim a non-existent route');
 assert(html.includes('id="co-quick-route"')&&html.includes('id="co-quick-layers"'),
  'reference-style landscape route and layer shortcuts missing');
 get('co-quick-layers').onclick();
@@ -268,6 +281,10 @@ win.molaRoute({
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
 assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not updated');
+globalThis.lastRouteBoundsOptions=null;
+get('co-fit-route').onclick();
+assert(globalThis.lastRouteBoundsOptions && globalThis.lastRouteBoundsOptions.maxZoom===15,
+ 'full-route button must reframe the actual OSRM route');
 assert(get('co-trip-kilometers').textContent.includes('510 km'),'bottom route bar distance missing');
 assert(get('vehicle-cockpit').classList.contains('has-route'),'trip bar not enabled for route');
 assert.equal(get('co-trip-arrival').textContent,'—',
