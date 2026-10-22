@@ -180,6 +180,19 @@ win.molaRoute({
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
 assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not updated');
+assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
+ 'do not simulate trip progress without a GPS observation');
+win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()});
+assert(get('route-progress-text').textContent.includes('GPS yaklaşık %'),
+ 'GPS map route progression not displayed');
+assert(parseFloat(get('route-progress-fill').style.width)>0,
+ 'real GPS route progress bar did not update');
+win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()-120000});
+assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
+ 'stale GPS location must be rejected');
+win.molaPosition({lat:40.5,lon:31.7,accuracy:10,timeMs:Date.now()});
+assert(get('route-progress-text').textContent.includes('rota dışında'),
+ 'off-route GPS must not make up distance progression');
 assert.equal(get('co-energy').textContent,'81.6–122.4 kWh',
  'cockpit route energy not labeled as model');
 assert(get('vehicle-cockpit').classList.contains('has-route'),
@@ -279,5 +292,7 @@ assert(!get('vehicle-cockpit').classList.contains('has-route'),
  'route reset must also reset cockpit state');
 assert.equal(get('co-route-km').textContent,'— km',
  'route reset must clear out-of-date dashboard distance');
+assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
+ 'route reset must clear the progress bar');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
