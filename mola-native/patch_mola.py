@@ -113,8 +113,9 @@ energy_model=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.jav
 live_monitor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4LiveTelemetry.java"
 overview=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java"
 station_catalog=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationCatalog.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog]:
+charge_advisor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeAdvisor.java"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -131,7 +132,7 @@ allowed=set(SOURCE_SHA) | {
     str(leaflet_license.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
-    str(station_catalog.relative_to(overlay))}
+    str(station_catalog.relative_to(overlay)),str(charge_advisor.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():
