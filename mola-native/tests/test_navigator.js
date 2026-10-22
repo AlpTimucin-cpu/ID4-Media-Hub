@@ -170,6 +170,8 @@ assert(get('compact-weather').children[0].textContent.includes('12°C'),
   'compact weather did not update');
 assert(get('weather-source').textContent.includes('model'),
   'model forecast not labeled');
+assert(get('co-weather').textContent.includes('+1 dk 12°C'),
+ 'cockpit weather must be from real returned forecast, not a fake value');
 // Real route callback must update visible polyline, not merely route inputs.
 win.molaRoute({
  coordinates:[[34.6833,37.9667],[33.8,37.4],[30.7056,36.8841]],
@@ -180,6 +182,9 @@ win.molaRoute({
 assert(get('trip').style.display==='block','route summary not visible');
 assert(get('compact-trip').textContent.includes('510 km'),'compact route summary missing');
 assert.equal(get('co-route-km').textContent,'510 km','cockpit route distance not updated');
+assert(get('co-eta').textContent!=='—','real route must derive a traffic-free local ETA');
+assert.equal(get('co-maneuver').textContent,'Devam et',
+ 'cockpit first maneuver must be drawn from OSRM instructions');
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
  'do not simulate trip progress without a GPS observation');
 win.molaPosition({lat:37.4,lon:33.8,accuracy:8,timeMs:Date.now()});
@@ -193,7 +198,7 @@ assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'
 win.molaPosition({lat:40.5,lon:31.7,accuracy:10,timeMs:Date.now()});
 assert(get('route-progress-text').textContent.includes('rota dışında'),
  'off-route GPS must not make up distance progression');
-assert.equal(get('co-energy').textContent,'81.6–122.4 kWh',
+assert.equal(get('co-energy').textContent,'81,6–122,4 kWh',
  'cockpit route energy not labeled as model');
 assert(get('vehicle-cockpit').classList.contains('has-route'),
  'landscape route progress panel should replace placeholder');
@@ -226,6 +231,8 @@ win.molaRoute({coordinates:[[34.68,37.96],[34.9,37.8],[30.7,36.9]],
  energyLowKwh:82,energyHighKwh:123,steps:[]});
 assert(get('compact-trip').textContent.includes('1 şarj molası'),
  'waypoint route must show charging stop label');
+assert(get('co-eta').textContent.includes('şarj hariç'),
+ 'ETA must not imply unknown charging dwell time is included');
 assert(get('trip-energy').textContent.includes('Mola şarj miktarı bilinmiyor'),
  'charging stop must never invent terminal SoC');
 // Same-map charging: request viewport only on user action; never show invented availability.
@@ -292,6 +299,8 @@ assert(!get('vehicle-cockpit').classList.contains('has-route'),
  'route reset must also reset cockpit state');
 assert.equal(get('co-route-km').textContent,'— km',
  'route reset must clear out-of-date dashboard distance');
+assert.equal(get('co-maneuver').textContent,'Rota bekleniyor',
+ 'old turn instructions must disappear when route is reset');
 assert(get('route-progress-text').textContent.includes('GPS rota ilerlemesi yok'),
  'route reset must clear the progress bar');
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
