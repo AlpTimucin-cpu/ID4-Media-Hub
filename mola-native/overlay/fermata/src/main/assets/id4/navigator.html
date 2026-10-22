@@ -282,6 +282,48 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 #go-fullscreen{width:52px;height:54px;background:#0e5269;color:#fff;font-size:17px}
 @media (orientation:landscape) and (min-width:640px){#go-fullscreen{display:none!important}}
 
+
+/* Cockpit v2: one genuine route progress bar replaces the old bottom sheet. */
+.cockpit-tripbar{display:none}
+.cockpit-tripbar button{pointer-events:auto}
+@media (orientation:landscape) and (min-width:640px){
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+    display:grid;grid-template-columns:minmax(125px,26%) 1fr minmax(110px,17%);
+    gap:12px;align-items:center;position:absolute;left:35%;right:14px;bottom:10px;
+    min-height:108px;padding:13px 16px;border-radius:15px;
+    border:1px solid rgba(105,208,236,.57);
+    background:rgba(2,28,44,.86);backdrop-filter:blur(9px);
+    -webkit-backdrop-filter:blur(9px);
+    box-shadow:0 8px 25px #0015248e;pointer-events:auto;
+ }
+ .tripbar-label{font-size:10px;letter-spacing:.3px;color:#b6d6e8}
+ .tripbar-number{font-size:clamp(17px,2.2vw,29px);font-weight:900;
+    line-height:1.13;-webkit-text-stroke:1px black;
+    text-shadow:1px 1px 0 black,-1px -1px 0 black}
+ .tripbar-sub{font-size:11px;color:#b6d6e8;margin-top:4px}
+ .tripbar-track{height:14px;border-radius:100px;background:#4261758c;
+    position:relative;overflow:hidden;margin:9px 0}
+ #co-trip-fill{height:100%;width:0;background:linear-gradient(90deg,#20d5bf,#53bffa);
+    transition:width .35s}
+ .tripbar-mid{display:flex;justify-content:space-between;align-items:center;
+    gap:8px;color:#d5f4ff;font-size:11px;font-weight:700}
+ .tripbar-smallbutton{border:1px solid #398fac;background:rgba(9,79,102,.7);
+    border-radius:9px;padding:7px 10px;color:white;font-size:11px;font-weight:800}
+ #co-trip-charge-button{display:none;background:#125b4a;border-color:#2ddfbb}
+ .sheet.route-active:not(.details-open){display:none!important}
+ .cockpit-right{max-height:calc(100% - 158px)}
+ .cockpit-right .cockpit-condition{font-size:10px}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+    min-height:83px;left:35%;right:12px;bottom:4px;padding:8px 10px;gap:6px
+ }
+ .tripbar-number{font-size:clamp(14px,2.1vw,22px)}
+ .tripbar-sub{font-size:10px}
+ .tripbar-track{height:10px;margin:5px 0}
+ .tripbar-smallbutton{padding:4px 7px}
+ .cockpit-right{max-height:calc(100% - 106px)}
+}
 </style>
 </head><body>
 <div id="map"></div>
@@ -325,6 +367,31 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
    <div class="cockpit-title">YOLCULUK ÖZETİ</div>
    <div id="co-bottom-trip" class="cockpit-value">Başlangıç ve varışı seç</div>
    <div id="co-bottom-detail" class="cockpit-muted">Harita, araç verileri ve şarj molaları aynı ekranda.</div>
+  </div>
+ </div>
+ <div class="cockpit-tripbar" id="cockpit-tripbar" aria-label="Gerçek rota ve GPS ilerlemesi">
+  <div>
+   <div class="tripbar-label">VARIŞ NOKTASI</div>
+   <div id="co-trip-target" class="tripbar-number">—</div>
+   <div id="co-trip-kilometers" class="tripbar-sub">Rota seçilmedi</div>
+  </div>
+  <div>
+   <div class="tripbar-mid">
+    <span id="co-trip-progress-label">GPS ilerlemesi yok</span>
+    <span id="co-trip-charge">⚡ Şarj molası henüz seçilmedi</span>
+   </div>
+   <div class="tripbar-track"><div id="co-trip-fill"></div></div>
+   <div class="tripbar-mid">
+    <span id="co-trip-battery">OBD SoC: —</span>
+    <span id="co-trip-charge-km">Mola km: —</span>
+   </div>
+  </div>
+  <div>
+   <div class="tripbar-label">VARIŞ · MODEL</div>
+   <div id="co-trip-arrival" class="tripbar-number">—</div>
+   <div id="co-trip-arrival-note" class="tripbar-sub">Güncel OBD gerekli</div>
+   <button id="co-trip-charge-button" class="tripbar-smallbutton" type="button">⚡ Mola ekle</button>
+   <button id="co-trip-details" class="tripbar-smallbutton" type="button">Rota ayrıntıları</button>
   </div>
  </div>
 </div>
@@ -450,11 +517,16 @@ function showRouteGpsProgress(x){
  if(closest>Math.min(.8,Math.max(.25,x.accuracy/1000*3))){
   $('route-progress-fill').style.width='0%';
   $('route-progress-text').textContent='GPS rota dışında / belirsiz';
+  $('co-trip-progress-label').textContent='Konum rota dışında';
+  $('co-trip-fill').style.width='0%';
   return;
  }
  var pct=Math.max(0,Math.min(100,position*100));
  var remaining=Math.max(0,data.roadKm*(1-position));
  $('route-progress-fill').style.width=pct.toFixed(1)+'%';
+ $('co-trip-fill').style.width=pct.toFixed(1)+'%';
+ $('co-trip-progress-label').textContent='GPS yaklaşık %'+Math.round(pct)+
+   ' · '+remaining.toFixed(1)+' km kaldı';
  $('route-progress-text').textContent='GPS yaklaşık %'+Math.round(pct)+
    ' · '+remaining.toFixed(1)+' km kaldı';
 }
@@ -535,11 +607,17 @@ window.molaStations=function(packet){
  $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
  suggestedCharge=null;
  $('station-suggestion').style.display='none';
+ $('co-trip-charge-button').style.display='none';
+ $('co-trip-charge-km').textContent='Mola km: —';
  if(stationKind==='route' && packet.suggested &&
     packet.chargeModel==='charge-likely' && !packet.stopIncluded){
   var station=packet.suggested;
   if(valid(station.lat,station.lon) && points.from && points.to){
    suggestedCharge=station;
+   $('co-trip-charge-button').style.display='inline-block';
+   $('co-trip-charge-km').textContent='Mola önerisi: '+(Number.isFinite(Number(station.routeProgressKm))?
+     Math.round(Number(station.routeProgressKm))+' km':'mesafe bilinmiyor');
+   $('co-trip-charge').textContent='⚡ CCS mola önerisi · müsaitlik doğrulanmadı';
    var label=String(station.title||'CCS istasyonu');
    var km=Number(station.routeProgressKm);
    $('station-suggestion-label').textContent='⚡ Model önerisi: '+label+
@@ -557,6 +635,7 @@ window.molaStationError=function(packet){
  stationRequestPending=false;
  var detail=packet&&packet.detail?String(packet.detail):'EPDK erişimi başarısız.';
  $('station-summary').textContent='⚡ İstasyon verisi alınamadı';
+ $('co-trip-charge-button').style.display='none';
  suggestedCharge=null;$('station-suggestion').style.display='none';
  $('station-note').textContent=detail;
 };
@@ -626,6 +705,8 @@ function wipeRoute(){
  lastManeuverAt=0;
  currentRouteProgress=null;
  $('route-progress-fill').style.width='0%';
+ $('co-trip-fill').style.width='0%';
+ $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
  if(line&&map){map.removeLayer(line);line=null}
  $('trip').style.display='none';
@@ -640,6 +721,13 @@ function wipeRoute(){
  $('weather-source').textContent='Hava: Rota seçilmedi.';
  $('trip-energy').textContent='Enerji: rota bekleniyor';
  $('vehicle-cockpit').classList.remove('has-route');
+ $('co-trip-target').textContent='—';
+ $('co-trip-kilometers').textContent='Rota seçilmedi';
+ $('co-trip-charge').textContent='⚡ Şarj molası henüz seçilmedi';
+ $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-arrival').textContent='—';
+ $('co-trip-arrival-note').textContent='Güncel OBD gerekli';
+ $('co-trip-charge-button').style.display='none';
  $('co-route-km').textContent='— km';
  $('co-drive-time').textContent='— dk';
  $('co-stops').textContent='—';
@@ -782,6 +870,15 @@ window.molaRoute=function(o){
  $('map-note').style.display='none';
  $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk'+
    (o.stopIncluded?' · 1 şarj molası':'');
+ $('co-trip-target').textContent=points.to?points.to.label.split(' · ')[0].slice(0,27):'Hedef';
+ $('co-trip-kilometers').textContent=String(o.distanceKm)+' km · '+String(o.durationMin)+' dk';
+ $('co-trip-charge').textContent=o.stopIncluded?'⚡ 1 şarj molası seçildi':
+  o.chargingNeededByModel?'⚡ Şarj gerekebilir':'⚡ Mola eklenmedi';
+ $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-charge-button').style.display='none';
+ $('co-trip-arrival').textContent='—';
+ $('co-trip-arrival-note').textContent=o.stopIncluded?
+  'Şarj miktarı bilinmiyor':'Güncel OBD gerekli';
  $('co-route-km').textContent=String(o.distanceKm)+' km';
  $('co-drive-time').textContent=String(o.durationMin)+' dk · trafiksiz tahmin';
  $('co-stops').textContent=o.stopIncluded?'1 mola seçildi':
@@ -802,6 +899,9 @@ window.molaRoute=function(o){
   if(o.stopIncluded){
    energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
   }else if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
+   $('co-trip-arrival').textContent='%'+Math.round(o.arrivalSocLower)+
+     '–%'+Math.round(o.arrivalSocUpper);
+   $('co-trip-arrival-note').textContent='52 kWh / 16–24 kWh model tahmini';
    energyText+=' · Varış SoC ~%'+o.arrivalSocLower.toFixed(0)+'–%'+o.arrivalSocUpper.toFixed(0);
   }else if(o.chargingNeededByModel){
    energyText+=' · Yolda şarj gerekebilir';
@@ -986,6 +1086,10 @@ $('co-station-tab').onclick=function(){showVisibleStations()};
 $('co-connect').onclick=function(){native('selectObd')};
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
+$('co-trip-details').onclick=function(){
+ document.querySelector('.sheet').classList.add('details-open');
+};
+$('co-trip-charge-button').onclick=function(){$('station-suggestion-choose').onclick()};
 $('station-suggestion-choose').onclick=function(){
  var station=suggestedCharge;
  if(!station||!points.from||!points.to)return;
