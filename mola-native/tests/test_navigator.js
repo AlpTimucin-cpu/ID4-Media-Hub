@@ -25,7 +25,7 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[],chosen:[]};
 const drawnMarkers=[];
 const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
@@ -58,7 +58,8 @@ const win={
   voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
   visibleStations(...args){calls.visible.push(args)},
   saveStation(...args){calls.saved.push(args)},
-  landscape(...args){calls.orientation.push(args)}
+  landscape(...args){calls.orientation.push(args)},
+  chooseAlternative(index){calls.chosen.push(index)}
  }
 };
 const context={
@@ -86,6 +87,9 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes('id="co-alt-toggle"')&&html.includes('id="co-alts-list"'),
+ 'charge-aware route chooser must be available without hiding the map');
+assert(html.includes('id="co-cost"'),'auto-cost summary must appear on route bar');
 assert(html.includes("className:'charge-map-pin'"),
  'real coordinates must use visible CCS lightning icons');
 assert(html.includes("className:'vehicle-map-pin'"),
@@ -290,6 +294,44 @@ assert(get('vehicle-cockpit').classList.contains('has-route'),'trip bar not enab
 assert.equal(get('co-trip-arrival').textContent,'—',
  'must not fabricate arrival SoC without current BMS measurement');
 assert(get('co-eta').textContent!=='—','real route must derive a traffic-free local ETA');
+win.molaAlternatives({selectedIndex:0,fastestIndex:0,shortestIndex:1,
+ chargeAwareIndex:1,options:[
+ {index:0,km:510,minutes:385,energyLowKwh:81.6,energyHighKwh:122.4,
+  stationsKnown:true,ccsCount:22,socKnown:true,chargeNeededModel:true,
+  chargeLowKwh:55,chargeHighKwh:96},
+ {index:1,km:520,minutes:400,energyLowKwh:83.2,energyHighKwh:124.8,
+  stationsKnown:true,ccsCount:35,reachableCcsModel:true,
+  socKnown:true,chargeNeededModel:true,chargeLowKwh:61,
+  chargeHighKwh:98,costMinTry:792,costMaxTry:1616,
+  tariffOperator:'ZES',tariffChecked:'2026-10-22'}
+ ]});
+assert.equal(get('co-alts-list').children.length,2,
+ 'real OSRM alternatives should be selectable without manual route entry');
+assert(get('co-alts-list').children[1].children[0].children[0].textContent.includes('CCS önerili'),
+ 'station-aware route must be labeled by model rather than distance alone');
+assert(get('co-cost').textContent.includes('55–96 kWh'),
+ 'unknown operator must show charge energy, not invent a TL rate');
+get('co-alt-toggle').onclick();
+assert(get('co-alts').classList.contains('open'),
+ 'route chooser should open from the compact trip bar');
+get('co-alts-list').children[1].onclick();
+assert.equal(calls.chosen[0],1,
+ 'choosing alternative must use the cached native OSRM route index');
+assert(!get('co-alts').classList.contains('open'),
+ 'after selection, the map needs to be visible');
+win.molaAlternatives({selectedIndex:1,fastestIndex:0,shortestIndex:1,
+ chargeAwareIndex:1,options:[
+ {index:0,km:510,minutes:385,energyLowKwh:81.6,energyHighKwh:122.4,
+  socKnown:true,chargeNeededModel:true,chargeLowKwh:55,chargeHighKwh:96},
+ {index:1,km:520,minutes:400,energyLowKwh:83.2,energyHighKwh:124.8,
+  stationsKnown:true,ccsCount:35,socKnown:true,chargeNeededModel:true,
+  costMinTry:792,costMaxTry:1616,tariffOperator:'ZES',
+  tariffChecked:'2026-10-22'}]});
+assert(get('co-cost').textContent.includes('792–1616 TL'),
+ 'automatic estimate must use known verified network price range');
+assert(get('co-cost-note').textContent.includes('soket'),
+ 'cost summary must explain it is not a live confirmed bill');
+
 assert.equal(get('co-maneuver').textContent,'Devam et',
  'cockpit first maneuver must be drawn from OSRM instructions');
 win.molaManeuver({instruction:'Sağa dön',straightLineMeters:420,
