@@ -19,6 +19,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .round{border-radius:16px;width:54px;height:54px;background:#fff;box-shadow:0 4px 15px #0002;font-size:23px}
 .buttons{position:absolute;right:13px;top:82px;display:flex;flex-direction:column;gap:9px;z-index:890}
 .buttons button{background:#fff;box-shadow:0 2px 9px #0002;border-radius:12px;width:52px;height:52px;font-size:20px;color:#102e3d}
+.buttons button.follow-active{background:#18d5b7;color:#032b3c;box-shadow:0 0 0 2px #0b556a,0 2px 12px #00b99866}
 .sheet{position:absolute;bottom:0;left:0;right:0;height:58%;min-height:330px;z-index:902;background:#fafcfd;border-radius:24px 24px 0 0;box-shadow:0 -8px 25px #0925382e;overflow:auto;padding:12px 17px 110px;overscroll-behavior:contain}
 .grip{height:5px;width:54px;border-radius:100px;background:#9aa5b0;margin:0 auto 14px}
 .flex{display:flex;align-items:center;justify-content:space-between;gap:10px}.title{font-size:22px;font-weight:750;margin:0 0 12px}
@@ -274,7 +275,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <button id="co-route-tab" class="current" type="button">▣ Rota</button>
 <button id="co-station-tab" type="button">⚡ İstasyon</button>
 </div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button></div>
-<div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
+<div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
 <div id="route-compact" aria-label="Rota özeti">
@@ -329,7 +330,22 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 var map=null,markers={from:null,to:null},liveMarker=null,line=null;
 var stationMarkers=[],stationKind='',stationRequestPending=false;
 var suggestedCharge=null;
-var currentRouteProgress=null,lastGpsFix=null;
+var currentRouteProgress=null,lastGpsFix=null,followMap=false;
+function goodGps(x){
+ return !!x&&valid(x.lat,x.lon)&&Number.isFinite(x.accuracy)&&
+   x.accuracy<=60&&Number.isFinite(x.timeMs)&&
+   Date.now()-x.timeMs>=0&&Date.now()-x.timeMs<30000;
+}
+function setFollowMap(value){
+ followMap=!!value;
+ $('follow-map').classList[followMap?'add':'remove']('follow-active');
+ $('follow-map').setAttribute('aria-pressed',followMap?'true':'false');
+ $('follow-map').title=followMap?'GPS takibini kapat':'GPS ile haritayı takip et';
+ if(followMap && map && goodGps(lastGpsFix)){
+  map.panTo([lastGpsFix.lat,lastGpsFix.lon],{animate:false});
+ }
+}
+
 function greatCircleKm(a,b){
  var r=Math.PI/180,dy=(b[0]-a[0])*r,dx=(b[1]-a[1])*r;
  var v=Math.sin(dy/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dx/2)**2;
@@ -653,6 +669,7 @@ window.molaPosition=function(x){
  if(!x||!valid(x.lat,x.lon))return;
  lastGpsFix=x;
  showRouteGpsProgress(x);
+ if(followMap && goodGps(x) && map)map.panTo([x.lat,x.lon],{animate:false});
  if(map){
   if(!liveMarker)liveMarker=L.circleMarker([x.lat,x.lon],{
    radius:7,color:'#fff',weight:2,fillColor:'#2b86eb',fillOpacity:1
@@ -790,6 +807,8 @@ window.molaTelemetry=function(data){
  $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
 };
 setInterval(function(){
+ // Clear progress after the last location update expires; do not display a frozen percent.
+ if(currentRouteProgress && lastGpsFix && !goodGps(lastGpsFix))showRouteGpsProgress(lastGpsFix);
  if(lastTelemetryAt && Date.now()-lastTelemetryAt>25000){
   clearTelemetry();lastTelemetryAt=0;
   $('live-status').textContent='OBD ölçümü güncel değil';
@@ -806,6 +825,7 @@ try{
   attribution:'© OpenStreetMap katkıcıları',maxZoom:18
  }).addTo(map);
  map.on('click',function(e){selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false)});
+ map.on('dragstart',function(){setFollowMap(false)});
  msg('Başlangıç ve varış için yer adı yazabilirsin; GPS isteğe bağlı.');
 }catch(e){
  msg('Harita açılmadı: '+e.message+'. Adres/rota araması yine denenebilir.');
@@ -813,6 +833,11 @@ try{
 $('gps').onclick=$('locate').onclick=function(){
  pendingGps=true;
  if(!native('location'))pendingGps=false;
+};
+$('follow-map').onclick=function(){
+ var enable=!followMap;
+ setFollowMap(enable);
+ if(enable && !goodGps(lastGpsFix))native('location');
 };
 $('plus').onclick=function(){if(map)map.zoomIn()};
 $('minus').onclick=function(){if(map)map.zoomOut()};
