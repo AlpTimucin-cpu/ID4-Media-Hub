@@ -25,11 +25,11 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[],chosen:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
 const drawnMarkers=[];
 const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
- map(){return {setView(){return this},
+ map(){return {setView(){return this},getZoom(){return 7},
   on(event,handler){mapActions.events[event]=handler;return this},removeLayer(){},
   fitBounds(bounds,opts){globalThis.lastRouteBoundsOptions=opts},
   getSize(){return {x:390,y:780}},
@@ -43,7 +43,8 @@ const L={
   addTo(){drawnMarkers.push(this);return this},
   bindPopup(content){this.popup=content;return this},setLatLng(){}}},
  divIcon(options){return options},
- marker(coords,options){return {coords,options,popup:null,
+ marker(coords,options){return {coords,options,popup:null,events:{},
+  on(name,handler){this.events[name]=handler;return this},
   addTo(){drawnMarkers.push(this);return this},
   bindPopup(content){this.popup=content;return this},
   setLatLng(next){this.coords=next}}},
@@ -57,6 +58,7 @@ const win={
   location(){calls.location++},stop(){calls.stop++},
   voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
   visibleStations(...args){calls.visible.push(args)},
+  visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
   landscape(...args){calls.orientation.push(args)},
   chooseAlternative(index){calls.chosen.push(index)}
@@ -87,6 +89,33 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes('id="layer-all"')&&html.includes('id="layer-ccs"')&&
+ html.includes('id="layer-route"')&&html.includes('id="layer-traffic"'),
+ 'selectable full Turkey, route chargers and honest traffic mode missing');
+assert(html.includes('id="journey-points"'),
+ 'full route weather overlay should show the whole drive');
+get('layer-all').onclick();
+assert.equal(calls.filtered.length,1,
+ 'the all stations layer must request the visible EPDK area');
+assert.equal(calls.filtered[0][4],false,'all stations must include AC sockets');
+get('layer-ccs').onclick();
+assert.equal(calls.filtered[1][4],true,'CCS selector must filter out AC-only stations');
+win.molaStations({kind:'visible',items:[
+ {cluster:true,lat:38,lon:34,count:800,ccsCount:280}
+ ],total:800,clustered:true,updatedAt:'2026-10-22T11:00:00Z'});
+assert(get('layer-status').textContent.includes('küme'),
+ 'nationwide cluster must be clearly distinguished from individual stations');
+const cluster=drawnMarkers[drawnMarkers.length-1];
+assert(typeof cluster.events.click==='function',
+ 'station grouping must zoom to show constituent station pins');
+cluster.events.click();
+assert(get('layer-status').textContent.includes('küme'),
+ 'zooming must not fabricate extra station features');
+get('layer-traffic').onclick();
+assert(get('layer-status').textContent.includes('bağlı değil'),
+ 'traffic must never fake a live congestion map without a licensed source');
+get('layer-route').onclick();
+
 assert(html.includes('id="co-alt-toggle"')&&html.includes('id="co-alts-list"'),
  'charge-aware route chooser must be available without hiding the map');
 assert(html.includes('id="co-cost"'),'auto-cost summary must appear on route bar');
@@ -265,6 +294,27 @@ win.molaWeather({source:'Open-Meteo',cards:[
  {minutes:10,temperature:10,precipitation:0.3,wind:14,resolution:'15dk model'},
  {minutes:15,temperature:9,precipitation:0.4,wind:15,resolution:'15dk model'}
 ]});
+win.molaJourneyWeather({cards:[
+ {percent:0,etaMinutes:0,latitude:37.97,longitude:34.68,
+  available:true,temperature:14,rainProbability:10,wind:8,weatherCode:1},
+ {percent:25,etaMinutes:80,latitude:37.72,longitude:33.5,
+  available:true,temperature:11,rainProbability:40,wind:16,weatherCode:51},
+ {percent:50,etaMinutes:160,latitude:37.3,longitude:32.2,
+  available:true,temperature:9,rainProbability:30,wind:10,weatherCode:3},
+ {percent:75,etaMinutes:240,latitude:36.9,longitude:31.2,
+  available:false},
+ {percent:100,etaMinutes:320,latitude:36.9,longitude:30.7,
+  available:true,temperature:20,rainProbability:5,wind:11,weatherCode:0}
+]});
+assert.equal(get('journey-points').children.length,5,
+ 'whole-journey forecast must show five source-backed segments');
+assert(get('journey-points').children[1].children[1].textContent.includes('yağış %40'),
+ 'precipitation probability should come from Open-Meteo model');
+assert(get('journey-points').children[3].children[1].textContent.includes('Tahmin yok'),
+ 'unknown forecast must never be fabricated');
+get('layer-weather').onclick();
+assert(!get('journey-weather').classList.contains('open'),
+ 'route-less weather cannot be presented as a real trip');
 assert(get('weather-cards').children[0].children[1].textContent.includes('12°C'),
   'weather data did not update actual card');
 assert(get('compact-weather').children[0].textContent.includes('12°C'),
