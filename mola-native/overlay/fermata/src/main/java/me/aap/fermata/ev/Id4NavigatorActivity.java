@@ -61,7 +61,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private LocationManager locationManager;
     private TextToSpeech tts;
     private Location position;
-    private boolean running, voice=true, destroyed;
+    private boolean running, voice=true, destroyed, gpsTrackingRequested, resumeRouteAfterPause;
     private volatile String activeRouteProvider="OSRM demo";
     private int generation, nextStep;
     private long lastSpeech;
@@ -286,6 +286,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;
         }
         try{
+            gpsTrackingRequested=true; // User explicitly requested GPS at least once.
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1500,3,this);
             Location loc=locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if(loc!=null && System.currentTimeMillis()-loc.getTime()<90000)onLocationChanged(loc);
@@ -310,10 +311,20 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             j.put("accuracy",location.getAccuracy());
             j.put("timeMs",location.getTime());}catch(Exception ignored){}
         send("molaPosition",j);
-        if(!running || location.getAccuracy()>60 || nextStep>=steps.size())return;
+        long fixAge=System.currentTimeMillis()-location.getTime();
+        if(!running || location.getAccuracy()>60 || fixAge<0 || fixAge>30000 ||
+            nextStep>=steps.size())return;
         Step step=steps.get(nextStep);
         float[] meters=new float[1];
         Location.distanceBetween(location.getLatitude(),location.getLongitude(),step.lat,step.lon,meters);
+        JSONObject maneuver=new JSONObject();
+        try{
+            maneuver.put("instruction",step.instruction);
+            maneuver.put("straightLineMeters",Math.round(meters[0]));
+            maneuver.put("fixTimeMs",location.getTime());
+            maneuver.put("accuracy",location.getAccuracy());
+            send("molaManeuver",maneuver);
+        }catch(Exception ignored){}
         if(meters[0]<90 && System.currentTimeMillis()-lastSpeech>6000){
             announce(step.instruction);lastSpeech=System.currentTimeMillis();nextStep++;
         }
@@ -668,8 +679,19 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     @Override protected void onResume(){
         super.onResume();updateImmersiveCockpit();
         if(telemetry!=null)autoConnectObd();
+        // Restore only GPS monitoring that the user previously opted into.
+        if(gpsTrackingRequested &&
+           checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==
+           PackageManager.PERMISSION_GRANTED)requestGps();
+        else if(gpsTrackingRequested)
+            send("molaStatus",record("gps","GPS izni yok; canlı takip durduruldu."));
+        running=resumeRouteAfterPause && gpsTrackingRequested &&
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==
+            PackageManager.PERMISSION_GRANTED;
+        resumeRouteAfterPause=false;
     }
     @Override protected void onPause(){
+        resumeRouteAfterPause=running;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         running=false; if(tts!=null)tts.stop();
         if(telemetry!=null)telemetry.stop();super.onPause();
