@@ -279,6 +279,9 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 }
 #open-route{font-weight:780}
 #co-expand{font-weight:780}
+#go-fullscreen{width:52px;height:54px;background:#0e5269;color:#fff;font-size:17px}
+@media (orientation:landscape) and (min-width:640px){#go-fullscreen{display:none!important}}
+
 </style>
 </head><body>
 <div id="map"></div>
@@ -337,8 +340,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <button id="co-media" type="button">‹ Mola</button>
 <button id="co-route-tab" class="current" type="button">⌕ Rota ara</button>
 <button id="co-station-tab" type="button">⚡ İstasyon</button>
-<button id="co-expand" type="button">⛶ Tam ekran</button>
-</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button></div>
+<button id="co-expand" type="button">▤ Dikey görünüm</button>
+</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button><button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><div class="grip"></div>
@@ -969,7 +972,8 @@ function toggleRouteSearch(){
  }
 }
 $('co-route-tab').onclick=$('open-route').onclick=toggleRouteSearch;
-$('co-expand').onclick=function(){native('landscape',true)};
+$('co-expand').onclick=function(){native('landscape',false)};
+$('go-fullscreen').onclick=function(){native('landscape',true)};
 
 $('co-station-tab').onclick=function(){showVisibleStations()};
 $('co-connect').onclick=function(){native('selectObd')};
