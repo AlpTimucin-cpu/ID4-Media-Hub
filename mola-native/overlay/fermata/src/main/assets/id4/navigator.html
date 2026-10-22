@@ -1126,7 +1126,7 @@ window.molaTelemetry=function(data){
  }else{
   liveSoc=NaN;
   $('co-sensor-age').classList.remove('fresh');
-  $('co-sensor-age').textContent='SoC doğrulanamadı';
+  $('co-sensor-age').textContent=fresh?'SoC doğrulanamadı':'OBD SoC güncel değil';
   $('co-soc').textContent='— %';
   $('co-trip-battery').textContent='OBD SoC: —';
   $('co-soc-fill').style.width='0%';
