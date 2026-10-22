@@ -1,6 +1,7 @@
 package me.aap.fermata.ev;
 
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
 import android.os.Looper;
@@ -35,12 +36,15 @@ final class Id4LiveTelemetry {
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ScheduledExecutorService watchdog=Executors.newSingleThreadScheduledExecutor();
     private final Listener listener;
+    private final Context context;
     private volatile boolean enabled=false;
     private volatile BluetoothSocket socket;
     private Thread thread;
     private Data data=new Data();
     private static final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    Id4LiveTelemetry(Listener listener){this.listener=listener;}
+    Id4LiveTelemetry(Context context,Listener listener){
+        this.context=context.getApplicationContext();this.listener=listener;
+    }
     synchronized void start(BluetoothDevice device){
         stop();
         enabled=true;
@@ -66,7 +70,11 @@ final class Id4LiveTelemetry {
         }
         if(decoded==null)return;
         switch(did){
-            case "028C": data.soc=decoded;break;
+            case "028C":
+                data.soc=decoded;
+                Double verified=Id4MebDecoder.bmsSoc(response);
+                if(verified!=null)Id4EnergyData.saveSoc(context,verified,System.currentTimeMillis());
+                break;
             case "1E3B": data.voltage=decoded;break;
             case "2A0B": data.batteryTemp=decoded;break;
             case "7448": data.chargeMode=decoded;break;
