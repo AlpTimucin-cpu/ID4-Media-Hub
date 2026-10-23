@@ -111,8 +111,8 @@ source=source.replace(anchor,
             </intent-filter>
         </activity-alias>
 ''' + anchor)
-source=source.replace('android:icon="@drawable/launcher"',
-    'android:icon="@drawable/id4_launcher"',1)
+# Leave Mola's application / media service icon untouched.
+# The exported, phone-only launcher alias has the ID.4 icon and label.
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
 
