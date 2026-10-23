@@ -525,6 +525,79 @@ body.provider-active .traffic-map-badge{display:flex}
  .traffic-station-panel{top:90px;padding:8px}
  .traffic-station-actions button{padding:6px}
 }
+
+/* vNext CLEAN COCKPIT: screen is a map, not three overlapping route sheets. */
+@media (orientation:landscape) and (min-width:640px){
+ .sheet.route-active:not(.details-open){display:none!important}
+ .buttons{right:calc(25% + 8px)!important;top:100px!important;gap:7px!important}
+ .buttons #plus,.buttons #minus{display:none!important}
+ .buttons button{width:43px;height:43px;border-radius:12px}
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+   left:35%;right:25%;bottom:12px;min-height:95px;max-height:180px;
+   display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+   gap:9px;padding:10px 12px
+ }
+ .cockpit-tripbar>div:first-child{min-width:0}
+ .cockpit-tripbar>div:nth-child(2){min-width:0}
+ .cockpit-tripbar>div:nth-child(3){grid-column:1/-1;display:flex;
+   align-items:center;gap:7px;flex-wrap:wrap;min-width:0;
+   border-top:1px solid #32627c;padding-top:6px}
+ .cockpit-tripbar>div:nth-child(3) .tripbar-label,
+ .cockpit-tripbar>div:nth-child(3) #co-trip-arrival-note,
+ .cockpit-tripbar>div:nth-child(3) #co-cost-note{display:none}
+ .cockpit-tripbar>div:nth-child(3) #co-trip-arrival{font-size:18px}
+ .cockpit-tripbar>div:nth-child(3) .tripbar-smallbutton{margin:0;padding:7px 8px}
+ .cockpit-tripbar>div:nth-child(3) #co-cost{font-size:11px;line-height:1.3;
+  max-width:47%;white-space:normal}
+ .cockpit-tripbar #co-trip-target{font-size:clamp(14px,1.5vw,22px);
+  line-height:1.14;max-height:2.3em;overflow:hidden}
+ .cockpit-tripbar #co-trip-kilometers{font-size:11px}
+ .cockpit-tripbar .tripbar-mid{font-size:10px;gap:4px}
+ .cockpit-alts{left:35%;right:25%;bottom:115px;max-height:230px;
+   border-radius:14px;padding:9px 11px}
+ .cockpit-alts .alts-header{font-size:13px;margin:0 0 5px}
+ .cockpit-alts .alt-item{padding:7px 9px;margin:4px 0}
+ .cockpit-alts .alts-caution{font-size:9px;margin-top:4px}
+ .sheet.route-active.details-open{
+   position:fixed!important;top:calc(80px + 3vh)!important;
+   left:35%!important;right:25%!important;bottom:auto!important;
+   width:auto!important;height:auto!important;min-height:0!important;
+   max-height:min(66vh,410px)!important;overflow-y:auto!important;
+   border:1px solid #4b9eb1!important;
+   background:rgba(3,30,45,.97)!important;color:#effbff!important;
+   border-radius:15px!important;z-index:1110!important;padding:12px!important;
+   box-shadow:0 14px 35px #000b!important
+ }
+ .sheet.route-active.details-open #route-compact{
+    position:static!important;background:transparent!important;color:#effbff!important;
+    padding:0!important
+ }
+ .sheet.route-active.details-open #route-compact .compact-row,
+ .sheet.route-active.details-open #route-compact .route-progress,
+ .sheet.route-active.details-open #route-compact .station-summary,
+ .sheet.route-active.details-open #route-compact .station-suggestion{display:none!important}
+ .sheet.route-active.details-open .compact-actions{position:static!important;margin:4px 0 10px}
+ .sheet.route-active.details-open .mini-weather span{background:#16445a;color:#eefbff}
+ .sheet.route-active.details-open .weather-card{background:#123e53;color:#effbff}
+ .sheet.route-active.details-open .weather-card small{color:#c5dcea}
+ .sheet.route-active.details-open .vehicle,.sheet.route-active.details-open .tools{
+   display:none!important
+ }
+ .sheet.route-active.details-open .state-line,
+ .sheet.route-active.details-open .notice{background:#174054;color:#c7dbe5}
+ .sheet.route-active.details-open #weather-source,
+ .sheet.route-active.details-open .hint{color:#c0d5df}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .vehicle-cockpit.has-route .cockpit-tripbar{left:35%;right:25%;
+  bottom:4px;min-height:83px;max-height:140px;padding:6px 8px;gap:4px}
+ .cockpit-tripbar>div:nth-child(3){gap:4px;padding-top:3px}
+ .cockpit-tripbar>div:nth-child(3) .tripbar-smallbutton{padding:5px;font-size:10px}
+ .cockpit-tripbar .tripbar-track{margin:4px 0}
+ .cockpit-alts{left:35%;right:25%;bottom:100px;max-height:48vh}
+ .sheet.route-active.details-open{top:65px!important;max-height:64vh!important}
+ .buttons{top:60px!important}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -1792,10 +1865,20 @@ $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
 $('co-alt-toggle').onclick=function(){
  if(!currentRouteProgress){msg('Önce rota oluşturmalısın.');return}
+ // A single OSRM geometry is not a genuine alternative. The compact
+ // trip bar already displays its price/energy, so avoid covering the map.
+ if(routeOptions.length===1){
+  $('co-alts').classList.remove('open');
+  msg('Bu güzergâhta OSRM yalnızca bir rota döndürdü. Alternatif uydurulmadı.');
+  return;
+ }
+ document.querySelector('.sheet').classList.remove('details-open');
  $('co-alts').classList.toggle('open');
 };
 $('co-alts-close').onclick=function(){$('co-alts').classList.remove('open')};
 $('co-trip-details').onclick=function(){
+ $('co-alts').classList.remove('open');
+ setMapLayerMenu(false);
  document.querySelector('.sheet').classList.add('details-open');
 };
 $('co-reroute').onclick=function(){
