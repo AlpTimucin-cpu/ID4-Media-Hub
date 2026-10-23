@@ -123,6 +123,7 @@ assert(get('layer-status').textContent.includes('küme'),
 get('dock-traffic').onclick();
 assert(get('traffic-choices').classList.contains('open'),
  'dock must expose traffic options');
+get('traffic-choices').classList.remove('open');
 get('layer-traffic').onclick();
 assert(get('traffic-choices').classList.contains('open'),
  'traffic selector must expose official licensed provider choices');
