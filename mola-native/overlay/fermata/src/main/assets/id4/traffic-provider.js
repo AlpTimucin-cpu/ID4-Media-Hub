@@ -5,7 +5,7 @@
 (function(global){
 'use strict';
 var active='osm',providerMap=null,traffic=null,routeLine=null,stationObjects=[],positionMarker=null;
-var requested=0,loaded={},loading={};
+var requested=0,loaded={},loading={},lastTrafficRefresh=0;
 var configured=global.ID4_TRAFFIC_CONFIG||{};
 var holder=function(){return document.getElementById('traffic-provider-map')};
 function status(name,detail,ready){
@@ -39,7 +39,7 @@ function reset(){
   stationObjects.forEach(function(m){if(m&&m.setMap)m.setMap(null)});
   if(positionMarker&&positionMarker.setMap)positionMarker.setMap(null);
  }
- traffic=null;routeLine=null;providerMap=null;stationObjects=[];positionMarker=null;
+ traffic=null;routeLine=null;providerMap=null;stationObjects=[];positionMarker=null;lastTrafficRefresh=0;
  if(holder())holder().replaceChildren();
  document.body.classList.remove('provider-active');
 }
@@ -122,8 +122,10 @@ function openYandex(){
     providerMap=new global.ymaps.Map(holder(),{
      center:lastCenter,zoom:lastZoom,controls:[]});
     // Source: Yandex JS API 2.1 official traffic.provider.Actual example.
-    traffic=new global.ymaps.traffic.provider.Actual({},{infoLayerShown:true});
+    traffic=new global.ymaps.traffic.provider.Actual({autoUpdate:true},
+      {infoLayerShown:true});
     traffic.setMap(providerMap);
+    lastTrafficRefresh=Date.now();
     renderData();resolve();
    }catch(e){reject(e)}
   });
@@ -184,6 +186,14 @@ global.Id4TrafficProviders={
    if(positionMarker.geometry&&positionMarker.geometry.setCoordinates)
     positionMarker.geometry.setCoordinates(lastPosition);
    if(follow&&providerMap.setCenter)providerMap.setCenter(lastPosition);
+   // Yandex Actual documents that autoUpdate may stop without map
+   // mousemove; car users rarely touch the map. Refresh on fresh GPS
+   // at most once per 4 minutes, not for every position packet.
+   if(traffic&&typeof traffic.update==='function' &&
+      Date.now()-lastTrafficRefresh>=240000){
+    lastTrafficRefresh=Date.now();
+    try{traffic.update()}catch(error){}
+   }
   }
  },
  updateViewport:function(center,zoom){
