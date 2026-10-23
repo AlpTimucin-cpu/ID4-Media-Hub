@@ -10,6 +10,8 @@ silently replaced with brittle string patches.
 """
 from pathlib import Path
 import hashlib
+import os
+import json
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -107,6 +109,8 @@ city_license=overlay/"fermata/src/main/assets/id4/CITY_DATA_LICENSE.txt"
 leaflet_js=overlay/"fermata/src/main/assets/id4/leaflet.js"
 leaflet_css=overlay/"fermata/src/main/assets/id4/leaflet.css"
 leaflet_license=overlay/"fermata/src/main/assets/id4/LEAFLET_LICENSE.txt"
+traffic_provider=overlay/"fermata/src/main/assets/id4/traffic-provider.js"
+traffic_config=overlay/"fermata/src/main/assets/id4/traffic-config.js"
 charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
 charge_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistoryStore.java"
 energy_facts=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyData.java"
@@ -116,13 +120,29 @@ overview=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.ja
 station_catalog=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationCatalog.java"
 charge_advisor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeAdvisor.java"
 charge_cost=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor,charge_cost])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor,charge_cost]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor,charge_cost])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,charge_advisor,charge_cost]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
     target.parent.mkdir(parents=True,exist_ok=True)
     target.write_bytes(f.read_bytes())
+
+# Optional Maps JavaScript API credentials are build inputs and never committed.
+# Browser keys are visible in distributed APKs; restrict API and allowed HTTPS
+# origin in the provider consoles and set billing caps. Keep blank if unavailable.
+public_keys={
+    "googleKey":os.environ.get("ID4_GOOGLE_MAPS_JS_KEY",""),
+    "yandexKey":os.environ.get("ID4_YANDEX_MAPS_JS_KEY",""),
+}
+for provider,key in public_keys.items():
+    if key and (not key.isascii() or len(key)>200 or
+        not all(c.isalnum() or c in "_-" for c in key)):
+        raise SystemExit("Invalid "+provider+" public SDK key")
+config_target=root/traffic_config.relative_to(overlay)
+config_target.write_text("window.ID4_TRAFFIC_CONFIG="+
+    json.dumps(public_keys,ensure_ascii=True,separators=(",",":"))+";\n",
+    encoding="utf-8")
 
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {
@@ -132,6 +152,7 @@ allowed=set(SOURCE_SHA) | {
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),
+    str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
     str(station_catalog.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay))}
