@@ -7,6 +7,13 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.text.TextUtils;
+import android.view.inputmethod.EditorInfo;
+
 import android.view.View;
 import java.util.Collections;
 import java.util.Comparator;
@@ -90,6 +97,8 @@ public final class Id4EvActivity extends Activity {
     private int typeFilter=0,radiusFilter=0,stationPage=0;
     private static final int PAGE_SIZE=25;
     private static final int[] RADII={0,10,25,50,100};
+    private final Handler searchHandler=new Handler(Looper.getMainLooper());
+    private final Runnable searchNow=this::findStations;
     private final ArrayList<StationHit> stationMatches=new ArrayList<>();
     private static final class StationHit {
         final JSONObject data;
@@ -136,6 +145,15 @@ public final class Id4EvActivity extends Activity {
         addTab(tabs,"⚡ İstasyon",this::stationsScreen);
         addTab(tabs,"🔋 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)));
         addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)));
+        for(int i=0;i<tabs.getChildCount();i++){
+            View item=tabs.getChildAt(i);
+            if(item instanceof Button){
+                Button tab=(Button)item;
+                tab.setTextSize(10);
+                tab.setSingleLine(true);
+                tab.setEllipsize(TextUtils.TruncateAt.END);
+            }
+        }
         status=text("ID.4 • Mola eklentisi • Resmî EPDK verileri",11,false);
         root.addView(status);
         // Enter the station list, never the deprecated long-press map flow.
@@ -265,15 +283,23 @@ public final class Id4EvActivity extends Activity {
     }
     private static String formatSockets(JSONArray sockets){
         if(sockets==null)return "Soket: bilinmiyor";
-        int ccs=0,ac=0,chademo=0;
+        int ccs=0,ac=0,chademo=0;StringBuilder rated=new StringBuilder();
         for(int i=0;i<sockets.length();i++){
             JSONObject s=sockets.optJSONObject(i);if(s==null)continue;
-            String type=s.optString("type").toLowerCase(Locale.ROOT);
+            String type=Id4StationTypes.searchable(s.optString("type"));
+            String kind=s.optString("kind");
             if(type.contains("ccs")||type.contains("combo"))ccs++;
-            else if(type.contains("type 2")||type.contains("type2"))ac++;
             else if(type.contains("chademo"))chademo++;
+            else if(Id4StationTypes.ac(type,kind))ac++;
+            // EPDK snapshot doesn't specify a validated power unit: show raw field only.
+            String p=s.optString("power_raw","").trim();
+            if(!p.isEmpty() && rated.length()<80 && rated.indexOf(p)<0){
+                if(rated.length()>0)rated.append(", ");
+                rated.append(p);
+            }
         }
-        return "CCS "+ccs+" · Type 2 "+ac+" · CHAdeMO "+chademo;
+        return "CCS "+ccs+" · AC Type 2 "+ac+" · CHAdeMO "+chademo+
+            (rated.length()>0?" · EPDK güç alanı: "+rated:"");
     }
     private void lookupAddress(){
         if(address==null||!mapReady){alert("Harita","Önce harita açılsın.");return;}
@@ -390,12 +416,33 @@ public final class Id4EvActivity extends Activity {
         stationQuery.setSingleLine(true);stationQuery.setTextColor(Color.WHITE);
         stationQuery.setHintTextColor(0xffa3bdcb);stationQuery.setTextSize(14);
         stationQuery.setHint("Şehir, istasyon, adres veya operatör");
+        stationQuery.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        stationQuery.setOnEditorActionListener((view,action,event)->{
+            if(action==EditorInfo.IME_ACTION_SEARCH){
+                searchHandler.removeCallbacks(searchNow);
+                findStations();
+                return true;
+            }
+            return false;
+        });
+        stationQuery.addTextChangedListener(new TextWatcher(){
+            @Override public void beforeTextChanged(CharSequence s,int start,int count,int after){}
+            @Override public void onTextChanged(CharSequence s,int start,int before,int count){
+                searchHandler.removeCallbacks(searchNow);
+                searchHandler.postDelayed(searchNow,400);
+            }
+            @Override public void afterTextChanged(Editable e){}
+        });
         body.addView(stationQuery,new LinearLayout.LayoutParams(-1,dp(46)));
         LinearLayout actions=new LinearLayout(this);body.addView(actions);
         actions.addView(button("⌕ Ara / yenile",this::findStations),
             new LinearLayout.LayoutParams(0,dp(43),1));
         actions.addView(button("◎ Yakınımdakiler",this::stationGps),
             new LinearLayout.LayoutParams(0,dp(43),1));
+        LinearLayout officialRow=new LinearLayout(this);
+        body.addView(officialRow);
+        officialRow.addView(button("● Canlı doluluk: resmî Şarj@TR",this::openEpdkOfficial),
+            new LinearLayout.LayoutParams(-1,dp(43)));
         stationInfo=text("İstasyon kayıtları okunuyor…",11,false);body.addView(stationInfo);
         ScrollView scroll=new ScrollView(this);
         stationCards=new LinearLayout(this);
@@ -411,9 +458,8 @@ public final class Id4EvActivity extends Activity {
         if(array==null)return false;
         for(int i=0;i<array.length();i++){
             JSONObject socket=array.optJSONObject(i);if(socket==null)continue;
-            String k=(socket.optString("type")+" "+socket.optString("kind")).toUpperCase(Locale.ROOT);
-            if(dc?(k.contains("CCS")||k.contains("CHADEMO")||k.contains("DC")):
-                (k.contains("TYPE2")||k.contains("TYPE 2")||k.contains(" AC")||k.startsWith("AC")))return true;
+            if(dc?Id4StationTypes.dc(socket.optString("type"),socket.optString("kind")):
+                Id4StationTypes.ac(socket.optString("type"),socket.optString("kind")))return true;
         }
         return false;
     }
@@ -426,8 +472,7 @@ public final class Id4EvActivity extends Activity {
     private void findStations(){
         if(stationCards==null||stationQuery==null)return;
         final int request=++generation,mode=typeFilter,radius=RADII[radiusFilter];
-        final String q=stationQuery.getText().toString().trim()
-            .toLowerCase(Locale.forLanguageTag("tr-TR"));
+        final String q=Id4StationTypes.searchable(stationQuery.getText().toString().trim());
         final Location position=stationLocation==null?null:new Location(stationLocation);
         stationCards.removeAllViews();stationPaging.removeAllViews();
         stationInfo.setText("EPDK istasyonları listeleniyor…");
@@ -444,9 +489,8 @@ public final class Id4EvActivity extends Activity {
                     JSONObject s=all.optJSONObject(i);if(s==null)continue;
                     boolean ac=hasType(s,false),dc=hasType(s,true);
                     if((mode==1&&!ac)||(mode==2&&!dc))continue;
-                    String hay=(s.optString("name")+" "+s.optString("address")+" "+
-                        s.optString("operator")+" "+s.optString("brand"))
-                        .toLowerCase(Locale.forLanguageTag("tr-TR"));
+                    String hay=Id4StationTypes.searchable(s.optString("name")+" "+s.optString("address")+" "+
+                        s.optString("operator")+" "+s.optString("brand"));
                     if(!q.isEmpty()&&!hay.contains(q))continue;
                     double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
                     double km=position!=null&&valid(lat,lon)?
@@ -464,7 +508,9 @@ public final class Id4EvActivity extends Activity {
                     priceCatalog=priceData;
                     stationMatches.clear();stationMatches.addAll(hits);
                     stationPage=0;renderStationPage();
-                    stationInfo.setText(hits.size()+" istasyon · "+
+                    long acCount=hits.stream().filter(x->x.ac).count();
+                    long dcCount=hits.stream().filter(x->x.dc).count();
+                    stationInfo.setText(hits.size()+" istasyon eşleşti · AC "+acCount+" · DC "+dcCount+"\n"+
                         (position==null?"Konum yok: mesafe için ◎ Yakınımdakiler":
                             "Yakından uzağa (kuş uçuşu)")+
                         "\nEPDK kayıt tarihi: "+verifiedAt+
@@ -527,6 +573,12 @@ public final class Id4EvActivity extends Activity {
         next.setEnabled(end<stationMatches.size());
         stationPaging.addView(next,new LinearLayout.LayoutParams(0,dp(42),1));
     }
+    private void openEpdkOfficial(){
+        Intent installed=getPackageManager().getLaunchIntentForPackage("tr.gov.epdk.sarjetTR");
+        if(installed!=null){startActivity(installed);return;}
+        startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(
+            "https://play.google.com/store/apps/details?id=tr.gov.epdk.sarjetTR")));
+    }
     private static String priceForStation(JSONObject prices,String operator,boolean ac,boolean dc){
         if(prices==null)return "Fiyat: güncel resmî tarife okunamadı";
         JSONArray ops=prices.optJSONArray("operators");
@@ -571,9 +623,11 @@ public final class Id4EvActivity extends Activity {
                 }
             }
         }
-        alert("Resmî fiyat ve müsaitlik",
-            "Bu operatör için doğrulanmış fiyat/kampanya bağlantısı yok. "+
-            "Canlı soket müsaitliğini EPDK Şarj@TR veya işletmecinin uygulamasından teyit et.");
+        new AlertDialog.Builder(this).setTitle("Canlı fiyat ve doluluk")
+            .setMessage("Bu operatörün canlı soket verisi ve kampanyaları doğrulanamıyor. "+
+                "EPDK Şarj@TR ile müsaitliği kontrol edebilirsin.")
+            .setNegativeButton("Kapat",null)
+            .setPositiveButton("Şarj@TR", (dialog,which)->openEpdkOfficial()).show();
     }
     private void navigateToStation(JSONObject s){
         double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
@@ -922,6 +976,7 @@ public final class Id4EvActivity extends Activity {
                 map.destroy();}catch(Exception ignore){}
             map=null;
         }
+        searchHandler.removeCallbacks(searchNow);
         super.onDestroy();
     }
 }

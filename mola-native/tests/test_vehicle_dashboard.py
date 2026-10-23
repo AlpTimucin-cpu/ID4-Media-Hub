@@ -54,6 +54,10 @@ assert "Müsaitlik: doğrulanamadı" in ev
 assert "ESKİ genel fiyat (güncel değil)" in ev
 assert "Kampanya: doğrulanmış duyuru yok" in ev
 assert "cards.setVisibility(View.GONE)" in obd
+assert "Id4StationTypes.ac" in ev and "Id4StationTypes.dc" in ev
+assert "searchHandler.postDelayed(searchNow,400)" in ev
+assert "openEpdkOfficial" in ev and "tr.gov.epdk.sarjetTR" in ev
+assert "station_types.relative_to(overlay)" in patch
 print("PASS: full-screen phone pages; paged AC/DC, GPS distance and sourced tariffs")
 print("PASS: no manual energy form; timestamps per OBD sensor; route energy connected.")
 
