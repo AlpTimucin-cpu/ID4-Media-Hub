@@ -1,38 +1,29 @@
-# ID.4 Media Hub — Android / Android Auto
+# ID.4 Yol Arkadaşım — Volkswagen ID.4 Pure
 
-Kişisel deney projesi. **Google, Volkswagen, Netflix veya SportzX tarafından onaylanmış bir uygulama değildir.**
+**Harita · Rota · Türkiye AC/DC şarj istasyonları · ELM327/OBD · Mola tabanlı Android önizlemesi**
 
-## Durum
-- **v0.11 beta:** Ana Sayfa / TV / Radyo / Kitaplık; entegre IPTV oynatıcısı, kanal geçişi, çözünürlük üst sınırı, tam ekran, logolu kanallar, Radio Browser Türkiye dizini, otomatik günlük radyo yenileme, türler ve favoriler
-- Android Auto tarafında sadece ses/radyo medya kitaplığı hedeflenir; **ID.4 uyumluluğu doğrulanmamıştır**
-- IPTV kaynaklarının çalışması, erişim hakları ve coğrafi kısıtlamalar değişebilir
-- Netflix, YouTube Music ve SportzX uygulamanın içinde oynatılmaz; ilgili resmî/kurulu uygulamaya yönlendirilir
-- Sürüş sırasında sürücünün görebildiği ön ekranda video oynatmak için kısıtlama devre dışı bırakılmaz
+[![Yeni ID.4 sürüm derlemesi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)
+[![Otomatik ekran görselleri](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml)
 
-## Derleme
-GitHub Actions > **Build ID4 Media Hub APK** iş akışının başarılı çalışması beklenir. İndirilecek `ID4-Media-Hub-debug-APK` dosyası içindeki `app-debug.apk` yüklenebilir test sürümüdür.
+> **Aktif proje ve en güncel kod:** [**feature/mola-native-id4 → Tüm özellikler, APK kurulum adımları, kaynaklar ve test durumları**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4). Varsayılan `main` dalındaki eski Media Hub kodu ile Mola-ID4 önizlemesi farklı geliştirme hatlarıdır.
 
-**Önemli:** APK'nın derlenmiş olması telefonda/araçta çalıştığını kanıtlamaz. Gerçek cihaz testleri ayrıca yapılmalıdır.
+![Gerçek kokpit HTML kodundan alınan çevrimdışı tarayıcı önizlemesi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-browser-preview.png)
 
-## İlk cihaz testi (POCO F5)
-1. Uygulamayı aç. **RADYO** sekmesinde Türkiye dizininin indirilmesini bekle; internet kullanılır. İlk indirme başarısız olursa **GÜNCELLE** düğmesine dokun. Önbellek varsa çevrimdışı da görüntülenir.
-2. **Kitaplık** bölümünden Apple HLS test videosunu ekle, **TV** bölümündeki tek oynatıcıda seçip oynat. Kanal panelini, kalite seçimini ve tam ekranı dene.
-3. Bu test başarılıysa M3U listesini yükle.
-4. Kanal başlatılamıyorsa ekrandaki hata metnini kaydet; URL'deki erişim anahtarlarını paylaşma.
-5. Android Auto'da uygulama görünmüyorsa, bunu telefonun çalışıp çalışmamasından ayrı hata olarak bildir.
+| Telefon rota önizlemesi | Kompakt yatay kokpit |
+|---|---|
+| ![Telefon HTML görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/route-phone-browser-preview.png) | ![Kompakt kokpit HTML görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-compact-browser-preview.png) |
 
-## Kaynak
-`app/src/main/java/tr/id4/mediahub` • Kotlin / Media3 • `app/src/main/AndroidManifest.xml`
+*Görseller uygulamanın gerçek HTML/CSS kodunun çevrimdışı tarayıcı renderlarıdır; Android cihaz/ID.4 araç ekranı fotoğrafı değildir. Sahte SoC, hız, rota, istasyon doluluğu gösterilmez.*
 
-Kod önceliği: düzgün telefon deneyimi, güvenilir ses oynatma ve ayrıntılı hata durumları. Sonuçlar cihazda doğrulanmadan 'tamamlandı' sayılmaz.
+## Hızlı başlangıç
 
-## Radyo kataloğu (v0.11)
-- Topluluk katkılı [Radio Browser](https://www.radio-browser.info/) API üzerinden Türkiye (TR), son kontrolde çevrimiçi görünen HTTPS istasyonları alınır.
-- İlk açılışta iki örnek istasyon bulunur; arka plan güncellemesi başarılıysa Türkiye radyoları otomatik eklenir.
-- Dizindeki kayıtların gerçek cihazda oynatılabilmesi garanti edilmez (bölge, format, sunucu, HTTPS vb.).
-- Son başarılı indirme zamanı cihazda tutulur; yaklaşık 24 saatte bir yenileme denenir.
-- Kullanıcının eklediği istasyonlar ve favori bilgisi korunur.
-- Radio Browser'ın sunucu erişimi başarısızsa uygulama kayıtlı kanalları göstermeye devam eder.
+**[Son başarılı kurulabilir ID.4 APK derlemesini aç](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml?query=branch%3Afeature%2Fmola-native-id4)** → çalışmanın **Artifacts** bölümünden ZIP'i indir → içindeki `Mola-ID4-Preview.apk` dosyasını çıkar.
 
-## Test kurulumunda önemli not
-GitHub Actions debug APK'ları farklı runner'larda farklı debug anahtarlarıyla imzalanabilir. Android mevcut sürümün üzerine güncellemeyi reddederse **önce M3U kanal listesini yedekle**; kaldırma işleminden önce verileri kontrol et. Bu sürüm Play Store sürümü değildir.
+**Önemli:** Bu sürüm orijinal Mola 3.2'nin üzerine kurulmaz; açık kaynak Mola 2.2.2 tabanından ayrı paket kimliğiyle derlenir. Android Auto'da telefon WebView'ı ve canlı araç ölçümleri fiziksel araçta doğrulanmadı. Canlı EPDK soket durumları, istasyona özel fiyat ve kampanyalar ancak izinli/güvenilir veri kaynağıyla görüntülenebilir. Detaylar için [aktif dalın README'sini](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/blob/feature/mola-native-id4/README.md) incele.
+
+## Repo dalları
+
+- **[ID.4 Yol Arkadaşım — aktif dal](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4)**: Tesla-benzeri sade kokpit, OSRM, Open-Meteo, EPDK istasyonları, salt-okunur MEB/OBD deneyleri, Mola overlay kaynakları.
+- **`main` / eski Media Hub**: İlk Android medya uygulaması prototipi; orijinal açıklama [docs/legacy-media-hub.md](docs/legacy-media-hub.md) içinde saklandı.
+
+Bu bağımsız deney projesi Volkswagen, Mola veya Google tarafından onaylanmış değildir.
