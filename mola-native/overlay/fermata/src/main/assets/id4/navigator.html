@@ -631,6 +631,73 @@ body.provider-active .traffic-map-badge{display:flex}
 @media (orientation:portrait),(max-width:639px){
  .cockpit-toast{left:10%;bottom:20%;width:80%}
 }
+
+/* 23 Oct: single-layer, one-panel-at-a-time cockpit layout.
+   The old white bottom sheet is NEVER visible alongside the new trip bar. */
+#route-panel-close{display:none}
+@media (orientation:landscape) and (min-width:640px){
+ .sheet.route-active:not(.details-open){display:none!important}
+ .sheet.route-active.details-open{
+  position:fixed!important;top:90px!important;right:12px!important;left:auto!important;
+  bottom:116px!important;width:clamp(295px,30vw,430px)!important;
+  height:auto!important;min-height:0!important;
+  max-height:calc(100vh - 210px)!important;overflow-y:auto!important;
+  border:1px solid #427e9b!important;border-radius:15px!important;
+  padding:46px 12px 15px!important;background:rgba(2,31,47,.98)!important;
+  color:#e8f8ff!important;box-shadow:0 12px 36px #001e2edb!important;
+  z-index:1140!important
+ }
+ .sheet.route-active.details-open #route-compact{
+  position:static!important;background:transparent!important;color:#e8f8ff!important;
+  padding:0!important;margin:0!important
+ }
+ .sheet.route-active.details-open .compact-row,
+ .sheet.route-active.details-open .station-suggestion{margin-right:0!important}
+ .sheet.route-active.details-open .compact-actions{position:static!important}
+ .sheet.route-active.details-open .mini-weather{display:grid}
+ .sheet.route-active.details-open .mini-weather span{
+  background:#143e55!important;color:#e6faff!important;border:1px solid #275775
+ }
+ .sheet.route-active.details-open .tag,
+ .sheet.route-active.details-open .compact-distance,
+ .sheet.route-active.details-open .label{color:#d4f3ff!important}
+ .sheet.route-active.details-open .station-actions,
+ .sheet.route-active.details-open .weather,
+ .sheet.route-active.details-open .tools{background:transparent!important}
+ .sheet.route-active.details-open .station-actions button,
+ .sheet.route-active.details-open .tools button{
+  color:#e8faff!important;background:#16546b!important
+ }
+ .sheet.route-active.details-open .hint,
+ .sheet.route-active.details-open .state-line,
+ .sheet.route-active.details-open .notice{color:#bddce9!important}
+ .sheet.route-active.details-open #route-panel-close{
+  display:block;position:sticky;top:-41px;margin:-41px 0 17px auto;
+  background:#175a72;color:#fff;border:1px solid #4ca3bd;border-radius:9px;
+  min-width:95px;min-height:38px;font-size:12px;font-weight:800;z-index:30
+ }
+ body.route-details-open .cockpit-right{visibility:hidden}
+ .cockpit-alts.open{
+  top:90px!important;left:auto!important;right:12px!important;
+  width:clamp(295px,30vw,430px)!important;bottom:116px!important;
+  max-height:calc(100vh - 210px)!important;z-index:1142!important
+ }
+ body.alts-open .cockpit-right{visibility:hidden}
+ body.alts-open .buttons,body.route-details-open .buttons{display:none}
+ .buttons{right:auto!important;left:35%!important;top:110px!important;
+  display:flex;flex-direction:row;gap:5px}
+ .buttons button{height:41px;width:41px}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .sheet.route-active.details-open{
+  top:60px!important;bottom:92px!important;
+  max-height:calc(100vh - 153px)!important;padding-top:40px!important
+ }
+ .sheet.route-active.details-open #route-panel-close{top:-36px;margin-top:-36px}
+ .cockpit-alts.open{top:60px!important;bottom:92px!important;
+  max-height:calc(100vh - 153px)!important}
+ .buttons{top:68px!important;left:35%!important}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -778,7 +845,7 @@ body.provider-active .traffic-map-badge{display:flex}
  <div class="journey-note">Open-Meteo tahmini · Trafik gecikmeleri ve şarj bekleme süresi dahil değildir.</div>
 </div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
-<section class="sheet"><div class="grip"></div>
+<section class="sheet"><button type="button" id="route-panel-close">✕ Haritaya dön</button><div class="grip"></div>
 <div id="route-compact" aria-label="Rota özeti">
 <div class="compact-row"><div><span class="label">GÜZERGÂH</span><div class="compact-distance" id="compact-trip">—</div></div><span class="tag">Trafik verisi yok</span></div>
 <div class="route-energy" id="trip-energy">Enerji: rota bekleniyor</div>
@@ -1271,6 +1338,8 @@ function wipeRoute(){
  }
  routeOptions=[];chosenRouteIndex=0;
  $('co-alts').classList.remove('open');
+ document.body.classList.remove('alts-open');
+ document.body.classList.remove('route-details-open');
  $('co-alts-list').textContent='Rota bekleniyor';
  $('co-cost').textContent='Maliyet: rota bekleniyor';
  $('co-cost-note').textContent='Güncel SoC ve operatör tarifesi gerekir';
@@ -1508,6 +1577,7 @@ window.molaRoute=function(o){
   $('current-weather-label').textContent='☁ Rota başlangıcında hava modeli isteniyor';
  $('co-cost-note').textContent='OBD SoC ve EPDK istasyonları inceleniyor';
  $('co-alts').classList.remove('open');
+ document.body.classList.remove('alts-open');
  var pts=o.coordinates.filter(function(c){
   return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
  }).map(function(c){return [c[1],c[0]]});
@@ -1521,6 +1591,8 @@ window.molaRoute=function(o){
  sheet.classList.add('route-active');
  $('vehicle-cockpit').classList.add('has-route');
  sheet.classList.remove('details-open');
+ document.body.classList.remove('route-details-open');
+ document.body.classList.remove('alts-open');
  sheet.scrollTop=0;
  $('map-note').style.display='none';
  $('compact-trip').textContent=o.distanceKm+' km · '+o.durationMin+' dk'+
@@ -1773,14 +1845,18 @@ $('plan').onclick=function(){
  msg('Seçili başlangıç ve varış için rota hesaplanıyor...');
  native('route',points.from.lat,points.from.lon,points.to.lat,points.to.lon,usingGps);
 };
-$('route-details').onclick=function(){
+function setRouteDetails(open){
  var sheet=document.querySelector('.sheet');
- var expanded=sheet.classList.contains('details-open');
- if(expanded)sheet.classList.remove('details-open');
- else sheet.classList.add('details-open');
+ sheet.classList[open?'add':'remove']('details-open');
+ document.body.classList[open?'add':'remove']('route-details-open');
+ if(open){$('co-alts').classList.remove('open');document.body.classList.remove('alts-open')}
  sheet.scrollTop=0;
- $('route-details').textContent=expanded?'Hava ve rota ayrıntıları':'Haritayı büyüt';
+ $('route-details').textContent=open?'Haritaya dön':'Hava ve rota ayrıntıları';
+}
+$('route-details').onclick=function(){
+ setRouteDetails(!document.querySelector('.sheet').classList.contains('details-open'));
 };
+$('route-panel-close').onclick=function(){setRouteDetails(false)};
 $('route-edit').onclick=function(){
  wipeRoute();document.querySelector('.sheet').classList.add('search-open');
  msg('Başlangıç ve varışı değiştirebilirsin.');
@@ -1796,7 +1872,7 @@ function toggleRouteSearch(){
  var sheet=document.querySelector('.sheet');
  if(sheet.classList.contains('route-active')){
   // Keep navigation visible until the user starts changing the route.
-  sheet.classList.toggle('details-open');
+  setRouteDetails(!sheet.classList.contains('details-open'));
  }else{
   sheet.classList.toggle('search-open');
   if(sheet.classList.contains('search-open'))$('to').focus&&$('to').focus();
@@ -1955,14 +2031,17 @@ $('co-alt-toggle').onclick=function(){
   msg('Bu güzergâhta OSRM yalnızca bir rota döndürdü. Alternatif uydurulmadı.');
   return;
  }
- document.querySelector('.sheet').classList.remove('details-open');
- $('co-alts').classList.toggle('open');
+ setRouteDetails(false);
+ var open=$('co-alts').classList.toggle('open');
+ document.body.classList[open?'add':'remove']('alts-open');
 };
-$('co-alts-close').onclick=function(){$('co-alts').classList.remove('open')};
+$('co-alts-close').onclick=function(){
+ $('co-alts').classList.remove('open');document.body.classList.remove('alts-open');
+};
 $('co-trip-details').onclick=function(){
- $('co-alts').classList.remove('open');
+ $('co-alts').classList.remove('open');document.body.classList.remove('alts-open');
  setMapLayerMenu(false);
- document.querySelector('.sheet').classList.add('details-open');
+ setRouteDetails(true);
 };
 $('co-reroute').onclick=function(){
  if(!currentRouteProgress||!goodGps(lastGpsFix)||!points.to){
