@@ -35,6 +35,7 @@ jobs:
         env:
           ID4_GOOGLE_MAPS_JS_KEY: ${{ secrets.ID4_GOOGLE_MAPS_JS_KEY }}
           ID4_YANDEX_MAPS_JS_KEY: ${{ secrets.ID4_YANDEX_MAPS_JS_KEY }}
+          ID4_TOMTOM_API_KEY: ${{ secrets.ID4_TOMTOM_API_KEY }}
         run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
       - name: Ensure changes do not touch Mola playback classes
         shell: bash

@@ -6,6 +6,7 @@
 'use strict';
 var active='osm',providerMap=null,traffic=null,routeLine=null,stationObjects=[],positionMarker=null;
 var requested=0,loaded={},loading={},lastTrafficRefresh=0;
+var leafletMap=null,tomtomTiles=[],tomtomTimer=null,tomtomPending=null;
 var configured=global.ID4_TRAFFIC_CONFIG||{};
 var holder=function(){return document.getElementById('traffic-provider-map')};
 function status(name,detail,ready){
@@ -13,7 +14,7 @@ function status(name,detail,ready){
   global.molaTrafficStatus({provider:name,status:ready?'active':'unavailable',detail:detail});
 }
 function validKey(key){return typeof key==='string'&&/^[A-Za-z0-9_\\-]{15,200}$/.test(key)}
-function keyFor(which){return configured[which==='google'?'googleKey':'yandexKey']||''}
+function keyFor(which){return configured[which==='google'?'googleKey':which==='yandex'?'yandexKey':'tomtomKey']||''}
 function scriptOnce(which,key){
  if(loaded[which])return Promise.resolve();
  if(loading[which])return loading[which];
@@ -30,6 +31,11 @@ function scriptOnce(which,key){
  return loading[which];
 }
 function reset(){
+ if(tomtomTimer!==null){clearInterval(tomtomTimer);tomtomTimer=null}
+ tomtomTiles.forEach(function(layer){if(leafletMap&&leafletMap.removeLayer)
+   leafletMap.removeLayer(layer)});
+ tomtomTiles=[];
+ if(tomtomPending){var abort=tomtomPending;tomtomPending=null;abort(false)}
  if(traffic&&typeof traffic.setMap==='function')traffic.setMap(null);
  if(providerMap&&active==='yandex'&&typeof providerMap.destroy==='function'){
   providerMap.destroy();
@@ -147,21 +153,87 @@ function openYandex(){
   });
  });
 }
+
+/* TomTom Orbis Traffic API v2; official transparent PNG tiles on existing OSM.
+ * One successfully loaded FLOW tile is required before declaring the overlay
+ * ready. OSRM route times remain traffic-free and are never adjusted. */
+function openTomTom(seq){
+ if(!leafletMap||!global.L||!global.L.tileLayer){
+  status('tomtom','Leaflet haritası hazır değil; trafik açılamadı.',false);
+  return Promise.resolve(false);
+ }
+ var key=keyFor('tomtom');
+ var root='https://api.tomtom.com/maps/orbis/traffic/';
+ var q='?apiVersion=2&style=dark&tileSize=256&key='+encodeURIComponent(key);
+ var flow=global.L.tileLayer(root+'flow/raster/tile/{z}/{x}/{y}'+q,
+  {tileSize:256,opacity:.8,zIndex:340,maxZoom:19,noWrap:true,attribution:'© TomTom'});
+ var incidents=global.L.tileLayer(root+'incidents/raster/tile/{z}/{x}/{y}'+q,
+  {tileSize:256,opacity:.95,zIndex:341,maxZoom:19,noWrap:true,attribution:'© TomTom'});
+ reset();active='tomtom';tomtomTiles=[flow,incidents];
+ status('tomtom','TomTom trafik döşemeleri kontrol ediliyor…',false);
+ return new Promise(function(resolve){
+  var finished=false,errors=0,confirmed=false;
+  function finish(ok){
+   if(finished)return;finished=true;
+   if(tomtomPending===finish)tomtomPending=null;
+   resolve(ok);
+  }
+  tomtomPending=finish;
+  var timeout=setTimeout(function(){
+   if(finished)return;
+   if(seq===requested&&!confirmed){
+    reset();active='osm';
+    status('tomtom','TomTom trafik zaman aşımı: OSM haritası korundu.',false);
+   }
+   finish(false);
+  },12000);
+  function loadedFlow(){
+   if(seq!==requested||active!=='tomtom'||finished)return;
+   confirmed=true;clearTimeout(timeout);
+   status('tomtom','TomTom Orbis trafik yoğunluğu ve yol olayları katmanı yüklendi. OSRM ETA trafiksizdir.',true);
+   finish(true);
+  }
+  function failedFlow(){
+   if(seq!==requested||confirmed||finished)return;
+   if(++errors>=3){
+    clearTimeout(timeout);reset();active='osm';
+    status('tomtom','TomTom trafik döşemesi alınamadı (izin, kota veya ağ). OSM açık.',false);
+    finish(false);
+   }
+  }
+  flow.on('tileload',loadedFlow).on('tileerror',failedFlow);
+  try{
+   flow.addTo(leafletMap);incidents.addTo(leafletMap);
+   if(active==='tomtom')tomtomTimer=setInterval(function(){
+     if(seq===requested&&active==='tomtom'){
+      if(typeof flow.redraw==='function')flow.redraw();
+      if(typeof incidents.redraw==='function')incidents.redraw();
+     }
+   },300000);
+  }catch(e){
+   clearTimeout(timeout);reset();active='osm';
+   status('tomtom','TomTom katmanı başlatılamadı; OSM açık.',false);
+   finish(false);
+  }
+ });
+}
+
 function activate(name,center,zoom){
  var seq=++requested;
  if(name==='osm'){
-  reset();active='osm';status('osm','OpenStreetMap haritasına dönüldü.',true);
+  reset();active='osm';status('osm','OpenStreetMap haritası açık; canlı trafik katmanı kapalı.',false);
   return Promise.resolve(true);
  }
- if(name!=='google'&&name!=='yandex')return Promise.resolve(false);
+ if(name!=='google'&&name!=='yandex'&&name!=='tomtom')return Promise.resolve(false);
  if(!validKey(keyFor(name))){
-  status(name,'Canlı trafik için '+(name==='google'?'Google Maps':'Yandex Maps')+
+  status(name,'Canlı trafik için '+(name==='google'?'Google Maps':name==='yandex'?'Yandex Maps':'TomTom Orbis')+
    ' API anahtarı ve uygun lisans gerekir. OSM haritası korunuyor.',false);
   return Promise.resolve(false);
  }
  if(Array.isArray(center)&&center.length===2&&center.every(Number.isFinite))
   lastCenter=center.slice(0,2);
  if(Number.isFinite(zoom))lastZoom=Math.min(18,Math.max(4,Math.round(zoom)));
+ if(name==='tomtom')return openTomTom(seq);
  // A failed load must not turn the working map blank.
  return scriptOnce(name,keyFor(name)).then(function(){
   if(seq!==requested)return false;
@@ -187,7 +259,8 @@ function activate(name,center,zoom){
 global.Id4TrafficProviders={
  activate:activate,
  getActive:function(){return active},
- configured:function(){return {google:validKey(keyFor('google')),yandex:validKey(keyFor('yandex'))}},
+ configured:function(){return {google:validKey(keyFor('google')),yandex:validKey(keyFor('yandex')),tomtom:validKey(keyFor('tomtom'))}},
+ attachLeaflet:function(map){leafletMap=map},
  updateRoute:function(points){currentRoute=routePoints(points);renderData()},
  updateStations:function(items){currentStations=Array.isArray(items)?items.slice(0,120):[];renderData()},
  updatePosition:function(x,follow){

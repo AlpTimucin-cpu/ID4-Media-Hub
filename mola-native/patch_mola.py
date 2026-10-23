@@ -135,6 +135,7 @@ for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leafl
 public_keys={
     "googleKey":os.environ.get("ID4_GOOGLE_MAPS_JS_KEY",""),
     "yandexKey":os.environ.get("ID4_YANDEX_MAPS_JS_KEY",""),
+    "tomtomKey":os.environ.get("ID4_TOMTOM_API_KEY",""),
 }
 for provider,key in public_keys.items():
     if key and (not key.isascii() or len(key)>200 or
