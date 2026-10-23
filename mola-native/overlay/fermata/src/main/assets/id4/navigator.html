@@ -1081,6 +1081,7 @@ function wipeRoute(){
  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
  if(line&&map){map.removeLayer(line);line=null}
  if(routeGlow&&map){map.removeLayer(routeGlow);routeGlow=null}
+ if(window.Id4TrafficProviders)window.Id4TrafficProviders.updateRoute([]);
  $('trip').style.display='none';
  var sheet=document.querySelector('.sheet');
  sheet.classList.remove('route-active');sheet.classList.remove('details-open');
@@ -1196,6 +1197,8 @@ function bindAutocomplete(field){
 }
 window.molaPosition=function(x){
  if(!x||!valid(x.lat,x.lon))return;
+ if(window.Id4TrafficProviders && goodGps(x))
+  window.Id4TrafficProviders.updatePosition(x,followMap);
  lastGpsFix=x;
  showRouteGpsProgress(x);
  if(followMap && goodGps(x) && map)map.panTo([x.lat,x.lon],{animate:false});
@@ -1384,7 +1387,10 @@ window.molaRoute=function(o){
  $('co-trip-charge-button').style.display='none';
  $('co-trip-charge-km').textContent='Mola km: —';
  suggestedCharge=null;$('station-suggestion').style.display='none';
- $('traffic-source').textContent='Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
+ $('traffic-source').textContent=window.Id4TrafficProviders &&
+    window.Id4TrafficProviders.getActive()!=='osm'?
+  'Seçilen sağlayıcıda trafik haritası açık; OSRM ETA trafiksizdir.':
+  'Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
   ' · kaza ve yol çalışması bilgisi içermez.';
  $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
  $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
