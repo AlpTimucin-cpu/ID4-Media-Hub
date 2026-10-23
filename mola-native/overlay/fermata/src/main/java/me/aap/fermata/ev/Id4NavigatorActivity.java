@@ -52,6 +52,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ExecutorService jobs=Executors.newSingleThreadExecutor();
     // Station requests must not hold back route or weather processing.
     private final ExecutorService stationJobs=Executors.newSingleThreadExecutor();
+    // Current Open-Meteo readings are MODEL values, never actual station sensors.
+    private final ExecutorService currentWeatherJobs=Executors.newSingleThreadExecutor();
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
@@ -69,6 +71,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private volatile JSONArray cachedAlternatives;
     private volatile boolean cachedRouteGps, cachedHasStop;
     private long lastSpeech;
+    private volatile long lastCurrentWeatherAt;
+    private volatile double lastCurrentWeatherLat=Double.NaN,
+                            lastCurrentWeatherLon=Double.NaN;
     private static final class Step {
         final double lat, lon;
         final String instruction;
@@ -152,6 +157,25 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
+        @JavascriptInterface public void refreshWeather(){
+            ui.post(()->{
+                Location loc=position;
+                if(loc!=null && System.currentTimeMillis()-loc.getTime()<=30000
+                   && loc.getAccuracy()<=60){
+                    fetchCurrentWeather(loc.getLatitude(),loc.getLongitude(),true,true);
+                }else if(cachedAlternatives!=null && cachedAlternatives.length()>0){
+                    try{
+                        JSONArray pts=cachedAlternatives.getJSONObject(0)
+                            .getJSONObject("geometry").getJSONArray("coordinates");
+                        JSONArray first=pts.getJSONArray(0);
+                        fetchCurrentWeather(first.getDouble(1),first.getDouble(0),
+                            false,true);
+                    }catch(Exception ignored){send("molaCurrentWeatherError",
+                        record("weather","Rota başlangıcı okunamadı."));}
+                }else send("molaCurrentWeatherError",
+                    record("weather","Hava için GPS konumu veya rota gerekiyor."));
+            });
+        }
         @JavascriptInterface public void landscape(boolean enabled){
             ui.post(()->{
                 if(destroyed || isFinishing())return;
@@ -456,6 +480,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             j.put("accuracy",location.getAccuracy());
             j.put("timeMs",location.getTime());}catch(Exception ignored){}
         send("molaPosition",j);
+        long liveFixAge=System.currentTimeMillis()-location.getTime();
+        if(liveFixAge>=0 && liveFixAge<=30000 && location.getAccuracy()<=60)
+            fetchCurrentWeather(location.getLatitude(),location.getLongitude(),true,false);
         long fixAge=System.currentTimeMillis()-location.getTime();
         if(!running || location.getAccuracy()>60 || fixAge<0 || fixAge>30000 ||
             nextStep>=steps.size())return;
@@ -658,6 +685,17 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         packet.optDouble("durationMin",Double.NaN),
                         System.currentTimeMillis());
                     send("molaRoute",packet);
+                    // Populate a GPS-independent current MODEL weather report at
+                    // the selected start; actual GPS takes precedence when fresh.
+                    try{
+                        JSONArray start=routeData.getJSONObject("geometry")
+                            .getJSONArray("coordinates").getJSONArray(0);
+                        Location live=position;
+                        boolean liveGps=live!=null && live.getAccuracy()<=60
+                            && System.currentTimeMillis()-live.getTime()<30000;
+                        fetchCurrentWeather(liveGps?live.getLatitude():start.getDouble(1),
+                            liveGps?live.getLongitude():start.getDouble(0),liveGps,false);
+                    }catch(Exception ignored){}
                     // Weather is a separate best-effort request after the drawn route.
                     final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
@@ -670,6 +708,68 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
+    }
+
+    /**
+     * Open-Meteo current-model report refreshed on a verified GPS fix or at the
+     * chosen route start. No fake surface station readings or weather scraping.
+     */
+    private void fetchCurrentWeather(double lat,double lon,boolean fromGps,
+                                     boolean userRefresh){
+        if(!valid(lat,lon)||destroyed)return;
+        long now=System.currentTimeMillis();
+        boolean moved=false;
+        if(Double.isFinite(lastCurrentWeatherLat)){
+            float[] d=new float[1];
+            Location.distanceBetween(lat,lon,lastCurrentWeatherLat,
+                lastCurrentWeatherLon,d);
+            moved=d[0]>15000;
+        }
+        if(!userRefresh && !moved && now-lastCurrentWeatherAt<600000)return;
+        // Tap refresh has a minimum of 30sec to avoid hammering free service.
+        if(userRefresh && !moved && now-lastCurrentWeatherAt<30000)return;
+        lastCurrentWeatherAt=now;
+        lastCurrentWeatherLat=lat;lastCurrentWeatherLon=lon;
+        final boolean gps=fromGps;
+        currentWeatherJobs.execute(()->{
+            try{
+                String uri="https://api.open-meteo.com/v1/forecast?latitude="+
+                    String.format(Locale.US,"%.5f",lat)+"&longitude="+
+                    String.format(Locale.US,"%.5f",lon)+
+                    "&current=temperature_2m,relative_humidity_2m,"+
+                    "precipitation,weather_code,wind_speed_10m,is_day"+
+                    "&timezone=GMT&timeformat=unixtime";
+                JSONObject model=new JSONObject(fetch(uri,100000))
+                    .getJSONObject("current");
+                double temp=model.optDouble("temperature_2m",Double.NaN);
+                double precip=model.optDouble("precipitation",Double.NaN);
+                double wind=model.optDouble("wind_speed_10m",Double.NaN);
+                long modelTime=model.optLong("time",0);
+                long age=Math.abs(System.currentTimeMillis()/1000-modelTime);
+                if(!Double.isFinite(temp)||!Double.isFinite(precip)||
+                    !Double.isFinite(wind)||modelTime<=0||age>5400)
+                    throw new IllegalStateException("Güncel model bulunamadı");
+                JSONObject result=new JSONObject()
+                    .put("temperature",temp).put("precipitation",precip)
+                    .put("wind",wind).put("weatherCode",
+                        model.optInt("weather_code",-1))
+                    .put("humidity",model.optDouble("relative_humidity_2m",
+                        Double.NaN))
+                    .put("isDay",model.optInt("is_day",-1))
+                    .put("modelTime",modelTime)
+                    .put("receivedAt",System.currentTimeMillis())
+                    .put("kind",gps?"gps":"route-start")
+                    .put("source","Open-Meteo")
+                    .put("modelBased",true).put("liveStationObservation",false);
+                if(!destroyed)send("molaCurrentWeather",result);
+            }catch(Exception e){
+                // Retry will be possible after 2 min rather than blanking a
+                // still-valid prior report at the first transient failure.
+                lastCurrentWeatherAt=System.currentTimeMillis()-480000;
+                if(!destroyed)send("molaCurrentWeatherError",
+                    record("weather","Güncel hava modeli alınamadı; bağlantı kontrol et."));
+            }
+        });
     }
 
     /**
@@ -961,7 +1061,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     @Override protected void onDestroy(){
         destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        jobs.shutdownNow();stationJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
+        jobs.shutdownNow();stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();
