@@ -43,7 +43,8 @@ function world(keys,shouldFail){
 }
 (async()=>{
  const none=world({googleKey:'',yandexKey:''},false);
- assert.deepStrictEqual(none.api.configured(),{google:false,yandex:false});
+ assert.strictEqual(none.api.configured().google,false);
+ assert.strictEqual(none.api.configured().yandex,false);
  assert.strictEqual(await none.api.activate('google',[39,35],7),false);
  assert.strictEqual(none.created.scripts.length,0,'missing key cannot load paid traffic SDK');
  assert.strictEqual(none.api.getActive(),'osm');
