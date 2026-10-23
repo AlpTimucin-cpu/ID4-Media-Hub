@@ -84,7 +84,8 @@ function world(keys,shouldFail){
  assert.strictEqual(await none.api.activate('google',[39,35],7),false);
  assert.strictEqual(none.created.scripts.length,0,'missing key cannot load paid traffic SDK');
  assert.strictEqual(none.api.getActive(),'osm');
- assert(none.created.states[0].detail.includes('API anahtarı'),'no fake traffic');
+ assert(none.created.states.some(x=>x.status==='unavailable'&&x.detail.includes('API anahtarı')),
+  'missing credentials must never turn on fake traffic');
  const valid=world({googleKey:'GOOGLE_TEST_KEY_123456789',
   yandexKey:'YANDEX_TEST_KEY_123456789'},false);
  valid.api.updateRoute([[39,35],[39.1,35.2]]);
