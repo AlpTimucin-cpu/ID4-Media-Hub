@@ -4,7 +4,7 @@
  */
 (function(global){
 'use strict';
-var active='osm',providerMap=null,traffic=null,routeLine=null,stationObjects=[];
+var active='osm',providerMap=null,traffic=null,routeLine=null,stationObjects=[],positionMarker=null;
 var requested=0,loaded={},loading={};
 var configured=global.ID4_TRAFFIC_CONFIG||{};
 var holder=function(){return document.getElementById('traffic-provider-map')};
@@ -37,8 +37,9 @@ function reset(){
  if(providerMap&&active==='google'){
   if(routeLine)routeLine.setMap(null);
   stationObjects.forEach(function(m){if(m&&m.setMap)m.setMap(null)});
+  if(positionMarker&&positionMarker.setMap)positionMarker.setMap(null);
  }
- traffic=null;routeLine=null;providerMap=null;stationObjects=[];
+ traffic=null;routeLine=null;providerMap=null;stationObjects=[];positionMarker=null;
  if(holder())holder().replaceChildren();
  document.body.classList.remove('provider-active');
 }
@@ -47,12 +48,14 @@ function routePoints(coords){
   return Array.isArray(p)&&p.length>1&&Number.isFinite(p[0])&&Number.isFinite(p[1]);
  }).slice(0,2400):[];
 }
-var currentRoute=[],currentStations=[],lastCenter=[38.9,35.1],lastZoom=7;
+var currentRoute=[],currentStations=[],lastPosition=null,lastCenter=[38.9,35.1],lastZoom=7;
 function renderData(){
  if(!providerMap||!holder())return;
  if(active==='google'){
   if(routeLine)routeLine.setMap(null);
   stationObjects.forEach(function(marker){if(marker&&marker.setMap)marker.setMap(null)});
+  if(positionMarker&&positionMarker.setMap)positionMarker.setMap(null);
+  positionMarker=null;
   stationObjects=[];
   if(currentRoute.length>=2){
    routeLine=new global.google.maps.Polyline({map:providerMap,
@@ -65,10 +68,13 @@ function renderData(){
     position:{lat:station.lat,lng:station.lon},
     title:String(station.title||'Şarj istasyonu').slice(0,80)}));
   });
+  if(lastPosition)positionMarker=new global.google.maps.Marker({map:providerMap,
+   position:{lat:lastPosition[0],lng:lastPosition[1]},title:'Aracım · GPS'});
  }else if(active==='yandex'){
   if(routeLine)providerMap.geoObjects.remove(routeLine);
   stationObjects.forEach(function(obj){providerMap.geoObjects.remove(obj)});
-  stationObjects=[];
+  if(positionMarker)providerMap.geoObjects.remove(positionMarker);
+  positionMarker=null;stationObjects=[];
   if(currentRoute.length>=2){
    routeLine=new global.ymaps.Polyline(currentRoute,{},{
     strokeColor:'#258ee9',strokeWidth:6,strokeOpacity:.93});
@@ -80,6 +86,11 @@ function renderData(){
     hintContent:String(station.title||'Şarj istasyonu').slice(0,80)});
    providerMap.geoObjects.add(obj);stationObjects.push(obj);
   });
+  if(lastPosition){
+   positionMarker=new global.ymaps.Placemark(lastPosition,{
+    hintContent:'Aracım · GPS'});
+   providerMap.geoObjects.add(positionMarker);
+  }
  }
 }
 function openGoogle(){
@@ -149,6 +160,20 @@ global.Id4TrafficProviders={
  configured:function(){return {google:validKey(keyFor('google')),yandex:validKey(keyFor('yandex'))}},
  updateRoute:function(points){currentRoute=routePoints(points);renderData()},
  updateStations:function(items){currentStations=Array.isArray(items)?items.slice(0,120):[];renderData()},
+ updatePosition:function(x,follow){
+  if(!x||!Number.isFinite(x.lat)||!Number.isFinite(x.lon))return;
+  lastPosition=[x.lat,x.lon];
+  if(!providerMap)return;
+  if(!positionMarker){renderData();return}
+  if(active==='google'){
+   if(positionMarker.setPosition)positionMarker.setPosition({lat:x.lat,lng:x.lon});
+   if(follow&&providerMap.panTo)providerMap.panTo({lat:x.lat,lng:x.lon});
+  }else if(active==='yandex'){
+   if(positionMarker.geometry&&positionMarker.geometry.setCoordinates)
+    positionMarker.geometry.setCoordinates(lastPosition);
+   if(follow&&providerMap.setCenter)providerMap.setCenter(lastPosition);
+  }
+ },
  updateViewport:function(center,zoom){
   if(!Array.isArray(center)||!center.every(Number.isFinite))return;
   lastCenter=center.slice(0,2);
