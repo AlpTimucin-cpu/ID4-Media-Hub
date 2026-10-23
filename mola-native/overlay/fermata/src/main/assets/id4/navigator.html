@@ -723,6 +723,86 @@ body.provider-active .traffic-map-badge{display:flex}
  #traffic-mini-label{display:block;font-size:9px;color:#c0e4ea}
  .current-weather-chip{flex-wrap:wrap;max-width:calc(100% - 90px)}
 }
+
+/* Readability pass based on a real 1536x691 landscape screenshot:
+   remove outlined doubled glyphs, clip long labels safely, and preserve map. */
+@media (orientation:landscape) and (min-width:640px){
+ .top{height:74px!important;padding:6px 11px!important;gap:5px}
+ .top .brand{flex:0 1 23%;min-width:195px;max-width:340px}
+ .brand strong{font-size:clamp(12px,1.4vw,19px);letter-spacing:1px}
+ .brand small{font-size:clamp(9px,.75vw,11px);line-height:1.25}
+ .cockpit-tabs{gap:5px;min-width:0}
+ .cockpit-tabs button{padding:9px clamp(8px,.9vw,13px);font-size:clamp(10px,.82vw,13px);
+  min-height:44px;border-radius:11px}
+ .top .round{width:42px;height:42px;flex:0 0 42px;font-size:20px}
+ .vehicle-cockpit{inset:74px 0 0}
+ .cockpit-left{left:12px;top:7px;width:30.5%;gap:5px}
+ .cockpit-left>.cockpit-panel{padding:8px 12px}
+ .cockpit-smallgrid{gap:5px}
+ .cockpit-smallgrid .cockpit-panel{padding:6px 9px}
+ .cockpit-left .cockpit-title{font-size:clamp(9px,.75vw,11px);
+  letter-spacing:0;line-height:1.3}
+ .cockpit-left .cockpit-main-value{font-size:clamp(24px,3vw,38px);
+  letter-spacing:0}
+ .cockpit-left .cockpit-value{font-size:clamp(14px,1.45vw,21px)}
+ .cockpit-value,.cockpit-main-value,.tripbar-number{
+  -webkit-text-stroke:0!important;text-shadow:none!important;
+  font-weight:750!important;letter-spacing:0!important;
+  overflow-wrap:normal;word-break:normal
+ }
+ .cockpit-panel{min-width:0}
+ .cockpit-left .cockpit-value,.cockpit-right .cockpit-value{
+  line-height:1.12;overflow-wrap:anywhere
+ }
+ .cockpit-slim{padding:6px 8px!important;min-height:41px}
+ .cockpit-slim small{font-size:10px;max-height:32px;overflow:hidden}
+ .cockpit-right{right:12px;top:7px;width:22%;max-width:none;gap:4px;
+  max-height:calc(100% - 153px);overflow:hidden}
+ .cockpit-right .cockpit-panel{padding:10px 12px}
+ .cockpit-right .cockpit-title{margin-top:8px;font-size:10px}
+ .cockpit-right .cockpit-title:first-child{margin-top:0}
+ .cockpit-right .cockpit-value{font-size:clamp(15px,1.5vw,23px);
+  line-height:1.14;font-weight:700}
+ #co-destination{font-size:clamp(17px,1.55vw,23px);
+  max-height:2.35em;overflow:hidden;overflow-wrap:break-word}
+ #co-drive-time,#co-route-km,#co-stops,#co-eta{font-variant-numeric:tabular-nums}
+ .cockpit-right #co-weather,.cockpit-right .cockpit-condition{display:none}
+ .cockpit-tripbar .tripbar-number{font-size:clamp(15px,1.4vw,22px)!important;
+  line-height:1.2;max-height:2.4em;overflow:hidden}
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+  left:32%;right:calc(22% + 18px);bottom:9px;min-height:111px;
+  grid-template-columns:minmax(110px,28%) 1fr;gap:7px;padding:9px 10px;
+  max-height:160px;overflow-y:auto
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child{
+  grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child .tripbar-label{
+  margin-right:4px
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child .tripbar-number{
+  font-size:16px!important
+ }
+ .tripbar-smallbutton{padding:6px 9px;font-size:11px;min-height:32px}
+ .tripbar-sub,#co-cost-note{font-size:10px;line-height:1.3}
+ .tripbar-mid{flex-wrap:wrap;gap:3px;font-size:10px}
+ .cockpit-quick{left:12px;width:30.5%;bottom:5px;gap:5px}
+ .cockpit-quick button{padding:8px 6px}
+ .buttons{left:32.5%!important;top:125px!important}
+ .buttons #plus,.buttons #minus{display:none!important}
+ .current-weather-chip{left:32%;max-width:calc(46% - 16px);top:84px}
+ .map-credit{bottom:5px!important;right:12px!important;
+  background:rgba(2,22,32,.9)}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:640px){
+ .cockpit-left .cockpit-smallgrid .cockpit-panel:nth-child(n+3){display:none}
+ .cockpit-right{max-height:calc(100% - 138px)}
+ .cockpit-right .cockpit-panel{padding:7px 9px}
+ .cockpit-right .cockpit-title{margin-top:4px}
+ .cockpit-left>.cockpit-panel{padding:7px 10px}
+ .cockpit-left .cockpit-main-value{font-size:clamp(22px,2.5vw,34px)}
+ .vehicle-cockpit.has-route .cockpit-tripbar{max-height:143px}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -749,19 +829,19 @@ body.provider-active .traffic-map-badge{display:flex}
 <div id="vehicle-cockpit" class="vehicle-cockpit" aria-label="ID.4 saydam araç göstergeleri">
  <div class="cockpit-left">
   <div class="cockpit-panel">
-   <div class="cockpit-title">BATARYA DOLULUK · OBD</div>
+   <div class="cockpit-title">BATARYA DOLULUĞU · OBD</div>
    <div class="cockpit-age" id="co-sensor-age">Ölçüm bekleniyor</div>
    <div id="co-soc" class="cockpit-value cockpit-main-value cockpit-soc">— %</div>
    <div class="cockpit-bar"><div id="co-soc-fill"></div></div>
   </div>
   <div class="cockpit-panel">
-   <div class="cockpit-title">MENZİL · PROFİL MODELİ (%15 REZERV)</div>
+   <div class="cockpit-title">TAHMİNİ MENZİL · %15 REZERV</div>
    <div id="co-range" class="cockpit-value cockpit-main-value">— km</div>
   </div>
   <div class="cockpit-smallgrid">
    <div class="cockpit-panel"><div class="cockpit-title">HV BATARYA GERİLİMİ</div><div id="co-voltage" class="cockpit-value">— V</div></div>
    <div class="cockpit-panel"><div class="cockpit-title">BATARYA SICAKLIĞI</div><div id="co-temp" class="cockpit-value">— °C</div></div>
-   <div class="cockpit-panel"><div class="cockpit-title">ÇALIŞMA / ŞARJ</div><div id="co-mode" class="cockpit-value">—</div></div>
+   <div class="cockpit-panel"><div class="cockpit-title">ARAÇ / ŞARJ DURUMU</div><div id="co-mode" class="cockpit-value">—</div></div>
    <div class="cockpit-panel"><div class="cockpit-title">ANLIK GÜÇ</div><div id="co-power" class="cockpit-value">— kW</div></div>
    <div class="cockpit-panel"><div class="cockpit-title">ORTALAMA TÜKETİM</div><div id="co-consumption" class="cockpit-value">— kWh/100 km</div></div>
    <div class="cockpit-panel"><div class="cockpit-title">YOL ENERJİSİ · MODEL</div><div id="co-energy" class="cockpit-value">— kWh</div></div>
@@ -774,7 +854,7 @@ body.provider-active .traffic-map-badge{display:flex}
   <div class="cockpit-panel">
    <div class="cockpit-title">HEDEF</div><div id="co-destination" class="cockpit-value">Rota bekleniyor</div>
    <div class="cockpit-title">ROTA UZUNLUĞU</div><div id="co-route-km" class="cockpit-value">— km</div>
-   <div class="cockpit-title">TAHMİNİ SÜRÜŞ</div><div id="co-drive-time" class="cockpit-value">— dk</div>
+   <div class="cockpit-title">TAHMİNİ SÜRÜŞ · TRAFİKSİZ</div><div id="co-drive-time" class="cockpit-value">— dk</div>
    <div class="cockpit-title">ŞARJ MOLASI</div><div id="co-stops" class="cockpit-value">—</div>
    <div class="cockpit-title">TAHMİNİ VARIŞ · TRAFİKSİZ</div><div id="co-eta" class="cockpit-value">—</div>
    <div class="cockpit-title">İLK ROTA TALİMATI</div><div id="co-maneuver" class="cockpit-direction">Rota bekleniyor</div>
@@ -1633,7 +1713,7 @@ window.molaRoute=function(o){
  $('co-trip-arrival-note').textContent=o.stopIncluded?
   'Şarj miktarı bilinmiyor':'Güncel OBD gerekli';
  $('co-route-km').textContent=String(o.distanceKm)+' km';
- $('co-drive-time').textContent=String(o.durationMin)+' dk · trafiksiz tahmin';
+ $('co-drive-time').textContent=Math.round(Number(o.durationMin))+' dk';
  $('co-stops').textContent=o.stopIncluded?'1 mola seçildi':
    o.chargingNeededByModel?'Şarj gerekebilir':'Henüz planlanmadı';
  $('co-eta').textContent=Number.isFinite(o.durationMin)&&o.durationMin>=0?
