@@ -635,6 +635,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
+var cachedJourneyWeather=null;
 var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
@@ -939,6 +940,7 @@ window.molaWeather=function(packet){
 };
 window.molaJourneyWeather=function(packet){
  if(!packet||!Array.isArray(packet.cards)||packet.cards.length!==5)return;
+ cachedJourneyWeather=packet;
  var list=$('journey-points');list.replaceChildren();
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
@@ -962,7 +964,7 @@ window.molaJourneyWeather=function(packet){
    cell.onclick=function(){
     if(map)map.panTo([w.latitude,w.longitude],{animate:false});
    };
-   if(map && w.available===true){
+   if(map && w.available===true && $('journey-weather').classList.contains('open')){
     var marker=L.circleMarker([w.latitude,w.longitude],{
       radius:6,color:'#fff',weight:2,fillColor:'#58afd9',fillOpacity:.98
     }).addTo(map);
@@ -1019,6 +1021,7 @@ function native(name){
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
 function wipeRoute(){
+ cachedJourneyWeather=null;
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
  $('journey-weather').classList.remove('open');
@@ -1249,6 +1252,8 @@ window.molaAlternativeError=function(o){
 };
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
+ cachedJourneyWeather=null;
+ $('journey-weather').classList.remove('open');
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
  $('journey-points').textContent='Yol boyunca hava tahmini yükleniyor...';
@@ -1569,11 +1574,21 @@ $('layer-traffic').onclick=function(){
  $('traffic-source').textContent='Canlı trafik için lisanslı veri sağlayıcısı gerekir. '
   +'Tahmini/kurgusal trafik katmanı çizilmiyor.';
 };
+function hideJourneyWeather(){
+ $('journey-weather').classList.remove('open');
+ weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
+ weatherMarkers=[];
+}
 $('layer-weather').onclick=function(){
  if(!currentRouteProgress){msg('Hava için önce rota oluştur.');return}
- $('journey-weather').classList.toggle('open');
+ if($('journey-weather').classList.contains('open')){
+  hideJourneyWeather();return;
+ }
+ $('journey-weather').classList.add('open');
+ if(cachedJourneyWeather)window.molaJourneyWeather(cachedJourneyWeather);
+ else $('journey-points').textContent='Yol boyunca model tahmini yükleniyor...';
 };
-$('journey-close').onclick=function(){$('journey-weather').classList.remove('open')};
+$('journey-close').onclick=hideJourneyWeather;
 if(map&&map.on){
  map.on('moveend',function(){
   if(stationLayerMode!=='all'&&stationLayerMode!=='ccs')return;
