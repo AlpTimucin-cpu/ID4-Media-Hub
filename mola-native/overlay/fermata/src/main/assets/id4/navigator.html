@@ -698,6 +698,31 @@ body.provider-active .traffic-map-badge{display:flex}
   max-height:calc(100vh - 153px)!important}
  .buttons{top:68px!important;left:35%!important}
 }
+
+/* Compact driving conditions strip: don't stack weather, traffic and zoom widgets. */
+@media (orientation:landscape) and (min-width:640px){
+ .current-weather-chip{display:flex;max-width:min(510px,40%);left:35%;top:113px;
+  gap:9px;z-index:906;padding:5px 9px;min-height:39px}
+ .current-weather-chip #current-weather-label{max-width:57%;white-space:nowrap;
+  text-overflow:ellipsis;overflow:hidden}
+ #traffic-mini-label{font-size:10px;line-height:1.25;
+  border-left:1px solid #3e7084;padding-left:8px;color:#cfe9ee;
+  max-width:38%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #traffic-mini-label.live{color:#64f9c9}
+ .buttons{top:166px!important;left:35%!important;right:auto!important}
+ .buttons #plus,.buttons #minus{display:none}
+ .map-credit{top:auto!important;bottom:9px;left:auto!important;right:15px!important;
+  font-size:9px;z-index:892}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .current-weather-chip{top:60px;left:35%;font-size:10px;max-width:41%;min-height:32px}
+ .buttons{top:110px!important}
+ #traffic-mini-label{font-size:9px}
+}
+@media (orientation:portrait), (max-width:639px){
+ #traffic-mini-label{display:block;font-size:9px;color:#c0e4ea}
+ .current-weather-chip{flex-wrap:wrap;max-width:calc(100% - 90px)}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -713,6 +738,7 @@ body.provider-active .traffic-map-badge{display:flex}
 </div>
 <div class="current-weather-chip" id="current-weather-chip">
  <span id="current-weather-label">☁ Hava: rota veya GPS bekleniyor</span>
+ <span id="traffic-mini-label">🚦 Trafik: bağlanmadı</span>
  <button type="button" id="current-weather-refresh" aria-label="Güncel hava modelini yenile" title="Güncel hava verisini yenile">↻</button>
 </div>
 <div class="traffic-map-badge" id="traffic-map-badge">
@@ -1955,6 +1981,15 @@ window.molaTrafficStatus=function(o){
  $('traffic-help').textContent=String(o.detail||'Trafik durum bilgisi yok');
  $('traffic-map-provider').textContent=provider==='google'?'Google Trafik':
   provider==='yandex'?'Yandex Trafik':'OpenStreetMap';
+ var level=Number(o.level),observed=Number(o.observedAt);
+ var validLevel=provider==='yandex'&&active&&Number.isInteger(level)&&
+  level>=0&&level<=10&&Number.isFinite(observed)&&
+  Math.abs(Date.now()-observed)<60*60*1000;
+ $('traffic-mini-label').textContent=validLevel?
+   '🚦 Yandex '+level+'/10 · canlı kaynak':
+   active?(provider==='google'?'🚦 Google trafik haritası':
+      '🚦 Yandex trafik katmanı'):'🚦 Trafik verisi yok';
+ $('traffic-mini-label').classList[active?'add':'remove']('live');
  $('layer-status').classList[active?'remove':'add']('warning');
  $('layer-status').textContent=String(o.detail||'Trafik verisi yok');
  ['google','yandex','osm'].forEach(function(name){
