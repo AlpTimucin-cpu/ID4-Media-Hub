@@ -108,6 +108,15 @@ jobs:
           assert 'Id4EnergyData.load' in a
           print('PASS: no manual energy form; route/OBD/price bound to sources')
           PY
+      - name: Reject uncalibrated ELM327 readings as live vehicle measurements
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/obd-safety"
+          javac -encoding UTF-8 -d "$RUNNER_TEMP/obd-safety" \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java \
+            integration/mola-native/tests/Id4MebDecoderSafetyTest.java
+          java -ea -cp "$RUNNER_TEMP/obd-safety" Id4MebDecoderSafetyTest
       - name: Install matching Android toolchain
         uses: android-actions/setup-android@v3
         with:

@@ -48,3 +48,14 @@ assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in navigator
 assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
 
 print("PASS: no manual energy form; timestamps per OBD sensor; route energy connected.")
+
+# An ELM327 socket is not a calibrated ID.4 sensor feed. Keep numbers blank
+# until a vehicle-specific Car Scanner log comparison is confirmed.
+decoder=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java").read_text()
+assert 'VEHICLE_PROFILE_VALIDATED=false' in decoder
+assert 'if(!VEHICLE_PROFILE_VALIDATED)return null;' in decoder
+assert 'hasPositiveReply(String did,String response)' in decoder
+assert 'Car Scanner karşılaştırması gerekli' in obd
+assert 'lastRawResponseAt' in telemetry
+assert '.cockpit-tripbar>div:first-child{display:none}' in html
+assert 'max-height:395px' in html

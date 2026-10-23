@@ -348,7 +348,7 @@ public final class Id4ObdActivity extends Activity {
                 if(response.indexOf('?')>=0 || response.toUpperCase(Locale.ROOT).contains("ERROR"))
                     throw new IllegalStateException("Adaptör komutu desteklemiyor: "+command);
             }
-            showStatus("Bağlandı: VW MEB salt-okunur deneysel ölçüm");
+            showStatus("ELM327 bağlı · MEB DID yanıtları kontrol ediliyor; değerler kalibre edilmedi");
             while(active){
                 for(int i=0;i<Id4MebDecoder.SENSORS.size() && active;i++){
                     Id4MebDecoder.Sensor item=Id4MebDecoder.SENSORS.get(i);
@@ -372,7 +372,7 @@ public final class Id4ObdActivity extends Activity {
                     final int idx=i;
                     if(result!=null){
                         updatedAt[i]=System.currentTimeMillis();
-                        final String line=item.name+": "+result+" • CANLI";
+                        final String line=item.name+": "+result+" • VIN için onaylı";
                         final String did=item.did,displayValue=result;
                         ui.post(()->{
                             if(active&&!isFinishing()){
@@ -380,6 +380,10 @@ public final class Id4ObdActivity extends Activity {
                                 renderCore(did,displayValue);
                             }
                         });
+                    }else if(Id4MebDecoder.hasPositiveReply(item.did,answer)){
+                        final String line=item.name+": DID 0x"+item.did+
+                            " · ECU yanıtı var (Car Scanner karşılaştırması gerekli)";
+                        ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});
                     }else if(System.currentTimeMillis()-updatedAt[i]>25000){
                         final String line=item.name+": —  (ECU yanıtı yok)";
                         ui.post(()->{if(active&&!isFinishing())fields[idx].setText(line);});

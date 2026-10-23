@@ -58,6 +58,7 @@ final class Id4LiveTelemetry {
     private Thread thread;
     private long sessionId;
     private Data data=new Data();
+    private long lastRawResponseAt=0L;
     private static final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     Id4LiveTelemetry(Context context,Listener listener){
         this.context=context.getApplicationContext();this.listener=listener;
@@ -66,6 +67,7 @@ final class Id4LiveTelemetry {
         stop();
         enabled=true;
         final long session=++sessionId;
+        lastRawResponseAt=0L;
         publish("ELM327 bağlanıyor...",false);
         thread=new Thread(()->loop(device,session),"Mola-ID4-dashboard-readonly");
         thread.start();
@@ -94,7 +96,15 @@ final class Id4LiveTelemetry {
         for(Id4MebDecoder.Sensor sensor:Id4MebDecoder.SENSORS){
             if(did.equals(sensor.did)) {decoded=Id4MebDecoder.decode(sensor,response);break;}
         }
-        if(decoded==null)return;
+        if(decoded==null){
+            if(!Id4MebDecoder.isVehicleProfileValidated() &&
+                Id4MebDecoder.hasPositiveReply(did,response)){
+                lastRawResponseAt=System.currentTimeMillis();
+                publishForSession(session,
+                    "ELM327: ECU yanıtı var · Car Scanner ile PID doğrulaması gerekli",true);
+            }
+            return;
+        }
         long now=System.currentTimeMillis();
         switch(did){
             case "028C":
@@ -109,7 +119,7 @@ final class Id4LiveTelemetry {
             default:return;
         }
         data.updatedAt=now;
-        data.status="ELM327 bağlı · doğrulanmış VW ECU verisi alınıyor";
+        data.status="ELM327 bağlı · araç üzerinde onaylanmış PID verisi";
         Data result=data.displayAt(now);main.post(()->listener.onData(result));
     }
     private void loop(BluetoothDevice device,long session){
@@ -143,8 +153,9 @@ final class Id4LiveTelemetry {
                 }
                 boolean received;
                 synchronized(this){
-                    received=active(session) && data.updatedAt>0 &&
-                        System.currentTimeMillis()-data.updatedAt<6000;
+                    received=active(session) &&
+                        ((data.updatedAt>0 && System.currentTimeMillis()-data.updatedAt<6000) ||
+                         (lastRawResponseAt>0 && System.currentTimeMillis()-lastRawResponseAt<6000));
                 }
                 if(received){
                     cyclesWithoutValidResponse=0;

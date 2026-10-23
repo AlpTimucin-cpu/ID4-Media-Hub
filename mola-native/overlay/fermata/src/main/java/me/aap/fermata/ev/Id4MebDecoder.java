@@ -10,6 +10,19 @@ import java.util.Locale;
  * 2024 ID.4 Pure ECUs. Never returns a value from a negative/incomplete reply.
  */
 public final class Id4MebDecoder {
+    // No vehicle-specific Car Scanner/ECU response comparison has been signed off.
+    // Never turn this on based solely on plausible values or a successful build.
+    private static final boolean VEHICLE_PROFILE_VALIDATED=false;
+    public static boolean isVehicleProfileValidated(){return VEHICLE_PROFILE_VALIDATED;}
+    /** Diagnostic handshake only; not a calibrated sensor measurement. */
+    public static boolean hasPositiveReply(String did,String response){
+        if(did==null||!did.matches("[0-9A-Fa-f]{4}")||response==null)return false;
+        String up=response.toUpperCase(Locale.ROOT);
+        if(up.contains("NO DATA")||up.contains("ERROR")||up.contains("7F22")||
+           up.contains("STOPPED")||up.contains("UNABLE"))return false;
+        String compact=up.replaceAll("[^0-9A-F]","");
+        return compact.contains("62"+did.toUpperCase(Locale.ROOT));
+    }
     public static final class Sensor {
         public final String did, category, name;
         private final int kind;
@@ -38,7 +51,7 @@ public final class Id4MebDecoder {
     }
     private Id4MebDecoder(){}
     public static String decode(Sensor sensor,String response){
-        if(response==null || response.isEmpty() || sensor==null)return null;
+        if(!VEHICLE_PROFILE_VALIDATED || response==null || response.isEmpty() || sensor==null)return null;
         String p=response.toUpperCase(Locale.ROOT);
         if(p.contains("NO DATA") || p.contains("ERROR") || p.contains("STOPPED")
           || p.contains("UNABLE") || p.contains("7F22"))return null;
@@ -93,6 +106,7 @@ public final class Id4MebDecoder {
     }
     /** Numeric BMS reading for local session statistics; null on invalid UDS. */
     public static Double bmsSoc(String response){
+        if(!VEHICLE_PROFILE_VALIDATED)return null;
         String payload=positivePayload("028C",response,2);
         if(payload==null)return null;
         try{
@@ -102,6 +116,7 @@ public final class Id4MebDecoder {
     }
     /** Verified UDS 0x62 status byte only. Unknown code is NOT charging off. */
     public static Integer chargeModeCode(String response){
+        if(!VEHICLE_PROFILE_VALIDATED)return null;
         String payload=positivePayload("7448",response,2);
         if(payload==null)return null;
         try{
