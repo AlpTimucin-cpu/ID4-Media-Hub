@@ -58,6 +58,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private Id4LiveTelemetry telemetry;
     private Id4StationCatalog stationCatalog;
     private volatile int stationRequestId;
+    private volatile int routeStationRequestId;
     private Id4LiveTelemetry.Data latestObd=new Id4LiveTelemetry.Data();
     private LocationManager locationManager;
     private TextToSpeech tts;
@@ -186,7 +187,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             voice=on;if(!on && tts!=null)tts.stop();
         }
         @JavascriptInterface public void stop() {
-            running=false;generation++;stationRequestId++;
+            running=false;generation++;stationRequestId++;routeStationRequestId++;
             steps.clear();nextStep=0;
         }
         @JavascriptInterface public void suggest(String field,String query,int requestId){
@@ -204,7 +205,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     return;
                 }
                 int selectionGeneration=++generation;
-                stationRequestId++;
+                routeStationRequestId++;
                 final boolean gps=cachedRouteGps,stop=cachedHasStop;
                 jobs.execute(()->{
                     try{renderRouteOption(available,index,gps,stop,selectionGeneration);}
@@ -330,10 +331,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.remove("suggested"); // already travelling via a stop; avoid second suggestion
                 packet.put("stopIncluded",true);
             }
-            if(!destroyed && generation==routeGeneration && stationRequestId==stationRequest)
+            if(!destroyed && generation==routeGeneration && routeStationRequestId==stationRequest)
                 send("molaStations",packet);
         }catch(Exception e){
-            if(!destroyed && generation==routeGeneration && stationRequestId==stationRequest)
+            if(!destroyed && generation==routeGeneration && routeStationRequestId==stationRequest)
                 send("molaStationError",record("stations",
                     "Rota çevresi EPDK verisi yüklenemedi: "+e.getClass().getSimpleName()));
         }
@@ -416,10 +417,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .put("livePrices",false).put("liveAvailability",false)
                 .put("modelNote","OSRM alternatifleri, 16–24 kWh/100 km, "
                    +"52 kWh batarya ve %15 rezerv. CCS yakınlığı yol erişimi değildir.");
-            if(!destroyed && generation==routeGeneration && stationRequestId==stationTicket)
+            if(!destroyed && generation==routeGeneration && routeStationRequestId==stationTicket)
                 send("molaAlternatives",response);
         }catch(Exception e){
-            if(!destroyed && generation==routeGeneration && stationRequestId==stationTicket)
+            if(!destroyed && generation==routeGeneration && routeStationRequestId==stationTicket)
                 send("molaAlternativeError",record("alternatives",
                     "Alternatiflerin şarj analizi yüklenemedi."));
         }
@@ -548,7 +549,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         boolean verifiedGps=useGps && position!=null && position.getAccuracy()<=60 &&
             System.currentTimeMillis()-position.getTime()<=30000;
         final int myGeneration=++generation;
-        stationRequestId++; // Invalidate the previous map/route charger batch.
+        routeStationRequestId++; // Invalidate the previous ROUTE charger batch only.
         jobs.execute(()->{
             try{
                 String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
@@ -662,7 +663,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
                     jobs.execute(()->loadJourneyWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
-                    final int stationTicket=++stationRequestId;
+                    final int stationTicket=++routeStationRequestId;
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
                     stationJobs.execute(()->loadAlternativeCards(routes,myGeneration,stationTicket,
                         optionIndex,hasStop));
@@ -958,7 +959,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(telemetry!=null)telemetry.stop();super.onPause();
     }
     @Override protected void onDestroy(){
-        destroyed=true;running=false;generation++;stationRequestId++;
+        destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();stationJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
