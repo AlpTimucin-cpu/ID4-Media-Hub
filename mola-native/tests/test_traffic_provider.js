@@ -53,12 +53,14 @@ function world(keys,shouldFail){
   yandexKey:'YANDEX_TEST_KEY_123456789'},false);
  valid.api.updateRoute([[39,35],[39.1,35.2]]);
  valid.api.updateStations([{lat:39,lon:35,title:'Gerçek örnek test istasyonu'}]);
+ valid.api.updatePosition({lat:39.01,lon:35.02},false);
  assert.strictEqual(await valid.api.activate('google',[39,35],8),true);
  assert.strictEqual(valid.api.getActive(),'google');
  assert.strictEqual(valid.created.googleMaps,1);
  assert.strictEqual(valid.created.googleTraffic,1);
  assert.strictEqual(valid.created.routes,1);
- assert.strictEqual(valid.created.stations,1);
+ assert.strictEqual(valid.created.stations,2,
+  'provider should retain both station and GPS position pins');
  assert(valid.flags.has('provider-active'));
  assert(valid.created.scripts[0].startsWith('https://maps.googleapis.com/'),
    'Google SDK must come from official host');
