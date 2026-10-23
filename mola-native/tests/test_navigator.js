@@ -25,7 +25,7 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,disconnectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
 const drawnMarkers=[];
 const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
@@ -56,7 +56,7 @@ const win={
   route(...args){calls.route.push(args)},
   routeVia(...args){calls.routeVia.push(args)},
   location(){calls.location++},stop(){calls.stop++},
-  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},
+  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},disconnectObd(){calls.disconnectObd++},
   visibleStations(...args){calls.visible.push(args)},
   visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
@@ -226,11 +226,20 @@ assert.equal(get('co-temp').textContent,'23 °C');
 assert.equal(get('co-mode').textContent,'Ready');
 assert.equal(get('co-range').textContent,'106–159 km',
  'only verified SoC may generate clearly-labelled model range');
-assert(html.includes('MENZİL · PROFİL MODELİ (%15 REZERV)'),
- 'the model-range HUD label must not claim real BMS range');
+assert(html.includes('TAHMİNİ MENZİL · %15 REZERV'),
+ 'the model-range HUD label must disclose modelling and reserve assumption');
 assert.equal(get('co-power').textContent,'— kW','unverified kW must stay blank');
 get('co-connect').onclick();
 assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
+get('co-disconnect').onclick();
+assert.equal(calls.disconnectObd,1,
+ 'user must be able to release the ELM327 adapter for Car Scanner');
+assert(html.includes('Car Scanner kapalıyken ELM327 bağla'),
+ 'OBD help must explain Car Scanner cannot share the same Bluetooth SPP connection');
+assert(html.includes('-webkit-text-stroke:0!important'),
+ 'black thick outlines must be disabled to prevent double-bordered text');
+assert(html.includes('font-size:clamp(15px,1.5vw,23px)'),
+ 'right side ETA and destination should use smaller readable type');
 get('co-station-tab').onclick();
 assert.equal(calls.filtered.length,3,
  'cockpit charger tab must query all currently visible EPDK stations');
