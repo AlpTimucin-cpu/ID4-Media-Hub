@@ -109,6 +109,7 @@ final class Id4LiveTelemetry {
             default:return;
         }
         data.updatedAt=now;
+        data.status="ELM327 bağlı · doğrulanmış VW ECU verisi alınıyor";
         Data result=data.displayAt(now);main.post(()->listener.onData(result));
     }
     private void loop(BluetoothDevice device,long session){
@@ -131,12 +132,30 @@ final class Id4LiveTelemetry {
             }
             publishForSession(session,"ELM327 bağlı · veriler okunuyor",true);
             String[] dids={"028C","7448","1E3B","2A0B","189D"};
+            int cyclesWithoutValidResponse=0;
+            boolean ecuWarningSent=false;
             while(active(session)){
                 for(String did:dids){
                     if(!active(session))break;
                     String answer=ask(s,in,out,"22"+did);
                     measurement(session,did,answer);
                     Thread.sleep(90);
+                }
+                boolean received;
+                synchronized(this){
+                    received=active(session) && data.updatedAt>0 &&
+                        System.currentTimeMillis()-data.updatedAt<6000;
+                }
+                if(received){
+                    cyclesWithoutValidResponse=0;
+                    ecuWarningSent=false;
+                }else if(++cyclesWithoutValidResponse>=5 && !ecuWarningSent){
+                    // Bluetooth pairing alone does NOT prove a valid MEB
+                    // response. Surface the distinction in the cockpit.
+                    publishForSession(session,
+                        "ELM327 bağlı; ID.4 ECU yanıtı yok. Profil, DID ve CAN adresini kontrol et.",
+                        true);
+                    ecuWarningSent=true;
                 }
                 Thread.sleep(1600);
             }
