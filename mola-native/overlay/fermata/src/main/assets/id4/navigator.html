@@ -965,6 +965,87 @@ body.provider-active .traffic-map-badge{display:flex}
  .top .brand small{font-size:9px}
  #route-form .lookup input{font-size:16px}
 }
+
+/* Screenshot-reference cockpit: real map and honest, source-labeled vehicle values. */
+@media (orientation:landscape) and (min-width:640px) {
+ .top{height:72px!important;display:flex!important;align-items:center!important;
+   padding:8px 18px!important;background:#031827f5!important;border-bottom:1px solid #27647d!important}
+ .brand{background:transparent!important;box-shadow:none!important;border:0!important;
+   padding:0!important;min-height:0!important;flex:0 1 32%!important}
+ .brand strong{font-size:clamp(14px,1.5vw,23px)!important}
+ .brand small{font-size:clamp(10px,.85vw,13px)!important}
+ .cockpit-tabs{flex:1!important;justify-content:center!important;min-width:0}
+ .cockpit-tabs button{min-width:100px;font-size:clamp(11px,1.1vw,17px)!important;
+   padding:11px 17px!important}
+ .top .round{display:none!important}
+ .vehicle-cockpit{inset:73px 0 58px!important}
+ .cockpit-left{left:1.4%!important;top:2%!important;width:35%!important;
+   max-width:540px!important;gap:8px!important}
+ .cockpit-left>.cockpit-panel{padding:12px 16px!important}
+ .cockpit-panel{background:rgba(3,27,44,.78)!important;border:1px solid #568ca76b!important;
+   box-shadow:0 9px 30px #00131f88!important}
+ .cockpit-title{font-size:clamp(10px,.85vw,14px)!important;color:#accbdc!important}
+ .cockpit-left .cockpit-main-value{font-size:clamp(37px,4.7vw,75px)!important}
+ .cockpit-left .cockpit-smallgrid{display:grid!important;gap:7px!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-panel{display:block!important;padding:9px 11px!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-value{
+   font-size:clamp(14px,1.8vw,27px)!important;overflow:hidden;text-overflow:ellipsis}
+ .cockpit-right{top:2%!important;right:1.4%!important;width:20%!important;
+   max-width:320px!important;max-height:calc(100% - 145px)!important}
+ .cockpit-right>.cockpit-panel{padding:13px 16px!important}
+ .cockpit-right #co-destination{font-size:clamp(19px,1.8vw,29px)!important}
+ .cockpit-right #co-maneuver{display:block!important;font-size:clamp(12px,1vw,17px)!important}
+ .cockpit-right #co-weather{display:none!important}
+ .cockpit-right .cockpit-condition{display:none!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+   display:grid!important;left:39%!important;right:1.4%!important;bottom:2%!important;
+   grid-template-columns:28% minmax(0,1fr) 18%!important;
+   max-height:140px!important;min-height:100px!important;overflow:hidden!important;
+   padding:11px 13px!important;gap:11px!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:first-child{display:block!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:nth-child(2){grid-column:auto!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child{
+   grid-column:auto!important;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+ .cockpit-tripbar .tripbar-number{font-size:clamp(17px,1.9vw,28px)!important}
+ .cockpit-tripbar #co-trip-arrival{display:block!important}
+ .cockpit-tripbar #co-trip-arrival-note{display:block!important}
+ .cockpit-tripbar .tripbar-track{height:12px!important;margin:8px 0!important}
+ .cockpit-tripbar #co-trip-charge-km{display:block!important}
+ .cockpit-tripbar #co-trip-details,.cockpit-tripbar #co-alt-toggle{
+   display:inline-block!important;padding:5px 7px!important}
+ .current-weather-chip{top:84px!important;left:40%!important;max-width:38%!important}
+ .cockpit-quick{bottom:72px!important}
+ .buttons{right:1.5%!important;top:137px!important}
+ .map-credit{bottom:65px!important}
+ .drive-dock{display:flex;position:fixed;z-index:1040;bottom:0;left:0;right:0;
+   height:58px;align-items:center;justify-content:space-around;gap:4px;
+   padding:5px 12px;background:#031523fa;border-top:1px solid #30566e;pointer-events:auto}
+ .drive-dock button{background:transparent;color:#daf2f8;border:0;border-radius:9px;
+   padding:8px 10px;font-size:clamp(11px,.92vw,15px);white-space:nowrap}
+ .drive-dock button:focus-visible,.drive-dock button:active{
+   background:#0b5870;outline:2px solid #40d7c5}
+ .drive-dock button.status-unavailable{color:#ffca80}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:590px){
+ .vehicle-cockpit{bottom:48px!important}
+ .drive-dock{height:48px}
+ .cockpit-left{width:31%!important}
+ .cockpit-left>.cockpit-panel{padding:5px 10px!important}
+ .cockpit-left .cockpit-main-value{font-size:clamp(28px,4vw,44px)!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-panel{padding:4px 7px!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-value{font-size:clamp(12px,1.6vw,18px)!important}
+ .cockpit-left .cockpit-slim{display:none!important}
+ .cockpit-right{width:21%!important;max-height:calc(100% - 85px)!important}
+ .cockpit-right>.cockpit-panel{padding:6px 10px!important}
+ .cockpit-right .cockpit-title.optional-route,.cockpit-right #co-weather{display:none!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+   left:34%!important;max-height:87px!important;min-height:82px!important;
+   padding:6px 9px!important;bottom:1%!important}
+ .cockpit-tripbar .tripbar-track{margin:4px 0!important}
+ .cockpit-tripbar #co-trip-details,.cockpit-tripbar #co-alt-toggle{display:none!important}
+ .map-credit{bottom:54px!important}
+}
+@media (orientation:portrait), (max-width:639px){.drive-dock{display:none}}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -1074,6 +1155,15 @@ body.provider-active .traffic-map-badge{display:flex}
  <div id="co-alts-list">Rota oluşturulunca seçenekler gelecek.</div>
  <div class="alts-caution">Şarj durakları model önerisidir. Soket doluluğu, detour süresi ve kesin fiyat doğrulanmadı.</div>
 </div>
+<nav class="drive-dock" aria-label="ID.4 hızlı komutlar">
+ <button id="dock-home" type="button">⌂ Mola</button>
+ <button id="dock-route" type="button">⌕ Rota</button>
+ <button id="dock-stations" type="button">⚡ Şarj</button>
+ <button id="dock-traffic" class="status-unavailable" type="button">🚦 Trafik: kapalı</button>
+ <button id="dock-obd" class="status-unavailable" type="button">▣ OBD: ölçüm yok</button>
+ <button id="dock-auto" class="status-unavailable" type="button">▤ Auto: destek yok</button>
+ <button id="dock-layers" type="button">☰ Katmanlar</button>
+</nav>
 <div class="top"><div class="brand"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS · YOLCULUK VE ARAÇ MERKEZİ</small>
 <div class="live-hud" aria-label="Canlı araç bilgileri">
 <span><small>SoC </small><b id="live-soc">—</b></span>
@@ -1989,6 +2079,8 @@ window.molaTelemetry=function(data){
  $('live-status').textContent=String(d.status||'OBD bağlı değil');
  $('obd-status').textContent=fresh?'Canlı OBD':'OBD yok';
  $('co-status').textContent=String(d.status||'OBD bağlı değil');
+$('dock-obd').textContent=fresh?'▣ OBD: bağlı':'▣ OBD: ölçüm yok';
+$('dock-obd').classList[fresh?'remove':'add']('status-unavailable');
  function ready(value){return typeof value==='string'&&value.trim()!==''&&
    value.trim()!=='—'&&value.trim().indexOf('—')<0;}
  if(fresh&&ready(d.soc)){
@@ -2138,7 +2230,7 @@ $('tts').onclick=function(){
  $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');
  $('tts').textContent=voice?'Kapat':'Aç';
 };
-$('back').onclick=$('co-media').onclick=function(){native('back')};
+$('dock-home').onclick=$('back').onclick=$('co-media').onclick=function(){native('back')};
 function toggleRouteSearch(){
  var sheet=document.querySelector('.sheet');
  if(sheet.classList.contains('route-active')){
@@ -2149,12 +2241,12 @@ function toggleRouteSearch(){
   if(sheet.classList.contains('search-open'))$('to').focus&&$('to').focus();
  }
 }
-$('co-route-tab').onclick=$('open-route').onclick=$('co-quick-route').onclick=toggleRouteSearch;
+$('dock-route').onclick=$('co-route-tab').onclick=$('open-route').onclick=$('co-quick-route').onclick=toggleRouteSearch;
 function setMapLayerMenu(open){
  $('map-layers').classList[open?'add':'remove']('open');
  $('co-quick-layers').setAttribute('aria-pressed',open?'true':'false');
 }
-$('co-quick-layers').onclick=$('open-layers').onclick=function(){
+$('dock-layers').onclick=$('co-quick-layers').onclick=$('open-layers').onclick=function(){
  setMapLayerMenu(!$('map-layers').classList.contains('open'));
 };
 $('layer-close').onclick=function(){setMapLayerMenu(false)};
@@ -2171,6 +2263,7 @@ $('co-focus').onclick=function(){
 $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
 
+$('dock-stations').onclick=function(){native('stations')};
 $('co-station-tab').onclick=function(){
  setMapLayerMenu(true);
  setStationLayer('all');
@@ -2230,7 +2323,10 @@ window.molaTrafficStatus=function(o){
  var validLevel=provider==='yandex'&&active&&Number.isInteger(level)&&
   level>=0&&level<=10&&Number.isFinite(observed)&&
   Math.abs(Date.now()-observed)<60*60*1000;
- $('traffic-mini-label').textContent=validLevel?
+ $('dock-traffic').textContent=validLevel?'🚦 Yandex '+level+'/10':
+  active?'🚦 Trafik: katman açık':'🚦 Trafik: kapalı';
+$('dock-traffic').classList[active?'remove':'add']('status-unavailable');
+$('traffic-mini-label').textContent=validLevel?
    '🚦 Yandex '+level+'/10 · canlı kaynak':
    active?(provider==='google'?'🚦 Google trafik haritası':
       '🚦 Yandex trafik katmanı'):'🚦 Trafik verisi yok';
@@ -2245,6 +2341,15 @@ window.molaTrafficStatus=function(o){
   active?'Resmî '+(provider==='google'?'Google':'Yandex')+
    ' trafik haritası. OSRM ETA yine trafiksizdir.':
   'Sağlayıcı yüklenemedi; mevcut harita korunuyor.';
+};
+$('dock-traffic').onclick=function(){
+ setMapLayerMenu(true);
+ $('traffic-choices').classList.add('open');
+ var adapter=window.Id4TrafficProviders;
+ var configured=adapter&&adapter.configured?adapter.configured():{google:false,yandex:false};
+ $('traffic-help').textContent='Google: '+(configured.google?'SDK ayarlı':'API anahtarı yok')+
+  ' · Yandex: '+(configured.yandex?'SDK ayarlı':'API anahtarı yok')+
+  ' · Trafiksiz rota ETA ayrı hesaplanır';
 };
 $('layer-traffic').onclick=function(){
  $('traffic-choices').classList.toggle('open');
@@ -2299,6 +2404,8 @@ if(map&&map.on){
  });
 }
 
+$('dock-obd').onclick=function(){native('sensors')};
+$('dock-auto').onclick=function(){msg('ID.4 navigasyon için CarAppService bulunmuyor; Android Auto ekranında doğrulanmadı.')};
 $('co-connect').onclick=function(){native('selectObd')};
 $('co-disconnect').onclick=function(){
  native('disconnectObd');

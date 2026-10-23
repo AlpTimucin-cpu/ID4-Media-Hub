@@ -74,3 +74,11 @@ Kaynaklar:
 - https://www.carscanner.info/custompids/
 - https://www.carscanner.info/records/
 - https://www.cds.caltech.edu/~murray/dgc05/upload/a/a9/ELM327DS.pdf
+
+
+## 23 Ekim 2026 — APK'dan doğrulanan sınırlar
+
+- Son indirilen APK içindeki `assets/id4/traffic-config.js` incelendi: `googleKey` ve `yandexKey` alanlarının **ikisi de boş**. Bu nedenle ücretli sağlayıcı trafiği mevcut paket için devre dışı; OSRM ETA, trafiksizdir.
+- ELM327 Bluetooth istemcisi var ama `Id4MebDecoder.VEHICLE_PROFILE_VALIDATED=false`: kalibre edilmiş ID.4 SoC/voltaj sıcaklık rakamları sunulmaz. Bağlantının fiziksel araçta çalıştığı henüz gösterilmedi.
+- `patch_mola.py` yeni Android Auto `CarAppService` / `androidx.car.app.category.NAVIGATION` bildirmiyor ve otomotiv sunumunda ID.4 girişini gizliyor. Bu nedenle ID.4 telefon kokpiti araç ekranında desteklenmiyor.
+- Hedef geniş ekran yerleşiminde soldaki kartlar, orta harita, sağ rota ve alt güzergâh ilerleme çubuğu gerçek uygulama verileriyle çalışır; 68% ve 318 km gibi referans görsel numaraları, sanal klima veya araç kontrol düğmeleri eklenmez.

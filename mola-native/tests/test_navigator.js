@@ -89,6 +89,15 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-auto']){
+ assert(html.includes('id="'+id+'"'),'reference-style dock missing '+id);
+}
+assert(html.includes('left:39%')&&html.includes('grid-template-columns:28%'),
+ 'wide cockpit left instruments and bottom route layout missing');
+get('dock-route').onclick();
+assert(get('sheet').classList.contains('search-open'),'dock route must open search');
+get('dock-route').onclick();
+assert(!get('sheet').classList.contains('search-open'),'dock route must close search');
 assert(html.includes('id="layer-all"')&&html.includes('id="layer-ccs"')&&
  html.includes('id="layer-route"')&&html.includes('id="layer-traffic"'),
  'selectable full Turkey, route chargers and honest traffic mode missing');
@@ -111,6 +120,9 @@ assert(typeof cluster.events.click==='function',
 cluster.events.click();
 assert(get('layer-status').textContent.includes('küme'),
  'zooming must not fabricate extra station features');
+get('dock-traffic').onclick();
+assert(get('traffic-choices').classList.contains('open'),
+ 'dock must expose traffic options');
 get('layer-traffic').onclick();
 assert(get('traffic-choices').classList.contains('open'),
  'traffic selector must expose official licensed provider choices');
