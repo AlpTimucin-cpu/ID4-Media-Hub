@@ -32,6 +32,9 @@ jobs:
           test "$(git rev-parse HEAD)" = "3f45ad3557a25822c2a3a9f152f32ef82f57e005"
           test -f LICENSE
       - name: Apply only additive ID.4 overlay
+        env:
+          ID4_GOOGLE_MAPS_JS_KEY: ${{ secrets.ID4_GOOGLE_MAPS_JS_KEY }}
+          ID4_YANDEX_MAPS_JS_KEY: ${{ secrets.ID4_YANDEX_MAPS_JS_KEY }}
         run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
       - name: Ensure changes do not touch Mola playback classes
         shell: bash
