@@ -184,6 +184,7 @@ assert(get('status').textContent.includes('Önce rota'),
  'route fit must refuse to claim a non-existent route');
 assert(html.includes('id="co-quick-route"')&&html.includes('id="co-quick-layers"'),
  'reference-style landscape route and layer shortcuts missing');
+get('map-layers').classList.remove('open'); // reset menu opened by deliberate dock test
 assert(!get('map-layers').classList.contains('open'),
  'all map filters must start collapsed to preserve the full-screen cockpit');
 get('co-quick-layers').onclick();
