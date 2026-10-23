@@ -64,9 +64,14 @@ function renderData(){
   }
   currentStations.slice(0,100).forEach(function(station){
    if(!station||!Number.isFinite(station.lat)||!Number.isFinite(station.lon))return;
-   stationObjects.push(new global.google.maps.Marker({map:providerMap,
+   var marker=new global.google.maps.Marker({map:providerMap,
     position:{lat:station.lat,lng:station.lon},
-    title:String(station.title||'Şarj istasyonu').slice(0,80)}));
+    title:String(station.title||'Şarj istasyonu').slice(0,80)});
+   if(marker.addListener)marker.addListener('click',function(){
+    if(typeof global.molaTrafficStationClick==='function')
+     global.molaTrafficStationClick(station);
+   });
+   stationObjects.push(marker);
   });
   if(lastPosition)positionMarker=new global.google.maps.Marker({map:providerMap,
    position:{lat:lastPosition[0],lng:lastPosition[1]},title:'Aracım · GPS'});
@@ -84,6 +89,10 @@ function renderData(){
    if(!station||!Number.isFinite(station.lat)||!Number.isFinite(station.lon))return;
    var obj=new global.ymaps.Placemark([station.lat,station.lon],{
     hintContent:String(station.title||'Şarj istasyonu').slice(0,80)});
+   if(obj.events&&obj.events.add)obj.events.add('click',function(){
+    if(typeof global.molaTrafficStationClick==='function')
+     global.molaTrafficStationClick(station);
+   });
    providerMap.geoObjects.add(obj);stationObjects.push(obj);
   });
   if(lastPosition){
