@@ -8,6 +8,7 @@ const script=fs.readFileSync(path.join(__dirname,
 function world(keys,shouldFail){
  const flags=new Set(),holder={replaceChildren(){this.empty=true}};
  const created={scripts:[],googleMaps:0,googleTraffic:0,yandexMaps:0,yandexTraffic:0,
+  tomtomTiles:[],tomtomRemoved:0,
   routes:0,stations:0,states:[],holder};
  function cls(){return {
   add(v){flags.add(v)},remove(v){flags.delete(v)},contains(v){return flags.has(v)}
@@ -36,6 +37,23 @@ function world(keys,shouldFail){
  };
  const win={
   ID4_TRAFFIC_CONFIG:keys,
+  L:{
+   tileLayer(url,opts){
+    const tile={url,opts,handlers:{},
+      on(event,fn){this.handlers[event]=fn;return this},
+      addTo(map){
+       created.tomtomTiles.push(this);
+       if(url.includes('/flow/')){
+        if(shouldFail){for(let i=0;i<3;i++)this.handlers.tileerror?.()}
+        else this.handlers.tileload?.();
+       }
+       return this
+      },
+      redraw(){created.redrawn=true}
+    };
+    return tile;
+   }
+  },
   molaTrafficStatus(s){created.states.push(s)},
   ...mapGlobals
  };
@@ -44,7 +62,9 @@ function world(keys,shouldFail){
    if(shouldFail)tag.onerror();
    else tag.onload()}}
   ,createElement(){return {src:'',async:false,onload:null,onerror:null}}};
- const ctx={window:win,document:doc,Promise,Array,Math,Number,String,Error};
+ const ctx={window:win,document:doc,Promise,Array,Math,Number,String,Error,
+  setTimeout(fn){created.timeout=fn;return 1},clearTimeout(){},
+  setInterval(fn){created.interval=fn;return 2},clearInterval(){}};
  vm.runInNewContext(script,ctx,{filename:'traffic-provider.js'});
  return {api:win.Id4TrafficProviders,created,flags};
 }
@@ -52,6 +72,10 @@ function world(keys,shouldFail){
  const none=world({googleKey:'',yandexKey:''},false);
  assert.strictEqual(none.api.configured().google,false);
  assert.strictEqual(none.api.configured().yandex,false);
+ assert.strictEqual(none.api.configured().tomtom,false);
+ assert.strictEqual(await none.api.activate('tomtom',[39,35],9),false);
+ assert.strictEqual(none.created.tomtomTiles.length,0);
+ assert.strictEqual(none.api.getActive(),'osm');
  assert.strictEqual(await none.api.activate('google',[39,35],7),false);
  assert.strictEqual(none.created.scripts.length,0,'missing key cannot load paid traffic SDK');
  assert.strictEqual(none.api.getActive(),'osm');
@@ -85,10 +109,36 @@ function world(keys,shouldFail){
  assert.strictEqual(await valid.api.close(),true);
  assert.strictEqual(valid.api.getActive(),'osm');
  assert(!valid.flags.has('provider-active'),'base map must restore after closing');
+ // Official TomTom Orbis v2 raster endpoints must be called ONLY with an
+ // authorized key, and a live state requires successful FLOW tileload.
+ const tomtom=world({googleKey:'',yandexKey:'',
+  tomtomKey:'TOMTOM_TEST_KEY_123456789'},false);
+ const leaflet={removeLayer(){tomtom.created.tomtomRemoved++}};
+ tomtom.api.attachLeaflet(leaflet);
+ assert.strictEqual(tomtom.api.configured().tomtom,true);
+ assert.strictEqual(await tomtom.api.activate('tomtom',[39,35],10),true);
+ assert.strictEqual(tomtom.api.getActive(),'tomtom');
+ assert.strictEqual(tomtom.created.tomtomTiles.length,2);
+ assert(tomtom.created.tomtomTiles[0].url.includes(
+  '/maps/orbis/traffic/flow/raster/tile/'));
+ assert(tomtom.created.tomtomTiles[1].url.includes(
+  '/maps/orbis/traffic/incidents/raster/tile/'));
+ assert(tomtom.created.tomtomTiles[0].url.includes('apiVersion=2'));
+ assert(tomtom.created.states.some(x=>x.provider==='tomtom'&&x.status==='active'));
+ assert(!tomtom.flags.has('provider-active'),'TomTom should overlay the original Leaflet map');
+ assert.strictEqual(await tomtom.api.close(),true);
+ assert(tomtom.created.tomtomRemoved>=2,'TomTom tiles must be removed when leaving');
+ const rejected=world({googleKey:'',yandexKey:'',
+  tomtomKey:'TOMTOM_TEST_KEY_123456789'},true);
+ rejected.api.attachLeaflet({removeLayer(){}});
+ assert.strictEqual(await rejected.api.activate('tomtom',[39,35],10),false);
+ assert.strictEqual(rejected.api.getActive(),'osm');
+ assert(rejected.created.states.every(x=>x.status!=='active'),
+  'TomTom errors must not masquerade as verified traffic');
  const blocked=world({googleKey:'GOOGLE_TEST_KEY_123456789',
   yandexKey:''},true);
  assert.strictEqual(await blocked.api.activate('google',[38,35],7),false);
  assert.strictEqual(blocked.api.getActive(),'osm','failed SDK must not hide OSM map');
  assert(!blocked.flags.has('provider-active'));
- console.log('PASS: Google/Yandex official traffic adapters, key gate and OSM fallback');
+ console.log('PASS: TomTom Orbis v2 flow/incidents and key/error handling; Google/Yandex preserved');
 })().catch(e=>{console.error(e);process.exitCode=1});

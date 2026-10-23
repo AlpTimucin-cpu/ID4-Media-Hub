@@ -203,7 +203,9 @@ function openTomTom(seq){
   }
   flow.on('tileload',loadedFlow).on('tileerror',failedFlow);
   try{
-   flow.addTo(leafletMap);incidents.addTo(leafletMap);
+   flow.addTo(leafletMap);
+   if(active!=='tomtom'||seq!==requested)return;
+   incidents.addTo(leafletMap);
    if(active==='tomtom')tomtomTimer=setInterval(function(){
      if(seq===requested&&active==='tomtom'){
       if(typeof flow.redraw==='function')flow.redraw();
