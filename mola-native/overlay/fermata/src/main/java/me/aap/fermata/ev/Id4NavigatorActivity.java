@@ -188,6 +188,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             });
         }
         @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
+        @JavascriptInterface public void disconnectObd(){
+            ui.post(()->{
+                getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE).edit()
+                    .putBoolean("manual_disconnect",true).apply();
+                telemetry.stop();
+                send("molaStatus",record("obd",
+                    "OBD bağlantısı bırakıldı. Car Scanner artık adaptöre bağlanabilir."));
+            });
+        }
         @JavascriptInterface public void visibleStations(
               double south,double west,double north,double east){
             requestVisibleStations(south,west,north,east,false);
@@ -274,7 +283,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         try{
             BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();
             if(adapter==null || !adapter.isEnabled()){
-                send("molaTelemetry",obdStatus("Önce Bluetooth'u açıp ELM327'yi eşleştir."));return;
+                send("molaTelemetry",obdStatus("Önce Bluetooth'u açıp ELM327'yi eşleştir. Car Scanner bağlantısını kapat."));return;
             }
             Set<BluetoothDevice> paired=adapter.getBondedDevices();
             if(paired==null || paired.isEmpty()){
@@ -291,7 +300,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .setItems(labels,(dialog,index)->{
                     BluetoothDevice d=devices.get(index);
                     getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE).edit()
-                        .putString("paired_mac",d.getAddress()).apply();
+                        .putString("paired_mac",d.getAddress())
+                        .putBoolean("manual_disconnect",false).apply();
                     telemetry.start(d);
                 })
                 .setNegativeButton("Vazgeç",null).show();
@@ -306,6 +316,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     @SuppressWarnings("deprecation")
     private void autoConnectObd(){
+        if(getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
+            .getBoolean("manual_disconnect",false))return;
         if(Build.VERSION.SDK_INT>=31 &&
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)return;
         String address=getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
