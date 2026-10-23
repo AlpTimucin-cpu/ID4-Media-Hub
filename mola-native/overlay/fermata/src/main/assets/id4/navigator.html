@@ -506,9 +506,37 @@ body.provider-active .traffic-map-badge{display:flex}
 @media (orientation:portrait), (max-width:639px){
  .traffic-map-badge{top:77px;left:14px;max-width:calc(100% - 80px)}
 }
+
+/* Confirm before converting a traffic-map charger tap to a new route. */
+.traffic-station-panel{display:none;position:fixed;left:37%;top:140px;z-index:1125;
+ width:min(360px,47vw);padding:12px;border:1px solid #42d9b0;border-radius:13px;
+ background:rgba(3,34,48,.98);color:#effff9;box-shadow:0 6px 24px #001722b8}
+.traffic-station-panel.open{display:block}
+.traffic-station-panel strong{font-size:14px;display:block;line-height:1.35}
+.traffic-station-panel small{display:block;color:#bedde5;font-size:10px;margin:4px 0 8px}
+.traffic-station-actions{display:flex;gap:6px;flex-wrap:wrap}
+.traffic-station-actions button{color:white;background:#0b5b73;border:1px solid #429aae;
+ border-radius:8px;padding:9px;font-size:11px;font-weight:750}
+.traffic-station-actions button:disabled{opacity:.4}
+@media (orientation:portrait), (max-width:639px){
+ .traffic-station-panel{left:8%;width:84%;top:160px}
+}
+@media (orientation:landscape) and (max-height:520px){
+ .traffic-station-panel{top:90px;padding:8px}
+ .traffic-station-actions button{padding:6px}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
+<div class="traffic-station-panel" id="traffic-station-panel">
+ <strong id="traffic-station-name">Şarj istasyonu</strong>
+ <small id="traffic-station-meta">Canlı doluluk ve fiyat doğrulanmadı</small>
+ <div class="traffic-station-actions">
+  <button id="traffic-station-destination" type="button">Varış yap</button>
+  <button id="traffic-station-stop" type="button">⚡ Mola ekle</button>
+  <button id="traffic-station-close" type="button">Kapat</button>
+ </div>
+</div>
 <div class="traffic-map-badge" id="traffic-map-badge">
  <div><span id="traffic-map-provider">Trafik sağlayıcısı</span>
  <small>Harita trafiği · rota ETA OSRM (trafiksiz)</small></div>
@@ -1648,6 +1676,47 @@ $('layer-all').onclick=function(){setStationLayer('all')};
 $('layer-ccs').onclick=function(){setStationLayer('ccs')};
 $('layer-route').onclick=function(){setStationLayer('route')};
 $('layer-hide').onclick=function(){setStationLayer('none')};
+var pendingTrafficStation=null;
+function closeTrafficStation(){
+ pendingTrafficStation=null;
+ $('traffic-station-panel').classList.remove('open');
+}
+window.molaTrafficStationClick=function(station){
+ if(!station || !valid(station.lat,station.lon))return;
+ pendingTrafficStation=station;
+ $('traffic-station-name').textContent=String(station.title||'Şarj istasyonu').slice(0,120);
+ $('traffic-station-meta').textContent=String(station.operator||'Operatör belirtilmedi')+
+   ' · '+(station.ccs?'CCS':'AC / soket türü bilinmiyor')+
+   ' · Canlı müsaitlik ve fiyat doğrulanmadı';
+ $('traffic-station-stop').disabled=!station.ccs||!points.from||!points.to;
+ $('traffic-station-panel').classList.add('open');
+};
+$('traffic-station-close').onclick=closeTrafficStation;
+$('traffic-station-destination').onclick=function(){
+ var station=pendingTrafficStation;
+ closeTrafficStation();
+ if(!station)return;
+ var from=points.from;
+ var label=String(station.title||'Şarj istasyonu').slice(0,120);
+ selectPoint('to',station.lat,station.lon,label,false);
+ native('saveStation',label,String(station.operator||''));
+ if(from){
+  msg('Şarj istasyonuna yeni rota oluşturuluyor...');
+  native('route',from.lat,from.lon,station.lat,station.lon,usingGps);
+ }else msg('Şarj noktası hedef seçildi. Başlangıç belirle.');
+};
+$('traffic-station-stop').onclick=function(){
+ var station=pendingTrafficStation;
+ if(!station||!station.ccs||!points.from||!points.to){
+  msg('CCS şarj molası için başlangıç ve varış noktası gerekli.');return;
+ }
+ var from=points.from,to=points.to;
+ closeTrafficStation();
+ native('saveStation',String(station.title||'CCS istasyonu').slice(0,120),
+  String(station.operator||''));
+ msg('Seçilen CCS üzerinden rota hesaplanıyor; doluluk doğrulanmadı.');
+ native('routeVia',from.lat,from.lon,station.lat,station.lon,to.lat,to.lon,usingGps);
+};
 window.molaTrafficStatus=function(o){
  if(!o)return;
  var provider=String(o.provider||'osm'),active=o.status==='active';
@@ -1674,6 +1743,7 @@ $('layer-traffic').onclick=function(){
   ' · Sağlayıcı ücreti uygulanabilir.';
 };
 function switchTraffic(which){
+ closeTrafficStation();
  var adapter=window.Id4TrafficProviders;
  if(!adapter||typeof adapter.activate!=='function'){
   window.molaTrafficStatus({provider:which,status:'unavailable',
