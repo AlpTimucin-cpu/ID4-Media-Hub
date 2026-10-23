@@ -177,6 +177,12 @@ assert.equal(get('layer-daynight').textContent,'◐ Gündüz haritası',
 get('layer-close').onclick();
 assert(!get('map-layers').classList.contains('open'),
  'single tap must restore unobstructed route map');
+assert(html.includes('id="open-layers"'),
+ 'portrait phone must have a way to open charging and weather layers');
+get('open-layers').onclick();
+assert(get('map-layers').classList.contains('open'),
+ 'portrait layer shortcut did not open charging and weather filters');
+get('layer-close').onclick();
 get('go-fullscreen').onclick();
 assert.equal(calls.orientation.length,1,'cannot request landscape from portrait');
 assert.equal(calls.orientation[0][0],true,'landscape request must be explicit');
