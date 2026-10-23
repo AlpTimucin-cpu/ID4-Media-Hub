@@ -942,6 +942,29 @@ body.provider-active .traffic-map-badge{display:flex}
  .cockpit-tripbar #co-trip-charge{display:none}
  .cockpit-tripbar .tripbar-mid{gap:2px}
 }
+
+/* One-glance ID.4 design: empty route summaries never obscure the map. */
+@media (orientation:landscape) and (min-width:640px){
+ .vehicle-cockpit:not(.has-route) .cockpit-right,
+ .vehicle-cockpit:not(.has-route) .cockpit-bottom,
+ .vehicle-cockpit:not(.has-route) .cockpit-tripbar{display:none!important}
+ .vehicle-cockpit:not(.has-route) .cockpit-left{max-width:410px}
+ .cockpit-panel{box-shadow:0 10px 30px rgba(0,12,22,.2);border-color:rgba(109,204,222,.22)}
+ .cockpit-quick button{border-color:rgba(69,201,188,.55)}
+ #co-expand{display:none!important}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .vehicle-cockpit.has-route .cockpit-right .cockpit-title.optional-route,
+ .vehicle-cockpit.has-route .cockpit-right #co-stops,
+ .vehicle-cockpit.has-route .cockpit-right #co-eta{display:none!important}
+ .map-layers-panel.open,.cockpit-alts.open{max-height:72vh;overflow-y:auto}
+}
+@media (orientation:portrait), (max-width:639px){
+ .top{box-sizing:border-box;padding:6px 8px!important;gap:5px}
+ .top .brand strong{font-size:13px}
+ .top .brand small{font-size:9px}
+ #route-form .lookup input{font-size:16px}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>

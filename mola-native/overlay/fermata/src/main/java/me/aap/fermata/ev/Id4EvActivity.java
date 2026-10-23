@@ -90,6 +90,7 @@ public final class Id4EvActivity extends Activity {
     private TextView autoEnergyFacts,autoEnergyModel,autoEnergyPrice;
     private EditText stationQuery;
     private LinearLayout stationCards,stationPaging;
+    private ScrollView stationScroll;
     private TextView stationInfo;
     private Button typeButton,radiusButton;
     private Location stationLocation;
@@ -142,9 +143,8 @@ public final class Id4EvActivity extends Activity {
         root.addView(tabs);
         addTab(tabs,"‹ Mola",()->finish());
         addTab(tabs,"🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
-        addTab(tabs,"⚡ İstasyon",this::stationsScreen);
-        addTab(tabs,"🔋 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)));
-        addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)));
+        addTab(tabs,"⚡ Şarj",this::stationsScreen);
+        addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)));
         for(int i=0;i<tabs.getChildCount();i++){
             View item=tabs.getChildAt(i);
             if(item instanceof Button){
@@ -154,7 +154,7 @@ public final class Id4EvActivity extends Activity {
                 tab.setEllipsize(TextUtils.TruncateAt.END);
             }
         }
-        status=text("ID.4 • Mola eklentisi • Resmî EPDK verileri",11,false);
+        status=text("ID.4 PURE · EPDK istasyonları · OBD için Araç sekmesi",10,false);
         root.addView(status);
         // Enter the station list, never the deprecated long-press map flow.
         stationsScreen();
@@ -396,7 +396,7 @@ public final class Id4EvActivity extends Activity {
         ++generation;
         LinearLayout body=content();
         body.setPadding(dp(8),0,dp(8),dp(3));
-        body.addView(text("⚡ Türkiye AC / DC istasyonları",19,true));
+        body.addView(text("⚡ Türkiye şarj istasyonları",19,true));
         body.addView(text("Halka açık EPDK kayıtları · Güncel doluluk için doğrulanmış canlı veri gerekir.",11,false));
         LinearLayout filter=new LinearLayout(this);
         body.addView(filter);
@@ -435,23 +435,47 @@ public final class Id4EvActivity extends Activity {
         });
         body.addView(stationQuery,new LinearLayout.LayoutParams(-1,dp(46)));
         LinearLayout actions=new LinearLayout(this);body.addView(actions);
-        actions.addView(button("⌕ Ara / yenile",this::findStations),
+        actions.addView(button("⌕ Ara",this::findStations),
             new LinearLayout.LayoutParams(0,dp(43),1));
         actions.addView(button("◎ Yakınımdakiler",this::stationGps),
             new LinearLayout.LayoutParams(0,dp(43),1));
         LinearLayout officialRow=new LinearLayout(this);
         body.addView(officialRow);
-        officialRow.addView(button("● Canlı doluluk: resmî Şarj@TR",this::openEpdkOfficial),
-            new LinearLayout.LayoutParams(-1,dp(43)));
+        officialRow.addView(button("● Canlı doluluk: Şarj@TR",this::openEpdkOfficial),
+            new LinearLayout.LayoutParams(0,dp(43),2));
+        officialRow.addView(button("↻ EPDK",this::refreshEpdkSnapshot),
+            new LinearLayout.LayoutParams(0,dp(43),1));
         stationInfo=text("İstasyon kayıtları okunuyor…",11,false);body.addView(stationInfo);
-        ScrollView scroll=new ScrollView(this);
+        stationScroll=new ScrollView(this);
         stationCards=new LinearLayout(this);
         stationCards.setOrientation(LinearLayout.VERTICAL);
-        scroll.addView(stationCards);
-        body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        stationScroll.addView(stationCards);
+        body.addView(stationScroll,new LinearLayout.LayoutParams(-1,0,1));
         stationPaging=new LinearLayout(this);body.addView(stationPaging);
         body.addView(text("Mesafe kuş uçuşudur. Fiyatlar istasyona özel olmayabilir; kampanya ve müsaitlik yalnız resmî canlı kaynakla teyit edilir.",10,false));
         findStations();
+    }
+    /** A real EPDK re-fetch, with the last cached station file retained on failure. */
+    private void refreshEpdkSnapshot(){
+        final int request=++generation;
+        if(stationInfo!=null)stationInfo.setText("EPDK kaynağı güncelleniyor…");
+        work.execute(()->{
+            try{
+                synchronized(this){
+                    records=null;
+                    File cached=new File(getCacheDir(),"mola_id4_epdk.gz");
+                    if(cached.isFile())cached.setLastModified(0);
+                    loadOfficialData();
+                }
+                runOnUiThread(()->{if(!stopped&&request==generation)findStations();});
+            }catch(Exception e){
+                runOnUiThread(()->{
+                    if(stopped||request!=generation)return;
+                    if(stationInfo!=null)stationInfo.setText("Yeni EPDK verisi alınamadı; eski kayıtlar korunuyor.");
+                    findStations();
+                });
+            }
+        });
     }
     private static boolean hasType(JSONObject s,boolean dc){
         JSONArray array=s.optJSONArray("sockets");
@@ -529,6 +553,7 @@ public final class Id4EvActivity extends Activity {
     }
     private void renderStationPage(){
         stationCards.removeAllViews();stationPaging.removeAllViews();
+        if(stationScroll!=null)stationScroll.post(()->stationScroll.smoothScrollTo(0,0));
         final int start=stationPage*PAGE_SIZE,end=Math.min(stationMatches.size(),start+PAGE_SIZE);
         for(int i=start;i<end;i++){
             StationHit hit=stationMatches.get(i);
@@ -540,20 +565,22 @@ public final class Id4EvActivity extends Activity {
             card.setBackground(bg);card.setPadding(dp(10),dp(7),dp(10),dp(8));
             LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,-2);
             margin.setMargins(0,0,0,dp(7));stationCards.addView(card,margin);
-            card.addView(text(s.optString("name","İstasyon"),15,true));
+            TextView title=text(s.optString("name","İstasyon"),15,true);
+            title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);
+            card.addView(title);
             card.addView(text(s.optString("operator","İşletmeci yok")+" · "+
                 (hit.ac?"AC":"")+(hit.ac&&hit.dc?" + ":"")+(hit.dc?"DC":"")+
                 (!hit.ac&&!hit.dc?"Soket türü bilinmiyor":"")+
                 (Double.isFinite(hit.km)?" · "+fmt(hit.km)+" km kuş uçuşu":""),12,false));
             card.addView(text(s.optString("address","Adres yok"),11,false));
             card.addView(text(formatSockets(s.optJSONArray("sockets")),11,false));
-            card.addView(text("Müsaitlik: doğrulanamadı (canlı soket verisi yok)",11,false));
+            card.addView(text("Canlı soket: doğrulanamadı · Şarj@TR'de kontrol et",10,false));
             card.addView(text(priceForStation(priceCatalog,s.optString("operator"),hit.ac,hit.dc),11,false));
-            card.addView(text("Kampanya: doğrulanmış duyuru yok",11,false));
+            // Do not show a campaign badge without a verified operator feed.
             LinearLayout buttons=new LinearLayout(this);card.addView(buttons);
             buttons.addView(button("🗺 Rota",()->navigateToStation(s)),
                 new LinearLayout.LayoutParams(0,dp(43),1));
-            buttons.addView(button("₺ Resmî fiyat / kampanya",()->
+            buttons.addView(button("₺ Fiyat kaynağı",()->
                 openOperatorPrice(s.optString("operator"))),
                 new LinearLayout.LayoutParams(0,dp(43),1));
         }

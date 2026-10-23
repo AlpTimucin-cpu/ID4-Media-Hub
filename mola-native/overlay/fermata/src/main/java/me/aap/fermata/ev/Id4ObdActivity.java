@@ -89,7 +89,7 @@ public final class Id4ObdActivity extends Activity {
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(0xff091e2a);
-        root.setPadding(dp(14),dp(16),dp(14),dp(8));
+        root.setPadding(dp(9),dp(5),dp(9),dp(5));
         setContentView(root);
 
         LinearLayout navigation=new LinearLayout(this);
@@ -109,10 +109,10 @@ public final class Id4ObdActivity extends Activity {
         body.setPadding(0,dp(6),0,dp(32));
         scroll.addView(body);
 
-        TextView title=label("VOLKSWAGEN ID.4 PURE",21);
+        TextView title=label("ID.4 PURE · ARAÇ ÖLÇÜMLERİ",19);
         title.setTextColor(0xff6de4d2);
         body.addView(title);
-        TextView subtitle=label("2024 • 125 kW / 170 PS  |  Araç kontrol merkezi",13);
+        TextView subtitle=label("2024 · 125 kW · ELM327 / Car Scanner tanılama",11);
         subtitle.setTextColor(0xffb7cdd4);
         body.addView(subtitle);
 

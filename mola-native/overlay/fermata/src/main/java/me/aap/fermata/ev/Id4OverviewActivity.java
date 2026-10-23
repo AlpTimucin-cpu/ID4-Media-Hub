@@ -116,15 +116,26 @@ public final class Id4OverviewActivity extends Activity {
         addAction(actions,"İstasyonlar",()->startActivity(new Intent(this,Id4EvActivity.class)));
         addAction(actions,"OBD bağla",this::selectAdapter);
 
-        page.addView(text("BATARYA VE TÜKETİM • AYRINTILAR",12,true,AQUA));
-        LinearLayout r2=new LinearLayout(this);page.addView(r2);
+        Button reveal=new Button(this);
+        reveal.setText("▣ Teknik ölçüm ayrıntıları ▾");
+        reveal.setAllCaps(false);reveal.setTextSize(12);
+        page.addView(reveal);
+        LinearLayout technical=new LinearLayout(this);
+        technical.setOrientation(LinearLayout.VERTICAL);
+        technical.setVisibility(android.view.View.GONE);
+        reveal.setOnClickListener(v->technical.setVisibility(
+            technical.getVisibility()==android.view.View.VISIBLE?
+            android.view.View.GONE:android.view.View.VISIBLE));
+        page.addView(technical);
+        technical.addView(text("BATARYA VE TÜKETİM • AYRINTILAR",12,true,AQUA));
+        LinearLayout r2=new LinearLayout(this);technical.addView(r2);
         voltage=addCard(r2,"HV gerilim","—",true);
         temp=addCard(r2,"Batarya sıcaklığı","—",true);
         power=addCard(r2,"Anlık şarj gücü","—",true);
-        LinearLayout r3=new LinearLayout(this);page.addView(r3);
+        LinearLayout r3=new LinearLayout(this);technical.addView(r3);
         cooling=addCard(r3,"Soğutma","—",true);
         consumption=addCard(r3,"Tüketim","—",true);
-        page.addView(text("Menzil, tüketim ve şarj gücü: güvenilir araç ölçümü yoksa gösterilmez. Maliyet için faturalandırılan kWh ve güncel tarife gerekir.",11,false,0xffa6c7d0));
+        technical.addView(text("Güncel ölçüm yoksa menzil, tüketim ve güç değeri gösterilmez.",11,false,0xffa6c7d0));
 
         page.addView(text("TÜM ÖLÇÜMLER",12,true,AQUA));
         Button sensors=new Button(this);sensors.setText("25 MEB sorgusu ve şarj kayıtları  ›");

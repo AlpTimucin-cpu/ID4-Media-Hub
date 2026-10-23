@@ -10,8 +10,8 @@ patch=Path(sys.argv[2]).read_text()
 for term in ["Kullanılabilir kapasite (kWh)","Mevcut şarj (%)","TL/kWh operatör fiyatı",
              "Tamamen manuel hesaplar","Enerjiyi ve şarj molasını hesapla"]:
     assert term not in ev, "Manual energy screen remains: " + term
-assert 'addTab(tabs,"🔋 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)))' in ev
-assert 'addTab(tabs,"🔌 OBD",()->startActivity(new Intent(this,Id4ObdActivity.class)))' in ev
+assert 'addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)))' in ev
+assert 'addTab(tabs,"⚡ Şarj",this::stationsScreen)' in ev
 assert "Id4ObdActivity.java" in patch
 assert "Id4NavigatorActivity.java" in patch
 assert "Id4LiveTelemetry" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
@@ -50,10 +50,14 @@ assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in (root/"ferma
 assert all("applyFullscreen();" in text for text in [ev,obd,
     (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()])
 assert "stationGps()" in ev and "stationMatches" in ev and "PAGE_SIZE=25" in ev
-assert "Müsaitlik: doğrulanamadı" in ev
+assert "Canlı soket: doğrulanamadı" in ev
 assert "ESKİ genel fiyat (güncel değil)" in ev
-assert "Kampanya: doğrulanmış duyuru yok" in ev
+assert "Do not show a campaign badge" in ev
 assert "cards.setVisibility(View.GONE)" in obd
+assert "refreshEpdkSnapshot" in ev
+assert "stationScroll.smoothScrollTo(0,0)" in ev
+assert ".vehicle-cockpit:not(.has-route) .cockpit-right" in html
+assert "technical.setVisibility(android.view.View.GONE)" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
 assert "Id4StationTypes.ac" in ev and "Id4StationTypes.dc" in ev
 assert "searchHandler.postDelayed(searchNow,400)" in ev
 assert "openEpdkOfficial" in ev and "tr.gov.epdk.sarjetTR" in ev
