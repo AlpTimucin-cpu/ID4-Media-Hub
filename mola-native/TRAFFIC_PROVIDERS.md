@@ -100,3 +100,14 @@ API anahtarı olmadan doğrulanamaz.
 
 [Resmî TomTom Flow](https://docs.tomtom.com/traffic-api/documentation/tomtom-orbis-maps/v2/traffic-flow/raster-flow-tiles) ·
 [Resmî TomTom Incidents](https://docs.tomtom.com/traffic-api/documentation/tomtom-orbis-maps/v2/traffic-incidents/raster-incident-tiles)
+
+## TomTom anahtarını APK yeniden derlemeden ayarlama
+
+Yeni telefon kokpitinde `Katmanlar → Trafik → ⚙ TomTom anahtarı` düğmesine dokun.
+Anahtarı TomTom Developer hesabından alarak yaz. Anahtar uygulamanın
+MODE_PRIVATE tercih dosyasında saklanır (Android backup kapalıdır); açık metin
+olarak JavaScript WebView belleğine iletilir. Bu nedenle bir parola değildir,
+**API erişimini, kullanımı ve ödemeyi TomTom konsolunda sınırlandır**. Anahtar
+silme düğmesi mevcuttur; varsayılan GitHub secret olmadan kullanabilirsin.
+Sonrasında `TomTom Orbis Trafik` seç; tek gerçek flow döşemesi indirilmeden
+canlı etiket çıkmaz. Bu, gerçek Android/harita testi yerine geçmez.

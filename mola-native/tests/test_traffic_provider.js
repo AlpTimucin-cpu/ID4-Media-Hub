@@ -73,6 +73,11 @@ function world(keys,shouldFail){
  assert.strictEqual(none.api.configured().google,false);
  assert.strictEqual(none.api.configured().yandex,false);
  assert.strictEqual(none.api.configured().tomtom,false);
+ assert.strictEqual(none.api.setTomTomKey('short'),false);
+ assert.strictEqual(none.api.setTomTomKey('TOMTOM_TEST_KEY_12345678'),true);
+ assert.strictEqual(none.api.configured().tomtom,true);
+ assert.strictEqual(none.api.setTomTomKey(''),true);
+ assert.strictEqual(none.api.configured().tomtom,false);
  assert.strictEqual(await none.api.activate('tomtom',[39,35],9),false);
  assert.strictEqual(none.created.tomtomTiles.length,0);
  assert.strictEqual(none.api.getActive(),'osm');

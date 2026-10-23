@@ -263,6 +263,14 @@ global.Id4TrafficProviders={
  getActive:function(){return active},
  configured:function(){return {google:validKey(keyFor('google')),yandex:validKey(keyFor('yandex')),tomtom:validKey(keyFor('tomtom'))}},
  attachLeaflet:function(map){leafletMap=map},
+ setTomTomKey:function(key){
+  if(typeof key!=='string'||(key!==''&&!validKey(key)))return false;
+  if(active==='tomtom'){requested++;reset();active='osm'}
+  configured.tomtomKey=key;
+  status('tomtom',key?'TomTom anahtarı ayarlandı, katmanı açarak doğrula.':
+    'TomTom API anahtarı yok, canlı trafik kapalı.',false);
+  return true;
+ },
  updateRoute:function(points){currentRoute=routePoints(points);renderData()},
  updateStations:function(items){currentStations=Array.isArray(items)?items.slice(0,120):[];renderData()},
  updatePosition:function(x,follow){

@@ -1194,6 +1194,7 @@ body.provider-active .traffic-map-badge{display:flex}
   <button type="button" id="traffic-google">Google Trafik</button>
   <button type="button" id="traffic-yandex">Yandex Trafik</button>
    <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
+   <button type="button" id="traffic-tomtom-key">⚙ TomTom anahtarı</button>
   <button type="button" id="traffic-osm">OSM haritası</button>
   <div class="traffic-provider-note" id="traffic-help">Gerçek trafik: lisanslı API anahtarı gerekir.</div>
  </div>
@@ -1676,6 +1677,7 @@ function native(name){
    case 'back':bridge.back();break;
    case 'stations':bridge.stations();break;
    case 'sensors':bridge.sensors();break;
+   case 'tomtomKey':bridge.configureTomTom();break;
    case 'selectObd':bridge.selectObd();break;
    case 'disconnectObd':bridge.disconnectObd();break;
    case 'visibleStations':bridge.visibleStations(a[0],a[1],a[2],a[3]);break;
@@ -2387,6 +2389,7 @@ function switchTraffic(which){
 $('traffic-google').onclick=function(){switchTraffic('google')};
 $('traffic-yandex').onclick=function(){switchTraffic('yandex')};
 $('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
+$('traffic-tomtom-key').onclick=function(){native('tomtomKey')};
 $('traffic-osm').onclick=$('traffic-map-exit').onclick=function(){switchTraffic('osm')};
 function hideJourneyWeather(){
  $('journey-weather').classList.remove('open');

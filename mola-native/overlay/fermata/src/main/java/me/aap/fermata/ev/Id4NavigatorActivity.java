@@ -27,6 +27,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.text.InputType;
+import android.widget.EditText;
 import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -130,6 +132,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             @Override public void onPageFinished(WebView v,String url){
                 if(!PAGE.equals(url) || destroyed)return;
                 send("molaTelemetry",obdPacket(latestObd));
+                applyLocalTomTomKey();
                 Intent source=getIntent();
                 if(source==null || !source.hasExtra("toLat") || !source.hasExtra("toLon"))return;
                 double lat=source.getDoubleExtra("toLat",Double.NaN);
@@ -218,6 +221,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 finish();
             });
         }
+        @JavascriptInterface public void configureTomTom() {
+            ui.post(()->showTomTomKeyDialog());
+        }
         @JavascriptInterface public void stations() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
         }
@@ -264,6 +270,53 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             }
             planWithStop(fromLat,fromLon,toLat,toLon,useGps,viaLat,viaLon);
         }
+    }
+    /** The TomTom browser token stays in app-private storage (Android backup
+     * is disabled). Browser keys are recoverable in principle: use a narrow
+     * TomTom API restriction and spending cap; never log the token. */
+    private void showTomTomKeyDialog(){
+        if(destroyed||isFinishing())return;
+        EditText field=new EditText(this);
+        field.setSingleLine(true);
+        field.setTextSize(15);
+        field.setInputType(InputType.TYPE_CLASS_TEXT|
+            InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        String current=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+            .getString("tomtom","");
+        field.setText(current);field.selectAll();
+        new AlertDialog.Builder(this)
+            .setTitle("TomTom Orbis API anahtarı")
+            .setMessage("TomTom Developer hesabından Traffic API anahtarı al. "+
+                "Kota/harcama limitini ayarla. Anahtar yalnız uygulamanın özel "+
+                "ayarında tutulur, APK dosyasına yazılmaz.")
+            .setView(field)
+            .setNegativeButton("Vazgeç",null)
+            .setNeutralButton("Sil",(dialog,which)->{
+                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
+                    .remove("tomtom").apply();
+                if(web!=null&&!destroyed)web.evaluateJavascript(
+                    "window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey('');",null);
+                send("molaStatus",record("traffic","TomTom anahtarı temizlendi."));
+            })
+            .setPositiveButton("Kaydet",(dialog,which)->{
+                String key=field.getText().toString().trim();
+                if(!key.matches("[A-Za-z0-9_-]{15,200}")){
+                    send("molaStatus",record("traffic","TomTom anahtarı geçersiz (15-200 karakter)."));
+                    return;
+                }
+                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
+                    .putString("tomtom",key).apply();
+                applyLocalTomTomKey();
+                send("molaStatus",record("traffic","TomTom anahtarı kaydedildi. Trafik katmanını seç."));
+            }).show();
+    }
+    private void applyLocalTomTomKey(){
+        if(web==null||destroyed)return;
+        String key=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+            .getString("tomtom","");
+        if(key!=null&&!key.isEmpty()&&key.matches("[A-Za-z0-9_-]{15,200}"))
+            web.evaluateJavascript("window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey("+
+                JSONObject.quote(key)+");",null);
     }
     /** Only known, freshly read ECU measurements reach the map HUD. */
     private JSONObject obdPacket(Id4LiveTelemetry.Data d) {

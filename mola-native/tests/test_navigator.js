@@ -60,6 +60,7 @@ const win={
   visibleStations(...args){calls.visible.push(args)},
   visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
+  configureTomTom(){calls.tomtomKey=(calls.tomtomKey||0)+1},
   landscape(...args){calls.orientation.push(args)},
   chooseAlternative(index){calls.chosen.push(index)}
  }
@@ -99,6 +100,7 @@ assert(get('sheet').classList.contains('search-open'),'dock route must open sear
 get('dock-route').onclick();
 assert(!get('sheet').classList.contains('search-open'),'dock route must close search');
 assert(html.includes('id="traffic-tomtom"'),'TomTom selector missing');
+assert(html.includes('id="traffic-tomtom-key"'),'TomTom API settings button missing');
 assert(html.includes('attachLeaflet(map)'),'TomTom must bind native Leaflet map');
 assert(html.includes('id="layer-all"')&&html.includes('id="layer-ccs"')&&
  html.includes('id="layer-route"')&&html.includes('id="layer-traffic"'),
@@ -122,6 +124,8 @@ assert(typeof cluster.events.click==='function',
 cluster.events.click();
 assert(get('layer-status').textContent.includes('küme'),
  'zooming must not fabricate extra station features');
+get('traffic-tomtom-key').onclick();
+assert.equal(calls.tomtomKey,1,'TomTom settings must open Android credential dialog');
 get('dock-traffic').onclick();
 assert(get('traffic-choices').classList.contains('open'),
  'dock must expose traffic options');
