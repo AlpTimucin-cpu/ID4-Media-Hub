@@ -753,14 +753,14 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("temperature",temp).put("precipitation",precip)
                     .put("wind",wind).put("weatherCode",
                         model.optInt("weather_code",-1))
-                    .put("humidity",model.optDouble("relative_humidity_2m",
-                        Double.NaN))
                     .put("isDay",model.optInt("is_day",-1))
                     .put("modelTime",modelTime)
                     .put("receivedAt",System.currentTimeMillis())
                     .put("kind",gps?"gps":"route-start")
                     .put("source","Open-Meteo")
                     .put("modelBased",true).put("liveStationObservation",false);
+                double humidity=model.optDouble("relative_humidity_2m",Double.NaN);
+                if(Double.isFinite(humidity))result.put("humidity",humidity);
                 if(!destroyed)send("molaCurrentWeather",result);
             }catch(Exception e){
                 // Retry will be possible after 2 min rather than blanking a
