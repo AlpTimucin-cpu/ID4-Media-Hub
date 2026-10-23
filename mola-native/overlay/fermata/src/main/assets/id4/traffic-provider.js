@@ -126,6 +126,22 @@ function openYandex(){
       {infoLayerShown:true});
     traffic.setMap(providerMap);
     lastTrafficRefresh=Date.now();
+    // Actual Yandex congestion level is supplied by its licensed SDK;
+    // never estimate the 0-10 number from OSRM duration or map imagery.
+    function publishTrafficLevel(){
+     if(active!=='yandex'||!traffic||!traffic.state||!traffic.state.get)return;
+     var ready=traffic.state.get('isInited');
+     var level=Number(traffic.state.get('level'));
+     var time=Number(traffic.state.get('timestamp'))*1000;
+     if(ready===true && Number.isInteger(level)&&level>=0&&level<=10 &&
+        Number.isFinite(time)&&Math.abs(Date.now()-time)<60*60*1000)
+      if(typeof global.molaTrafficStatus==='function')
+       global.molaTrafficStatus({provider:'yandex',status:'active',level:level,
+        observedAt:time,detail:'Yandex trafik '+level+'/10 · lisanslı canlı kaynak'});
+    }
+    if(traffic.state&&traffic.state.events&&traffic.state.events.add)
+     traffic.state.events.add('change',publishTrafficLevel);
+    publishTrafficLevel();
     renderData();resolve();
    }catch(e){reject(e)}
   });
