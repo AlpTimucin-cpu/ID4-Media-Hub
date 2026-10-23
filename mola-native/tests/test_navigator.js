@@ -163,12 +163,20 @@ assert(get('status').textContent.includes('Önce rota'),
  'route fit must refuse to claim a non-existent route');
 assert(html.includes('id="co-quick-route"')&&html.includes('id="co-quick-layers"'),
  'reference-style landscape route and layer shortcuts missing');
+assert(!get('map-layers').classList.contains('open'),
+ 'all map filters must start collapsed to preserve the full-screen cockpit');
 get('co-quick-layers').onclick();
-assert.equal(get('co-quick-layers').textContent,'▧ Katmanlar: gündüz',
- 'OSM night/day toggle not reflected in the HUD');
-get('co-quick-layers').onclick();
-assert.equal(get('co-quick-layers').textContent,'▧ Katmanlar: gece',
- 'OSM night/day toggle should be reversible');
+assert(get('map-layers').classList.contains('open'),
+ 'map filter menu should open only on explicit tap');
+get('layer-daynight').onclick();
+assert.equal(get('layer-daynight').textContent,'◐ Gece haritası',
+ 'day/night option must work within map layer menu');
+get('layer-daynight').onclick();
+assert.equal(get('layer-daynight').textContent,'◐ Gündüz haritası',
+ 'day/night option should be reversible');
+get('layer-close').onclick();
+assert(!get('map-layers').classList.contains('open'),
+ 'single tap must restore unobstructed route map');
 get('go-fullscreen').onclick();
 assert.equal(calls.orientation.length,1,'cannot request landscape from portrait');
 assert.equal(calls.orientation[0][0],true,'landscape request must be explicit');
