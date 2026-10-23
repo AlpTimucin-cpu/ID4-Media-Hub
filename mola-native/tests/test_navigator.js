@@ -654,5 +654,32 @@ assert.equal(calls.route[routesBeforeTap][4],true,
 assert.equal(get('co-reroute').style.display,'none',
  'rerouting must hide the previous-route warning');
 
+assert(html.includes('id="traffic-map-badge"') && html.includes('id="traffic-map-exit"'),
+ 'licensed map must disclose provider and allow one-tap OSM return');
+assert(html.includes('id="traffic-station-panel"'),
+ 'Google/Yandex charging pins must offer destination and CCS actions');
+win.molaTrafficStationClick({lat:NaN,lon:34,title:'Invalid'});
+assert(!get('traffic-station-panel').classList.contains('open'),
+ 'invalid station cannot open map action panel');
+win.molaTrafficStationClick({lat:38.25,lon:34.45,title:'AC örnek istasyonu',
+ operator:'Deneme',ccs:false});
+assert(get('traffic-station-panel').classList.contains('open'),
+ 'clicking provider station must show its actual details');
+assert(get('traffic-station-stop').disabled,
+ 'AC-only station cannot be selected as a CCS fast-charge waypoint');
+get('traffic-station-close').onclick();
+const chargeRoutesBefore=calls.routeVia.length;
+win.molaTrafficStationClick({lat:38.25,lon:34.45,title:'CCS örnek istasyonu',
+ operator:'Deneme',ccs:true});
+assert(!get('traffic-station-stop').disabled,
+ 'validated CCS waypoint should be offered when route exists');
+get('traffic-station-stop').onclick();
+assert.equal(calls.routeVia.length,chargeRoutesBefore+1,
+ 'CCS pin selection must route through existing native waypoint bridge');
+assert.equal(calls.routeVia[chargeRoutesBefore][2],38.25,
+ 'selected waypoint must use actual station latitude');
+assert(!get('traffic-station-panel').classList.contains('open'),
+ 'confirmation must close charging popup');
+
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
