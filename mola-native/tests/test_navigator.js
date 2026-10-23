@@ -341,6 +341,30 @@ get('co-fit-route').onclick();
 assert(globalThis.lastRouteBoundsOptions && globalThis.lastRouteBoundsOptions.maxZoom===15,
  'full-route button must reframe the actual OSRM route');
 assert(get('co-trip-kilometers').textContent.includes('510 km'),'bottom route bar distance missing');
+win.molaJourneyWeather({cards:[
+ {percent:0,latitude:37.97,longitude:34.68,available:true,
+  temperature:14,rainProbability:10,wind:8,weatherCode:1},
+ {percent:25,latitude:37.72,longitude:33.5,available:true,
+  temperature:11,rainProbability:40,wind:16,weatherCode:51},
+ {percent:50,latitude:37.3,longitude:32.2,available:true,
+  temperature:9,rainProbability:30,wind:10,weatherCode:3},
+ {percent:75,latitude:36.9,longitude:31.2,available:false},
+ {percent:100,latitude:36.9,longitude:30.7,available:true,
+  temperature:20,rainProbability:5,wind:11,weatherCode:0}
+]});
+const beforeWeatherPins=drawnMarkers.length;
+get('layer-weather').onclick();
+assert(get('journey-weather').classList.contains('open'),
+ 'weather window must open with a real route');
+assert.equal(drawnMarkers.length,beforeWeatherPins+4,
+ 'weather markers should render only when requested');
+get('journey-close').onclick();
+assert(!get('journey-weather').classList.contains('open'),
+ 'route weather popup should close');
+get('layer-weather').onclick();
+assert.equal(drawnMarkers.length,beforeWeatherPins+8,
+ 'cached weather should re-render without another network request');
+get('journey-close').onclick();
 assert(get('vehicle-cockpit').classList.contains('has-route'),'trip bar not enabled for route');
 assert.equal(get('co-trip-arrival').textContent,'—',
  'must not fabricate arrival SoC without current BMS measurement');
@@ -472,7 +496,7 @@ win.molaStations({kind:'route',items:[
  snapshotAgeHours:48,liveAvailability:false,livePrices:false});
 assert(get('station-summary').textContent.includes('2 rota yakınında'),
  'route CCS stations summary missing');
-assert(get('station-note').textContent.includes('Canlı soket doluluğu/fiyat yok'),
+assert(get('station-note').textContent.includes('Soket durumu/fiyat doğrulanmadı'),
  'snapshot incorrectly claims real-time status');
 assert(get('station-suggestion').style.display==='none',
  'missing SoC and suggestion must not produce fake charging recommendation');
@@ -490,6 +514,20 @@ assert(get('co-trip-charge-km').textContent.includes('75 km'),
  'CCS progress distance must be shown as approximate route model');
 assert(get('station-suggestion-label').textContent.toLowerCase().includes('model'),
  'suggestion must explicitly identify model assumptions');
+// Switching to nationwide stations does not cancel independent CCS route advice.
+get('layer-all').onclick();
+win.molaStations({kind:'route',items:[],total:1,
+ updatedAt:'2026-10-20T08:00:00Z',snapshotAgeHours:48,
+ chargeModel:'charge-likely',
+ suggested:{lat:37.8,lon:34.9,title:'Deneme CCS',operator:'ŞarjAğı',
+  ccs:true,routeProgressKm:75.2}});
+assert.equal(get('co-trip-charge-button').style.display,'inline-block',
+ 'route charge advice must survive browsing all Turkish stations');
+assert(get('station-suggestion').style.display==='flex',
+ 'non-route layers must not suppress model charging advice');
+get('layer-route').onclick();
+assert(get('layer-status').textContent.includes('rota yakınında'),
+ 'returning to route CCS must restore cached station corridor');
 const savedBeforeCharge=calls.saved.length;
 get('station-suggestion-choose').onclick();
 assert.equal(calls.routeVia.length,1,'suggestion must invoke explicit charging waypoint route');
