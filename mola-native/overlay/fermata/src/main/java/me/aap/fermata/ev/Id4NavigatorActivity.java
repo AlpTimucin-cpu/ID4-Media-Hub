@@ -209,7 +209,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             if(title!=null && title.length()<=160 && operator!=null && operator.length()<=120)
                 Id4EnergyData.saveStation(Id4NavigatorActivity.this,title,operator);
         }
-        @JavascriptInterface public void back() {ui.post(()->finish());}
+        @JavascriptInterface public void back() {
+            ui.post(()->{
+                if(isTaskRoot()){
+                    startActivity(new Intent(Id4NavigatorActivity.this,
+                        me.aap.fermata.ui.activity.MainActivity.class));
+                }
+                finish();
+            });
+        }
         @JavascriptInterface public void stations() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
         }

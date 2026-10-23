@@ -69,3 +69,6 @@
 
 ### TomTom Orbis v2 trafik katmanı
 Resmî yoğunluk ve yol olayları raster katmanı `Katmanlar → Trafik → TomTom Orbis Trafik` seçeneğiyle eklendi. Gerçek veri için `ID4_TOMTOM_API_KEY` Actions secret gerekir; bu anahtar olmadan canlı trafik etkin değildir. Mevcut OSRM ETA hâlâ trafiksizdir. [Kurulum ve sınırlar](mola-native/TRAFFIC_PROVIDERS.md).
+
+## Yeni uygulama kimliği ve doğrudan kokpit açılışı
+Telefon launcher adı **ID.4 Yol Arkadaşım**. Özel koyu lacivert, ID.4/elektrikli araç temalı vektör simgesi vardır. Uygulamaya dokununca önce yatay araç kokpiti açılır. Ekrandaki **Mola** düğmesi medya ana ekranına döner; mevcut medya oynatma sınıfları değiştirilmedi. Bu ayrı `.id4preview` paketidir; yüklü Mola 3.2'yi güncellemez. Android Auto navigasyon ekranı yine doğrulanmış değildir.

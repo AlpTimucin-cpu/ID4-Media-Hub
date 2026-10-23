@@ -85,6 +85,11 @@ source=source.replace(permission_anchor,
 
 anchor='        <activity\n            android:name="me.aap.fermata.ui.activity.MainActivity"'
 assert source.count(anchor)==1
+# Launch straight into ID.4 cockpit on phone; keep legacy media dashboard
+# reachable from the Mola button, and leave existing media services untouched.
+launcher_category='<category android:name="android.intent.category.LAUNCHER" />'
+assert source.count(launcher_category)==1
+source=source.replace(launcher_category,'<!-- ID.4 launcher alias below -->',1)
 source=source.replace(anchor,
     '''        <activity android:name="me.aap.fermata.ev.Id4EvActivity"
             android:exported="false" />
@@ -95,7 +100,19 @@ source=source.replace(anchor,
             android:configChanges="orientation|screenSize" />
         <activity android:name="me.aap.fermata.ev.Id4OverviewActivity"
             android:exported="false" />
+        <activity-alias android:name="me.aap.fermata.ev.Id4Launcher"
+            android:exported="true"
+            android:targetActivity="me.aap.fermata.ev.Id4NavigatorActivity"
+            android:icon="@drawable/id4_launcher"
+            android:label="ID.4 Yol Arkadaşım">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 ''' + anchor)
+source=source.replace('android:icon="@drawable/launcher"',
+    'android:icon="@drawable/id4_launcher"',1)
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
 
@@ -121,8 +138,9 @@ station_catalog=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationCatal
 station_types=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationTypes.java"
 charge_advisor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeAdvisor.java"
 charge_cost=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost]:
+launcher_icon=overlay/"fermata/src/main/res/drawable/id4_launcher.xml"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -157,7 +175,7 @@ allowed=set(SOURCE_SHA) | {
     str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
-    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay))}
+    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():

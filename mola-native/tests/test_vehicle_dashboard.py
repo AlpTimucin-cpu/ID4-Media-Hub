@@ -14,6 +14,8 @@ assert 'addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewAc
 assert 'addTab(tabs,"⚡ Şarj",this::stationsScreen)' in ev
 assert "Id4ObdActivity.java" in patch
 assert "Id4NavigatorActivity.java" in patch
+assert 'Id4Launcher' in patch and '@drawable/id4_launcher' in patch
+assert (root/"fermata/src/main/res/drawable/id4_launcher.xml").is_file()
 assert "Id4LiveTelemetry" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
 for term in [
     'heroSoc=label("— %"', 'heroRange=label("— km  •  Veri yok"',

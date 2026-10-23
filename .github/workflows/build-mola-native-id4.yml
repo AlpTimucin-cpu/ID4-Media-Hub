@@ -147,7 +147,7 @@ jobs:
           ./gradlew --no-daemon --no-parallel verifyWebOnlyProductionGraph
           # The public Mola build.sh conflates APP_ID_SFX env with flavor.
           # Pass the suffix as an explicit Gradle *property* instead.
-          ./gradlew --no-daemon --no-parallel :fermata:packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview
+          ./gradlew --no-daemon --no-parallel :fermata:packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview -PAPP_NAME="ID.4 Yol Arkadaşım"
           mkdir -p dist
           mapfile -t built < <(find fermata/build/outputs/apk_from_bundle -type f -name 'fermata*.apk' -print)
           test "${#built[@]}" -eq 1
@@ -163,6 +163,8 @@ jobs:
           "$AAPT" dump badging "$APK" > /tmp/mola-preview-package.txt
           head -3 /tmp/mola-preview-package.txt
           grep -q 'id4preview' /tmp/mola-preview-package.txt
+          grep -q 'ID.4 Yol Arkadaşım' /tmp/mola-preview-package.txt
+          grep -q 'me.aap.fermata.ev.Id4Launcher' /tmp/mola-preview-package.txt
           if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mola-preview-package.txt; then
             echo "::error::Refusing APK that could overwrite Mola 3.2"
             exit 1
