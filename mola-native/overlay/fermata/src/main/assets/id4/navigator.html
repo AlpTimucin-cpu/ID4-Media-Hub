@@ -777,18 +777,53 @@ function showVisibleStations(){
   stationRequestPending=false;
  }
 }
+function applyRouteChargeAnalysis(packet){
+ var count=Number.isFinite(packet.total)?packet.total:packet.items.length;
+ var detail='⚡ EPDK: '+count+' rota yakınında CCS adayı'+
+   (Number(packet.snapshotAgeHours)>72?' (ESKİ KAYITLAR)':'');
+ $('station-summary').textContent=detail;
+ $('station-note').textContent='Rota CCS kaydı: '+String(packet.updatedAt||'tarih yok')+
+   ' · Soket durumu/fiyat doğrulanmadı';
+ suggestedCharge=null;
+ $('station-suggestion').style.display='none';
+ $('co-trip-charge-button').style.display='none';
+ $('co-trip-charge-km').textContent='Mola km: —';
+ if( packet.suggested &&
+    packet.chargeModel==='charge-likely' && !packet.stopIncluded){
+  var station=packet.suggested;
+  if(valid(station.lat,station.lon) && points.from && points.to){
+   suggestedCharge=station;
+   $('co-trip-charge-button').style.display='inline-block';
+   $('co-trip-charge-km').textContent='Mola önerisi: '+(Number.isFinite(Number(station.routeProgressKm))?
+     Math.round(Number(station.routeProgressKm))+' km':'mesafe bilinmiyor');
+   $('co-trip-charge').textContent='⚡ CCS mola önerisi · müsaitlik doğrulanmadı';
+   var label=String(station.title||'CCS istasyonu');
+   var km=Number(station.routeProgressKm);
+   $('station-suggestion-label').textContent='⚡ Model önerisi: '+label+
+     (Number.isFinite(km)?' · yaklaşık '+km.toFixed(0)+' km sonra':'')+
+     ' · Konum, sapma ve müsaitlik doğrulanmalı';
+   $('station-suggestion').style.display='flex';
+  }
+ }else if( packet.chargeModel==='no-soc'){
+  $('station-summary').textContent=detail+' · OBD SoC olmadan mola önerilmez';
+ }else if( packet.chargeModel==='charge-likely' && !packet.stopIncluded){
+  $('station-summary').textContent=detail+' · Modele uygun güvenilir mola bulunamadı';
+  $('co-trip-charge').textContent='⚠️ Modele uygun CCS bulunamadı · farklı rota/istasyon kontrol et';
+ }
+}
 window.molaStations=function(packet){
  if(!packet||!Array.isArray(packet.items))return;
  stationRequestPending=false;
- stationKind=String(packet.kind||'visible');
- if(stationKind==='route')cachedRouteStations=packet;
- // Retain computed charging recommendations even if the user is viewing AC pins.
- if(stationKind==='route' && stationLayerMode!=='route' && stationLayerMode!=='none'){
-  return;
+ var kind=String(packet.kind||'visible');
+ if(kind==='route'){
+  cachedRouteStations=packet;
+  // Charge advice is independent from the user's displayed station layer.
+  // Do not silently lose advice while browsing all/CCS stations.
+  applyRouteChargeAnalysis(packet);
  }
- if(stationKind==='visible' && stationLayerMode==='route')return;
- if(stationLayerMode==='none' && stationKind==='visible')return;
- if(stationLayerMode==='none')return;
+ if(kind==='route' && stationLayerMode!=='route')return;
+ if(kind==='visible' && stationLayerMode!=='all' && stationLayerMode!=='ccs')return;
+ stationKind=kind;
  clearStationMarkers();
  packet.items.slice(0,180).forEach(function(station){
   if(!station||!valid(station.lat,station.lon)||!map)return;
@@ -862,34 +897,10 @@ window.molaStations=function(packet){
    ' · '+stationMarkers.length+(packet.clustered?' küme (yakınlaştır)':' işaret')+stale;
  $('layer-status').textContent=detail+
   (stationKind==='route'?' · Rota koridoru: 12 km':' · Haritada kaydır/yakınlaştır');
- $('station-summary').textContent=detail;
- $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
- suggestedCharge=null;
- $('station-suggestion').style.display='none';
- $('co-trip-charge-button').style.display='none';
- $('co-trip-charge-km').textContent='Mola km: —';
- if(stationKind==='route' && packet.suggested &&
-    packet.chargeModel==='charge-likely' && !packet.stopIncluded){
-  var station=packet.suggested;
-  if(valid(station.lat,station.lon) && points.from && points.to){
-   suggestedCharge=station;
-   $('co-trip-charge-button').style.display='inline-block';
-   $('co-trip-charge-km').textContent='Mola önerisi: '+(Number.isFinite(Number(station.routeProgressKm))?
-     Math.round(Number(station.routeProgressKm))+' km':'mesafe bilinmiyor');
-   $('co-trip-charge').textContent='⚡ CCS mola önerisi · müsaitlik doğrulanmadı';
-   var label=String(station.title||'CCS istasyonu');
-   var km=Number(station.routeProgressKm);
-   $('station-suggestion-label').textContent='⚡ Model önerisi: '+label+
-     (Number.isFinite(km)?' · yaklaşık '+km.toFixed(0)+' km sonra':'')+
-     ' · Konum, sapma ve müsaitlik doğrulanmalı';
-   $('station-suggestion').style.display='flex';
-  }
- }else if(stationKind==='route' && packet.chargeModel==='no-soc'){
-  $('station-summary').textContent=detail+' · OBD SoC olmadan mola önerilmez';
- }else if(stationKind==='route' && packet.chargeModel==='charge-likely' && !packet.stopIncluded){
-  $('station-summary').textContent=detail+' · Modele uygun güvenilir mola bulunamadı';
-  $('co-trip-charge').textContent='⚠️ Modele uygun CCS bulunamadı · farklı rota/istasyon kontrol et';
+ if(kind==='visible'){
+  $('station-note').textContent='Kayıt: '+timestamp+' · Canlı soket doluluğu/fiyat yok.';
  }
+
 };
 window.molaStationError=function(packet){
  stationRequestPending=false;
