@@ -425,12 +425,13 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 
 /* Selectable map layers: stations are EPDK snapshot, weather is Open-Meteo
    model, traffic is explicitly unavailable without licensed live data. */
-.map-layers-panel{position:fixed;top:84px;left:36%;right:25%;
+.map-layers-panel{display:none;position:fixed;top:84px;left:36%;right:25%;
  z-index:1090;padding:8px 10px;border:1px solid #378da2;border-radius:13px;
  color:#dff8ff;background:rgba(3,33,49,.89);pointer-events:auto}
-.map-layer-buttons{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
-.map-layer-buttons button{padding:7px 9px;border-radius:8px;
- color:#d6eef6;background:#15465b;font-size:11px;font-weight:750}
+.map-layers-panel.open{display:block}
+.map-layer-buttons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.map-layer-buttons button{padding:10px 10px;border-radius:8px;min-height:43px;
+ color:#d6eef6;background:#15465b;font-size:12px;font-weight:750}
 .map-layer-buttons button.active{background:#20c8ad;color:#00262f}
 .map-layer-status{font-size:10px;color:#cbdce8;margin-top:4px}
 .map-layer-status.warning{color:#ffd18e}
@@ -511,7 +512,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
  </div>
  <div class="cockpit-quick" id="cockpit-quick">
   <button id="co-quick-route" type="button">⌕ Rota ara</button>
-  <button id="co-quick-layers" type="button" aria-pressed="false">▧ Katmanlar: gece</button>
+  <button id="co-quick-layers" type="button" aria-pressed="false">▧ Katmanlar</button>
  </div>
  <div class="cockpit-tripbar" id="cockpit-tripbar" aria-label="Gerçek rota ve GPS ilerlemesi">
   <div>
@@ -567,6 +568,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-layers-panel" id="map-layers">
  <div class="map-layer-buttons">
+  <button type="button" id="layer-close">✕ Kapat</button>
+  <button type="button" id="layer-daynight">◐ Gündüz haritası</button>
   <button type="button" id="layer-all">⚡ Tüm Türkiye</button>
   <button type="button" id="layer-ccs">⚡ CCS</button>
   <button type="button" id="layer-route">🛣 Rota CCS</button>
@@ -754,6 +757,7 @@ function setStationLayer(mode){
   $('layer-status').textContent='Şarj işaretleri gizlendi';return;
  }
  if(mode==='route'){
+  if(!cachedRouteStations)clearStationMarkers();
   if(cachedRouteStations){
    window.molaStations(cachedRouteStations);
    return;
@@ -1481,7 +1485,10 @@ try{
    $('map-credit').textContent='© OpenStreetMap contributors · Çevrimiçi harita';
   });
  }
- map.on('click',function(e){selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false)});
+ map.on('click',function(e){
+ setMapLayerMenu(false);
+ selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false);
+});
  map.on('dragstart',function(){setFollowMap(false)});
  msg('Başlangıç ve varış için yer adı yazabilirsin; GPS isteğe bağlı.');
 }catch(e){
@@ -1548,10 +1555,17 @@ function toggleRouteSearch(){
  }
 }
 $('co-route-tab').onclick=$('open-route').onclick=$('co-quick-route').onclick=toggleRouteSearch;
+function setMapLayerMenu(open){
+ $('map-layers').classList[open?'add':'remove']('open');
+ $('co-quick-layers').setAttribute('aria-pressed',open?'true':'false');
+}
 $('co-quick-layers').onclick=function(){
- var current=document.body.classList.toggle('map-day');
- $('co-quick-layers').textContent=current?'▧ Katmanlar: gündüz':'▧ Katmanlar: gece';
- $('co-quick-layers').setAttribute('aria-pressed',current?'true':'false');
+ setMapLayerMenu(!$('map-layers').classList.contains('open'));
+};
+$('layer-close').onclick=function(){setMapLayerMenu(false)};
+$('layer-daynight').onclick=function(){
+ var day=document.body.classList.toggle('map-day');
+ $('layer-daynight').textContent=day?'◐ Gece haritası':'◐ Gündüz haritası';
 };
 $('co-focus').onclick=function(){
  var focus=document.body.classList.toggle('focus-drive');
@@ -1562,7 +1576,10 @@ $('co-focus').onclick=function(){
 $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
 
-$('co-station-tab').onclick=function(){setStationLayer('all')};
+$('co-station-tab').onclick=function(){
+ setMapLayerMenu(true);
+ setStationLayer('all');
+};
 $('layer-all').onclick=function(){setStationLayer('all')};
 $('layer-ccs').onclick=function(){setStationLayer('ccs')};
 $('layer-route').onclick=function(){setStationLayer('route')};
@@ -1581,6 +1598,7 @@ function hideJourneyWeather(){
 }
 $('layer-weather').onclick=function(){
  if(!currentRouteProgress){msg('Hava için önce rota oluştur.');return}
+ setMapLayerMenu(false);
  if($('journey-weather').classList.contains('open')){
   hideJourneyWeather();return;
  }
