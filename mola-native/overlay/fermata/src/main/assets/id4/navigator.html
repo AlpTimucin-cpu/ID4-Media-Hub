@@ -598,6 +598,24 @@ body.provider-active .traffic-map-badge{display:flex}
  .sheet.route-active.details-open{top:65px!important;max-height:64vh!important}
  .buttons{top:60px!important}
 }
+
+/* One glanceable current-model weather indicator; it is NOT a sensor reading. */
+.current-weather-chip{position:fixed;top:122px;left:35.5%;z-index:905;
+ max-width:calc(39% - 24px);display:flex;align-items:center;gap:6px;
+ border:1px solid #438fa6;border-radius:11px;padding:6px 8px;
+ background:rgba(2,32,47,.91);color:#eafaff;font-size:11px;font-weight:700;
+ box-shadow:0 2px 12px #001b2c70}
+.current-weather-chip small{font-size:9px;color:#c0d5df;font-weight:500}
+.current-weather-chip button{min-width:31px;min-height:31px;border-radius:8px;
+ background:#165673;color:#fff;font-size:15px}
+.current-weather-chip.stale{border-color:#d8aa64}
+@media (orientation:landscape) and (max-height:520px){
+ .current-weather-chip{top:105px;left:35%;max-width:37%;padding:3px 6px;font-size:10px}
+ .current-weather-chip button{min-height:26px;min-width:26px}
+}
+@media (orientation:portrait), (max-width:639px){
+ .current-weather-chip{top:76px;left:8px;max-width:calc(100% - 110px)}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -609,6 +627,10 @@ body.provider-active .traffic-map-badge{display:flex}
   <button id="traffic-station-stop" type="button">⚡ Mola ekle</button>
   <button id="traffic-station-close" type="button">Kapat</button>
  </div>
+</div>
+<div class="current-weather-chip" id="current-weather-chip">
+ <span id="current-weather-label">☁ Hava: rota veya GPS bekleniyor</span>
+ <button type="button" id="current-weather-refresh" aria-label="Güncel hava modelini yenile" title="Güncel hava verisini yenile">↻</button>
 </div>
 <div class="traffic-map-badge" id="traffic-map-badge">
  <div><span id="traffic-map-provider">Trafik sağlayıcısı</span>
@@ -1081,6 +1103,33 @@ var $=function(x){return document.getElementById(x)};
 function msg(t){$('status').textContent=String(t)}
 function valid(lat,lon){return typeof lat==='number'&&typeof lon==='number'&&
  Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46}
+var lastCurrentWeatherAt=0;
+window.molaCurrentWeather=function(o){
+ if(!o||o.modelBased!==true || !Number.isFinite(o.temperature) ||
+    !Number.isFinite(o.precipitation)||!Number.isFinite(o.wind)||
+    !Number.isFinite(o.receivedAt)||!Number.isFinite(o.modelTime))return;
+ var age=Math.abs(Date.now()-o.modelTime*1000);
+ if(age>5400000 || Date.now()-o.receivedAt>5400000)return;
+ lastCurrentWeatherAt=o.receivedAt;
+ var icon=o.weatherCode>=51?'🌧':o.weatherCode>=3?'☁':'☀';
+ var where=o.kind==='gps'?'GPS konumu':'Rota başlangıcı';
+ $('current-weather-label').textContent=icon+' '+Math.round(o.temperature)+'°C · '+
+  Math.round(o.wind)+' km/sa rüzgâr · '+where+' · model';
+ $('current-weather-chip').classList.remove('stale');
+ $('current-weather-chip').title='Open-Meteo güncel model, '+
+  new Date(o.modelTime*1000).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+
+  ' verisi; meteoroloji istasyonu ölçümü değildir. Yağış: '+
+  Number(o.precipitation).toFixed(1)+' mm';
+};
+window.molaCurrentWeatherError=function(o){
+ if(!lastCurrentWeatherAt){
+  $('current-weather-label').textContent=String(o&&o.detail||'Güncel hava bilgisi alınamadı');
+ }
+ $('current-weather-chip').classList.add('stale');
+};
+$('current-weather-refresh').onclick=function(){
+ native('refreshWeather');
+};
 window.molaWeather=function(packet){
  if(!packet||!Array.isArray(packet.cards)||packet.cards.length!==4)return;
  var cards=$('weather-cards').children;
@@ -1165,6 +1214,7 @@ function native(name){
    case 'routeVia':bridge.routeVia(a[0],a[1],a[2],a[3],a[4],a[5],a[6]);break;
    case 'chooseAlternative':bridge.chooseAlternative(a[0]);break;
    case 'location':bridge.location();break;
+   case 'refreshWeather':bridge.refreshWeather();break;
    case 'landscape':bridge.landscape(a[0]);break;
    case 'voice':bridge.voice(a[0]);break;
    case 'stop':bridge.stop();break;
@@ -1427,6 +1477,8 @@ window.molaRoute=function(o){
  // unless the driver deliberately chose a different map layer.
  if(stationLayerMode==='route')$('layer-status').textContent='Rota çevresi CCS taranıyor';
  $('co-cost').textContent='Maliyet ve alternatifler hesaplanıyor...';
+ if(!lastCurrentWeatherAt)
+  $('current-weather-label').textContent='☁ Rota başlangıcında hava modeli isteniyor';
  $('co-cost-note').textContent='OBD SoC ve EPDK istasyonları inceleniyor';
  $('co-alts').classList.remove('open');
  var pts=o.coordinates.filter(function(c){
@@ -1599,6 +1651,10 @@ window.molaTelemetry=function(data){
  $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
 };
 setInterval(function(){
+ if(lastCurrentWeatherAt && Date.now()-lastCurrentWeatherAt>35*60*1000){
+  $('current-weather-chip').classList.add('stale');
+  $('current-weather-label').textContent='☁ Hava modeli güncel değil · ↻';
+ }
  if(lastTelemetryAt){
   var age=Math.floor((Date.now()-lastTelemetryAt)/1000);
   if(age>=0 && age<=25 && Number.isFinite(liveSoc))
