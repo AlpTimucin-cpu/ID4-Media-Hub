@@ -1,4 +1,4 @@
-# ID.4 Yol Arkadaşım — resmî Google / Yandex trafik sağlayıcıları
+# ID.4 Yol Arkadaşım — TomTom Orbis / Google / Yandex trafik sağlayıcıları
 
 Bu dalda Mola'nın orijinal medya modüllerine dokunmadan **telefon kokpitinde**
 kullanılabilecek bir harita sağlayıcı seçicisi bulunur. `Katmanlar → Trafik`
@@ -75,3 +75,28 @@ Türkiye'de canlı trafik yüklediğinin **kanıtı değildir**.
 - [Yandex JavaScript API trafik kontrolü](https://yandex.com/dev/jsapi-v2-1/doc/en/v2-1/examples/cases/traffic_control)
 - [Yandex WebView/Referer kısıtları](https://yandex.com/maps-api/docs/js-api/limit.html)
 - [Google Routes traffic-aware polylines](https://developers.google.com/maps/documentation/routes/traffic_on_polylines)
+
+## TomTom Orbis Traffic API v2
+
+Mevcut Leaflet/OSM haritası üzerine TomTom'un resmi saydam PNG akış
+ve olay katmanları bindirilir. Endpointler:
+- `https://api.tomtom.com/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=...`
+- `https://api.tomtom.com/maps/orbis/traffic/incidents/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=...`
+
+**Etkinleştirme:** [TomTom Developer](https://developer.tomtom.com/) hesabıyla
+Traffic API anahtarı al. GitHub → Settings → Secrets and variables → Actions →
+New repository secret → `ID4_TOMTOM_API_KEY`. Sonrasında bu dalın APK
+iş akışını yeniden çalıştır. Uygulamada `Katmanlar → Trafik → TomTom
+Orbis Trafik` seç.
+
+Canlı etiketi ancak gerçek bir *flow* PNG döşemesi yüklendikten sonra açılır.
+Birden çok raster hatası veya zaman aşımı olursa OSM haritası korunur.
+Katmanlar 5 dakikada bir yeniden yüklenir. Geçerli API anahtarı olmadan
+ağ sorgusu yapılmaz. Harita akışı, **OSRM ETA'ya trafik gecikmesi eklemez**;
+trafik duyarlı yolculuk süreleri ayrıca TomTom Routing API gerektirir.
+GitHub secret olarak girilse bile anahtar derlenen APK'da görülebilir;
+servis kapsamı ve kota sınırı şarttır. Gerçek cihaz/Türkiye trafik verisi
+API anahtarı olmadan doğrulanamaz.
+
+[Resmî TomTom Flow](https://docs.tomtom.com/traffic-api/documentation/tomtom-orbis-maps/v2/traffic-flow/raster-flow-tiles) ·
+[Resmî TomTom Incidents](https://docs.tomtom.com/traffic-api/documentation/tomtom-orbis-maps/v2/traffic-incidents/raster-incident-tiles)

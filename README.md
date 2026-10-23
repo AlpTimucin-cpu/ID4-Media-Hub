@@ -66,3 +66,6 @@
 **Öncelikler:** Gerçek POCO F5 ekran ölçüleriyle okunabilirlik, istasyonların resmi kaynaklarla güncellenmesi, güvenilir izinli soket doluluk/fiyat API'si, Car Scanner karşılaştırmalı sensör kalibrasyonu, Android Auto için ayrı uyumlu navigasyon uygulaması ve donanımda test. Kod derlemesinin başarılı olması bu başlıkların çözüldüğü anlamına gelmez.
 
 **Katkı:** Hata raporlarında ekran boyutu, uygulama sürümü/commit, tekrarlama adımları ve kişisel bilgileri çıkartılmış loglar paylaşılabilir. OBD loglarındaki VIN/MAC ve lokasyonlar gizlenmelidir.
+
+### TomTom Orbis v2 trafik katmanı
+Resmî yoğunluk ve yol olayları raster katmanı `Katmanlar → Trafik → TomTom Orbis Trafik` seçeneğiyle eklendi. Gerçek veri için `ID4_TOMTOM_API_KEY` Actions secret gerekir; bu anahtar olmadan canlı trafik etkin değildir. Mevcut OSRM ETA hâlâ trafiksizdir. [Kurulum ve sınırlar](mola-native/TRAFFIC_PROVIDERS.md).

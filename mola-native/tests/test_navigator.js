@@ -98,6 +98,8 @@ get('dock-route').onclick();
 assert(get('sheet').classList.contains('search-open'),'dock route must open search');
 get('dock-route').onclick();
 assert(!get('sheet').classList.contains('search-open'),'dock route must close search');
+assert(html.includes('id="traffic-tomtom"'),'TomTom selector missing');
+assert(html.includes('attachLeaflet(map)'),'TomTom must bind native Leaflet map');
 assert(html.includes('id="layer-all"')&&html.includes('id="layer-ccs"')&&
  html.includes('id="layer-route"')&&html.includes('id="layer-traffic"'),
  'selectable full Turkey, route chargers and honest traffic mode missing');

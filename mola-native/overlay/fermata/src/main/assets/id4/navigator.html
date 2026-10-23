@@ -1193,6 +1193,7 @@ body.provider-active .traffic-map-badge{display:flex}
  <div class="traffic-provider-choices" id="traffic-choices">
   <button type="button" id="traffic-google">Google Trafik</button>
   <button type="button" id="traffic-yandex">Yandex Trafik</button>
+   <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
   <button type="button" id="traffic-osm">OSM haritası</button>
   <div class="traffic-provider-note" id="traffic-help">Gerçek trafik: lisanslı API anahtarı gerekir.</div>
  </div>
@@ -2155,6 +2156,7 @@ bindAutocomplete('from');bindAutocomplete('to');
 try{
  if(typeof L==='undefined')throw new Error('Harita kitaplığı yüklenmedi');
  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([38.9,35.1],6);
+  if(window.Id4TrafficProviders)window.Id4TrafficProviders.attachLeaflet(map);
  // Public OSM tile server is best-effort; keep map attribution visible
  // and say clearly when the network tiles cannot be displayed.
  var baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -2318,7 +2320,8 @@ window.molaTrafficStatus=function(o){
  var provider=String(o.provider||'osm'),active=o.status==='active';
  $('traffic-help').textContent=String(o.detail||'Trafik durum bilgisi yok');
  $('traffic-map-provider').textContent=provider==='google'?'Google Trafik':
-  provider==='yandex'?'Yandex Trafik':'OpenStreetMap';
+  provider==='yandex'?'Yandex Trafik':
+   provider==='tomtom'?'TomTom Orbis Trafik':'OpenStreetMap';
  var level=Number(o.level),observed=Number(o.observedAt);
  var validLevel=provider==='yandex'&&active&&Number.isInteger(level)&&
   level>=0&&level<=10&&Number.isFinite(observed)&&
@@ -2329,16 +2332,20 @@ $('dock-traffic').classList[active?'remove':'add']('status-unavailable');
 $('traffic-mini-label').textContent=validLevel?
    '🚦 Yandex '+level+'/10 · canlı kaynak':
    active?(provider==='google'?'🚦 Google trafik haritası':
-      '🚦 Yandex trafik katmanı'):'🚦 Trafik verisi yok';
+       provider==='tomtom'?'🚦 TomTom Orbis yoğunluk ve olaylar':
+       '🚦 Yandex trafik katmanı'):'🚦 Trafik verisi yok';
  $('traffic-mini-label').classList[active?'add':'remove']('live');
  $('layer-status').classList[active?'remove':'add']('warning');
  $('layer-status').textContent=String(o.detail||'Trafik verisi yok');
- ['google','yandex','osm'].forEach(function(name){
+ ['google','yandex','tomtom','osm'].forEach(function(name){
   $('traffic-'+name).classList[name===provider&&active?'add':'remove']('active');
  });
- $('traffic-source').textContent=provider==='osm'?
+ $('map-credit').textContent=provider==='tomtom'&&active?
+   '© OpenStreetMap contributors · © TomTom · Çevrimiçi trafik':
+   '© OpenStreetMap contributors · Çevrimiçi harita';
+  $('traffic-source').textContent=provider==='osm'?
   'OSRM rotası canlı trafik gecikmesi içermiyor.':
-  active?'Resmî '+(provider==='google'?'Google':'Yandex')+
+  active?'Resmî '+(provider==='google'?'Google':provider==='tomtom'?'TomTom':'Yandex')+
    ' trafik haritası. OSRM ETA yine trafiksizdir.':
   'Sağlayıcı yüklenemedi; mevcut harita korunuyor.';
 };
@@ -2346,18 +2353,20 @@ $('dock-traffic').onclick=function(){
  setMapLayerMenu(true);
  $('traffic-choices').classList.add('open');
  var adapter=window.Id4TrafficProviders;
- var configured=adapter&&adapter.configured?adapter.configured():{google:false,yandex:false};
+ var configured=adapter&&adapter.configured?adapter.configured():{google:false,yandex:false,tomtom:false};
  $('traffic-help').textContent='Google: '+(configured.google?'SDK ayarlı':'API anahtarı yok')+
   ' · Yandex: '+(configured.yandex?'SDK ayarlı':'API anahtarı yok')+
-  ' · Trafiksiz rota ETA ayrı hesaplanır';
+  ' · TomTom: '+(configured.tomtom?'Orbis anahtarı ayarlı':'API anahtarı yok')+
+  ' · OSRM ETA trafiksizdir';
 };
 $('layer-traffic').onclick=function(){
  $('traffic-choices').classList.toggle('open');
  var adapter=window.Id4TrafficProviders;
- var a=adapter&&adapter.configured?adapter.configured():{google:false,yandex:false};
+ var a=adapter&&adapter.configured?adapter.configured():{google:false,yandex:false,tomtom:false};
  $('traffic-help').textContent='Google: '+(a.google?'SDK yapılandırıldı':'API anahtarı yok')+
   ' · Yandex: '+(a.yandex?'SDK yapılandırıldı':'API anahtarı yok')+
-  ' · Sağlayıcı ücreti uygulanabilir.';
+   ' · TomTom: '+(a.tomtom?'Orbis anahtarı ayarlı':'API anahtarı yok')+
+   ' · Sağlayıcı ücret/kota koşulları geçerli.';
 };
 function switchTraffic(which){
  closeTrafficStation();
@@ -2377,6 +2386,7 @@ function switchTraffic(which){
 }
 $('traffic-google').onclick=function(){switchTraffic('google')};
 $('traffic-yandex').onclick=function(){switchTraffic('yandex')};
+$('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
 $('traffic-osm').onclick=$('traffic-map-exit').onclick=function(){switchTraffic('osm')};
 function hideJourneyWeather(){
  $('journey-weather').classList.remove('open');
