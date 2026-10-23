@@ -139,6 +139,9 @@ function activate(name,center,zoom){
  return scriptOnce(name,keyFor(name)).then(function(){
   if(seq!==requested)return false;
   reset();
+  // Both SDKs must initialize on an already sized/visible map container;
+  // a hidden div produces a blank map even with a valid API key.
+  document.body.classList.add('provider-active');
   return Promise.resolve(name==='google'?openGoogle():openYandex()).then(function(){
    if(seq!==requested)return false;
    document.body.classList.add('provider-active');
