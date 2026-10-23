@@ -714,6 +714,8 @@ get('current-weather-refresh').onclick();
 assert(get('status').textContent.includes('Android bağlantı hatası')||
  get('current-weather-label').textContent===weatherBefore,
  'manual weather refresh must not fabricate a sensor value');
+win.molaRoute({coordinates:[[34.6833,37.9667],[33.8,37.4]],
+ distanceKm:145,durationMin:120,steps:['Devam et'],navigationActive:false});
 win.molaAlternatives({selectedIndex:0,fastestIndex:0,shortestIndex:0,
  chargeAwareIndex:-1,options:[{index:0,km:145,minutes:120,
  energyLowKwh:23.2,energyHighKwh:34.8,socKnown:false,stationsKnown:true,
