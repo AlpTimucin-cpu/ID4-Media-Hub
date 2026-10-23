@@ -909,6 +909,39 @@ body.provider-active .traffic-map-badge{display:flex}
   .cockpit-tripbar .tripbar-track{height:6px;margin:2px 0}
   .cockpit-tripbar>div:last-child #co-cost-note{display:none}
 }
+
+/* Tight head-unit action layout: the last route button must never be clipped. */
+@media (orientation:landscape) and (min-width:640px) and (max-height:520px){
+ .cockpit-right .cockpit-title.optional-route{display:none!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+   min-height:0!important;max-height:104px!important;height:auto!important;
+   overflow:hidden!important;grid-template-columns:minmax(0,1fr)!important;
+   padding:6px 8px!important;gap:3px!important
+ }
+ .cockpit-tripbar .tripbar-mid{font-size:9px!important;line-height:1.25}
+ .cockpit-tripbar .tripbar-track{height:6px;margin:3px 0}
+ .cockpit-tripbar #co-trip-charge-km{display:none}
+ .cockpit-tripbar #co-trip-arrival,.cockpit-tripbar #co-trip-arrival-note{display:none!important}
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child{
+   display:flex!important;align-items:center;gap:4px!important;
+   flex-wrap:nowrap!important;min-width:0!important;border-top:0;padding-top:0
+ }
+ .cockpit-tripbar #co-cost{
+   flex:1 1 90px;min-width:0;max-width:none!important;
+   overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important
+ }
+ .cockpit-tripbar #co-trip-details,
+ .cockpit-tripbar #co-alt-toggle{
+   flex:0 0 auto;white-space:nowrap;padding:4px 5px!important;
+   font-size:10px!important;min-height:27px!important
+ }
+ .cockpit-tripbar #co-trip-charge-button{font-size:9px!important;padding:3px!important}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:395px){
+ .vehicle-cockpit.has-route .cockpit-tripbar{max-height:82px!important;padding:4px 6px!important}
+ .cockpit-tripbar #co-trip-charge{display:none}
+ .cockpit-tripbar .tripbar-mid{gap:2px}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -966,7 +999,7 @@ body.provider-active .traffic-map-badge{display:flex}
    <div class="cockpit-title optional-route">ŞARJ MOLASI</div><div id="co-stops" class="cockpit-value">—</div>
    <div class="cockpit-title optional-route">TAHMİNİ VARIŞ · TRAFİKSİZ</div><div id="co-eta" class="cockpit-value">—</div>
    <div class="cockpit-title optional-route">İLK ROTA TALİMATI</div><div id="co-maneuver" class="cockpit-direction">Rota bekleniyor</div>
-   <div class="cockpit-title">ROTA BOYUNCA HAVA · MODEL</div><div id="co-weather" class="cockpit-weather">Hava tahmini bekleniyor</div>
+   <div class="cockpit-title optional-route">ROTA BOYUNCA HAVA · MODEL</div><div id="co-weather" class="cockpit-weather">Hava tahmini bekleniyor</div>
    <div class="cockpit-condition">Canlı trafik, soket doluluğu ve gerçek şarj süresi bağlı değil.</div>
   </div>
  </div>
@@ -1007,7 +1040,7 @@ body.provider-active .traffic-map-badge{display:flex}
    <button id="co-alt-toggle" class="tripbar-smallbutton" type="button">⇄ Rotalar / ₺</button>
    <div id="co-cost">Maliyet: rota bekleniyor</div>
    <div id="co-cost-note">Fiyat istasyona göre doğrulanmalı</div>
-   <button id="co-trip-details" class="tripbar-smallbutton" type="button">Rota ayrıntıları</button>
+   <button id="co-trip-details" class="tripbar-smallbutton" type="button">Ayrıntılar</button>
   </div>
  </div>
 </div>
