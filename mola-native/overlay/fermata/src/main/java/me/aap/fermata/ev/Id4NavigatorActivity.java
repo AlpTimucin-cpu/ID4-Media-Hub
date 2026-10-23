@@ -685,6 +685,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         packet.optDouble("durationMin",Double.NaN),
                         System.currentTimeMillis());
                     send("molaRoute",packet);
+                    final JSONObject routeData=selected;
                     // Populate a GPS-independent current MODEL weather report at
                     // the selected start; actual GPS takes precedence when fresh.
                     try{
@@ -697,7 +698,6 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                             liveGps?live.getLongitude():start.getDouble(0),liveGps,false);
                     }catch(Exception ignored){}
                     // Weather is a separate best-effort request after the drawn route.
-                    final JSONObject routeData=selected;
                     jobs.execute(()->loadRouteWeather(routeData,myGeneration));
                     jobs.execute(()->loadJourneyWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
