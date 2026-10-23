@@ -815,6 +815,27 @@ body.provider-active .traffic-map-badge{display:flex}
  .cockpit-left.show-extra .cockpit-smallgrid .cockpit-panel:nth-child(n+3){display:block}
  .cockpit-slim{flex-wrap:wrap}
 }
+
+/* Prevent duplicate destination text (right card already owns the destination).
+   Use the lower glass bar exclusively for trip progress, charge and cost. */
+@media (orientation:landscape) and (min-width:640px){
+ .vehicle-cockpit.has-route .cockpit-tripbar{
+  grid-template-columns:minmax(0,1fr)!important;gap:5px!important;
+  min-height:110px;max-height:143px
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:first-child{display:none}
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:nth-child(2){
+  grid-column:1/-1;min-width:0
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar>div:last-child{
+  grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+  min-width:0
+ }
+ .vehicle-cockpit.has-route .cockpit-tripbar .tripbar-track{margin:5px 0}
+ #co-trip-charge{max-width:60%;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+ #co-cost{font-size:11px}
+}
 </style>
 </head><body>
 <div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
