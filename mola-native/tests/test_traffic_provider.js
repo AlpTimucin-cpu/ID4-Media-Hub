@@ -24,7 +24,14 @@ function world(keys,shouldFail){
    Map:class{constructor(node,opts){created.yandexMaps++;assert.strictEqual(node,holder);
     this.geoObjects={add(x){},remove(x){}}}destroy(){}},
    Polyline:class{},Placemark:class{},
-   traffic:{provider:{Actual:class{setMap(m){if(m)created.yandexTraffic++}}}}
+   traffic:{provider:{Actual:class{
+    constructor(){
+     this.state={events:{add(type,cb){created.trafficCallback=cb}},
+      get(name){return ({isInited:true,level:6,
+       timestamp:Math.floor(Date.now()/1000)})[name]}}
+    }
+    setMap(m){if(m)created.yandexTraffic++}
+   }}}
   }
  };
  const win={
@@ -68,6 +75,11 @@ function world(keys,shouldFail){
  assert.strictEqual(valid.api.getActive(),'yandex');
  assert.strictEqual(valid.created.yandexMaps,1);
  assert.strictEqual(valid.created.yandexTraffic,1);
+ assert(typeof valid.created.trafficCallback==='function',
+  'Yandex real-time traffic updates must be observed');
+ valid.created.trafficCallback();
+ assert(valid.created.states.some(x=>x.provider==='yandex'&&x.level===6),
+  'licensed, timestamp-valid Yandex congestion must appear as 6/10');
  assert(valid.created.scripts[1].startsWith('https://api-maps.yandex.ru/2.1/'),
   'Yandex must use official traffic provider');
  assert.strictEqual(await valid.api.close(),true);
