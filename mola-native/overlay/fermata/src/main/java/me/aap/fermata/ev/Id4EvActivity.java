@@ -1,6 +1,16 @@
 package me.aap.fermata.ev;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
+import android.view.View;
+import java.util.Collections;
+import java.util.Comparator;
+
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -71,9 +81,48 @@ public final class Id4EvActivity extends Activity {
     private int generation;
     private int energyPage=-1;
     private TextView autoEnergyFacts,autoEnergyModel,autoEnergyPrice;
+    private EditText stationQuery;
+    private LinearLayout stationCards,stationPaging;
+    private TextView stationInfo;
+    private Button typeButton,radiusButton;
+    private Location stationLocation;
+    private JSONObject priceCatalog;
+    private int typeFilter=0,radiusFilter=0,stationPage=0;
+    private static final int PAGE_SIZE=25;
+    private static final int[] RADII={0,10,25,50,100};
+    private final ArrayList<StationHit> stationMatches=new ArrayList<>();
+    private static final class StationHit {
+        final JSONObject data;
+        final double km;
+        final boolean ac,dc;
+        StationHit(JSONObject s,double distance,boolean a,boolean d){
+            data=s;km=distance;ac=a;dc=d;
+        }
+    }
 
+    private void applyFullscreen(){
+        if(android.os.Build.VERSION.SDK_INT>=30){
+            android.view.WindowInsetsController c=getWindow().getInsetsController();
+            if(c!=null){
+                c.setSystemBarsBehavior(
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                c.hide(android.view.WindowInsets.Type.systemBars());
+            }
+        }else getWindow().getDecorView().setSystemUiVisibility(
+            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)applyFullscreen();
+    }
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
+        applyFullscreen();
         getWindow().setStatusBarColor(MAIN);
         getWindow().setNavigationBarColor(MAIN);
         root=new LinearLayout(this);
@@ -316,68 +365,259 @@ public final class Id4EvActivity extends Activity {
         });
     }
 
+    // Full EPDK public station list, on-demand location, paging, source-labeled pricing.
     private void stationsScreen(){
         ++generation;
         LinearLayout body=content();
-        body.addView(text("EPDK HALKA AÇIK ŞARJ İSTASYONLARI",17,true));
-        body.addView(text("Resmî istasyon numarası, adres, operatör ve soket tipleri. "+
-            "Canlı doluluk henüz doğrulanmıyor.",12,false));
-        EditText query=new EditText(this);
-        query.setSingleLine(true);query.setTextColor(Color.WHITE);
-        query.setHintTextColor(0xffacc6d3);
-        query.setHint("Şehir, ilçe, marka, operatör, adres");
-        body.addView(query);
+        body.setPadding(dp(8),0,dp(8),dp(3));
+        body.addView(text("⚡ Türkiye AC / DC istasyonları",19,true));
+        body.addView(text("Halka açık EPDK kayıtları · Güncel doluluk için doğrulanmış canlı veri gerekir.",11,false));
+        LinearLayout filter=new LinearLayout(this);
+        body.addView(filter);
+        typeButton=button("AC + DC ▾",()->{
+            typeFilter=(typeFilter+1)%3;
+            typeButton.setText(typeFilter==1?"Yalnız AC ▾":typeFilter==2?"Yalnız DC ▾":"AC + DC ▾");
+            findStations();
+        });
+        filter.addView(typeButton,new LinearLayout.LayoutParams(0,dp(44),1));
+        radiusButton=button("Tüm mesafeler ▾",()->{
+            radiusFilter=(radiusFilter+1)%RADII.length;
+            radiusButton.setText(RADII[radiusFilter]==0?"Tüm mesafeler ▾":RADII[radiusFilter]+" km ▾");
+            findStations();
+        });
+        filter.addView(radiusButton,new LinearLayout.LayoutParams(0,dp(44),1));
+        stationQuery=new EditText(this);
+        stationQuery.setSingleLine(true);stationQuery.setTextColor(Color.WHITE);
+        stationQuery.setHintTextColor(0xffa3bdcb);stationQuery.setTextSize(14);
+        stationQuery.setHint("Şehir, istasyon, adres veya operatör");
+        body.addView(stationQuery,new LinearLayout.LayoutParams(-1,dp(46)));
+        LinearLayout actions=new LinearLayout(this);body.addView(actions);
+        actions.addView(button("⌕ Ara / yenile",this::findStations),
+            new LinearLayout.LayoutParams(0,dp(43),1));
+        actions.addView(button("◎ Yakınımdakiler",this::stationGps),
+            new LinearLayout.LayoutParams(0,dp(43),1));
+        stationInfo=text("İstasyon kayıtları okunuyor…",11,false);body.addView(stationInfo);
         ScrollView scroll=new ScrollView(this);
-        LinearLayout list=new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);scroll.addView(list);
-        body.addView(button("⚡ İstasyonları bul",()->{
-            String q=query.getText().toString().trim().toLowerCase(Locale.forLanguageTag("tr"));
-            int id=++generation;
-            setStatus("Resmî istasyon kayıtları okunuyor…");
-            work.execute(()->{
+        stationCards=new LinearLayout(this);
+        stationCards.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(stationCards);
+        body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        stationPaging=new LinearLayout(this);body.addView(stationPaging);
+        body.addView(text("Mesafe kuş uçuşudur. Fiyatlar istasyona özel olmayabilir; kampanya ve müsaitlik yalnız resmî canlı kaynakla teyit edilir.",10,false));
+        findStations();
+    }
+    private static boolean hasType(JSONObject s,boolean dc){
+        JSONArray array=s.optJSONArray("sockets");
+        if(array==null)return false;
+        for(int i=0;i<array.length();i++){
+            JSONObject socket=array.optJSONObject(i);if(socket==null)continue;
+            String k=(socket.optString("type")+" "+socket.optString("kind")).toUpperCase(Locale.ROOT);
+            if(dc?(k.contains("CCS")||k.contains("CHADEMO")||k.contains("DC")):
+                (k.contains("TYPE2")||k.contains("TYPE 2")||k.contains(" AC")||k.startsWith("AC")))return true;
+        }
+        return false;
+    }
+    private static double haversine(double a,double b,double c,double d){
+        double x=Math.toRadians(c-a),y=Math.toRadians(d-b);
+        double h=Math.pow(Math.sin(x/2),2)+Math.cos(Math.toRadians(a))*
+            Math.cos(Math.toRadians(c))*Math.pow(Math.sin(y/2),2);
+        return 12742.0176*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
+    }
+    private void findStations(){
+        if(stationCards==null||stationQuery==null)return;
+        final int request=++generation,mode=typeFilter,radius=RADII[radiusFilter];
+        final String q=stationQuery.getText().toString().trim()
+            .toLowerCase(Locale.forLanguageTag("tr-TR"));
+        final Location position=stationLocation==null?null:new Location(stationLocation);
+        stationCards.removeAllViews();stationPaging.removeAllViews();
+        stationInfo.setText("EPDK istasyonları listeleniyor…");
+        work.execute(()->{
+            try{
+                JSONArray all=loadOfficialData();
+                JSONObject tariffs=priceCatalog;
+                if(tariffs==null)try{
+                    tariffs=new JSONObject(download("raw.githubusercontent.com",
+                        "/AlpTimucin-cpu/ID4-Media-Hub/feature/mola-32-migration/data/charging/operator_prices.json",150000));
+                }catch(Exception ignored){}
+                ArrayList<StationHit> hits=new ArrayList<>();
+                for(int i=0;i<all.length();i++){
+                    JSONObject s=all.optJSONObject(i);if(s==null)continue;
+                    boolean ac=hasType(s,false),dc=hasType(s,true);
+                    if((mode==1&&!ac)||(mode==2&&!dc))continue;
+                    String hay=(s.optString("name")+" "+s.optString("address")+" "+
+                        s.optString("operator")+" "+s.optString("brand"))
+                        .toLowerCase(Locale.forLanguageTag("tr-TR"));
+                    if(!q.isEmpty()&&!hay.contains(q))continue;
+                    double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
+                    double km=position!=null&&valid(lat,lon)?
+                        haversine(position.getLatitude(),position.getLongitude(),lat,lon):Double.NaN;
+                    if(radius>0&&position!=null&&(!Double.isFinite(km)||km>radius))continue;
+                    hits.add(new StationHit(s,km,ac,dc));
+                }
+                if(position==null)hits.sort(Comparator.comparing(
+                    h->h.data.optString("name",""),String.CASE_INSENSITIVE_ORDER));
+                else hits.sort(Comparator.comparingDouble(
+                    h->Double.isFinite(h.km)?h.km:Double.POSITIVE_INFINITY));
+                final JSONObject priceData=tariffs;
+                runOnUiThread(()->{
+                    if(stopped||request!=generation)return;
+                    priceCatalog=priceData;
+                    stationMatches.clear();stationMatches.addAll(hits);
+                    stationPage=0;renderStationPage();
+                    stationInfo.setText(hits.size()+" istasyon · "+
+                        (position==null?"Konum yok: mesafe için ◎ Yakınımdakiler":
+                            "Yakından uzağa (kuş uçuşu)")+
+                        "\nEPDK kayıt tarihi: "+verifiedAt+
+                        (position==null&&radius>0?" · Yarıçap filtresi için GPS gerekli":""));
+                    setStatus("EPDK istasyonları · canlı soket durumu henüz entegre değil");
+                });
+            }catch(Exception e){
+                runOnUiThread(()->{
+                    if(stopped||request!=generation)return;
+                    stationInfo.setText("İstasyonlar yüklenemedi. Bağlantını kontrol edip yeniden dene.");
+                    stationCards.removeAllViews();
+                    stationCards.addView(button("↻ Tekrar dene",this::findStations));
+                });
+            }
+        });
+    }
+    private void renderStationPage(){
+        stationCards.removeAllViews();stationPaging.removeAllViews();
+        final int start=stationPage*PAGE_SIZE,end=Math.min(stationMatches.size(),start+PAGE_SIZE);
+        for(int i=start;i<end;i++){
+            StationHit hit=stationMatches.get(i);
+            JSONObject s=hit.data;
+            LinearLayout card=new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            GradientDrawable bg=new GradientDrawable();
+            bg.setColor(0xff15374b);bg.setCornerRadius(dp(12));
+            card.setBackground(bg);card.setPadding(dp(10),dp(7),dp(10),dp(8));
+            LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,-2);
+            margin.setMargins(0,0,0,dp(7));stationCards.addView(card,margin);
+            card.addView(text(s.optString("name","İstasyon"),15,true));
+            card.addView(text(s.optString("operator","İşletmeci yok")+" · "+
+                (hit.ac?"AC":"")+(hit.ac&&hit.dc?" + ":"")+(hit.dc?"DC":"")+
+                (!hit.ac&&!hit.dc?"Soket türü bilinmiyor":"")+
+                (Double.isFinite(hit.km)?" · "+fmt(hit.km)+" km kuş uçuşu":""),12,false));
+            card.addView(text(s.optString("address","Adres yok"),11,false));
+            card.addView(text(formatSockets(s.optJSONArray("sockets")),11,false));
+            card.addView(text("Müsaitlik: doğrulanamadı (canlı soket verisi yok)",11,false));
+            card.addView(text(priceForStation(priceCatalog,s.optString("operator"),hit.ac,hit.dc),11,false));
+            card.addView(text("Kampanya: doğrulanmış duyuru yok",11,false));
+            LinearLayout buttons=new LinearLayout(this);card.addView(buttons);
+            buttons.addView(button("🗺 Rota",()->navigateToStation(s)),
+                new LinearLayout.LayoutParams(0,dp(43),1));
+            buttons.addView(button("₺ Resmî fiyat / kampanya",()->
+                openOperatorPrice(s.optString("operator"))),
+                new LinearLayout.LayoutParams(0,dp(43),1));
+        }
+        if(stationMatches.isEmpty()){
+            stationCards.addView(text("İstasyon eşleşmedi. Aramayı veya filtreyi değiştir.",13,false));
+            return;
+        }
+        Button prev=button("‹ Önceki",()->{if(stationPage>0){stationPage--;renderStationPage();}});
+        prev.setEnabled(stationPage>0);
+        stationPaging.addView(prev,new LinearLayout.LayoutParams(0,dp(42),1));
+        TextView position=text((stationPage+1)+" / "+((stationMatches.size()+PAGE_SIZE-1)/PAGE_SIZE),12,true);
+        position.setGravity(android.view.Gravity.CENTER);
+        stationPaging.addView(position,new LinearLayout.LayoutParams(0,dp(42),1));
+        Button next=button("Sonraki ›",()->{
+            if((stationPage+1)*PAGE_SIZE<stationMatches.size()){stationPage++;renderStationPage();}
+        });
+        next.setEnabled(end<stationMatches.size());
+        stationPaging.addView(next,new LinearLayout.LayoutParams(0,dp(42),1));
+    }
+    private static String priceForStation(JSONObject prices,String operator,boolean ac,boolean dc){
+        if(prices==null)return "Fiyat: güncel resmî tarife okunamadı";
+        JSONArray ops=prices.optJSONArray("operators");
+        if(ops==null)return "Fiyat: doğrulanamadı";
+        for(int i=0;i<ops.length();i++){
+            JSONObject op=ops.optJSONObject(i);
+            if(op==null||!operatorMatches(operator,op.optString("operator")))continue;
+            JSONArray tariffs=op.optJSONArray("tariffs");
+            StringBuilder b=new StringBuilder();
+            Instant newest=Instant.EPOCH;
+            if(tariffs!=null)for(int j=0;j<tariffs.length();j++){
+                JSONObject t=tariffs.optJSONObject(j);
+                if(t==null)continue;
+                String band=t.optString("connector_band").toUpperCase(Locale.ROOT);
+                if(!(ac&&band.startsWith("AC")||dc&&band.startsWith("DC")))continue;
+                double price=t.optDouble("price_try_per_kwh",Double.NaN);
+                if(!Double.isFinite(price)||price<=0)continue;
+                if(b.length()>0)b.append(" · ");
+                b.append(band.startsWith("AC")?"AC":"DC").append(" ").append(fmt(price));
                 try{
-                    JSONArray all=loadOfficialData();
-                    ArrayList<JSONObject> hits=new ArrayList<>();
-                    int count=0;
-                    for(int i=0;i<all.length();i++){
-                        JSONObject station=all.optJSONObject(i);if(station==null)continue;
-                        String searchable=(
-                          station.optString("name")+" "+station.optString("address")+" "+
-                          station.optString("operator")+" "+station.optString("brand"))
-                            .toLowerCase(Locale.forLanguageTag("tr"));
-                        if(!searchable.contains(q))continue;
-                        count++;
-                        if(hits.size()<35)hits.add(station);
-                    }
-                    int total=count;
-                    runOnUiThread(()->{
-                        if(id!=generation||stopped)return;
-                        list.removeAllViews();
-                        for(JSONObject s:hits){
-                            String title=s.optString("name")+" · "+
-                                s.optString("operator")+"\n"+s.optString("address")+
-                                "\n"+formatSockets(s.optJSONArray("sockets"));
-                            list.addView(button(title,()->{
-                                double lat=s.optDouble("lat"),lon=s.optDouble("lon");
-                                if(!valid(lat,lon)){
-                                    alert("İstasyon konumu","Geçerli istasyon koordinatı bulunamadı.");
-                                    return;
-                                }
-                                Id4EnergyData.saveStation(this,
-                                    s.optString("name",""),s.optString("operator",""));
-                                Intent intent=new Intent(this,Id4NavigatorActivity.class);
-                                intent.putExtra("toLat",lat);
-                                intent.putExtra("toLon",lon);
-                                intent.putExtra("toName",s.optString("name","Seçilen şarj istasyonu"));
-                                startActivity(intent);
-                            }));
-                        }
-                        setStatus(total+" eşleşme. İlk "+hits.size()+" gösteriliyor.");
-                    });
-                }catch(Exception e){setStatus("EPDK verisine ulaşılamadı.");}
-            });
-        }));
-        body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+                    Instant at=Instant.parse(t.optString("verified_at_utc"));
+                    if(at.isAfter(newest))newest=at;
+                }catch(Exception ignored){}
+            }
+            if(b.length()==0)return "Fiyat: bu soket için kaynak yok";
+            boolean fresh=newest.isAfter(Instant.now().minus(Duration.ofHours(36)))&&
+                !newest.isAfter(Instant.now());
+            return (fresh?"Genel ağ fiyatı: ":"ESKİ genel fiyat (güncel değil): ")+
+                b+" TL/kWh · "+(newest.equals(Instant.EPOCH)?"tarih yok":newest.toString().substring(0,10))+
+                " · Soket fiyatı değil";
+        }
+        return "Fiyat: bu işletmeci için doğrulanmış tarife yok";
+    }
+    private void openOperatorPrice(String operator){
+        JSONArray ops=priceCatalog==null?null:priceCatalog.optJSONArray("operators");
+        if(ops!=null)for(int i=0;i<ops.length();i++){
+            JSONObject op=ops.optJSONObject(i);
+            if(op!=null&&operatorMatches(operator,op.optString("operator"))){
+                String url=op.optString("official_url");
+                if(url.startsWith("https://")){
+                    startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));return;
+                }
+            }
+        }
+        alert("Resmî fiyat ve müsaitlik",
+            "Bu operatör için doğrulanmış fiyat/kampanya bağlantısı yok. "+
+            "Canlı soket müsaitliğini EPDK Şarj@TR veya işletmecinin uygulamasından teyit et.");
+    }
+    private void navigateToStation(JSONObject s){
+        double lat=s.optDouble("lat",Double.NaN),lon=s.optDouble("lon",Double.NaN);
+        if(!valid(lat,lon)){alert("Koordinat yok","İstasyon konumu eksik.");return;}
+        Id4EnergyData.saveStation(this,s.optString("name",""),s.optString("operator",""));
+        Intent intent=new Intent(this,Id4NavigatorActivity.class);
+        intent.putExtra("toLat",lat);intent.putExtra("toLon",lon);
+        intent.putExtra("toName",s.optString("name","Şarj istasyonu"));
+        startActivity(intent);
+    }
+    private void stationGps(){
+        if(Build.VERSION.SDK_INT>=23 &&
+           checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED &&
+           checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION},704);return;
+        }
+        try{
+            LocationManager location=(LocationManager)getSystemService(LOCATION_SERVICE);
+            String provider=location.isProviderEnabled(LocationManager.GPS_PROVIDER)?
+                LocationManager.GPS_PROVIDER:LocationManager.NETWORK_PROVIDER;
+            if(!location.isProviderEnabled(provider)){stationInfo.setText("Konum servislerini aç.");return;}
+            stationInfo.setText("Telefon konumu alınıyor…");
+            if(Build.VERSION.SDK_INT>=30)
+                location.getCurrentLocation(provider,null,getMainExecutor(),this::stationLocationReceived);
+            else stationLocationReceived(location.getLastKnownLocation(provider));
+        }catch(Exception e){stationInfo.setText("Konum alınamadı. İzni ve GPS'i kontrol et.");}
+    }
+    private void stationLocationReceived(Location found){
+        if(stopped||stationInfo==null)return;
+        if(found==null||!valid(found.getLatitude(),found.getLongitude()) ||
+            found.getTime()<=0||Math.abs(System.currentTimeMillis()-found.getTime())>900000){
+            stationInfo.setText("Güncel konum yok. Tekrar dene.");return;
+        }
+        stationLocation=new Location(found);findStations();
+    }
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){
+        super.onRequestPermissionsResult(request,permissions,results);
+        if(request==704){
+            boolean granted=false;
+            for(int status:results)if(status==PackageManager.PERMISSION_GRANTED)granted=true;
+            if(granted)stationGps();
+            else if(stationInfo!=null)stationInfo.setText("Konum izni yok; şehir/operatör araması kullanılabilir.");
+        }
     }
 
     /**

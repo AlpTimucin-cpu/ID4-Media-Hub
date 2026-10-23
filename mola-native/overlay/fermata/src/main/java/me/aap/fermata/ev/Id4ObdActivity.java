@@ -61,8 +61,29 @@ public final class Id4ObdActivity extends Activity {
     private final TextView[] fields = new TextView[Id4MebDecoder.SENSORS.size()];
     private final long[] updatedAt = new long[Id4MebDecoder.SENSORS.size()];
 
+    private void applyFullscreen(){
+        if(android.os.Build.VERSION.SDK_INT>=30){
+            android.view.WindowInsetsController c=getWindow().getInsetsController();
+            if(c!=null){
+                c.setSystemBarsBehavior(
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                c.hide(android.view.WindowInsets.Type.systemBars());
+            }
+        }else getWindow().getDecorView().setSystemUiVisibility(
+            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)applyFullscreen();
+    }
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        applyFullscreen();
         getWindow().setStatusBarColor(0xff091e2a);
         getWindow().setNavigationBarColor(0xff091e2a);
         LinearLayout root=new LinearLayout(this);
@@ -103,11 +124,15 @@ public final class Id4ObdActivity extends Activity {
         heroSoc=label("— %",43);heroSoc.setTextColor(0xff70f1cb);hero.addView(heroSoc);
         hero.addView(label("TAHMİNİ MENZİL",12));
         heroRange=label("— km  •  Veri yok",19);hero.addView(heroRange);
-        hero.addView(label("Menzil, araçtan veya doğrulanmış tüketim geçmişinden alınır; varsayılan 52 kWh / 18 kWh değerleri kullanılmaz.",11));
+        hero.addView(label("Menzil ancak doğrulanmış araç verisiyle gösterilir.",11));
 
         LinearLayout cards=new LinearLayout(this);
         cards.setOrientation(LinearLayout.VERTICAL);
         body.addView(cards);
+        cards.setVisibility(View.GONE);
+        body.addView(button("▣ Araç ölçümlerinin ayrıntıları ▾",()->{
+            cards.setVisibility(cards.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE);
+        }));
         LinearLayout row1=new LinearLayout(this);cards.addView(row1);
         heroVoltage=slot(row1,"HV BATARYA GERİLİMİ","— V");
         heroTemp=slot(row1,"BATARYA SICAKLIĞI","— °C");
@@ -122,10 +147,10 @@ public final class Id4ObdActivity extends Activity {
         routeDistance=slot(row4,"SON HESAPLANAN ROTA","— km");
         LinearLayout row5=new LinearLayout(this);cards.addView(row5);
         routeEnergyEstimate=slot(row5,"YOL ENERJİSİ · MODEL","— kWh");
-        slot(row5,"VERİ KAYNAĞI","ELM327 / MEB");
+        // ECU kaynak durumu üstte gösterilir; gereksiz ikinci panel yok.
         refreshPlan();
 
-        body.addView(label("Maliyet: operatör tarifesi ve ölçülen faturalı kWh olmadan hesaplanmaz. Menzil, SOH, tüketim ve güç için doğrulanmış veriler gereklidir.",12));
+        body.addView(label("SOH, güç ve kesin maliyet: doğrulanmış veri bekleniyor.",11));
 
         LinearLayout buttons=new LinearLayout(this);
         body.addView(buttons);

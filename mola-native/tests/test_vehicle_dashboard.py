@@ -47,6 +47,14 @@ assert "case 'selectObd':bridge.selectObd();" in html, "OBD button not bridged"
 assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in navigator
 assert 'getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)' in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()
 
+assert all("applyFullscreen();" in text for text in [ev,obd,
+    (root/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java").read_text()])
+assert "stationGps()" in ev and "stationMatches" in ev and "PAGE_SIZE=25" in ev
+assert "Müsaitlik: doğrulanamadı" in ev
+assert "ESKİ genel fiyat (güncel değil)" in ev
+assert "Kampanya: doğrulanmış duyuru yok" in ev
+assert "cards.setVisibility(View.GONE)" in obd
+print("PASS: full-screen phone pages; paged AC/DC, GPS distance and sourced tariffs")
 print("PASS: no manual energy form; timestamps per OBD sensor; route energy connected.")
 
 # An ELM327 socket is not a calibrated ID.4 sensor feed. Keep numbers blank
