@@ -1,38 +1,68 @@
-# ID.4 Media Hub — Android / Android Auto
+# ID.4 Yol Arkadaşım
 
-Kişisel deney projesi. **Google, Volkswagen, Netflix veya SportzX tarafından onaylanmış bir uygulama değildir.**
+**Volkswagen ID.4 Pure 2024 için sade bir EV kokpiti, Türkiye şarj istasyonları, rota planlama ve salt-okunur OBD tanılama önizlemesi.**
 
-## Durum
-- **v0.11 beta:** Ana Sayfa / TV / Radyo / Kitaplık; entegre IPTV oynatıcısı, kanal geçişi, çözünürlük üst sınırı, tam ekran, logolu kanallar, Radio Browser Türkiye dizini, otomatik günlük radyo yenileme, türler ve favoriler
-- Android Auto tarafında sadece ses/radyo medya kitaplığı hedeflenir; **ID.4 uyumluluğu doğrulanmamıştır**
-- IPTV kaynaklarının çalışması, erişim hakları ve coğrafi kısıtlamalar değişebilir
-- Netflix, YouTube Music ve SportzX uygulamanın içinde oynatılmaz; ilgili resmî/kurulu uygulamaya yönlendirilir
-- Sürüş sırasında sürücünün görebildiği ön ekranda video oynatmak için kısıtlama devre dışı bırakılmaz
+[![APK Build](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)
+[![UI Screenshots](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml)
 
-## Derleme
-GitHub Actions > **Build ID4 Media Hub APK** iş akışının başarılı çalışması beklenir. İndirilecek `ID4-Media-Hub-debug-APK` dosyası içindeki `app-debug.apk` yüklenebilir test sürümüdür.
+> **Geliştirme sürümü.** Bu proje Volkswagen, Google veya Mola tarafından onaylanmış değildir. Android Auto araç ekranında ID.4 kokpiti henüz doğrulanmadı. Mevcut **Mola 3.2 üzerine kurulmaz**; açık kaynak Mola 2.2.2 tabanından **farklı paket kimliğiyle** derlenir.
 
-**Önemli:** APK'nın derlenmiş olması telefonda/araçta çalıştığını kanıtlamaz. Gerçek cihaz testleri ayrıca yapılmalıdır.
+## Gerçek arayüz kodundan ekran önizlemeleri
 
-## İlk cihaz testi (POCO F5)
-1. Uygulamayı aç. **RADYO** sekmesinde Türkiye dizininin indirilmesini bekle; internet kullanılır. İlk indirme başarısız olursa **GÜNCELLE** düğmesine dokun. Önbellek varsa çevrimdışı da görüntülenir.
-2. **Kitaplık** bölümünden Apple HLS test videosunu ekle, **TV** bölümündeki tek oynatıcıda seçip oynat. Kanal panelini, kalite seçimini ve tam ekranı dene.
-3. Bu test başarılıysa M3U listesini yükle.
-4. Kanal başlatılamıyorsa ekrandaki hata metnini kaydet; URL'deki erişim anahtarlarını paylaşma.
-5. Android Auto'da uygulama görünmüyorsa, bunu telefonun çalışıp çalışmamasından ayrı hata olarak bildir.
+![Yatay araç kokpiti — navigator.html HTML arayüzünden tarayıcı önizlemesi](docs/screenshots/cockpit-browser-preview.png)
 
-## Kaynak
-`app/src/main/java/tr/id4/mediahub` • Kotlin / Media3 • `app/src/main/AndroidManifest.xml`
+| Telefon görünümü | Kompakt yatay görünüm |
+| :---: | :---: |
+| ![Telefon navigator.html ekran önizlemesi](docs/screenshots/route-phone-browser-preview.png) | ![Kompakt araç navigator.html ekran önizlemesi](docs/screenshots/cockpit-compact-browser-preview.png) |
 
-Kod önceliği: düzgün telefon deneyimi, güvenilir ses oynatma ve ayrıntılı hata durumları. Sonuçlar cihazda doğrulanmadan 'tamamlandı' sayılmaz.
+**Görselin kaynağı:** Bunlar uygulamanın kendi `navigator.html` DOM/CSS kodundan otomatik alınan **çevrimdışı tarayıcı renderlarıdır**. Harita karosu, konum, araç telemetrisi veya rota **uydurulmaz**. Android telefon/ID.4 araç ekranında çekilmiş gerçek cihaz fotoğrafı değildir. Görseller [otomatik ekran önizleme iş akışı](.github/workflows/render-id4-readme.yml) ile kaynak değişince yeniden üretilir.
 
-## Radyo kataloğu (v0.11)
-- Topluluk katkılı [Radio Browser](https://www.radio-browser.info/) API üzerinden Türkiye (TR), son kontrolde çevrimiçi görünen HTTPS istasyonları alınır.
-- İlk açılışta iki örnek istasyon bulunur; arka plan güncellemesi başarılıysa Türkiye radyoları otomatik eklenir.
-- Dizindeki kayıtların gerçek cihazda oynatılabilmesi garanti edilmez (bölge, format, sunucu, HTTPS vb.).
-- Son başarılı indirme zamanı cihazda tutulur; yaklaşık 24 saatte bir yenileme denenir.
-- Kullanıcının eklediği istasyonlar ve favori bilgisi korunur.
-- Radio Browser'ın sunucu erişimi başarısızsa uygulama kayıtlı kanalları göstermeye devam eder.
+## Neler çalışıyor, neler sınırlandırılmış?
 
-## Test kurulumunda önemli not
-GitHub Actions debug APK'ları farklı runner'larda farklı debug anahtarlarıyla imzalanabilir. Android mevcut sürümün üzerine güncellemeyi reddederse **önce M3U kanal listesini yedekle**; kaldırma işleminden önce verileri kontrol et. Bu sürüm Play Store sürümü değildir.
+| Bölüm | Bu dalda bulunanlar | Açıkça belirtilen sınır |
+|---|---|---|
+| **Kokpit** | Tam ekran yatay, rota yoksa gereksiz bilgi kutularını gizleme, panel ayrıntısı açma | Telefon ve araçta ekran görüntüsü testi gerekir |
+| **Rota** | Nereden/nereye araması, OSRM alternatifleri, model enerji ve mola hesapları, rota çizimi | OSRM demo ETA canlı trafiği içermez; kritik navigasyon değildir |
+| **Şarj** | EPDK halka açık istasyon listesi, AC Type 2 / DC CCS filtreleri, adres/operatör arama, konuma göre mesafe, 25'li sayfalama, açıkça kaynak yenileme | Kaydedilen EPDK snapshot tarihi gösterilir; gerçek soket doluluğu yok |
+| **Canlı doluluk** | Resmî [Şarj@TR](https://play.google.com/store/apps/details?id=tr.gov.epdk.sarjetTR) uygulamasını açma | Yol Arkadaşım canlı doluluğu doğrudan okumuyor |
+| **Fiyatlar** | Tarihli genel Trugo/ZES ağ tarifeleri ve resmî bağlantıları | İstasyona özgü fiyat, tüm ağlar ve indirimler henüz yok; eski değer işaretlenir |
+| **Hava** | Open-Meteo model tahminleri, güzergâh boyunca saatlik kontroller | Model verisidir, araç sensörü değildir |
+| **Trafik** | Resmî Google/Yandex SDK'larına hazırlık, anahtarsız durumda OSM | Geçerli anahtar/lisans olmadan canlı trafik yok, ETA'ya eklenmez |
+| **OBD** | Eşleşmiş Bluetooth ELM327; salt-okunur MEB DID kontrolü, sensör yaşı, detay görünümü | Car Scanner/VIN üzerinde doğrulanmamış sayılar özellikle gizlenir |
+| **Mola medya** | Ayrı ID.4 Activity; ana oynatma kaynaklarına değişiklik yapılmıyor | Mola 3.2 kaynak eşdeğerliği ve tüm oynatıcı işlevleri cihazda doğrulanmalı |
+
+## APK yükleme
+
+1. [**ID.4 preview Actions sonuçlarını aç**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml?query=branch%3Afeature%2Fmola-native-id4). Yalnızca **son başarılı** derlemeyi seç.
+2. **Artifacts → `Mola-OpenSource-ID4-Preview-Not-3.2-APK`** ZIP dosyasını indir ve `Mola-ID4-Preview.apk` dosyasını çıkar.
+3. Android telefona yükle; uygulamanın **ID.4 Araç Merkezi** bölümünü aç.
+4. Konum ve Bluetooth izinlerini yalnız ilgili özellik gerektiğinde ver.
+
+**Yükseltme uyarısı:** Actions debug APK'ları farklı imzalar taşıyabilir. Önceki önizleme sürümünün üzerine kurulamazsa kullanıcı verilerini yedeklemeden kaldırma. Mevcut Mola 3.2 uygulaması ayrı kalır.
+
+## Güvenlik ve veri güvenilirliği
+
+- **Gerçek araç ölçümü yoksa gösterge `—` kalır.** Bağlanan ELM327 adaptörü tek başına kalibre edilmiş MEB PID verisi anlamına gelmez.
+- **Aynı anda Car Scanner + Yol Arkadaşım aynı Bluetooth ELM327 soketine bağlanmaz.** Kayıtlar ayrı oturumlarda karşılaştırılır.
+- EPDK istasyon listesi konum/adres/soket türünü taşır; **canlı müsaitlik, kesin soket fiyatı veya kampanya** içerdiği iddia edilmez. Resmî EPDK [Şarj@TR](https://www.epdk.gov.tr/Detay/Icerik/1-3428/serbest-erisim-platformu--sarj%40tr) bunları kullanıcıya gösterse de uygulama içinde yetkili veri entegrasyonu olmadan taklit edilmez.
+- Trafik, hava ve yol enerjisi aynı şey değildir. İndirilen hava modeli ve hesaplanan şarj maliyeti **tahmin** olarak ayrılır.
+- Android Auto'da telefon WebView kokpitinin çalıştığı **iddia edilmez**. Sürüş sırasında video kısıtlamaları aşılmaz.
+
+## Teknik yapı
+
+**Aktif geliştirme dalı:** [`feature/mola-native-id4`](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4)
+
+- [Mola entegrasyon ve lisans notları](mola-native/README.md)
+- [Kokpit HTML/CSS](mola-native/overlay/fermata/src/main/assets/id4/navigator.html)
+- [Android EV Activity kaynakları](mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/)
+- [GitHub Actions APK derlemesi](.github/workflows/build-mola-native-id4.yml)
+- [Kaynak HTML'den ekran görüntüsü üretimi](docs/scripts/render_id4_readme.py)
+- [Kaynak/telafi sınırları: trafik SDK](mola-native/TRAFFIC_PROVIDERS.md)
+
+**Temel teknolojiler:** Android Java, WebView, Leaflet/OpenStreetMap, OSRM, Photon, Open-Meteo, EPDK istasyon kaydı, Bluetooth ELM327. Mola'nın GPL kaynakları pinli açık kaynak commit'ten türetilir; kullanıcının imzalı Mola 3.2 APK'sı değiştirilmez.
+
+## Yol haritası
+
+**Öncelikler:** Gerçek POCO F5 ekran ölçüleriyle okunabilirlik, istasyonların resmi kaynaklarla güncellenmesi, güvenilir izinli soket doluluk/fiyat API'si, Car Scanner karşılaştırmalı sensör kalibrasyonu, Android Auto için ayrı uyumlu navigasyon uygulaması ve donanımda test. Kod derlemesinin başarılı olması bu başlıkların çözüldüğü anlamına gelmez.
+
+**Katkı:** Hata raporlarında ekran boyutu, uygulama sürümü/commit, tekrarlama adımları ve kişisel bilgileri çıkartılmış loglar paylaşılabilir. OBD loglarındaki VIN/MAC ve lokasyonlar gizlenmelidir.

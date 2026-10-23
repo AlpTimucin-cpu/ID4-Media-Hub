@@ -64,8 +64,9 @@ ve Android Auto işlemleri **kesinlikle bozulmadan** uygulama içine
 - Konum, operatör, marka, adres, CCS/Type2/CHAdeMO soket türü.
 - EPDK normalize snapshot sınırlı SSL bağlantısıyla indirilir, gzip/JSON
   arka planda işlenir, boyut/güncellik kontrol edilir.
-- Görünen alanda 55 işaret; tüm ülke kayıtlarını WebView'a birden
-  yükleme yok. İstasyon listesinde sorguya göre ilk 35 sonuç.
+- Görünen alanda işaret sayısı sınırlıdır; tüm ülke bir defada WebView'a yüklenmez.
+  İstasyon listesi 25'li sayfalamayı, AC/DC filtrelerini, isteğe bağlı GPS mesafe
+  sıralamasını, Türkçe adres aramasını ve EPDK kaynağını yenilemeyi destekler.
 - Canlı soket doluluğu ve kesin istasyona özgü fiyat **BU VERİDE YOK**.
   İzinli operatör/OCPI servislerinden sağlanana dek uydurulmaz.
 - Trugo ve ZES resmî yayınlanan, güncellik etiketli **genel tarife**
@@ -85,11 +86,11 @@ ve Android Auto işlemleri **kesinlikle bozulmadan** uygulama içine
   güvenli biçimde kazanılamaz; VW yetkili API/donanım erişimi gerekir.
 
 ## Derleme hedefi ve test durumu
-GitHub Actions Mola public source'u pinli SHA'dan çeker,
-yalnızca ekleme uygular ve `./build.sh -d` çalıştırır.
-**Bu çalışma yalnızca yanına kurulabilen 2.2.2 temelli Mola-ID4 preview üretir.**
-APK henüz başarılı derlenip telefonda ve ID.4'te çalıştırılmadan
-"çalışan Mola 3.2 güncellemesi" diye sunulmamalıdır.
+GitHub Actions pinli GPL Mola kaynağını alır, güvenli ID.4 overlay'ini uygular,
+mevcut medya kaynaklarının değişmediğini kontrol eder, otomatik testleri ve
+`packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview` paketlemeyi çalıştırır.
+HTML arayüzünün otomatik tarayıcı önizlemeleri `docs/screenshots/` içindedir.
+**Gerçek telefon veya Android Auto aracında test edildiği anlamına gelmez.**
 
 ## Kaynak ve kullanım politikaları
 - https://operations.osmfoundation.org/policies/tiles/
