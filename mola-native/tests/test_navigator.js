@@ -681,5 +681,48 @@ assert.equal(calls.routeVia[chargeRoutesBefore][2],38.25,
 assert(!get('traffic-station-panel').classList.contains('open'),
  'confirmation must close charging popup');
 
+// User-reported white card collision: in landscape the legacy summary is
+// hidden until details are requested, preserving right telemetry panel.
+assert(html.includes('.sheet.route-active:not(.details-open){display:none!important}'),
+ 'old duplicate white route panel must not sit above the cockpit');
+assert(html.includes('.sheet.route-active.details-open{')&&
+ html.includes('background:rgba(3,30,45,.97)!important'),
+ 'details panel must use the same dark, non-overlapping cockpit styling');
+assert(html.includes('.buttons #plus,.buttons #minus{display:none!important}'),
+ 'zoom buttons must not cover live route lines in the narrow center map');
+assert(html.includes('id="current-weather-chip"'),
+ 'compact current weather chip must be shown without duplicating route details');
+const modelTime=Math.floor(Date.now()/1000)-900;
+win.molaCurrentWeather({temperature:16.2,precipitation:0,wind:12.4,
+ weatherCode:2,kind:'route-start',modelBased:true,liveStationObservation:false,
+ modelTime,receivedAt:Date.now()});
+assert(get('current-weather-label').textContent.includes('Rota başlangıcı'),
+ 'weather cannot falsely claim GPS-based location');
+assert(get('current-weather-label').textContent.includes('model'),
+ 'Open-Meteo model weather cannot pretend to be observed station data');
+const weatherBefore=get('current-weather-label').textContent;
+win.molaCurrentWeather({temperature:70,precipitation:0,wind:10,
+ weatherCode:0,kind:'gps',modelBased:false,modelTime,receivedAt:Date.now()});
+assert.equal(get('current-weather-label').textContent,weatherBefore,
+ 'unverified current observations must be discarded');
+win.molaCurrentWeather({temperature:11,precipitation:0,wind:9,
+ weatherCode:1,kind:'gps',modelBased:true,
+ modelTime:Math.floor(Date.now()/1000)-8000,receivedAt:Date.now()});
+assert.equal(get('current-weather-label').textContent,weatherBefore,
+ 'stale current model must not overwrite a recent weather packet');
+get('current-weather-refresh').onclick();
+assert(get('status').textContent.includes('Android bağlantı hatası')||
+ get('current-weather-label').textContent===weatherBefore,
+ 'manual weather refresh must not fabricate a sensor value');
+win.molaAlternatives({selectedIndex:0,fastestIndex:0,shortestIndex:0,
+ chargeAwareIndex:-1,options:[{index:0,km:145,minutes:120,
+ energyLowKwh:23.2,energyHighKwh:34.8,socKnown:false,stationsKnown:true,
+ ccsCount:0,chargeNeededModel:false}]});
+get('co-alt-toggle').onclick();
+assert(!get('co-alts').classList.contains('open'),
+ 'a single OSRM route should not cover the map with a fake comparison');
+assert(get('status').textContent.includes('bir rota'),
+ 'one route must be explained as a limitation, not a feature');
+
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
