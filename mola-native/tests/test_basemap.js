@@ -68,7 +68,19 @@ assert.equal(tiles.length,4);
 tiles[3].events.tileload();
 assert.equal(controller.status().online,true);
 assert(!allLayers.has(outlines[0]));
+assert(controller.setTomTomKey('TEST_TOMTOM_BASEMAP_KEY_12345678'),
+ 'runtime TomTom key must be accepted');
+assert.equal(controller.sources()[0],'TomTom Orbis');
+assert(tiles.at(-1).url.includes('/maps/orbis/display/raster/tile/'));
+assert(tiles.at(-1).url.includes('street-dark'));
+assert(tiles.at(-1).url.includes('geopoliticalView=TR'));
+controller.setDay(true);
+assert(tiles.at(-1).url.includes('street-light'));
+for(let i=0;i<3;i++)tiles.at(-1).events.tileerror();
+assert(tiles.at(-1).url.includes('tile.openstreetmap.org'),
+ 'TomTom denied: fallback to public OSM');
+assert(controller.setTomTomKey(''),'TomTom key should be removable');
+assert.equal(controller.sources()[0],'OpenStreetMap');
 controller.close();
-assert.equal(controller.status().online,false || controller.status().online,
- 'close should complete without leaking active tile requests');
+assert.equal(controller.status().status,'uninitialized');
 console.log('PASS: real tile success, two-provider failures, geographic fallback, retry and attribution');

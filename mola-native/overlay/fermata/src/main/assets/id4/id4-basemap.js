@@ -8,15 +8,30 @@
 var L=g.L,map=null,layer=null,outline=null,cityMarkers=[];
 var notify=function(){},state='uninitialized',success=false,errors=0;
 var timer=null,epoch=0,srcIndex=0,hasStarted=false,cityPoints=[];
-var sources=[
+var tomtomKey='',dayMode=false;
+var communitySources=[
  {name:'OpenStreetMap',url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution:'© OpenStreetMap contributors',maxZoom:19},
  {name:'OSM Fransa',url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
   attribution:'© OpenStreetMap contributors · © OpenStreetMap France',maxZoom:19}
 ];
+function validKey(value){
+ return typeof value==='string'&&/^[A-Za-z0-9_-]{15,200}$/.test(value);
+}
+function sources(){
+ if(!validKey(tomtomKey))return communitySources;
+ return [{
+  name:'TomTom Orbis',
+  url:'https://api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}'+
+      '?apiVersion=2&style='+(dayMode?'street-light':'street-dark')+
+      '&tileSize=256&geopoliticalView=TR&key='+encodeURIComponent(tomtomKey),
+  attribution:'© TomTom · Map data © OpenStreetMap contributors',
+  maxZoom:19
+ }].concat(communitySources);
+}
 function emit(kind,detail){
  state=kind;
- notify({status:kind,detail:detail,source:sources[srcIndex]?.name||'',
+ notify({status:kind,detail:detail,source:sources()[srcIndex]?.name||'',
   online:kind==='online'});
 }
 function makeOutline(){
@@ -72,10 +87,11 @@ function attempt(i){
  if(!map||!L||!L.tileLayer)return exhausted();
  discard();
  srcIndex=i;var generation=++epoch;success=false;errors=0;
- if(i>=sources.length)return exhausted();
+ var options=sources();
+ if(i>=options.length)return exhausted();
  outlineVisible(true);
- emit('loading',sources[i].name+' haritası yükleniyor…');
- var source=sources[i];
+ emit('loading',options[i].name+' haritası yükleniyor…');
+ var source=options[i];
  var tile=L.tileLayer(source.url,{maxZoom:source.maxZoom,attribution:source.attribution,
   minZoom:2,noWrap:false,keepBuffer:1,updateWhenIdle:true,detectRetina:false});
  layer=tile;
@@ -104,9 +120,21 @@ g.Id4BaseMap={
   attempt(0);
  },
  retry:function(){if(!map)return false;attempt(0);return true},
+ setTomTomKey:function(value){
+  if(typeof value!=='string'||(value!==''&&!validKey(value)))return false;
+  if(tomtomKey===value)return true;
+  tomtomKey=value;
+  if(map)attempt(0);
+  return true;
+ },
+ setDay:function(value){
+  dayMode=!!value;
+  if(map&&validKey(tomtomKey))attempt(0);
+ },
  status:function(){return {status:state,online:state==='online',
-  source:sources[srcIndex]?.name||'',fallbackOnly:state==='offline'}},
- sources:function(){return sources.map(function(x){return x.name})},
- close:function(){epoch++;discard();outlineVisible(false);hasStarted=false}
+  source:sources()[srcIndex]?.name||'',fallbackOnly:state==='offline'}},
+ sources:function(){return sources().map(function(x){return x.name})},
+ close:function(){epoch++;discard();outlineVisible(false);hasStarted=false;
+  emit('uninitialized','Harita kapatıldı.')}
 };
 })(window);

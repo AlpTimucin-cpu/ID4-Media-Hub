@@ -323,7 +323,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
                     .remove("tomtom").apply();
                 if(web!=null&&!destroyed)web.evaluateJavascript(
-                    "window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey('');",null);
+                    "window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey('');"+
+                    "window.Id4BaseMap&&window.Id4BaseMap.setTomTomKey('');",null);
                 send("molaStatus",record("traffic","TomTom anahtarı temizlendi."));
             })
             .setPositiveButton("Kaydet",(dialog,which)->{
@@ -344,6 +345,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             .getString("tomtom","");
         if(key!=null&&!key.isEmpty()&&key.matches("[A-Za-z0-9_-]{15,200}"))
             web.evaluateJavascript("window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey("+
+                JSONObject.quote(key)+");"+
+                "window.Id4BaseMap&&window.Id4BaseMap.setTomTomKey("+
                 JSONObject.quote(key)+");",null);
     }
     /** Only known, freshly read ECU measurements reach the map HUD. */

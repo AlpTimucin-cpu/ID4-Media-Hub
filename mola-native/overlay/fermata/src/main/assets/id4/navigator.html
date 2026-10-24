@@ -1432,6 +1432,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
 @media(orientation:portrait),(max-width:639px){
  .map-health{top:74px;left:9px;right:9px;max-width:none}
 }
+/* Native TomTom street-dark tiles must not be inverted by legacy theme. */
+body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 </style>
 </head><body>
 <div id="map"></div>
@@ -2728,7 +2730,9 @@ try{
    card.classList[out.status==='offline'?'add':'remove']('is-offline');
    card.classList[out.online?'add':'remove']('is-online');
    $('map-health-text').textContent=String(out.detail||'Harita bekleniyor');
+   document.body.classList[out.source==='TomTom Orbis'?'add':'remove']('id4-tomtom-map');
    $('map-credit').textContent=out.online?
+    out.source==='TomTom Orbis'?'© TomTom · © OpenStreetMap contributors':
     '© OpenStreetMap contributors'+(out.source==='OSM Fransa'?' · © OpenStreetMap France':''):
     '© Natural Earth (public domain) · sokak/yol haritası değildir';
   },CITY_DATA);
@@ -2839,6 +2843,7 @@ $('map-retry').onclick=$('layer-map-retry').onclick=function(){
 $('layer-daynight').onclick=function(){
  var day=document.body.classList.toggle('map-day');
  $('layer-daynight').textContent=day?'◐ Gece haritası':'◐ Gündüz haritası';
+ if(window.Id4BaseMap)window.Id4BaseMap.setDay(day);
 };
 $('co-focus').onclick=function(){
  var focus=document.body.classList.toggle('focus-drive');

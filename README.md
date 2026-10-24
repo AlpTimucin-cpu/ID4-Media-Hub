@@ -166,3 +166,6 @@ Uygulama alt menüsündeki çalışmayan tüm klima, set sıcaklığı ve koltuk
 Natural Earth lisansı: https://www.naturalearthdata.com/about/terms-of-use/
 OSM Foundation karo politikası: https://operations.osmfoundation.org/policies/tiles/
 OSM France kullanım şartları: https://www.openstreetmap.fr/usage/
+
+### TomTom Orbis v2 sokak haritası
+Aynı özel kullanıcı TomTom anahtarı, harita servisinin yetkisi varsa Orbis Raster Map Display v2 için de kullanılabilir. Koyu ve açık sokak haritası stilleri desteklenir. Harita yetkisi veya bağlantı başarısızsa OSMF, OSM Fransa ve kamu malı coğrafi görünüm sırayla devreye girer. Gerçek tileload olmadan canlı harita var iddiası gösterilmez. TomTom istekleri kota tüketebileceğinden geliştirici hesabında sınırlama gerekir. Kaynak: https://docs.tomtom.com/map-display-api/documentation/tomtom-orbis-maps/v2/raster/raster-tile
