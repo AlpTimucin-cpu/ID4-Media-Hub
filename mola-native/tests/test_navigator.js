@@ -142,7 +142,7 @@ get('traffic-tomtom').onclick();
 assert(!html.includes('id="traffic-google"')&&!html.includes('id="traffic-yandex"'),
  'Google/Yandex unavailable UI removed');
 get('traffic-osm').onclick();
-assert(get('layer-status').textContent.includes('OpenStreetMap'),
+assert(get('layer-status').textContent.includes('korunuyor'),
  'missing provider must preserve the working map instead of faking traffic');
 get('layer-route').onclick();
 
