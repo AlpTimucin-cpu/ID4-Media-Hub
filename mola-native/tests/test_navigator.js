@@ -147,6 +147,8 @@ assert(get('layer-status').textContent.includes('korunuyor'),
 get('layer-route').onclick();
 
 assert(html.includes('id="route-map-alts"'),'all-route map chooser absent');
+assert(html.includes('allBounds.extend(alt.getBounds())'),
+ 'map bounds must include all genuine alternative routes');
 assert(html.includes("drawRoutePreviews(genuinePreviews,chosenRouteIndex)"),
  'OSRM geometry alternatives not drawn on map');
 assert(html.includes('id="co-alt-toggle"')&&html.includes('id="co-alts-list"'),

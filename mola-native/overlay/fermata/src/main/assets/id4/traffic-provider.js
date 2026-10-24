@@ -267,8 +267,11 @@ global.Id4TrafficProviders={
   if(typeof key!=='string'||(key!==''&&!validKey(key)))return false;
   if(active==='tomtom'){requested++;reset();active='osm'}
   configured.tomtomKey=key;
-  status('tomtom',key?'TomTom anahtarı ayarlandı, katmanı açarak doğrula.':
+  status('tomtom',key?'TomTom anahtarı alındı; gerçek trafik döşemesi yükleniyor…':
     'TomTom API anahtarı yok, canlı trafik kapalı.',false);
+  // Previously saved or newly provided user key: automatically attempt actual
+  // raster download. No active badge until TomTom FLOW tileload succeeds.
+  if(key&&leafletMap)activate('tomtom',lastCenter,lastZoom);
   return true;
  },
  updateRoute:function(points){currentRoute=routePoints(points);renderData()},

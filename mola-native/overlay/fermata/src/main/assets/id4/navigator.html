@@ -2215,7 +2215,12 @@ window.molaRoute=function(o){
     portrait?Math.max(276,Math.round(size.y*.30)):20;
   var right=landscape?Math.round(size.x*.23):portrait?20:Math.round(size.x*.43);
   var left=landscape?Math.round(size.x*.34):30;
-  map.fitBounds(line.getBounds(),{
+  var allBounds=line.getBounds();
+  if(allBounds&&typeof allBounds.extend==='function')
+   routePreviewLines.forEach(function(alt){
+    if(alt.getBounds)allBounds.extend(alt.getBounds());
+   });
+  map.fitBounds(allBounds,{
     paddingTopLeft:[left,Math.max(75,Math.round(size.y*.14))],
     paddingBottomRight:[right,bottom],animate:false,maxZoom:15
   });
@@ -2348,7 +2353,12 @@ window.molaLayout=function(){
   if(line && line.getBounds){
    var wide=window.innerWidth>=640&&window.innerWidth>window.innerHeight;
    var sz=map.getSize();
-   map.fitBounds(line.getBounds(),{paddingTopLeft:[wide?Math.round(sz.x*.34):20,80],
+   var bounds=line.getBounds();
+   if(bounds&&typeof bounds.extend==='function')
+    routePreviewLines.forEach(function(alt){
+     if(alt.getBounds)bounds.extend(alt.getBounds());
+    });
+   map.fitBounds(bounds,{paddingTopLeft:[wide?Math.round(sz.x*.34):20,80],
     paddingBottomRight:[wide?Math.round(sz.x*.23):20,
      wide?Math.max(125,Math.round(sz.y*.2)):Math.max(260,Math.round(sz.y*.3))],
     animate:false,maxZoom:15});
