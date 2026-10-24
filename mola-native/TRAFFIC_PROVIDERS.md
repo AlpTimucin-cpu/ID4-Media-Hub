@@ -142,3 +142,13 @@ Makalenin sınırlamalar bölümü 12 Ocak 2016 tarihli olduğundan listelenen
   lisans/kota ve araç profili doğrulanmadan kullanılmaz
 Her ek rota motoru gerçek API verisiyle doğrulanmalıdır. Maliyet ve
 servis koşulları her sağlayıcının resmî dokümanlarından kontrol edilir.
+
+## Açık kaynak yol güvenliği (Radarbot karşılaştırması)
+
+Radarbot APK yalnız statik özellik analizi için okundu; özel API veya
+veritabanı kopyalanmadı. OSM highway=speed_camera düğümleri manuel istekle,
+dar harita alanı (0,42° kare) ve 90 saniye aralıkla Overpass üzerinden alınır.
+GPS hız ekranı gerçek yeni Location.hasSpeed ölçümü dışında değer üretmez.
+Yaklaşma uyarısı yön/yol eşleşmesi olmadığından ihtimal bildirir.
+OpenStreetMap kaynak atfı arayüzde gösterilir. Güncel mobil radarlara
+erişim, yol hız limiti ve Android Auto uyarıları garanti edilmez.

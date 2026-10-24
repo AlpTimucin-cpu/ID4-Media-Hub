@@ -97,3 +97,25 @@ saklanmaz. Kayıt için en az 30 saniye, 200 metre ve iki doğru GPS örneği
 gereklidir. Son 30 özet telefona özel depoda tutulur; tümünü temizleyebilirsin.
 Ölçülmemiş gerçek enerji veya maliyet uydurulmaz. Android Auto deneyimi bu
 modülden ayrı olup halen doğrulanmamıştır.
+
+### Radarbot APK'sından esinlenen, bağımsız OSM yol güvenliği
+
+Yüklenen Radarbot v9.35.26 Premium APK'sı çalıştırılmadan statik olarak
+incelendi: HERE harita SDK'sı, SQLCipher ve ülke bazlı hız yapılandırmaları
+bulundu. Premium hakları, Radarbot radar veritabanı, gizli sunucu erişimi,
+marka öğeleri veya özel uygulama kodları aktarılmadı. Paket güvenilirliği
+de doğrulanmadı.
+
+ID.4 kokpitindeki yeni **📷 Yol güvenliği** düğmesi ve harita katmanı
+kullanıcı istediğinde açık OSM highway=speed_camera noktalarını görüntüler.
+Yalnız yakınlaştırılmış alan, 120 düğüm ve 90sn istek aralığı desteklenir.
+GPS hız göstergesi yalnız yeni ve doğruluğu iyi bir Location.hasSpeed
+ölçümünde görünür. En yakın OSM kamerasına 450m'de olasılıksal görsel
+uyarı, ayrıca etkinleştirilirse 350m'de güvenli TTS uyarısı bulunur.
+
+Kaynak: https://wiki.openstreetmap.org/wiki/Tag:highway=speed_camera
+Atıf: © OpenStreetMap contributors (ODbL).
+Kamera verisi eksik/eski olabilir. Mobil radar, kırmızı ışık ve ortalama
+hız uyarıları, geçerli yasal yol hız limiti, Radarbot premium akışı ve
+Android Auto navigasyon uyarıları mevcut değildir. OSM kamera etiketindeki
+maxspeed alanı yol üzerinde geçerli sınır olarak yorumlanmaz.

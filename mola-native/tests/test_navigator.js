@@ -65,6 +65,8 @@ const win={
   saveStation(...args){calls.saved.push(args)},
   configureTomTom(){calls.tomtomKey=(calls.tomtomKey||0)+1},
   tripJournal(){calls.journal=(calls.journal||0)+1},
+  roadSafety(...args){calls.safety=(calls.safety||[]);calls.safety.push(args)},
+  safetyAnnounce(...args){calls.safetySpeech=(calls.safetySpeech||[]);calls.safetySpeech.push(args)},
   landscape(...args){calls.orientation.push(args)},
   chooseAlternative(index){calls.chosen.push(index)}
  }
@@ -94,11 +96,26 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
-for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-journal']){
+for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-journal','dock-safety']){
  assert(html.includes('id="'+id+'"'),'reference-style dock missing '+id);
 }
 assert(html.includes('left:39%')&&html.includes('grid-template-columns:28%'),
  'wide cockpit left instruments and bottom route layout missing');
+assert(html.includes('id="layer-safety"')&&html.includes('id="safety-speed"'),
+ 'OSM camera UI and GPS speed indicator missing');
+get('dock-safety').onclick();
+assert(get('safety-status').textContent.includes('yakınlaştır'),
+ 'OSM queries must be prevented at zoom 7');
+assert.equal((calls.safety||[]).length,0,'must not query wide camera bounding box');
+context.window.molaPosition({lat:38.123,lon:34.77,accuracy:10,timeMs:Date.now(),speedKmh:63});
+assert.equal(get('safety-kmh').textContent,'63','display only actual fresh GPS speed');
+context.window.molaSafetyCameras({source:'© OpenStreetMap contributors (ODbL)',
+ items:[{id:112233,lat:38.124,lon:34.77,kind:'fixed'}]});
+assert(get('safety-status').textContent.includes('1 sabit kamera'));
+get('layer-safety-voice').onclick();
+assert(get('layer-safety-voice').textContent.includes('açık'));
+get('dock-safety').onclick();
+assert(get('safety-status').textContent.includes('kapalı'));
 get('dock-journal').onclick();
 assert.equal(calls.journal,1,'journal button reaches Android');
 get('dock-route').onclick();
