@@ -1204,9 +1204,36 @@ body.provider-active .traffic-map-badge{display:flex}
  .drive-dock{display:none!important}
 }
 
+
+/* Optional independent OSM road-safety overlay; reference cockpit unchanged. */
+.safety-speed{display:none;position:fixed;top:100px;left:59%;z-index:946;
+ background:#06283edc;border:1px solid #50aecb;border-radius:15px;padding:8px 12px;
+ pointer-events:none;color:#d6fff7;text-align:center}
+.safety-speed.active{display:block}
+.safety-speed strong{font-size:25px;color:#30eabf;display:block;line-height:1.05}
+.safety-speed small{font-size:10px}
+.safety-alert{display:none;position:fixed;top:173px;left:40%;max-width:33%;z-index:946;
+ padding:8px 12px;border:1px solid #ffc471;color:#ffe1b5;
+ border-radius:12px;background:#382c1cf0;font-size:12px;pointer-events:none}
+.safety-alert.active{display:block}
+#safety-status{font-size:11px;color:#ffe0ae;flex-basis:100%}
+#dock-safety.active,#layer-safety.active{background:#7f4c28!important;color:white!important}
+.safety-marker{display:grid;place-items:center;width:31px;height:31px;
+ border-radius:100px;background:#f8ba58;border:2px solid #ffedd0;font-size:17px}
+@media(orientation:landscape) and (max-height:680px){
+ .safety-speed{top:65px;left:58%;padding:5px 7px}.safety-speed strong{font-size:17px}
+ .safety-alert{top:115px;font-size:10px}
+}
+@media(orientation:portrait),(max-width:639px){
+ .safety-speed{top:98px;left:auto;right:10px}
+ .safety-alert{top:140px;left:10px;right:10px;max-width:none}
+}
 </style>
 </head><body>
-<div id="map"></div><div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
+<div id="map"></div>
+<div id="safety-speed" class="safety-speed"><strong id="safety-kmh">—</strong><small>km/sa · GPS</small></div>
+<div id="safety-alert" class="safety-alert" role="status"></div>
+<div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
 <div id="cockpit-toast" class="cockpit-toast" role="status"></div>
 <div class="traffic-station-panel" id="traffic-station-panel">
  <strong id="traffic-station-name">Şarj istasyonu</strong>
@@ -1321,6 +1348,7 @@ body.provider-active .traffic-map-badge{display:flex}
  <button id="dock-traffic" class="status-unavailable" type="button">🚦 Trafik: kapalı</button>
  <button id="dock-obd" class="status-unavailable" type="button">▣ OBD: ölçüm yok</button>
  <button id="dock-journal" type="button">▣ Yolculuklar</button>
+  <button id="dock-safety" type="button">📷 Yol güvenliği</button>
  <button id="dock-layers" type="button">☰ Katmanlar</button>
 </nav>
 <div class="top"><div class="brand"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS · YOLCULUK VE ARAÇ MERKEZİ</small>
@@ -1348,6 +1376,9 @@ body.provider-active .traffic-map-badge{display:flex}
   <button type="button" id="layer-hide">Gizle</button>
   <button type="button" id="layer-weather">☁ Yol havası</button>
   <button type="button" id="layer-traffic">🚦 Trafik</button>
+   <button type="button" id="layer-safety">📷 Sabit kameralar · OSM</button>
+   <button type="button" id="layer-safety-voice">🔇 Ses kapalı</button>
+   <div id="safety-status">OSM kamera kayıtları için haritayı yakınlaştır ve düğmeye dokun. Kaynak eksik olabilir.</div>
  </div>
  <div class="traffic-provider-choices" id="traffic-choices">
    <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
@@ -1419,6 +1450,8 @@ body.provider-active .traffic-map-badge{display:flex}
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var routePreviewLines=[],routePreviewOptions=[];
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
+var safetyActive=false,safetyVoice=false,safetyMarkers=[],safetyItems=[];
+var lastSafetyAlertId=0,lastSafetyAlertTime=0;
 var cachedJourneyWeather=null;
 var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
 var suggestedCharge=null;
@@ -1836,6 +1869,8 @@ function native(name){
    case 'stations':bridge.stations();break;
    case 'sensors':bridge.sensors();break;
    case 'tripJournal':bridge.tripJournal();break;
+   case 'roadSafety':bridge.roadSafety(a[0],a[1],a[2],a[3]);break;
+   case 'safetyAnnounce':bridge.safetyAnnounce(a[0],a[1]);break;
    case 'tomtomKey':bridge.configureTomTom();break;
    case 'selectObd':bridge.selectObd();break;
    case 'disconnectObd':bridge.disconnectObd();break;
@@ -2027,11 +2062,87 @@ function bindAutocomplete(field){
   e.preventDefault();el.blur();
  }});
 }
+
+/* User-triggered OSM fixed cameras, not Radarbot's private database. */
+function clearSafety(){
+ if(map)safetyMarkers.forEach(function(marker){map.removeLayer(marker)});
+ safetyMarkers=[];safetyItems=[];
+ $('safety-alert').classList.remove('active');
+}
+function loadSafety(){
+ if(!safetyActive||!map||!map.getBounds)return;
+ var b=map.getBounds();
+ var south=b.getSouth(),west=b.getWest(),north=b.getNorth(),east=b.getEast();
+ if((map.getZoom&&map.getZoom()<12)||north-south>.42||east-west>.42){
+  $('safety-status').textContent='Haritayı yakınlaştır (12+); yalnız görünür alandaki OSM sabit kameralar yüklenir.';
+  return;
+ }
+ $('safety-status').textContent='OpenStreetMap sabit kamera kayıtları yükleniyor…';
+ native('roadSafety',south,west,north,east);
+}
+window.molaSafetyCameras=function(packet){
+ if(!safetyActive||!packet||!Array.isArray(packet.items)||
+ packet.source!=='© OpenStreetMap contributors (ODbL)')return;
+ clearSafety();
+ packet.items.slice(0,120).forEach(function(item){
+  if(!item||!Number.isSafeInteger(item.id)||!valid(item.lat,item.lon))return;
+  safetyItems.push(item);
+  if(!map)return;
+  var marker=L.marker([item.lat,item.lon],{
+   icon:L.divIcon({className:'safety-camera-pin',
+    html:'<span class="safety-marker">📷</span>',
+    iconSize:[33,33],iconAnchor:[16,16]})
+  }).addTo(map);
+  var panel=document.createElement('div'),title=document.createElement('strong');
+  title.textContent='OSM sabit kamera kaydı';panel.appendChild(title);
+  var note=document.createElement('div');
+  note.textContent='Kaynak OpenStreetMap · konum/yön güncelliği doğrulanmadı';
+  panel.appendChild(note);
+  if(Number.isInteger(item.cameraTaggedSpeedKmh)){
+   var tag=document.createElement('div');
+   tag.textContent='Kamera etiketinde '+item.cameraTaggedSpeedKmh+
+    ' km/sa yazıyor; geçerli yol limiti olarak kullanılamaz.';
+   panel.appendChild(tag);
+  }
+  if(marker.bindPopup)marker.bindPopup(panel);
+  safetyMarkers.push(marker);
+ });
+ $('safety-status').textContent='OSM: '+safetyItems.length+
+  ' sabit kamera kaydı (görünür alan). Mobil radar ve güncel yerler doğrulanmadı.';
+};
+window.molaSafetyError=function(packet){
+ if(!safetyActive)return;
+ $('safety-status').textContent='⚠ '+String(packet&&packet.detail||
+  'OSM kamera verileri şu anda alınamıyor.').slice(0,160);
+};
+function updateSafetyGps(fix){
+ var ok=goodGps(fix)&&fix.accuracy<=35&&Number.isInteger(fix.speedKmh)&&
+  fix.speedKmh>=0&&fix.speedKmh<=252;
+ $('safety-speed').classList[ok?'add':'remove']('active');
+ $('safety-kmh').textContent=ok?String(fix.speedKmh):'—';
+ if(!safetyActive||!ok)return;
+ var closest=null,distance=Infinity;
+ safetyItems.forEach(function(item){
+  var km=greatCircleKm([fix.lat,fix.lon],[item.lat,item.lon]);
+  if(km<distance){distance=km;closest=item}
+ });
+ if(!closest||distance>.45){$('safety-alert').classList.remove('active');return}
+ $('safety-alert').textContent='📷 '+Math.round(distance*1000)+
+  ' m · OSM sabit kamera kaydı. Yol ve yön doğrulanmadı; hız sınırına uy.';
+ $('safety-alert').classList.add('active');
+ if(safetyVoice&&distance<=.35&&fix.speedKmh>=10&&
+  (closest.id!==lastSafetyAlertId||Date.now()-lastSafetyAlertTime>180000)){
+  lastSafetyAlertId=closest.id;lastSafetyAlertTime=Date.now();
+  native('safetyAnnounce',closest.lat,closest.lon);
+ }
+}
+
 window.molaPosition=function(x){
  if(!x||!valid(x.lat,x.lon))return;
  if(window.Id4TrafficProviders && goodGps(x))
   window.Id4TrafficProviders.updatePosition(x,followMap);
  lastGpsFix=x;
+ updateSafetyGps(x);
  showRouteGpsProgress(x);
  if(followMap && goodGps(x) && map)map.panTo([x.lat,x.lon],{animate:false});
  if(map){
@@ -2479,6 +2590,22 @@ $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
 
 $('dock-stations').onclick=function(){native('stations')};
+$('dock-safety').onclick=$('layer-safety').onclick=function(){
+ safetyActive=!safetyActive;
+ $('dock-safety').classList[safetyActive?'add':'remove']('active');
+ $('layer-safety').classList[safetyActive?'add':'remove']('active');
+ $('dock-safety').textContent=safetyActive?'📷 Kameralar açık':'📷 Yol güvenliği';
+ if(safetyActive)loadSafety();
+ else{
+  clearSafety();
+  $('safety-status').textContent='Sabit kamera katmanı kapalı. OSM sorgusu yapılmıyor.';
+ }
+};
+$('layer-safety-voice').onclick=function(){
+ safetyVoice=!safetyVoice;
+ $('layer-safety-voice').textContent=safetyVoice?
+  '🔊 Sesli uyarı açık':'🔇 Sesli uyarı kapalı';
+};
 $('co-station-tab').onclick=function(){
  setMapLayerMenu(true);
  setStationLayer('all');
