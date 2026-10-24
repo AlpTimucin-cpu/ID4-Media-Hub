@@ -107,8 +107,7 @@ get('dock-safety').onclick();
 assert(get('safety-status').textContent.includes('yakınlaştır'),
  'OSM queries must be prevented at zoom 7');
 assert.equal((calls.safety||[]).length,0,'must not query wide camera bounding box');
-context.window.molaPosition({lat:38.123,lon:34.77,accuracy:10,timeMs:Date.now(),speedKmh:63});
-assert.equal(get('safety-kmh').textContent,'63','display only actual fresh GPS speed');
+assert(html.includes('updateSafetyGps(x)'),'GPS speed must bind to native position updates');
 context.window.molaSafetyCameras({source:'© OpenStreetMap contributors (ODbL)',
  items:[{id:112233,lat:38.124,lon:34.77,kind:'fixed'}]});
 assert(get('safety-status').textContent.includes('1 sabit kamera'));
@@ -806,3 +805,14 @@ context.window.molaRoute({...routeCase,alternatives:1,
 assert.equal(get('route-map-alts').style.display,'none',
  'one provider route is not multiple alternatives');
 console.log('PASS: all OSRM alternatives drawn as distinct clickable real geometries');
+
+/* Safety HUD smoke test after all earlier GPS opt-in assertions. */
+context.window.molaPosition({lat:38.123,lon:34.77,accuracy:10,
+ timeMs:Date.now(),speedKmh:63});
+assert.equal(get('safety-kmh').textContent,'63',
+ 'valid measured speed must appear in the optional speed chip');
+context.window.molaPosition({lat:38.123,lon:34.77,accuracy:80,
+ timeMs:Date.now(),speedKmh:70});
+assert(!get('safety-speed').classList.contains('active'),
+ 'poor-accuracy GPS may not claim current measured speed');
+console.log('PASS: independent OSM camera warnings, opt-in and measured speed');
