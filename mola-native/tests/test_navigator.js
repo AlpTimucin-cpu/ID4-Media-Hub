@@ -96,6 +96,19 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes('class="vw-symbol"'),'reference header VW artwork missing');
+assert(html.includes('id="header-clock"'),'actual local clock missing');
+assert(html.includes('id="header-temp"'),'actual modeled temperature slot missing');
+assert(html.includes('id="co-maneuver-distance"'),'right turn indicator missing');
+assert(html.includes('id="dock-apps"')&&html.includes('id="dock-music"'),
+ 'bottom bar must preserve real Mola entrypoints');
+assert(html.includes('.cockpit-right{display:block!important}')&&
+       html.includes('.cockpit-tripbar{display:grid!important}'),
+ 'right and lower dashboard may not disappear before route is entered');
+assert(html.includes('id="dock-traffic-label"')&&html.includes('id="dock-obd-label"'),
+ 'status updates must change text without removing original dock icons');
+assert(!html.includes('id="fake-soc"')&&!html.includes('68% </div>'),
+ 'do not insert demonstration numbers as live ECU readings');
 for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-journal','dock-safety']){
  assert(html.includes('id="'+id+'"'),'reference-style dock missing '+id);
 }

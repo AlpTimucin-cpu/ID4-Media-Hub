@@ -119,3 +119,32 @@ Kamera verisi eksik/eski olabilir. Mobil radar, kırmızı ışık ve ortalama
 hız uyarıları, geçerli yasal yol hız limiti, Radarbot premium akışı ve
 Android Auto navigasyon uyarıları mevcut değildir. OSM kamera etiketindeki
 maxspeed alanı yol üzerinde geçerli sınır olarak yorumlanmaz.
+
+
+### Referans kokpit v3 — 24 Ekim 2026
+
+Kullanıcının paylaştığı **1536 × 864** kokpit görseline göre gerçek
+`assets/id4/navigator.html` görünümü yeniden düzenlendi. Önceki çoklu
+stil katmanları altında kaybolan araç ekranı artık doğru sırayla görünür:
+
+- Üstte **VOLKSWAGEN ID.4 PURE / Mola – Rota – İstasyon** menüsü,
+  cihazın gerçek yerel saati, doğrulanmış TomTom durum göstergesi ve
+  yalnız Open-Meteo yanıtı olduğunda sıcaklık
+- Solda büyük batarya, menzil ve 2 × 3 araç veri kartı;
+  **OBD doğrulanmadığında gösterge rakamları boş**
+- Sağda gerçek manevra/kalan mesafe/süre/varış/şarj bilgi kartı;
+  **rota kurulmadan gizlenmez**, 'Rota bekleniyor' der
+- Altta gerçek GPS ilerlemesine bağlanan rota çubuğu;
+  rota kurulmadan gizlenmez, uydurma hareket/SoC göstermez
+- Altta Mola, uygulamalar, müzik, telefon ve klima için güvenli kontrol
+  etiketleri, rota, şarj, TomTom, OBD, radar, geçmiş, katmanlar.
+  **Telefon, iklimlendirme ve koltuk ısıtma kontrolü bağlı olmadığı için
+  bilinçli olarak devre dışı; 22°C gibi sahte değerler yok.**
+- Seçim yokken kokpit, tam ekran Leaflet haritası üzerindeki durum
+  göstergeleriyle beraber kalır. Gerçek ağla OSM karo yüklenir, TomTom
+  ve OSRM/TomTom alternatifleri gerçek API verisi dönerse işlenir.
+
+1536 × 864 çözünürlüğünde Chromium offline DOM/render kontrolü tamamlandı.
+Başarılı sayfa renderi, uygulama içi Android Auto/OBD/TomTom gerçek cihaz
+testi anlamına gelmez. İçerik Google/Yandex canlı trafik sağlayıcılarını
+tekrar eklemez; TomTom kullanıcı anahtarı GitHub'a yazılmaz.

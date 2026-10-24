@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src https:; object-src 'none'; form-action 'none'">
-<title>Mola • ID.4 Yolculuk</title>
+<title>ID.4 Yol Arkadaşım • Kokpit</title>
 <link rel="stylesheet" href="leaflet.css">
 <style>
 :root{--ink:#182635;--muted:#627183;--teal:#087f8c;--paper:#fff;--line:#e3e8ed}
@@ -1228,6 +1228,194 @@ body.provider-active .traffic-map-badge{display:flex}
  .safety-speed{top:98px;left:auto;right:10px}
  .safety-alert{top:140px;left:10px;right:10px;max-width:none}
 }
+/* ID.4 COCKPIT V3 — 1536x864 reference design contract.
+   Real OSM/TomTom maps, verified OBD and genuine routing callbacks remain.
+   Never use stock sample numbers as live vehicle telemetry. */
+:root{--v3-bg:#041625;--v3-surface:rgba(2,28,46,.88);--v3-frame:rgba(105,190,223,.38);--v3-ink:#effbff;--v3-muted:#a7c4d3;--v3-green:#37edbd}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+@media (min-width:640px) and (orientation:landscape){
+ html,body{height:100%!important;overflow:hidden!important;background:var(--v3-bg)!important;color:var(--v3-ink)}
+ #map{position:fixed!important;inset:0!important;background:radial-gradient(ellipse at 60% 40%,#0b3852 0%,#0a2c42 30%,#062339 67%,#071a2c 100%)!important}
+ #map .leaflet-tile-pane{filter:invert(.92) hue-rotate(178deg) brightness(.67) contrast(1.23) saturate(.85)!important}
+ .top{position:fixed!important;inset:0 0 auto!important;height:88px!important;padding:11px 26px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:15px!important;background:rgba(2,20,34,.97)!important;z-index:1190!important;box-shadow:0 10px 20px #00101e5a!important;overflow:hidden!important}
+ .top .brand{display:flex!important;align-items:center!important;flex:0 0 31.5%!important;max-width:31.5%!important;min-width:0!important;padding:0!important;margin:0!important;background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;gap:16px!important;height:64px!important}
+ .brand .vw-symbol{display:block!important;flex:0 0 62px!important;width:62px!important;height:62px!important;filter:drop-shadow(0 0 7px #62b8ff44)}
+ .brand .brand-copy{display:flex!important;flex-direction:column!important;justify-content:center!important;min-width:0!important}
+ .top .brand strong{display:block!important;font-size:clamp(16px,1.6vw,25px)!important;font-weight:740!important;letter-spacing:.5px!important;color:#c9eaf7!important;white-space:nowrap!important;line-height:1.22!important}
+ .top .brand small{display:block!important;margin-top:4px!important;color:#779bb1!important;font-weight:500!important;font-size:clamp(10px,1.05vw,15px)!important;letter-spacing:.2px!important;white-space:nowrap!important}
+ .top .brand:before{display:none!important;content:none!important}
+ .top .brand .live-hud,.top .brand #live-status{display:none!important}
+ .top .cockpit-tabs{position:static!important;display:flex!important;flex:0 1 548px!important;max-width:548px!important;min-width:0!important;gap:9px!important;align-items:center!important;justify-content:center!important;margin:0 auto!important;overflow:visible!important}
+ .top .cockpit-tabs button{display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important;min-width:0!important;min-height:54px!important;max-height:56px!important;padding:10px 14px!important;border:1px solid #195071!important;border-radius:17px!important;background:linear-gradient(180deg,#0d4260,#092f4a)!important;box-shadow:none!important;color:#e4f9ff!important;font-size:clamp(13px,1.14vw,18px)!important;font-weight:600!important;white-space:nowrap!important;text-align:center!important}
+ .top .cockpit-tabs button.current{background:linear-gradient(160deg,#246f91,#135072)!important;border:1px solid #70caec!important;box-shadow:inset 0 0 14px #399dda26!important}
+ .top .cockpit-tabs #co-expand,.top .cockpit-tabs #co-focus{display:none!important}
+ .top .round{display:none!important}
+ .header-live-info{flex:0 0 25%!important;display:flex!important;gap:18px!important;justify-content:flex-end!important;align-items:center!important;white-space:nowrap!important;color:#e6f4ff!important}
+ .header-clock{font-size:clamp(16px,1.7vw,24px)!important;font-weight:750!important;font-variant-numeric:tabular-nums!important}
+ .header-badge{display:flex;align-items:center;justify-content:center;border:1px solid #375b70;border-radius:9px;background:#15364b;padding:7px 10px;color:#afddf3;font-weight:650;font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+ .header-temp{font-size:clamp(14px,1.3vw,20px)!important;color:#dcecf9!important}
+ /* Map must be visible between side panels, with only non-blocking HUD chips. */
+ #vehicle-cockpit{display:block!important;position:fixed!important;inset:90px 0 82px!important;pointer-events:none!important;overflow:visible!important;z-index:830!important;background:transparent!important}
+ #vehicle-cockpit .cockpit-panel,.cockpit-tripbar{background:var(--v3-surface)!important;border:1px solid var(--v3-frame)!important;border-radius:18px!important;backdrop-filter:blur(12px)!important;box-shadow:0 12px 28px #0004!important;color:var(--v3-ink)!important}
+ .cockpit-left{position:absolute!important;left:24px!important;top:19px!important;bottom:17px!important;width:35%!important;max-width:540px!important;max-height:none!important;display:flex!important;flex-direction:column!important;gap:12px!important;overflow:visible!important;grid-template-columns:unset!important;pointer-events:none!important}
+ .cockpit-left>.cockpit-panel{margin:0!important;padding:13px 18px!important;min-height:0!important;flex:0 0 auto!important}
+ .cockpit-left>.cockpit-panel:first-child{height:173px!important;position:relative!important;padding:13px 19px 14px 102px!important}
+ .cockpit-left>.cockpit-panel:nth-child(2){height:130px!important;position:relative!important;padding:13px 18px 14px 102px!important}
+ .co-hero-icon{position:absolute;left:22px;top:33px;display:flex;align-items:center;justify-content:center;width:58px;height:68px;font-size:54px;line-height:1;color:var(--v3-green);filter:drop-shadow(0 0 8px #21d8b73a);pointer-events:none}
+ .co-hero-icon.road{font-size:52px;color:#d6eafd;top:36px}
+ .cockpit-left .cockpit-title{font-size:clamp(11px,.99vw,16px)!important;color:var(--v3-muted)!important;font-weight:550!important;line-height:1.22!important;letter-spacing:.16px!important;margin:0 0 6px!important}
+ .cockpit-left #co-sensor-age{font-size:11px!important;color:#dfbf78!important;position:absolute;right:19px;top:17px;max-width:46%!important;text-align:right;line-height:1.2}
+ .cockpit-left #co-sensor-age.fresh{color:#37e8bd!important}
+ .cockpit-left .cockpit-main-value{font-size:clamp(38px,5.1vw,78px)!important;line-height:1.05!important;white-space:nowrap!important;letter-spacing:-2px!important;font-weight:900!important;text-shadow:-2px -2px 0 #00111b,2px 2px 0 #00111b,0 5px 4px #00111b!important;margin:0!important}
+ .cockpit-left #co-soc{color:var(--v3-green)!important}
+ .cockpit-left #co-range{color:#fff!important}
+ .cockpit-left .cockpit-bar{position:absolute!important;bottom:17px!important;height:21px!important;left:17px!important;right:17px!important;border-radius:99px!important;background:#365875!important;margin:0!important;overflow:hidden!important}
+ .cockpit-left #co-soc-fill{background:linear-gradient(90deg,#30dfb4,#3cf4c9)!important;height:100%!important}
+ .cockpit-left .cockpit-smallgrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-rows:repeat(3,94px)!important;gap:11px!important;min-height:0!important;margin:0!important;flex:0 0 auto!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-panel{display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-start!important;padding:12px 16px!important;min-height:0!important;max-height:none!important;overflow:hidden!important;gap:5px!important}
+ .cockpit-smallgrid .cockpit-value{font-size:clamp(18px,1.58vw,25px)!important;font-weight:720!important;line-height:1.12!important;min-width:0!important;max-width:100%!important;letter-spacing:-.2px!important;word-break:break-word!important;text-shadow:0 2px 2px #0006!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-title{font-size:clamp(9px,.82vw,12px)!important;margin:0!important;text-transform:uppercase!important}
+ .cockpit-left>.cockpit-slim{display:flex!important;gap:7px!important;align-items:center!important;justify-content:flex-start!important;min-height:43px!important;max-height:43px!important;padding:6px 9px!important;pointer-events:auto!important;border-radius:12px!important}
+ .cockpit-slim button{padding:6px 11px!important;font-size:11px!important;min-height:30px!important;border-radius:8px!important}
+ .cockpit-slim small{font-size:10px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+ .cockpit-right{display:block!important;position:absolute!important;top:19px!important;right:22px!important;width:20%!important;max-width:315px!important;max-height:calc(100% - 180px)!important;overflow:hidden!important;pointer-events:none!important}
+ .cockpit-right .cockpit-panel{padding:16px 18px!important;height:auto!important;min-height:310px!important;display:block!important}
+ .co-turn{display:grid;grid-template-columns:56px minmax(0,1fr);gap:9px;align-items:start;padding:0 0 12px;border-bottom:1px solid #5c9ab13b;margin:0 0 13px}
+ .co-turn-arrow{font-size:49px;line-height:1;color:#f2fbff;font-weight:700}
+ .co-turn strong{font-size:23px;display:block;line-height:1.25;color:#effaff}
+ .co-turn .cockpit-direction{display:block!important;font-size:13px!important;color:#a9c8d8!important;min-height:18px!important;margin:3px 0 0!important;line-height:1.35!important}
+ .co-nav-row{display:flex;align-items:center;gap:13px;padding:8px 0!important;min-height:54px}
+ .co-nav-icon{width:34px;min-width:34px;font-size:25px;text-align:center;color:#b7d8e9;opacity:.95}
+ .co-nav-meta{min-width:0;flex:1}
+ .co-nav-meta .cockpit-title{color:var(--v3-muted)!important;font-size:11px!important;letter-spacing:0!important;margin:0 0 3px!important}
+ .co-nav-meta .cockpit-value{display:block!important;color:#ecf8fc!important;font-size:clamp(16px,1.38vw,22px)!important;font-weight:750!important;line-height:1.18!important}
+ .co-nav-meta small{font-size:10px;color:#90b9cb;display:block;line-height:1.28}
+ .co-nav-row.status-row{padding-bottom:2px!important}
+ .cockpit-right #co-weather,.cockpit-right .cockpit-condition{display:none!important}
+ .cockpit-bottom,.cockpit-quick{display:none!important}
+ /* Show right card and bottom summary even without a route: no invented values. */
+ #vehicle-cockpit:not(.has-route) .cockpit-right{display:block!important}
+ #vehicle-cockpit:not(.has-route) .cockpit-tripbar{display:grid!important}
+ .vehicle-cockpit .cockpit-tripbar,.vehicle-cockpit.has-route .cockpit-tripbar{display:grid!important;position:absolute!important;left:38.5%!important;right:22px!important;bottom:19px!important;width:auto!important;height:139px!important;min-height:139px!important;max-height:139px!important;overflow:hidden!important;grid-template-columns:25% minmax(0,1fr) 22%!important;gap:16px!important;padding:15px 20px!important;align-items:center!important;justify-content:initial!important;pointer-events:auto!important}
+ .cockpit-tripbar>div{display:block!important;min-width:0!important;max-width:none!important;grid-column:auto!important;overflow:visible!important}
+ .cockpit-tripbar>div:first-child{display:block!important}
+ .cockpit-tripbar .tripbar-label{font-size:11px!important;letter-spacing:.1px!important;color:var(--v3-muted)!important;margin-bottom:3px!important}
+ .cockpit-tripbar .tripbar-number{font-size:clamp(17px,1.55vw,24px)!important;font-weight:800!important;color:#e7f8fb!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ .cockpit-tripbar .tripbar-sub{font-size:11px!important;color:#a9c9d9!important;line-height:1.3!important;margin-top:5px!important}
+ .cockpit-tripbar .tripbar-mid{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:4px!important;font-size:10px!important;color:#b9e5e5!important;white-space:nowrap!important;min-width:0!important}
+ .cockpit-tripbar #co-trip-progress-label{max-width:52%!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ .cockpit-tripbar #co-trip-charge{max-width:48%!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ .cockpit-tripbar .tripbar-track{height:16px!important;min-height:16px!important;border-radius:18px!important;background:#34566e!important;overflow:visible!important;margin:12px 0 9px!important;position:relative!important}
+ .cockpit-tripbar #co-trip-fill{height:100%!important;background:linear-gradient(90deg,#27dcae,#54f5c6)!important;border-radius:18px!important;max-width:100%!important}
+ .cockpit-tripbar .tripbar-track::after{content:'🚙';position:absolute;top:-23px;left:clamp(1px,var(--trip-percent,0%),calc(100% - 25px));font-size:23px;filter:drop-shadow(0 0 7px #74b3eb);pointer-events:none}
+ .cockpit-tripbar>div:last-child{display:block!important;text-align:right!important;align-self:center!important;overflow:hidden!important}
+ .cockpit-tripbar #co-trip-charge-button,.cockpit-tripbar #co-reroute,.cockpit-tripbar #co-cost-note,.cockpit-tripbar #co-trip-details{display:none!important}
+ .cockpit-tripbar #co-cost{font-size:10px!important;max-height:27px!important;line-height:1.3!important;overflow:hidden!important;color:#9ac6dc!important}
+ .cockpit-tripbar #co-alt-toggle{display:inline-block!important;min-width:0!important;margin-top:3px!important;border:1px solid #5a9fb7!important;border-radius:8px!important;background:rgba(14,81,108,.8)!important;color:#d8f5ff!important;padding:5px 10px!important;min-height:29px!important;font-size:11px!important}
+ .current-weather-chip{display:none!important}
+ .buttons{position:fixed!important;top:100px!important;left:38.5%!important;right:auto!important;z-index:1135!important;flex-direction:row!important;gap:6px!important}
+ .buttons button{width:37px!important;height:37px!important;min-height:37px!important;padding:4px!important;font-size:16px!important;border:1px solid #2c6680!important;background:rgba(3,35,56,.91)!important;color:#c9e7f4!important;box-shadow:0 2px 12px #0004!important}
+ #plus,#minus,#open-layers{display:none!important}
+ #route-map-alts{left:38.5%!important;top:145px!important;padding:6px 10px!important;font-size:12px!important;min-height:32px!important}
+ .map-note{display:none!important}
+ .map-credit{bottom:91px!important;right:16px!important;color:#9ac7de!important;background:#041b2dbd!important}
+ .drive-dock{position:fixed!important;inset:auto 0 0!important;height:82px!important;z-index:1210!important;display:flex!important;justify-content:space-around!important;align-items:center!important;padding:4px 19px!important;background:rgba(3,17,30,.98)!important;border-top:1px solid #0d3147!important;gap:5px!important;overflow:hidden!important}
+ .drive-dock button{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important;min-width:0!important;max-width:160px!important;height:65px!important;padding:4px 7px!important;border:0!important;background:transparent!important;color:#d3e8f6!important;border-radius:11px!important;gap:3px!important;font-size:11px!important;white-space:nowrap!important;text-align:center!important}
+ .drive-dock button:focus-visible{outline:2px solid #63e3e2!important}
+ .drive-dock button .dock-icon{font-size:27px!important;line-height:1!important;font-weight:600!important;display:block!important}
+ .drive-dock button .dock-label{font-size:10px!important;line-height:1!important;max-width:100%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ .drive-dock button.status-unavailable{color:#dbb88d!important}
+ .drive-dock button:disabled{opacity:.45!important;cursor:not-allowed!important;color:#a3bed0!important}
+ .drive-dock .dock-climate-value{font-size:20px!important;color:#b2ccd9!important;font-weight:750!important}
+ .sheet{z-index:1220!important}
+ .sheet:not(.route-active):not(.search-open),.sheet.route-active:not(.details-open):not(.search-open){display:none!important}
+ .sheet.search-open,.sheet.details-open{position:fixed!important;left:37.5%!important;right:20%!important;top:105px!important;bottom:96px!important;width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;display:block!important;border:1px solid #69aac4!important;border-radius:19px!important;box-shadow:0 18px 50px #000b!important;background:#072c43f5!important;color:#edfaff!important;z-index:1225!important}
+ .sheet.search-open .search{background:#e9f5fb!important;color:#082636!important}
+ .map-layers-panel{z-index:1260!important;top:98px!important;left:39%!important;right:23%!important;max-height:64vh!important;overflow:auto!important;background:#052c42ed!important;border:1px solid #4288ac!important}
+ .cockpit-alts.open{z-index:1255!important;top:146px!important;left:auto!important;right:22px!important;width:350px!important;max-height:61vh!important;overflow:auto!important}
+ .safety-speed{top:101px!important;left:63%!important}
+ .safety-alert{top:145px!important;left:44%!important}
+}
+@media (min-width:640px) and (orientation:landscape) and (max-height:705px){
+ .top{height:61px!important;padding:4px 12px!important}
+ .top .brand{height:50px!important;gap:9px!important}
+ .brand .vw-symbol{flex-basis:39px!important;width:39px!important;height:39px!important}
+ .top .brand strong{font-size:clamp(12px,1.45vw,18px)!important}
+ .top .brand small{font-size:10px!important}
+ .top .cockpit-tabs button{min-height:42px!important;max-height:42px!important;font-size:11px!important}
+ .header-live-info{gap:8px!important}.header-clock{font-size:17px!important}
+ #vehicle-cockpit{inset:63px 0 52px!important}
+ .cockpit-left{left:12px!important;top:9px!important;bottom:9px!important;width:31%!important;gap:6px!important;overflow-y:auto!important}
+ .cockpit-left>.cockpit-panel:first-child{height:103px!important;padding:10px 12px 8px 69px!important}
+ .cockpit-left>.cockpit-panel:nth-child(2){height:81px!important;padding:10px 10px 6px 69px!important}
+ .co-hero-icon,.co-hero-icon.road{left:13px!important;top:23px!important;font-size:34px!important;width:40px!important;height:42px!important}
+ .cockpit-left .cockpit-main-value{font-size:clamp(25px,4vw,40px)!important}
+ .cockpit-left .cockpit-bar{height:9px!important;bottom:8px!important}
+ .cockpit-left .cockpit-smallgrid{grid-template-rows:repeat(3,60px)!important;gap:5px!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-panel{padding:6px 10px!important;gap:2px!important}
+ .cockpit-left .cockpit-smallgrid .cockpit-title{font-size:9px!important}
+ .cockpit-smallgrid .cockpit-value{font-size:clamp(12px,1.4vw,18px)!important}
+ .cockpit-left>.cockpit-slim{min-height:35px!important;max-height:35px!important}
+ .cockpit-right{top:9px!important;right:12px!important;max-height:calc(100% - 105px)!important;width:21%!important}
+ .cockpit-right .cockpit-panel{min-height:236px!important;padding:9px 12px!important}
+ .co-turn{grid-template-columns:35px 1fr!important;margin-bottom:6px!important;padding-bottom:6px!important}
+ .co-turn-arrow{font-size:33px!important}.co-turn strong{font-size:16px!important}
+ .co-nav-row{min-height:38px!important;padding:3px 0!important;gap:5px!important}
+ .co-nav-icon{font-size:20px!important;width:25px!important;min-width:25px!important}
+ .co-nav-meta .cockpit-title{font-size:9px!important}.co-nav-meta .cockpit-value{font-size:14px!important}
+ .vehicle-cockpit .cockpit-tripbar,.vehicle-cockpit.has-route .cockpit-tripbar{left:34%!important;right:12px!important;bottom:6px!important;height:85px!important;max-height:85px!important;min-height:85px!important;padding:7px 11px!important;gap:9px!important}
+ .cockpit-tripbar .tripbar-number{font-size:15px!important}
+ .cockpit-tripbar .tripbar-track{height:9px!important;margin:5px 0 3px!important}
+ .cockpit-tripbar #co-trip-arrival-note,.cockpit-tripbar #co-cost{display:none!important}
+ .buttons{top:69px!important;left:34%!important}.buttons button{width:29px!important;height:29px!important;min-height:29px!important}
+ .drive-dock{height:52px!important;padding:3px 8px!important}
+ .drive-dock button{height:45px!important;padding:2px!important}
+ .drive-dock button .dock-icon{font-size:18px!important}.drive-dock button .dock-label{font-size:9px!important}
+ .sheet.search-open,.sheet.details-open{top:71px!important;bottom:60px!important}
+ .map-layers-panel{top:66px!important}
+ .map-credit{bottom:59px!important}
+}
+/* Finishing touches: prevent legacy high-specificity labels from overruling V3. */
+@media (min-width:640px) and (orientation:landscape){
+ .cockpit-right #co-destination{display:block!important;font-size:12px!important;color:#a2c7db!important;font-weight:450!important;line-height:1.24!important;margin:1px 0!important;white-space:normal!important;max-height:30px!important;overflow:hidden!important}
+ .cockpit-right .co-nav-row .cockpit-title{font-size:10px!important;margin:0 0 3px!important}
+ .cockpit-right .co-nav-row .cockpit-value{font-size:clamp(16px,1.38vw,22px)!important;line-height:1.15!important;margin:0!important}
+ .cockpit-right .co-nav-row small{display:block!important;font-size:10px!important;line-height:1.18!important;color:#8cabb9!important;margin-top:3px!important}
+ .cockpit-right .co-nav-row{padding:5px 0!important;min-height:50px!important}
+ .cockpit-right .cockpit-panel{min-height:0!important;height:auto!important;max-height:355px!important;overflow:hidden!important}
+ .cockpit-tripbar{isolation:isolate!important}
+ .cockpit-tripbar #co-trip-arrival-note{font-size:9px!important;line-height:1.15!important}
+ .cockpit-tripbar #co-trip-target{white-space:nowrap!important;max-width:100%!important}
+ .dock-climate{display:flex!important;align-items:center!important;justify-content:center!important;flex:2.7 1 306px!important;min-width:205px!important;max-width:380px!important;height:65px!important;border-inline:1px solid rgba(86,155,189,.35)!important;border-radius:0 0 15px 15px!important;margin:0 2px!important;gap:0!important;overflow:hidden!important}
+ .drive-dock .dock-climate button{flex:1 1 0!important;max-width:none!important;min-width:0!important;height:55px!important;padding:4px 0!important}
+ .drive-dock .dock-climate button .dock-icon{font-size:18px!important}
+ .drive-dock .dock-climate .dock-climate-value{font-size:21px!important;line-height:1!important}
+ .drive-dock .dock-climate button .dock-label{font-size:9px!important}
+ #vehicle-cockpit:not(.has-route) .cockpit-tripbar .tripbar-track::after{display:none!important}
+ .cockpit-tripbar .tripbar-track:after{left:var(--trip-percent,0%)!important}
+ .cockpit-toast{z-index:1600!important;bottom:91px!important;left:40%!important;max-width:40%!important;right:auto!important;text-align:center!important}
+}
+@media (min-width:640px) and (orientation:landscape) and (max-height:705px){
+ .cockpit-right .cockpit-panel{max-height:252px!important}
+ .cockpit-right .co-nav-row{padding:2px 0!important;min-height:37px!important}
+ .cockpit-right #co-destination{font-size:10px!important}
+ .dock-climate{height:46px!important;min-width:145px!important;max-width:260px!important}
+ .drive-dock .dock-climate button{height:43px!important}
+ .drive-dock .dock-climate .dock-climate-value{font-size:15px!important}
+ .cockpit-toast{bottom:58px!important}
+}
+
+
+@media (min-width:640px) and (orientation:landscape){
+ .cockpit-left>.cockpit-slim{display:none!important}
+ .cockpit-right .cockpit-panel{max-height:336px!important}
+ .cockpit-right .co-nav-row{min-height:45px!important;padding:4px 0!important}
+ .cockpit-right .co-nav-meta small{font-size:10px!important}
+}
+@media (min-width:640px) and (orientation:landscape) and (max-height:705px){
+ .cockpit-right .cockpit-panel{max-height:246px!important}
+ .cockpit-left>.cockpit-slim{display:none!important}
+}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1257,13 +1445,15 @@ body.provider-active .traffic-map-badge{display:flex}
 <div id="vehicle-cockpit" class="vehicle-cockpit" aria-label="ID.4 saydam araç göstergeleri">
  <div class="cockpit-left">
   <div class="cockpit-panel">
-   <div class="cockpit-title">BATARYA DOLULUĞU · OBD</div>
+   <div class="co-hero-icon" aria-hidden="true"><svg viewBox="0 0 56 70" width="56" height="70" aria-hidden="true" fill="none"><rect x="6" y="11" width="44" height="54" rx="5" stroke="#33ecc0" stroke-width="4"/><rect x="20" y="4" width="16" height="8" rx="2" fill="#33ecc0"/><rect x="12" y="18" width="32" height="41" rx="2" fill="#35efc0" opacity=".88"/></svg></div>
+   <div class="cockpit-title">BATARYA DOLULUĞU</div>
    <div class="cockpit-age" id="co-sensor-age">Ölçüm bekleniyor</div>
    <div id="co-soc" class="cockpit-value cockpit-main-value cockpit-soc">— %</div>
    <div class="cockpit-bar"><div id="co-soc-fill"></div></div>
   </div>
   <div class="cockpit-panel">
-   <div class="cockpit-title">TAHMİNİ MENZİL · %15 REZERV</div>
+   <div class="co-hero-icon road" aria-hidden="true"><svg viewBox="0 0 64 70" width="61" height="69" aria-hidden="true" fill="none"><path d="M25 2L9 68M39 2l16 66" stroke="#cee9f7" stroke-width="5" stroke-linecap="round"/><path d="M32 5v15m0 13v14m0 13v7" stroke="#cee9f7" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 12"/></svg></div>
+   <div class="cockpit-title">TAHMİNİ MENZİL</div>
    <div id="co-range" class="cockpit-value cockpit-main-value">— km</div>
   </div>
   <div class="cockpit-smallgrid">
@@ -1282,14 +1472,22 @@ body.provider-active .traffic-map-badge{display:flex}
  </div>
  <div class="cockpit-right">
   <div class="cockpit-panel">
-   <div class="cockpit-title">HEDEF</div><div id="co-destination" class="cockpit-value">Rota bekleniyor</div>
-   <div class="cockpit-title route-less">ROTA UZUNLUĞU</div><div id="co-route-km" class="cockpit-value">— km</div>
-   <div class="cockpit-title">TAHMİNİ SÜRÜŞ · TRAFİKSİZ</div><div id="co-drive-time" class="cockpit-value">— dk</div>
-   <div class="cockpit-title optional-route">ŞARJ MOLASI</div><div id="co-stops" class="cockpit-value">—</div>
-   <div class="cockpit-title optional-route">TAHMİNİ VARIŞ · TRAFİKSİZ</div><div id="co-eta" class="cockpit-value">—</div>
-   <div class="cockpit-title optional-route">İLK ROTA TALİMATI</div><div id="co-maneuver" class="cockpit-direction">Rota bekleniyor</div>
-   <div class="cockpit-title optional-route">ROTA BOYUNCA HAVA · MODEL</div><div id="co-weather" class="cockpit-weather">Hava tahmini bekleniyor</div>
-   <div class="cockpit-condition">Canlı trafik, soket doluluğu ve gerçek şarj süresi bağlı değil.</div>
+    <div class="co-turn"><span class="co-turn-arrow" aria-hidden="true">↱</span><div>
+      <strong id="co-maneuver-distance">—</strong>
+      <div id="co-maneuver" class="cockpit-direction">Güzergâh seçilmedi</div>
+    </div></div>
+    <div class="co-nav-row"><span class="co-nav-icon" aria-hidden="true">⚑</span><div class="co-nav-meta">
+       <div class="cockpit-title">HEDEF / KALAN MESAFE</div><div id="co-route-km" class="cockpit-value">— km</div>
+       <small id="co-destination">Rota bekleniyor</small></div></div>
+    <div class="co-nav-row"><span class="co-nav-icon" aria-hidden="true">◷</span><div class="co-nav-meta">
+       <div class="cockpit-title">TAHMİNİ SÜRÜŞ</div><div id="co-drive-time" class="cockpit-value">— dk</div>
+       <small>Rota servisinden; trafik durumu ayrıca gösterilir</small></div></div>
+    <div class="co-nav-row"><span class="co-nav-icon" aria-hidden="true">◴</span><div class="co-nav-meta">
+       <div class="cockpit-title">TAHMİNİ VARIŞ</div><div id="co-eta" class="cockpit-value">—</div>
+       <small>Trafik ve şarj beklemesi durumuna bağlı</small></div></div>
+    <div class="co-nav-row status-row"><span class="co-nav-icon" aria-hidden="true">⚡</span><div class="co-nav-meta">
+       <div class="cockpit-title">ÖNERİLEN ŞARJ DURAKLARI</div><div id="co-stops" class="cockpit-value">—</div></div></div>
+    <div id="co-weather" class="cockpit-weather" style="display:none">Hava tahmini bekleniyor</div>
   </div>
  </div>
  <div class="cockpit-bottom">
@@ -1303,22 +1501,18 @@ body.provider-active .traffic-map-badge{display:flex}
   <button id="co-quick-route" type="button">⌕ Rota ara</button>
   <button id="co-quick-layers" type="button" aria-pressed="false">▧ Katmanlar</button>
  </div>
- <div class="cockpit-tripbar" id="cockpit-tripbar" aria-label="Gerçek rota ve GPS ilerlemesi">
+ <div class="cockpit-tripbar" id="cockpit-tripbar" aria-label="Yolculuk planı ve gerçek GPS ilerlemesi">
   <div>
-   <div class="tripbar-label">VARIŞ NOKTASI</div>
-   <div id="co-trip-target" class="tripbar-number">—</div>
-   <div id="co-trip-kilometers" class="tripbar-sub">Rota seçilmedi</div>
+   <div class="tripbar-label">⚑ VARIŞ NOKTASI</div>
+   <div id="co-trip-target" class="tripbar-number">Rota bekleniyor</div>
+   <div id="co-trip-kilometers" class="tripbar-sub">Başlangıç ve varış seç</div>
   </div>
   <div>
-   <div class="tripbar-mid">
-    <span id="co-trip-progress-label">GPS ilerlemesi yok</span>
-    <span id="co-trip-charge">⚡ Şarj molası henüz seçilmedi</span>
-   </div>
+   <div class="tripbar-mid"><span id="co-trip-progress-label">Rota ilerlemesi yok</span>
+     <span id="co-trip-charge">⚡ Şarj planlanmadı</span></div>
    <div class="tripbar-track"><div id="co-trip-fill"></div></div>
-   <div class="tripbar-mid">
-    <span id="co-trip-battery">OBD SoC: —</span>
-    <span id="co-trip-charge-km">Mola km: —</span>
-   </div>
+   <div class="tripbar-mid"><span id="co-trip-battery">OBD SoC: —</span>
+     <span id="co-trip-charge-km">Şarj km: —</span></div>
   </div>
   <div>
    <div class="tripbar-label">VARIŞ · MODEL</div>
@@ -1341,30 +1535,45 @@ body.provider-active .traffic-map-badge{display:flex}
  <div id="co-alts-list">Rota oluşturulunca seçenekler gelecek.</div>
  <div class="alts-caution">Şarj durakları model önerisidir. Soket doluluğu, detour süresi ve kesin fiyat doğrulanmadı.</div>
 </div>
-<nav class="drive-dock" aria-label="ID.4 hızlı komutlar">
- <button id="dock-home" type="button">⌂ Mola</button>
- <button id="dock-route" type="button">⌕ Rota</button>
- <button id="dock-stations" type="button">⚡ Şarj</button>
- <button id="dock-traffic" class="status-unavailable" type="button">🚦 Trafik: kapalı</button>
- <button id="dock-obd" class="status-unavailable" type="button">▣ OBD: ölçüm yok</button>
- <button id="dock-journal" type="button">▣ Yolculuklar</button>
-  <button id="dock-safety" type="button">📷 Yol güvenliği</button>
- <button id="dock-layers" type="button">☰ Katmanlar</button>
+<nav class="drive-dock" aria-label="ID.4 hızlı araç komutları">
+ <button id="dock-home" type="button" title="Mola ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
+ <button id="dock-apps" type="button" title="Mola uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
+ <button id="dock-music" type="button" title="Mola müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
+ <button disabled type="button" title="Telefon entegrasyonu henüz yok"><span class="dock-icon">♧</span><span class="dock-label">Telefon yok</span></button>
+ <div class="dock-climate" aria-label="Klima ve koltuk ısıtma, araçla bağlantı olmadığı için kullanılamıyor">
+  <button disabled type="button" title="Koltuk ısıtma kontrolü desteklenmiyor"><span class="dock-icon">♨</span><span class="dock-label">—</span></button>
+  <button disabled type="button" title="Klima set sıcaklığı araçtan okunamıyor"><span class="dock-climate-value">—</span><span class="dock-label">Sol</span></button>
+  <button disabled type="button" title="Klima kontrolü desteklenmiyor"><span class="dock-icon">❄</span><span class="dock-label">KLİMA</span></button>
+  <button disabled type="button" title="Klima set sıcaklığı araçtan okunamıyor"><span class="dock-climate-value">—</span><span class="dock-label">Sağ</span></button>
+  <button disabled type="button" title="Koltuk ısıtma kontrolü desteklenmiyor"><span class="dock-icon">♨</span><span class="dock-label">—</span></button>
+ </div>
+ <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
+ <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
+ <button id="dock-traffic" class="status-unavailable" type="button" title="TomTom trafik"><span class="dock-icon">🚦</span><span class="dock-label" id="dock-traffic-label">Trafik kapalı</span></button>
+ <button id="dock-obd" class="status-unavailable" type="button" title="OBD araç bağlantısı"><span class="dock-icon">🚙</span><span class="dock-label" id="dock-obd-label">OBD yok</span></button>
+ <button id="dock-safety" type="button" title="OSM sabit kamera katmanı"><span class="dock-icon">📷</span><span class="dock-label" id="dock-safety-label">Radar</span></button>
+ <button id="dock-journal" type="button" title="Gerçek yolculuk günlüğü"><span class="dock-icon">▤</span><span class="dock-label">Yolculuklar</span></button>
+ <button id="dock-layers" type="button" title="Harita katmanları"><span class="dock-icon">⚙</span><span class="dock-label">Ayarlar</span></button>
 </nav>
-<div class="top"><div class="brand"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS · YOLCULUK VE ARAÇ MERKEZİ</small>
-<div class="live-hud" aria-label="Canlı araç bilgileri">
-<span><small>SoC </small><b id="live-soc">—</b></span>
-<span><small>HV </small><b id="live-voltage">—</b></span>
-<span><small>Batarya </small><b id="live-temp">—</b></span>
-<button type="button" id="connect-obd">OBD bağla</button>
-</div><div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
-</div><div class="cockpit-tabs" aria-label="Araç üst menüsü" style="display:none">
-<button id="co-media" type="button">‹ Mola</button>
-<button id="co-route-tab" class="current" type="button">⌕ Rota ara</button>
-<button id="co-station-tab" type="button">⚡ İstasyon</button>
-<button id="co-expand" type="button">▤ Dikey görünüm</button>
-<button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
-</div><button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button><button id="open-route" class="round" type="button" title="Rota ara veya değiştir" aria-label="Rota ara">⌕</button><button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
+<div class="top"><div class="brand">
+ <svg class="vw-symbol" role="img" aria-label="Volkswagen" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="29" stroke="#e5f6ff" stroke-width="2.7"/>
+  <path d="M16 13l11 22h10l11-22M18 32l9 18 5-10 5 10 9-18M19 21l9 16h8l9-16" stroke="#e5f6ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.3"/>
+ </svg>
+ <div class="brand-copy"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS</small></div>
+ <div class="live-hud" aria-label="Canlı araç bilgileri"><span><small>SoC </small><b id="live-soc">—</b></span><span><small>HV </small><b id="live-voltage">—</b></span><span><small>Batarya </small><b id="live-temp">—</b></span><button id="connect-obd" type="button">OBD bağla</button></div>
+ <div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
+</div><div class="cockpit-tabs" aria-label="Araç üst menüsü">
+ <button id="co-media" type="button">‹ Mola</button>
+ <button id="co-route-tab" class="current" type="button">🗺 Rota</button>
+ <button id="co-station-tab" type="button">⚡ İstasyon</button>
+ <button id="co-expand" type="button">▤ Dikey görünüm</button>
+ <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
+</div>
+<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span></div>
+<button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button>
+<button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
+<button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="open-layers" type="button" aria-label="Harita katmanlarını aç" title="Şarj, hava ve trafik katmanları">▧</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
 <div class="map-layers-panel" id="map-layers">
  <div class="map-layer-buttons">
@@ -1549,6 +1758,7 @@ function showRouteGpsProgress(x){
  var remaining=Math.max(0,data.roadKm*(1-position));
  $('route-progress-fill').style.width=pct.toFixed(1)+'%';
  $('co-trip-fill').style.width=pct.toFixed(1)+'%';
+ if($('cockpit-tripbar').style.setProperty)$('cockpit-tripbar').style.setProperty('--trip-percent',pct.toFixed(1)+'%');
  $('co-trip-progress-label').textContent='GPS yaklaşık %'+Math.round(pct)+
    ' · '+remaining.toFixed(1)+' km kaldı';
  refreshTripArrivalModel(remaining);
@@ -1736,6 +1946,13 @@ var CITY_DATA=[["Adana",37,35.3213],["Adıyaman",37.7648,38.2786],["Afyonkarahis
 var points={from:null,to:null},usingGps=false,pendingGps=false,voice=true;
 var ids={from:0,to:0},timers={from:0,to:0};
 var $=function(x){return document.getElementById(x)};
+function refreshCockpitClock(){
+ var d=new Date();
+ var el=$('header-clock');
+ if(el)el.textContent=d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+}
+refreshCockpitClock();setInterval(refreshCockpitClock,60000);
+
 var toastTimeout=null;
 function msg(t){
  var message=String(t);
@@ -1758,6 +1975,7 @@ window.molaCurrentWeather=function(o){
  var age=Math.abs(Date.now()-o.modelTime*1000);
  if(age>5400000 || Date.now()-o.receivedAt>5400000)return;
  lastCurrentWeatherAt=o.receivedAt;
+ if($('header-temp'))$('header-temp').textContent=Math.round(o.temperature)+'°C';
  var icon=o.weatherCode>=51?'🌧':o.weatherCode>=3?'☁':'☀';
  var where=o.kind==='gps'?'GPS konumu':'Rota başlangıcı';
  $('current-weather-label').textContent=icon+' '+Math.round(o.temperature)+'°C · '+
@@ -2169,6 +2387,7 @@ window.molaManeuver=function(o){
      return;
  lastManeuverAt=Date.now();
  // This is proximity in a straight line, never road-driving distance.
+ $('co-maneuver-distance').textContent=Math.round(o.straightLineMeters)+' m';
  $('co-maneuver').textContent=o.instruction.slice(0,90)+' · yaklaşık '+
    Math.round(o.straightLineMeters)+' m (kuş uçuşu)';
 };
@@ -2256,6 +2475,7 @@ window.molaRoute=function(o){
   var genuinePreviews=Array.isArray(o.routePreviews)?o.routePreviews:[];
   chosenRouteIndex=Number.isInteger(o.routeIndex)?o.routeIndex:0;
  lastManeuverAt=0;
+ $('co-maneuver-distance').textContent='—';
  routeHasChargeStop=!!o.stopIncluded;
  currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
  showRouteGpsProgress(lastGpsFix);
@@ -2291,7 +2511,9 @@ window.molaRoute=function(o){
  $('co-destination').textContent=points.to?
    points.to.label.split(' · ')[0].slice(0,58):'Varış noktası';
  $('co-bottom-trip').textContent=$('co-destination').textContent+' · '+String(o.distanceKm)+' km';
- $('co-bottom-detail').textContent='OSRM rota tahmini · Canlı trafik yok · Kesin şarj doluluğu yok';
+ $('co-bottom-detail').textContent=(o.trafficAvailable===true&&String(o.provider||'').includes('TomTom')?
+ 'TomTom · trafik duyarlı rota süresi':'OSRM · trafiksiz rota süresi')+
+ ' · Şarj istasyonu doluluğu doğrulanmadı';
  if(Number.isFinite(o.energyLowKwh) && Number.isFinite(o.energyHighKwh)){
   $('co-energy').textContent=o.energyLowKwh.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+
    '–'+o.energyHighKwh.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kWh';
@@ -2343,14 +2565,14 @@ window.molaRoute=function(o){
  $('co-trip-charge-button').style.display='none';
  $('co-trip-charge-km').textContent='Mola km: —';
  suggestedCharge=null;$('station-suggestion').style.display='none';
- $('traffic-source').textContent=window.Id4TrafficProviders &&
-    window.Id4TrafficProviders.getActive()!=='osm'?
-  'Seçilen sağlayıcıda trafik haritası açık; OSRM ETA trafiksizdir.':
-  'Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
-  ' · kaza ve yol çalışması bilgisi içermez.';
+ $('traffic-source').textContent=o.trafficAvailable===true&&
+   String(o.provider||'').includes('TomTom')?
+  'TomTom · canlı trafik rota süresine dahil'+
+   (Number.isFinite(o.trafficDelayMin)?' · '+o.trafficDelayMin+' dk trafik gecikmesi':''):
+  'OSRM · rota tahmini trafik yoğunluğunu içermez. Trafik haritası ayrı katmandır.';
  $('alternatives').textContent=Number(o.alternatives)>1?
     String(o.alternatives)+' gerçek rota, çizgiler haritada':
-    'OSRM yalnızca bir güzergâh döndürdü';
+    'Rota sağlayıcısı yalnız bir güzergâh döndürdü';
  $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
  // The route handler resets its HUD labels; now reapply verified current
  // GPS/SoC only after the new route UI is fully initialized.
@@ -2399,7 +2621,7 @@ window.molaTelemetry=function(data){
  $('live-status').textContent=String(d.status||'OBD bağlı değil');
  $('obd-status').textContent=fresh?'Canlı OBD':'OBD yok';
  $('co-status').textContent=String(d.status||'OBD bağlı değil');
-$('dock-obd').textContent=fresh?'▣ OBD: bağlı':'▣ OBD: ölçüm yok';
+$('dock-obd-label').textContent=fresh?'OBD bağlı':'OBD yok';
 $('dock-obd').classList[fresh?'remove':'add']('status-unavailable');
  function ready(value){return typeof value==='string'&&value.trim()!==''&&
    value.trim()!=='—'&&value.trim().indexOf('—')<0;}
@@ -2556,7 +2778,7 @@ $('tts').onclick=function(){
  $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');
  $('tts').textContent=voice?'Kapat':'Aç';
 };
-$('dock-home').onclick=$('back').onclick=$('co-media').onclick=function(){native('back')};
+$('dock-home').onclick=$('dock-apps').onclick=$('dock-music').onclick=$('back').onclick=$('co-media').onclick=function(){native('back')};
 function toggleRouteSearch(){
  var sheet=document.querySelector('.sheet');
  if(sheet.classList.contains('route-active')){
@@ -2594,7 +2816,7 @@ $('dock-safety').onclick=$('layer-safety').onclick=function(){
  safetyActive=!safetyActive;
  $('dock-safety').classList[safetyActive?'add':'remove']('active');
  $('layer-safety').classList[safetyActive?'add':'remove']('active');
- $('dock-safety').textContent=safetyActive?'📷 Kameralar açık':'📷 Yol güvenliği';
+ $('dock-safety-label').textContent=safetyActive?'Kameralar açık':'Radar';
  if(safetyActive)loadSafety();
  else{
   clearSafety();
@@ -2656,11 +2878,13 @@ $('traffic-station-stop').onclick=function(){
  native('routeVia',from.lat,from.lon,station.lat,station.lon,to.lat,to.lon,usingGps);
 };
 window.molaTrafficStatus=function(o){
+ var headStatus=$('header-traffic-status');
+ if(headStatus && o)headStatus.textContent=o.provider==='tomtom' && o.status==='active'?'TomTom canlı': 'Trafik: —';
  if(!o)return;
  var active=o.provider==='tomtom'&&o.status==='active';
  $('traffic-help').textContent=String(o.detail||'Trafik verisi yok');
  $('traffic-map-provider').textContent=active?'TomTom Orbis Trafik':'OpenStreetMap';
- $('dock-traffic').textContent=active?'🚦 TomTom: açık':'🚦 Trafik: kapalı';
+ $('dock-traffic-label').textContent=active?'TomTom açık':'Trafik kapalı';
  $('dock-traffic').classList[active?'remove':'add']('status-unavailable');
  $('traffic-mini-label').textContent=active?'🚦 TomTom Orbis canlı katman':'🚦 Trafik verisi yok';
  $('traffic-mini-label').classList[active?'add':'remove']('live');
