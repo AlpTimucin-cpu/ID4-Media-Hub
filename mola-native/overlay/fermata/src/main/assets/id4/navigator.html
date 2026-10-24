@@ -1326,7 +1326,6 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  .drive-dock button .dock-label{font-size:10px!important;line-height:1!important;max-width:100%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
  .drive-dock button.status-unavailable{color:#dbb88d!important}
  .drive-dock button:disabled{opacity:.45!important;cursor:not-allowed!important;color:#a3bed0!important}
- .drive-dock .dock-climate-value{font-size:20px!important;color:#b2ccd9!important;font-weight:750!important}
  .sheet{z-index:1220!important}
  .sheet:not(.route-active):not(.search-open),.sheet.route-active:not(.details-open):not(.search-open){display:none!important}
  .sheet.search-open,.sheet.details-open{position:fixed!important;left:37.5%!important;right:20%!important;top:105px!important;bottom:96px!important;width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;display:block!important;border:1px solid #69aac4!important;border-radius:19px!important;box-shadow:0 18px 50px #000b!important;background:#072c43f5!important;color:#edfaff!important;z-index:1225!important}
@@ -1386,11 +1385,6 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  .cockpit-tripbar{isolation:isolate!important}
  .cockpit-tripbar #co-trip-arrival-note{font-size:9px!important;line-height:1.15!important}
  .cockpit-tripbar #co-trip-target{white-space:nowrap!important;max-width:100%!important}
- .dock-climate{display:flex!important;align-items:center!important;justify-content:center!important;flex:2.7 1 306px!important;min-width:205px!important;max-width:380px!important;height:65px!important;border-inline:1px solid rgba(86,155,189,.35)!important;border-radius:0 0 15px 15px!important;margin:0 2px!important;gap:0!important;overflow:hidden!important}
- .drive-dock .dock-climate button{flex:1 1 0!important;max-width:none!important;min-width:0!important;height:55px!important;padding:4px 0!important}
- .drive-dock .dock-climate button .dock-icon{font-size:18px!important}
- .drive-dock .dock-climate .dock-climate-value{font-size:21px!important;line-height:1!important}
- .drive-dock .dock-climate button .dock-label{font-size:9px!important}
  #vehicle-cockpit:not(.has-route) .cockpit-tripbar .tripbar-track::after{display:none!important}
  .cockpit-tripbar .tripbar-track:after{left:var(--trip-percent,0%)!important}
  .cockpit-toast{z-index:1600!important;bottom:91px!important;left:40%!important;max-width:40%!important;right:auto!important;text-align:center!important}
@@ -1399,9 +1393,6 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  .cockpit-right .cockpit-panel{max-height:252px!important}
  .cockpit-right .co-nav-row{padding:2px 0!important;min-height:37px!important}
  .cockpit-right #co-destination{font-size:10px!important}
- .dock-climate{height:46px!important;min-width:145px!important;max-width:260px!important}
- .drive-dock .dock-climate button{height:43px!important}
- .drive-dock .dock-climate .dock-climate-value{font-size:15px!important}
  .cockpit-toast{bottom:58px!important}
 }
 
@@ -1417,6 +1408,30 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  .cockpit-left>.cockpit-slim{display:none!important}
 }
 @media (min-width:640px) and (orientation:landscape){.co-reserve-note{display:block;color:#8db9c8;font-size:10px;font-weight:450;line-height:1.2;margin-top:3px}}
+
+/* Source-backed map availability. No fake "online" when tiles cannot load. */
+.map-health{position:fixed;top:94px;left:43%;z-index:1150;max-width:36vw;
+ display:flex;align-items:center;gap:7px;padding:7px 10px;
+ background:#041f32ed;border:1px solid #2d7694;border-radius:11px;
+ color:#c4e0ee;font-size:11px;line-height:1.25;pointer-events:auto;
+ box-shadow:0 5px 15px #0008}
+.map-health.is-online{display:none}
+.map-health.is-offline{border-color:#e4b06b;color:#ffe8c5}
+.map-health button{display:none;border:1px solid #43cccc;background:#08495f;
+ border-radius:8px;padding:7px;color:#fff;min-height:30px;min-width:76px;
+ font-size:11px;white-space:nowrap}
+.map-health.is-offline button{display:block}
+#map .id4-offline-city{pointer-events:none!important;background:none!important;border:0!important}
+#map .id4-offline-city span{display:inline-block;width:86px;text-align:center;
+ color:#dbeaf3;font-size:11px;font-weight:750;line-height:18px;
+ text-shadow:0 1px 3px #000,0 2px 7px #000;white-space:nowrap}
+@media(orientation:landscape) and (max-height:705px){
+ .map-health{top:66px;left:42%;max-width:34vw;padding:5px 7px;font-size:9px}
+ .map-health button{font-size:9px;min-height:25px;padding:4px}
+}
+@media(orientation:portrait),(max-width:639px){
+ .map-health{top:74px;left:9px;right:9px;max-width:none}
+}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1442,7 +1457,11 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  <div><span id="traffic-map-provider">Trafik sağlayıcısı</span>
  <small>Harita trafiği · rota ETA OSRM (trafiksiz)</small></div>
  <button id="traffic-map-exit" type="button">OSM'ye dön</button>
-</div><div class="map-credit" id="map-credit">© OpenStreetMap contributors · Çevrimiçi harita</div>
+</div><div class="map-credit" id="map-credit">© OpenStreetMap contributors · Harita başlatılıyor</div>
+<div class="map-health" id="map-health" role="status">
+ <span id="map-health-text">Harita hazırlanıyor…</span>
+ <button id="map-retry" type="button">↻ Yeniden dene</button>
+</div>
 <div id="vehicle-cockpit" class="vehicle-cockpit" aria-label="ID.4 saydam araç göstergeleri">
  <div class="cockpit-left">
   <div class="cockpit-panel">
@@ -1541,13 +1560,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  <button id="dock-apps" type="button" title="Mola uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
  <button id="dock-music" type="button" title="Mola müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
  <button disabled type="button" title="Telefon entegrasyonu henüz yok"><span class="dock-icon">♧</span><span class="dock-label">Telefon yok</span></button>
- <div class="dock-climate" aria-label="Klima ve koltuk ısıtma, araçla bağlantı olmadığı için kullanılamıyor">
-  <button disabled type="button" title="Koltuk ısıtma kontrolü desteklenmiyor"><span class="dock-icon">♨</span><span class="dock-label">—</span></button>
-  <button disabled type="button" title="Klima set sıcaklığı araçtan okunamıyor"><span class="dock-climate-value">—</span><span class="dock-label">Sol</span></button>
-  <button disabled type="button" title="Klima kontrolü desteklenmiyor"><span class="dock-icon">❄</span><span class="dock-label">KLİMA</span></button>
-  <button disabled type="button" title="Klima set sıcaklığı araçtan okunamıyor"><span class="dock-climate-value">—</span><span class="dock-label">Sağ</span></button>
-  <button disabled type="button" title="Koltuk ısıtma kontrolü desteklenmiyor"><span class="dock-icon">♨</span><span class="dock-label">—</span></button>
- </div>
+ 
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
  <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
  <button id="dock-traffic" class="status-unavailable" type="button" title="TomTom trafik"><span class="dock-icon">🚦</span><span class="dock-label" id="dock-traffic-label">Trafik kapalı</span></button>
@@ -1580,6 +1593,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
  <div class="map-layer-buttons">
   <button type="button" id="layer-close">✕ Kapat</button>
   <button type="button" id="layer-daynight">◐ Gündüz haritası</button>
+  <button type="button" id="layer-map-retry">↻ Haritayı yeniden yükle</button>
   <button type="button" id="layer-all">⚡ Tüm Türkiye</button>
   <button type="button" id="layer-ccs">⚡ CCS</button>
   <button type="button" id="layer-route">🛣 Rota CCS</button>
@@ -1652,6 +1666,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
 </div>
 <p class="notice">İl merkezleri: mevlutcelik/turkey-cities-data (MIT); ayrıntılı adresler: Photon/OSM. Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik/kaza ve kesin şarj fiyatı bağlı değildir. Hava yalnızca API yanıtı alındığında model tahmini olarak gösterilir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
 <script src="leaflet.js"></script>
+<script src="id4-offline-geography.js"></script>
+<script src="id4-basemap.js"></script>
 <script src="traffic-config.js"></script>
 <script src="traffic-provider.js"></script>
 <script>
@@ -2704,20 +2720,34 @@ try{
  if(typeof L==='undefined')throw new Error('Harita kitaplığı yüklenmedi');
  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([38.9,35.1],6);
   if(window.Id4TrafficProviders)window.Id4TrafficProviders.attachLeaflet(map);
- // Public OSM tile server is best-effort; keep map attribution visible
- // and say clearly when the network tiles cannot be displayed.
- var baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'© OpenStreetMap katkıcıları',maxZoom:18
- }).addTo(map);
- if(baseTiles.on){
-  baseTiles.on('tileerror',function(){
-   $('map-credit').textContent='© OpenStreetMap contributors · Harita karoları yüklenemedi';
-  });
-  baseTiles.on('tileload',function(){
-   $('map-credit').textContent='© OpenStreetMap contributors · Çevrimiçi harita';
-  });
+ // Render genuine street tiles when they arrive, otherwise show the
+ // bundled public-domain Natural Earth national shapes and city labels.
+ if(window.Id4BaseMap&&window.ID4_OFFLINE_COUNTRIES){
+  window.Id4BaseMap.init(map,function(out){
+   var card=$('map-health');
+   card.classList[out.status==='offline'?'add':'remove']('is-offline');
+   card.classList[out.online?'add':'remove']('is-online');
+   $('map-health-text').textContent=String(out.detail||'Harita bekleniyor');
+   $('map-credit').textContent=out.online?
+    '© OpenStreetMap contributors'+(out.source==='OSM Fransa'?' · © OpenStreetMap France':''):
+    '© Natural Earth (public domain) · sokak/yol haritası değildir';
+  },CITY_DATA);
+ }else{
+  // Safe old path if an asset accidentally fails to load.
+  var baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+   attribution:'© OpenStreetMap contributors',maxZoom:18,keepBuffer:1
+  }).addTo(map);
+  if(baseTiles.on){
+   baseTiles.on('tileerror',function(){
+    $('map-credit').textContent='© OpenStreetMap contributors · Harita karoları yüklenemedi';
+   });
+   baseTiles.on('tileload',function(){
+    $('map-credit').textContent='© OpenStreetMap contributors · Çevrimiçi harita';
+    $('map-health').classList.add('is-online');
+   });
+  }
  }
- map.on('click',function(e){
+  map.on('click',function(e){
  setMapLayerMenu(false);
  selectPoint('to',e.latlng.lat,e.latlng.lng,'Haritadaki varış',false);
 });
@@ -2799,6 +2829,13 @@ $('dock-layers').onclick=$('co-quick-layers').onclick=$('open-layers').onclick=f
  setMapLayerMenu(!$('map-layers').classList.contains('open'));
 };
 $('layer-close').onclick=function(){setMapLayerMenu(false)};
+$('map-retry').onclick=$('layer-map-retry').onclick=function(){
+ if(window.Id4BaseMap&&window.Id4BaseMap.retry()){
+  $('map-health').classList.remove('is-offline');
+  $('map-health-text').textContent='Harita kaynakları yeniden deneniyor…';
+  setMapLayerMenu(false);
+ }else msg('Harita yardımcısı yüklenmedi; uygulamayı yeniden aç.');
+};
 $('layer-daynight').onclick=function(){
  var day=document.body.classList.toggle('map-day');
  $('layer-daynight').textContent=day?'◐ Gece haritası':'◐ Gündüz haritası';
