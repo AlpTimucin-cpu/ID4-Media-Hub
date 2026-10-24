@@ -14,6 +14,7 @@ assert 'addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewAc
 assert 'addTab(tabs,"⚡ Şarj",this::stationsScreen)' in ev
 assert "Id4ObdActivity.java" in patch
 assert "Id4NavigatorActivity.java" in patch
+assert "alternatives=6" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java").read_text()
 assert 'Id4Launcher' in patch and '@drawable/id4_launcher' in patch
 assert "fermata/src/auto/AndroidManifest.xml" in patch
 assert "old_launcher='android:name=" in patch

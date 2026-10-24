@@ -658,7 +658,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 String via=hasStop?
                     String.format(Locale.US,"%.6f,%.6f",stopLon,stopLat):"";
                 String query="/route/v1/driving/"+a+(hasStop?";"+via:"")+";"+b+
-                    "?overview=full&geometries=geojson&steps=true&alternatives=true";
+                    "?overview=full&geometries=geojson&steps=true&alternatives=6";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
                 String[] hosts={"https://router.project-osrm.org",
