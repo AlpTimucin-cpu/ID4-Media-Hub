@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""Overlay a *pinned* GPL Mola source tree, preserving all media code.
+
+IMPORTANT: No patch/re-sign is made to user's Mola 3.2 APK. We do not have
+its matching sources nor its signing key. Builds use a distinct preview
+package; the installed Mola is not overwritten or its data modified.
+
+Refuse changed upstream structural files so new Mola changes never get
+silently replaced with brittle string patches.
+"""
+from pathlib import Path
+import hashlib
+import os
+import json
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+if len(sys.argv) != 3:
+    raise SystemExit("Usage: patch_mola.py UPSTREAM_CHECKOUT OVERLAY_DIR")
+root=Path(sys.argv[1]).resolve()
+overlay=Path(sys.argv[2]).resolve()
+if not (root/"fermata/src/main/AndroidManifest.xml").is_file():
+    raise SystemExit("Not a Mola source tree")
+SOURCE_SHA = {
+    "fermata/src/main/res/layout/dashboard_fragment.xml":
+        "16d50f3996366f0fd463d9d1ba5de7d522f975fb",
+    "fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java":
+        "e9d0b86688d9775749dacdb5bb82411ab62ada19",
+    "fermata/src/main/AndroidManifest.xml":
+        "1b64290b44432b02c164f6f37b2cce4b0f2d1661",
+    "fermata/src/auto/AndroidManifest.xml":
+        "a500a7129c99ff42f42270897c22f40c2615a4b4"
+}
+for relative, expected in SOURCE_SHA.items():
+    actual=subprocess.check_output(
+        ["git","-C",str(root),"hash-object",relative],text=True).strip()
+    if actual!=expected:
+        raise SystemExit(f"UNRECOGNIZED upstream change: {relative}; refusing to modify.")
+
+# Preserve the original dashboard structure and add ONE isolated button.
+layout=root/"fermata/src/main/res/layout/dashboard_fragment.xml"
+source=layout.read_text(encoding="utf-8")
+anchor='<androidx.recyclerview.widget.RecyclerView android:id="@+id/dashboard_list"'
+assert source.count(anchor)==1
+source=source.replace(anchor,
+    '''<Button android:id="@+id/id4_ev_hub_entry"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:text="⚡ ID.4 • Araç Merkezi"
+        android:textAllCaps="false" android:textSize="15sp" />
+ '''+anchor)
+ET.fromstring(source)
+layout.write_text(source,encoding="utf-8")
+
+# Only one added lifecycle-independent click callback. No TV/MediaSession
+# lifecycle, addon routes, playback behavior or source registration changes.
+fragment=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java"
+source=fragment.read_text(encoding="utf-8")
+anchor='		RecyclerView list = view.findViewById(R.id.dashboard_list);'
+assert source.count(anchor)==1
+source=source.replace(anchor,
+    '''        View id4Entry = view.findViewById(R.id.id4_ev_hub_entry);
+        if (id4Entry != null) {
+            // Navigation preview is phone-only until a compliant AA
+            // navigation host implementation can be tested.
+            id4Entry.setVisibility(
+                activity.getRuntimeHostMode().usesAutomotivePresentation()
+                    ? View.GONE : View.VISIBLE);
+            id4Entry.setOnClickListener(button ->
+                requireContext().startActivity(new android.content.Intent(
+                    requireContext(), me.aap.fermata.ev.Id4NavigatorActivity.class)));
+        }
+''' + anchor)
+fragment.write_text(source,encoding="utf-8")
+
+# Register a non-exported Activity. Existing media service is unchanged.
+manifest=root/"fermata/src/main/AndroidManifest.xml"
+source=manifest.read_text(encoding="utf-8")
+permission_anchor = '<uses-permission android:name="android.permission.INTERNET" />'
+assert source.count(permission_anchor)==1
+source=source.replace(permission_anchor,
+    permission_anchor + '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' +
+    '\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' +
+    '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />' +
+    '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />', 1)
+
+anchor='        <activity\n            android:name="me.aap.fermata.ui.activity.MainActivity"'
+assert source.count(anchor)==1
+# Launch straight into ID.4 cockpit on phone; keep legacy media dashboard
+# reachable from the Mola button, and leave existing media services untouched.
+launcher_category='<category android:name="android.intent.category.LAUNCHER" />'
+assert source.count(launcher_category)==1
+source=source.replace(launcher_category,'<!-- ID.4 launcher alias below -->',1)
+source=source.replace(anchor,
+    '''        <activity android:name="me.aap.fermata.ev.Id4EvActivity"
+            android:exported="false" />
+        <activity android:name="me.aap.fermata.ev.Id4ObdActivity"
+            android:exported="false" />
+        <activity android:name="me.aap.fermata.ev.Id4NavigatorActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize" />
+        <activity android:name="me.aap.fermata.ev.Id4OverviewActivity"
+            android:exported="false" />
+        <activity-alias android:name="me.aap.fermata.ev.Id4Launcher"
+            android:exported="true"
+            android:targetActivity="me.aap.fermata.ev.Id4NavigatorActivity"
+            android:icon="@drawable/id4_launcher"
+            android:label="ID.4 Yol Arkadaşım">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+''' + anchor)
+# Leave Mola's application / media service icon untouched.
+# The exported, phone-only launcher alias has the ID.4 icon and label.
+ET.fromstring(source)
+manifest.write_text(source,encoding="utf-8")
+
+# The auto flavor exposes its OWN old Mola launcher PhoneLauncherActivity.
+# Preserve its code but remove the launcher filter, leaving the ID.4 alias as
+# the only MAIN/LAUNCHER entry for this standalone preview build.
+import re
+auto_manifest=root/"fermata/src/auto/AndroidManifest.xml"
+auto_source=auto_manifest.read_text(encoding="utf-8")
+old_launcher='android:name="me.app.fermatax.auto.PhoneLauncherActivity"'
+assert auto_source.count(old_launcher)==1
+at=auto_source.index(old_launcher)
+start=auto_source.rfind("<activity",0,at)
+finish=auto_source.index("</activity>",at)+len("</activity>")
+block=auto_source[start:finish]
+new_block,n=re.subn(
+    r'<intent-filter>\s*<action android:name="android.intent.action.MAIN" />'
+    r'\s*<category android:name="android.intent.category.LAUNCHER" />'
+    r'\s*<category android:name="android.intent.category.LEANBACK_LAUNCHER" />'
+    r'\s*</intent-filter>',
+    '<!-- ID.4 alias replaces the old phone launcher entry -->',block,count=1)
+assert n==1
+auto_source=auto_source[:start]+new_block+auto_source[finish:]
+app_icon='android:icon="@drawable/launcher"'
+assert auto_source.count(app_icon)==1
+auto_source=auto_source.replace(app_icon,
+    'android:icon="@drawable/id4_launcher"\n'
+    '        android:label="ID.4 Yol Arkadaşım"\n'
+    '        tools:replace="android:icon,android:label"',1)
+ET.fromstring(auto_source)
+auto_manifest.write_text(auto_source,encoding="utf-8")
+
+java=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java"
+html=overlay/"fermata/src/main/assets/id4/index.html"
+obd=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ObdActivity.java"
+navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
+decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
+nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
+city_license=overlay/"fermata/src/main/assets/id4/CITY_DATA_LICENSE.txt"
+leaflet_js=overlay/"fermata/src/main/assets/id4/leaflet.js"
+leaflet_css=overlay/"fermata/src/main/assets/id4/leaflet.css"
+leaflet_license=overlay/"fermata/src/main/assets/id4/LEAFLET_LICENSE.txt"
+basemap_controller=overlay/"fermata/src/main/assets/id4/id4-basemap.js"
+basemap_geography=overlay/"fermata/src/main/assets/id4/id4-offline-geography.js"
+traffic_provider=overlay/"fermata/src/main/assets/id4/traffic-provider.js"
+traffic_config=overlay/"fermata/src/main/assets/id4/traffic-config.js"
+charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
+charge_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistoryStore.java"
+energy_facts=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyData.java"
+energy_model=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.java"
+live_monitor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4LiveTelemetry.java"
+overview=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4OverviewActivity.java"
+station_catalog=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationCatalog.java"
+station_types=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationTypes.java"
+charge_advisor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeAdvisor.java"
+charge_cost=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java"
+launcher_icon=overlay/"fermata/src/main/res/drawable/id4_launcher.xml"
+tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting.java"
+trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
+road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety]:
+    target=root/f.relative_to(overlay)
+    if target.exists():
+        raise SystemExit("Would overwrite upstream Mola file: "+str(target))
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_bytes(f.read_bytes())
+
+# Optional Maps JavaScript API credentials are build inputs and never committed.
+# Browser keys are visible in distributed APKs; restrict API and allowed HTTPS
+# origin in the provider consoles and set billing caps. Keep blank if unavailable.
+public_keys={
+
+    "tomtomKey":os.environ.get("ID4_TOMTOM_API_KEY",""),
+}
+for provider,key in public_keys.items():
+    if key and (not key.isascii() or len(key)>200 or
+        not all(c.isalnum() or c in "_-" for c in key)):
+        raise SystemExit("Invalid "+provider+" public SDK key")
+config_target=root/traffic_config.relative_to(overlay)
+config_target.write_text("window.ID4_TRAFFIC_CONFIG="+
+    json.dumps(public_keys,ensure_ascii=True,separators=(",",":"))+";\n",
+    encoding="utf-8")
+
+# Sanity gate: additions must not alter TV, dynamic addon or service classes.
+allowed=set(SOURCE_SHA) | {
+    str(java.relative_to(overlay)),str(html.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(navigator.relative_to(overlay)),
+    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),
+    str(city_license.relative_to(overlay)),
+    str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
+    str(leaflet_license.relative_to(overlay)),
+    str(basemap_controller.relative_to(overlay)),
+    str(basemap_geography.relative_to(overlay)),
+    str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
+    str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
+    str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
+    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay)),str(tomtom_routing.relative_to(overlay)),str(trip_journal.relative_to(overlay)),str(road_safety.relative_to(overlay))}
+changes=subprocess.check_output(
+    ["git","-C",str(root),"status","--short"],text=True)
+for line in changes.splitlines():
+    relative=line[3:].strip()
+    if relative.endswith("/") and (
+        relative.startswith("fermata/src/main/java/me/aap/fermata/ev/") or
+        relative == "fermata/src/main/assets/"):
+        # git status collapses new untracked directories to one path;
+        # the overlay inputs above are the only files we write there.
+        continue
+    if relative not in allowed and not relative.startswith(
+        "fermata/src/main/assets/id4/"):
+        raise SystemExit("Unexpected modification: "+relative)
+print("Mola native ID.4 overlay applied. Original media source untouched.")
+print("Original source commit:",subprocess.check_output(
+    ["git","-C",str(root),"rev-parse","HEAD"],text=True).strip())
+print(changes)
