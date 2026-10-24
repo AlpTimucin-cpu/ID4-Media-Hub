@@ -4,6 +4,13 @@
 const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('path');
 const assets=path.join(__dirname,'../overlay/fermata/src/main/assets/id4');
 const geographyJs=fs.readFileSync(path.join(assets,'id4-offline-geography.js'),'utf8');
+const overlayPatch=fs.readFileSync(path.join(__dirname,'../patch_mola.py'),'utf8');
+const copyLoop=overlayPatch.match(/for f in \[([^\]]+)\]:\s*\n\s*target=root\/f.relative_to\(overlay\)/);
+assert(copyLoop,"APK overlay copy list missing");
+assert(copyLoop[1].includes('basemap_controller')&&
+       copyLoop[1].includes('basemap_geography'),
+       "basemap JS/geography must be COPIED into APK inputs");
+ 
 const basemapJs=fs.readFileSync(path.join(assets,'id4-basemap.js'),'utf8');
 assert(basemapJs.includes('communitySources'), 'public basemap must remain available without TomTom key');
 const tiles=[],outlines=[],labels=[],statuses=[],allLayers=new Set(),panes={};

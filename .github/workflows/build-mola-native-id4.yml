@@ -154,6 +154,34 @@ jobs:
           mapfile -t built < <(find fermata/build/outputs/apk_from_bundle -type f -name 'fermata*.apk' -print)
           test "${#built[@]}" -eq 1
           cp "${built[0]}" dist/FermataX-id4preview.apk
+      - name: Verify packaged ID4 basemap scripts and removed climate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          packages=list(Path("mola/dist").glob("*.apk"))
+          assert len(packages)==1,"Exactly one APK must be present"
+          with ZipFile(packages[0]) as apk:
+              entries=set(apk.namelist())
+              html=apk.read("assets/id4/navigator.html").decode("utf-8")
+              scripts=[
+                  "id4-offline-geography.js","id4-basemap.js",
+                  "traffic-provider.js","traffic-config.js",
+                  "leaflet.js","leaflet.css",
+              ]
+              missing=["assets/id4/"+name for name in scripts
+                       if "assets/id4/"+name not in entries]
+              assert not missing,"APK missing map scripts: "+", ".join(missing)
+              for name in ["id4-offline-geography.js","id4-basemap.js"]:
+                  assert 'src="'+name+'"' in html
+                  assert len(apk.read("assets/id4/"+name))>1000
+              assert "Id4BaseMap.init(map" in html
+              assert 'class="dock-climate"' not in html
+              assert 'KLİMA</' not in html
+              assert "body.provider-active #map{visibility:hidden}" not in html
+              print("PASS: installed APK contains real map scripts and no climate widgets")
+          PY
       - name: Verify ID4 preview is SEPARATE from user's Mola 3.2
         shell: bash
         run: |

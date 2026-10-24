@@ -470,8 +470,8 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 
 /* Never overlay provider-licensed traffic onto OSM: use the provider's OWN map. */
 #traffic-provider-map{display:none;position:fixed;inset:0;z-index:3;background:#081d29}
-body.provider-active #map{visibility:hidden}
-body.provider-active #traffic-provider-map{display:block}
+body.provider-active #map{visibility:visible}
+body.provider-active #traffic-provider-map{display:none}
 body.provider-active .map-credit{display:none}
 body.provider-active .cockpit-quick{bottom:46px}
 body.provider-active .vehicle-cockpit.has-route .cockpit-tripbar{bottom:48px}
@@ -1561,7 +1561,6 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  <button id="dock-home" type="button" title="Mola ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
  <button id="dock-apps" type="button" title="Mola uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
  <button id="dock-music" type="button" title="Mola müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
- <button disabled type="button" title="Telefon entegrasyonu henüz yok"><span class="dock-icon">♧</span><span class="dock-label">Telefon yok</span></button>
  
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
  <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
