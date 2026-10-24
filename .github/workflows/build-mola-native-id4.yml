@@ -44,6 +44,7 @@ jobs:
           cd mola
           git diff --name-only | tee /tmp/mola-modified.txt
           cat >/tmp/expected.txt <<'EOF'
+          fermata/src/auto/AndroidManifest.xml
           fermata/src/main/AndroidManifest.xml
           fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java
           fermata/src/main/res/layout/dashboard_fragment.xml
@@ -167,7 +168,13 @@ jobs:
           # inspect the compiled manifest directly instead of grepping badging.
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/id4-compiled-manifest.txt
           grep -q 'Id4Launcher' /tmp/id4-compiled-manifest.txt
-          echo "PASS: standalone ID.4 launcher alias present in compiled manifest"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/id4-compiled-manifest.txt').read_text()
+          assert 'Id4Launcher' in s
+          assert 'ID.4 Yol Arkadaşım' in s
+          print('PASS: ID.4 label and launcher alias in binary manifest')
+          PY
           if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mola-preview-package.txt; then
             echo "::error::Refusing APK that could overwrite Mola 3.2"
             exit 1

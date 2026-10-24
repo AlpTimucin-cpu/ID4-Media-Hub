@@ -28,7 +28,9 @@ SOURCE_SHA = {
     "fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java":
         "e9d0b86688d9775749dacdb5bb82411ab62ada19",
     "fermata/src/main/AndroidManifest.xml":
-        "1b64290b44432b02c164f6f37b2cce4b0f2d1661"
+        "1b64290b44432b02c164f6f37b2cce4b0f2d1661",
+    "fermata/src/auto/AndroidManifest.xml":
+        "a500a7129c99ff42f42270897c22f40c2615a4b4"
 }
 for relative, expected in SOURCE_SHA.items():
     actual=subprocess.check_output(
@@ -115,6 +117,35 @@ source=source.replace(anchor,
 # The exported, phone-only launcher alias has the ID.4 icon and label.
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
+
+# The auto flavor exposes its OWN old Mola launcher PhoneLauncherActivity.
+# Preserve its code but remove the launcher filter, leaving the ID.4 alias as
+# the only MAIN/LAUNCHER entry for this standalone preview build.
+import re
+auto_manifest=root/"fermata/src/auto/AndroidManifest.xml"
+auto_source=auto_manifest.read_text(encoding="utf-8")
+old_launcher='android:name="me.app.fermatax.auto.PhoneLauncherActivity"'
+assert auto_source.count(old_launcher)==1
+at=auto_source.index(old_launcher)
+start=auto_source.rfind("<activity",0,at)
+finish=auto_source.index("</activity>",at)+len("</activity>")
+block=auto_source[start:finish]
+new_block,n=re.subn(
+    r'<intent-filter>\s*<action android:name="android.intent.action.MAIN" />'
+    r'\s*<category android:name="android.intent.category.LAUNCHER" />'
+    r'\s*<category android:name="android.intent.category.LEANBACK_LAUNCHER" />'
+    r'\s*</intent-filter>',
+    '<!-- ID.4 alias replaces the old phone launcher entry -->',block,count=1)
+assert n==1
+auto_source=auto_source[:start]+new_block+auto_source[finish:]
+app_icon='android:icon="@drawable/launcher"'
+assert auto_source.count(app_icon)==1
+auto_source=auto_source.replace(app_icon,
+    'android:icon="@drawable/id4_launcher"\n'
+    '        android:label="ID.4 Yol Arkadaşım"\n'
+    '        tools:replace="android:icon,android:label"',1)
+ET.fromstring(auto_source)
+auto_manifest.write_text(auto_source,encoding="utf-8")
 
 java=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java"
 html=overlay/"fermata/src/main/assets/id4/index.html"
