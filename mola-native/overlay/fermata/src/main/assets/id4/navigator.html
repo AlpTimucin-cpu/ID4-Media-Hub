@@ -1149,6 +1149,7 @@ body.provider-active .traffic-map-badge{display:flex}
  </div>
 </div>
 
+<button id="route-map-alts" type="button" class="route-map-alts" aria-label="Bütün alternatif rotaları karşılaştır">⇄ Alternatif rotalar</button>
 <div id="co-alts" class="cockpit-alts" aria-label="Elektrikli araç alternatif rotaları">
  <div class="alts-header"><span>Rota · Şarj · Maliyet</span>
   <button id="co-alts-close" type="button">Kapat</button></div>
@@ -1260,6 +1261,7 @@ body.provider-active .traffic-map-badge{display:flex}
 (function(){
 'use strict';
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
+var routePreviewLines=[],routePreviewOptions=[];
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
 var cachedJourneyWeather=null;
 var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
@@ -1690,6 +1692,42 @@ function native(name){
  }catch(e){msg('Android bağlantı hatası: '+e.message);return false}
 }
 function closeList(field){var el=$(field+'-list');el.style.display='none';el.textContent=''}
+
+/* Actual OSRM road geometries, dashed alternatives selectable on the map.
+ * A single service route must NEVER be styled as multiple choices. */
+function clearRoutePreviews(){
+ if(map)routePreviewLines.forEach(function(p){map.removeLayer(p)});
+ routePreviewLines=[];routePreviewOptions=[];
+ $('route-map-alts').style.display='none';
+}
+function drawRoutePreviews(items,selected){
+ clearRoutePreviews();
+ if(!map||!Array.isArray(items))return;
+ routePreviewOptions=items.filter(function(x){
+  return x&&Number.isInteger(x.index)&&Array.isArray(x.coordinates)&&
+   x.coordinates.length>=2;
+ }).slice(0,12);
+ if(routePreviewOptions.length<2)return;
+ var colors=['#af8bf8','#ffb454','#70e6e2','#eab3da','#d6ef73','#f8a1a1','#71a2ff'];
+ routePreviewOptions.forEach(function(route){
+  if(route.index===selected)return;
+  var coords=route.coordinates.filter(function(p){
+   return Array.isArray(p)&&p.length===2&&valid(p[0],p[1]);
+  });
+  if(coords.length<2)return;
+  var shape=L.polyline(coords,{color:colors[route.index%colors.length],
+   weight:5,opacity:.9,dashArray:'12 9',interactive:true});
+  if(shape.on)shape.on('click',function(){
+   msg('Rota '+(route.index+1)+' seçiliyor...');
+   native('chooseAlternative',route.index);
+  });
+  shape.addTo(map);routePreviewLines.push(shape);
+ });
+ $('route-map-alts').style.display='block';
+ $('route-map-alts').textContent='⇄ '+routePreviewOptions.length+' gerçek rota';
+ if(line&&line.bringToFront)line.bringToFront();
+}
+
 function wipeRoute(){
  cachedJourneyWeather=null;
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
@@ -1700,7 +1738,8 @@ function wipeRoute(){
  if(stationLayerMode==='route'){clearStationMarkers();
    $('layer-status').textContent='Rota CCS için yeni rota hesapla';
  }
- routeOptions=[];chosenRouteIndex=0;
+ clearRoutePreviews();
+  routeOptions=[];chosenRouteIndex=0;
  $('co-alts').classList.remove('open');
  document.body.classList.remove('alts-open');
  document.body.classList.remove('route-details-open');
@@ -1867,7 +1906,7 @@ window.molaManeuver=function(o){
 };
 window.molaAlternatives=function(data){
  if(!data||!Array.isArray(data.options))return;
- routeOptions=data.options.slice(0,3);
+ routeOptions=data.options.slice(0,12);
  chosenRouteIndex=Number(data.selectedIndex)||0;
  var list=$('co-alts-list');list.replaceChildren();
  routeOptions.forEach(function(opt){
@@ -1946,6 +1985,8 @@ window.molaRoute=function(o){
   return Array.isArray(c)&&c.length>=2&&valid(c[1],c[0]);
  }).map(function(c){return [c[1],c[0]]});
  if(pts.length<2){msg('Rota koordinatları geçersiz.');return}
+  var genuinePreviews=Array.isArray(o.routePreviews)?o.routePreviews:[];
+  chosenRouteIndex=Number.isInteger(o.routeIndex)?o.routeIndex:0;
  lastManeuverAt=0;
  routeHasChargeStop=!!o.stopIncluded;
  currentRouteProgress=routeProgressGeometry(pts,Number(o.distanceKm));
@@ -2007,6 +2048,7 @@ window.molaRoute=function(o){
  if(map){
   routeGlow=L.polyline(pts,{weight:15,opacity:.33,color:'#00c7ff'}).addTo(map);
   line=L.polyline(pts,{weight:6,opacity:.98,color:'#1678fc'}).addTo(map);
+   drawRoutePreviews(genuinePreviews,chosenRouteIndex);
   if(window.Id4TrafficProviders)window.Id4TrafficProviders.updateRoute(pts);
   map.invalidateSize();
   var size=map.getSize(),landscape=window.innerWidth>=640&&window.innerWidth>window.innerHeight;
@@ -2033,7 +2075,9 @@ window.molaRoute=function(o){
   'Seçilen sağlayıcıda trafik haritası açık; OSRM ETA trafiksizdir.':
   'Canlı trafik bağlantısı yok. Rota: '+String(o.provider||'OSRM demo')+
   ' · kaza ve yol çalışması bilgisi içermez.';
- $('alternatives').textContent=String(o.alternatives||1)+' alternatif bulundu';
+ $('alternatives').textContent=Number(o.alternatives)>1?
+    String(o.alternatives)+' gerçek rota, çizgiler haritada':
+    'OSRM yalnızca bir güzergâh döndürdü';
  $('directions').textContent=(o.steps||[]).slice(0,8).join(' • ');
  // The route handler resets its HUD labels; now reapply verified current
  // GPS/SoC only after the new route UI is fully initialized.
@@ -2426,6 +2470,7 @@ $('co-disconnect').onclick=function(){
 };
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
 $('charge-list').onclick=function(){native('stations')};
+$('route-map-alts').onclick=function(){$('co-alt-toggle').onclick()};
 $('co-alt-toggle').onclick=function(){
  if(!currentRouteProgress){msg('Önce rota oluşturmalısın.');return}
  // A single OSRM geometry is not a genuine alternative. The compact

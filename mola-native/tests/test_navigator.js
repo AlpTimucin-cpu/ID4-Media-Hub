@@ -26,7 +26,7 @@ function el(){
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
 const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,disconnectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
-const drawnMarkers=[];
+const drawnMarkers=[],drawnLines=[];
 const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
  map(){return {setView(){return this},getZoom(){return 7},
@@ -48,7 +48,10 @@ const L={
   addTo(){drawnMarkers.push(this);return this},
   bindPopup(content){this.popup=content;return this},
   setLatLng(next){this.coords=next}}},
- polyline(){return {addTo(){return this},getBounds(){return []}}}
+ polyline(coords,options){return {coords,options,handlers:{},
+    addTo(){drawnLines.push(this);return this},
+    on(name,fn){this.handlers[name]=fn;return this},
+    bringToFront(){return this},getBounds(){return []}}}
 };
 const win={
  MolaNative:{
@@ -143,6 +146,9 @@ assert(get('layer-status').textContent.includes('korunuyor'),
  'missing provider must preserve the working map instead of faking traffic');
 get('layer-route').onclick();
 
+assert(html.includes('id="route-map-alts"'),'all-route map chooser absent');
+assert(html.includes("drawRoutePreviews(genuinePreviews,chosenRouteIndex)"),
+ 'OSRM geometry alternatives not drawn on map');
 assert(html.includes('id="co-alt-toggle"')&&html.includes('id="co-alts-list"'),
  'charge-aware route chooser must be available without hiding the map');
 assert(html.includes('id="co-cost"'),'auto-cost summary must appear on route bar');
@@ -757,3 +763,24 @@ assert(get('status').textContent.includes('bir rota'),
 
 assert(html.includes('NEREDEN') && html.includes('NEREYE'));
 console.log('PASS: 81-city offline fallback, failed Photon, Turkish accents, autocomplete, stale results, manual route and swap.');
+
+const routeCase={
+ coordinates:[[30,39],[31,39.5],[32,40]],distanceKm:185,
+ durationMin:141,routeIndex:0,alternatives:3,
+ routePreviews:[
+  {index:0,coordinates:[[39,30],[39.5,31],[40,32]],km:185,minutes:141},
+  {index:1,coordinates:[[39,30],[39.3,30.8],[40,32]],km:197,minutes:157},
+  {index:2,coordinates:[[39,30],[39.8,31.5],[40,32]],km:202,minutes:168}
+ ]};
+context.window.molaRoute(routeCase);
+assert.equal(get('route-map-alts').style.display,'block');
+const colored=drawnLines.filter(x=>x.options&&x.options.dashArray);
+assert(colored.length>=2,'all provided OSRM options must appear on map');
+colored[0].handlers.click();
+assert(calls.chosen.includes(1),'tap alternative polyline must select real route');
+assert(get('route-map-alts').textContent.includes('3 gerçek rota'));
+context.window.molaRoute({...routeCase,alternatives:1,
+ routePreviews:[routeCase.routePreviews[0]]});
+assert.equal(get('route-map-alts').style.display,'none',
+ 'one provider route is not multiple alternatives');
+console.log('PASS: all OSRM alternatives drawn as distinct clickable real geometries');

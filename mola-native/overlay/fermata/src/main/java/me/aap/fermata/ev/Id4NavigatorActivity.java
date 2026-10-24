@@ -444,7 +444,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         double chargeScore=Double.NEGATIVE_INFINITY;
         Id4EnergyData.Snapshot facts=Id4EnergyData.load(this,System.currentTimeMillis());
         double soc=facts.hasSoc()?facts.soc:Double.NaN;
-        int count=Math.min(3,alternatives.length());
+        int count=Math.min(12,alternatives.length());
         try{
             for(int k=0;k<count;k++){
                 JSONObject route=alternatives.getJSONObject(k);
@@ -689,6 +689,31 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 "Rota çizilemedi: "+e.getMessage()+". Ağ veya rota servisini kontrol et."));}
         });
     }
+
+    /** Every genuine OSRM route, at most 12 for untrusted response protection.
+     * Sample geometries to bound phone/WebView memory use; never make up roads. */
+    private static JSONArray routePreviewGeometries(JSONArray routes)throws Exception{
+        JSONArray result=new JSONArray();
+        int count=Math.min(routes.length(),12);
+        for(int i=0;i<count;i++){
+            JSONObject route=routes.optJSONObject(i);
+            JSONObject geo=route==null?null:route.optJSONObject("geometry");
+            JSONArray coords=geo==null?null:geo.optJSONArray("coordinates");
+            if(coords==null||coords.length()<2)continue;
+            JSONArray shape=new JSONArray();
+            int stride=Math.max(1,(int)Math.ceil(coords.length()/450.0));
+            for(int j=0;j<coords.length();j+=stride){
+                JSONArray c=coords.getJSONArray(j);
+                shape.put(new JSONArray().put(c.optDouble(1)).put(c.optDouble(0)));
+            }
+            JSONArray last=coords.getJSONArray(coords.length()-1);
+            shape.put(new JSONArray().put(last.optDouble(1)).put(last.optDouble(0)));
+            result.put(new JSONObject().put("index",i).put("coordinates",shape)
+                .put("km",Math.round(route.optDouble("distance")/100.0)/10.0)
+                .put("minutes",Math.round(route.optDouble("duration")/60.0)));
+        }
+        return result;
+    }
     private void renderRouteOption(JSONArray routes,int optionIndex,boolean verifiedGps,
                                    boolean hasStop,int myGeneration)throws Exception{
                 JSONObject selected=routes.getJSONObject(optionIndex);
@@ -697,6 +722,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("distanceKm",Math.round(selected.getDouble("distance")/100.0)/10.0);
                 packet.put("durationMin",Math.round(selected.getDouble("duration")/60.0));
                 packet.put("alternatives",routes.length());
+                packet.put("routePreviews",routePreviewGeometries(routes));
                 packet.put("routeIndex",optionIndex);
                 packet.put("provider",activeRouteProvider);
                 packet.put("trafficAvailable",false);
