@@ -52,6 +52,9 @@ import java.util.concurrent.Executors;
 public final class Id4NavigatorActivity extends Activity implements LocationListener {
     private static final String PAGE="https://appassets.androidplatform.net/assets/id4/navigator.html";
     private final ExecutorService jobs=Executors.newSingleThreadExecutor();
+    // Slow geocoding and model weather must never queue ahead of navigation.
+    private final ExecutorService searchJobs=Executors.newSingleThreadExecutor();
+    private final ExecutorService routeWeatherJobs=Executors.newSingleThreadExecutor();
     // Station requests must not hold back route or weather processing.
     private final ExecutorService stationJobs=Executors.newSingleThreadExecutor();
     // Current Open-Meteo readings are MODEL values, never actual station sensors.
@@ -72,9 +75,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private LocationManager locationManager;
     private TextToSpeech tts;
     private Location position;
-    private boolean running, voice=true, destroyed, gpsTrackingRequested, resumeRouteAfterPause;
+    private boolean running, voice=true, gpsTrackingRequested, resumeRouteAfterPause;
+    private volatile boolean destroyed;
     private volatile String activeRouteProvider="OSRM demo";
-    private int generation, nextStep;
+    private volatile int generation;
+    private int nextStep;
     private volatile JSONArray cachedAlternatives;
     private volatile boolean cachedRouteGps, cachedHasStop;
     private long lastSpeech;
@@ -262,18 +267,22 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             voice=on;if(!on && tts!=null)tts.stop();
         }
         @JavascriptInterface public void stop() {
-            running=false;generation++;stationRequestId++;routeStationRequestId++;
-            steps.clear();nextStep=0;
+            ui.post(()->{
+                if(destroyed)return;
+                running=false;generation++;stationRequestId++;routeStationRequestId++;
+                cachedAlternatives=null;steps.clear();nextStep=0;
+            });
         }
         @JavascriptInterface public void suggest(String field,String query,int requestId){
-            suggestPlaces(field,query,requestId);
+            ui.post(()->{if(!destroyed)suggestPlaces(field,query,requestId);});
         }
         @JavascriptInterface public void route(double fromLat,double fromLon,
               double toLat,double toLon,boolean useGps){
-            plan(fromLat,fromLon,toLat,toLon,useGps);
+            ui.post(()->{if(!destroyed)plan(fromLat,fromLon,toLat,toLon,useGps);});
         }
         @JavascriptInterface public void chooseAlternative(int index){
             ui.post(()->{
+                if(destroyed)return;
                 JSONArray available=cachedAlternatives;
                 if(available==null||index<0||index>=available.length()){
                     send("molaStatus",record("route","Alternatif rota güncel değil."));
@@ -283,6 +292,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 routeStationRequestId++;
                 final boolean gps=cachedRouteGps,stop=cachedHasStop;
                 jobs.execute(()->{
+                    if(destroyed||selectionGeneration!=generation)return;
                     try{renderRouteOption(available,index,gps,stop,selectionGeneration);}
                     catch(Exception e){
                         send("molaStatus",record("error",
@@ -296,7 +306,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             if(!valid(viaLat,viaLon)){
                 send("molaStatus",record("error","Şarj molası konumu geçersiz."));return;
             }
-            planWithStop(fromLat,fromLon,toLat,toLon,useGps,viaLat,viaLon);
+            ui.post(()->{if(!destroyed)planWithStop(fromLat,fromLon,toLat,toLon,useGps,viaLat,viaLon);});
         }
     }
     /** The TomTom browser token stays in app-private storage (Android backup
@@ -699,7 +709,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(!"from".equals(field) && !"to".equals(field))return;
         final String query=raw==null?"":raw.trim();
         if(query.length()<3||query.length()>100)return;
-        jobs.execute(()->{
+        searchJobs.execute(()->{
+            if(destroyed)return;
             JSONObject packet=new JSONObject();
             try{
                 packet.put("field",field);
@@ -764,8 +775,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         boolean verifiedGps=useGps && position!=null && position.getAccuracy()<=60 &&
             System.currentTimeMillis()-position.getTime()<=30000;
         final int myGeneration=++generation;
+        cachedAlternatives=null;
+        running=false;
         routeStationRequestId++; // Invalidate the previous ROUTE charger batch only.
         jobs.execute(()->{
+            if(destroyed||myGeneration!=generation)return;
             try{
                 String a=String.format(Locale.US,"%.6f,%.6f",fromLon,fromLat);
                 String b=String.format(Locale.US,"%.6f,%.6f",toLon,toLat);
@@ -808,12 +822,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 }
                 if(out==null)throw new IllegalStateException(problems.toString());
                 JSONArray routes=out.getJSONArray("routes");
-                cachedAlternatives=routes;
-                cachedRouteGps=verifiedGps;
-                cachedHasStop=hasStop;
+                if(destroyed||myGeneration!=generation)return;
                 renderRouteOption(routes,0,verifiedGps,hasStop,myGeneration);
-            }catch(Exception e){send("molaStatus",record("error",
-                "Rota çizilemedi: "+e.getMessage()+". Ağ veya rota servisini kontrol et."));}
+            }catch(Exception e){
+                ui.post(()->{
+                    if(destroyed||myGeneration!=generation)return;
+                    send("molaStatus",record("error",
+                        "Rota çizilemedi. Ağ bağlantısını kontrol edip yeniden dene."));
+                });
+            }
         });
     }
 
@@ -909,6 +926,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("steps",labels);
                 ui.post(()->{
                     if(myGeneration!=generation||destroyed)return;
+                    cachedAlternatives=routes;
+                    cachedRouteGps=verifiedGps;cachedHasStop=hasStop;
                     steps.clear();steps.addAll(parsed);nextStep=0;
                     running=verifiedGps&&!parsed.isEmpty();
                     Id4EnergyData.saveRoute(this,
@@ -929,8 +948,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                             liveGps?live.getLongitude():start.getDouble(0),liveGps,false);
                     }catch(Exception ignored){}
                     // Weather is a separate best-effort request after the drawn route.
-                    jobs.execute(()->loadRouteWeather(routeData,myGeneration));
-                    jobs.execute(()->loadJourneyWeather(routeData,myGeneration));
+                    routeWeatherJobs.execute(()->loadRouteWeather(routeData,myGeneration));
+                    routeWeatherJobs.execute(()->loadJourneyWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
                     final int stationTicket=++routeStationRequestId;
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
@@ -1009,6 +1028,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
      * Separate network request so a weather outage cannot erase the route.
      */
     private void loadRouteWeather(JSONObject route,int routeGeneration){
+        if(destroyed||routeGeneration!=generation)return;
         final int[] minutes={1,5,10,15};
         try{
             JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
@@ -1105,6 +1125,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
      * these are predictions, NOT actual localized weather observations.
      */
     private void loadJourneyWeather(JSONObject route,int routeGeneration){
+        if(destroyed||routeGeneration!=generation)return;
         try{
             JSONArray coordinates=route.getJSONObject("geometry").getJSONArray("coordinates");
             if(coordinates.length()<2)throw new IllegalStateException("Rota geometrisi yok");
@@ -1294,7 +1315,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     @Override protected void onDestroy(){
         destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        jobs.shutdownNow();stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();
+        jobs.shutdownNow();searchJobs.shutdownNow();routeWeatherJobs.shutdownNow();
+        stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();
         safetyJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
