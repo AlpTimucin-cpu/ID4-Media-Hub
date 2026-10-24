@@ -661,6 +661,18 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     "?overview=full&geometries=geojson&steps=true&alternatives=6";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
+                String trafficKey=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+                    .getString("tomtom","");
+                if(trafficKey!=null&&trafficKey.matches("[A-Za-z0-9_-]{15,200}")){
+                    try{
+                        out=Id4TomTomRouting.request(trafficKey,fromLat,fromLon,
+                            toLat,toLon,stopLat,stopLon);
+                        activeRouteProvider="TomTom Orbis v3 canlı trafik";
+                    }catch(Exception e){
+                        // Never put keys, full request URLs, or coordinates in logs.
+                        problems.append("TomTom erişimi başarısız; OSRM yedek rota. ");
+                    }
+                }
                 String[] hosts={"https://router.project-osrm.org",
                                 "https://routing.openstreetmap.de/routed-car"};
                 for(int attempt=0;attempt<hosts.length && out==null;attempt++){
@@ -725,7 +737,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("routePreviews",routePreviewGeometries(routes));
                 packet.put("routeIndex",optionIndex);
                 packet.put("provider",activeRouteProvider);
-                packet.put("trafficAvailable",false);
+                boolean tomtom=selected.optBoolean("trafficAware",false) &&
+                    activeRouteProvider.startsWith("TomTom Orbis v3");
+                packet.put("trafficAvailable",tomtom);
+                double delay=selected.optDouble("trafficDelaySeconds",Double.NaN);
+                if(tomtom&&Double.isFinite(delay)&&delay>=0)
+                    packet.put("trafficDelayMin",Math.round(delay/60.0));
                 packet.put("navigationActive",verifiedGps);
                 packet.put("stopIncluded",hasStop);
                 // EV profile model, not an ECU claim. No manual entry.
@@ -778,7 +795,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 ui.post(()->{
                     if(myGeneration!=generation||destroyed)return;
                     steps.clear();steps.addAll(parsed);nextStep=0;
-                    running=verifiedGps;
+                    running=verifiedGps&&!parsed.isEmpty();
                     Id4EnergyData.saveRoute(this,
                         packet.optDouble("distanceKm",Double.NaN),
                         packet.optDouble("durationMin",Double.NaN),
@@ -804,7 +821,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
                     stationJobs.execute(()->loadAlternativeCards(routes,myGeneration,stationTicket,
                         optionIndex,hasStop));
-                    if(verifiedGps)announce("Rota hazır. "+packet.optDouble("distanceKm")+
+                    if(verifiedGps&&!parsed.isEmpty())announce("Rota hazır. "+packet.optDouble("distanceKm")+
                         " kilometre. Deneysel sesli yönlendirme başlıyor.");
                 });
     }
