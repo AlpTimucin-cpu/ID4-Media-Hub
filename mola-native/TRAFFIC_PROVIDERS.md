@@ -118,3 +118,27 @@ Google ve Yandex JavaScript SDK trafik adaptörleri çalıştığı doğrulanmad
 uygulamadan ve derleme ortamından çıkartıldı. Trafik menüsü yalnız TomTom Orbis
 ve OSM seçeneklerini içerir. Depoda eski sağlayıcılara ait bazı tarihsel
 notlar referans amaçlı bulunabilir, ancak derlenen uygulamada bu kod yoktur.
+
+
+### Routing API v3: zorunlu Attributes başlığı
+2026.08.11 TomTom Orbis Routing v3 belgelerinde HTTP `Attributes` başlığı
+zorunludur. Anahtar ile yapılan POST isteğine
+`Attributes: routes.summary,routes.legs` eklenmiştir. Aksi takdirde
+başarılı kimlik doğrulama olsa dahi rota dökmek mümkün olmayabilir.
+
+### 2016 iGISMAP rota motorları yazısının 2026 değerlendirmesi
+Kaynak: https://www.igismap.com/top-10-map-direction-api-routing-libraries-navigation-free-or-paid/
+Makalenin sınırlamalar bölümü 12 Ocak 2016 tarihli olduğundan listelenen
+ücretsiz kullanım kotaları güncel kabul edilmez.
+- **TomTom Orbis v3 (birincil):** canlı trafik, rota gecikmesi, başlangıç rotasına
+  ek olarak en fazla 5 gerçek alternatif; rota cevap verir ve geometri doğrulanırsa gösterilir
+- **OSRM (yedek):** mevcut hızlı ve trafiksiz rota, gerçek yol çizgisi ve
+  OSRM'nin döndürdüğü alternatifler; ağ veya TomTom yetkisi hatasında korunur
+- **GraphHopper (isteğe bağlı):** rota talimatları ve harita eşleme;
+  ayrıca erişim anahtarı/planı ve Android entegrasyon testi gerekir
+- **openrouteservice:** genel API alternatif rota uzunluğu 100 km ile
+  sınırlıdır; uzun Türkiye EV güzergâhlarında ana sağlayıcı değildir
+- **HERE Routing v8 (ileride):** otomatik şarj molası ve EV tüketim modellemesi;
+  lisans/kota ve araç profili doğrulanmadan kullanılmaz
+Her ek rota motoru gerçek API verisiyle doğrulanmalıdır. Maliyet ve
+servis koşulları her sağlayıcının resmî dokümanlarından kontrol edilir.

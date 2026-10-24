@@ -81,3 +81,9 @@ canlı sağlayıcı erişimi doğrulanmamıştı. Android trafik katmanı yalnı
 **TomTom Orbis** ve **OpenStreetMap** ile çalışır. Gerçek TomTom akış karosu
 başarılı olmadıkça canlı etiket görünmez. Trafik hesaplayan Orbis v3 rota
 bağlantısı API anahtarı varsa ayrı şekilde denenir, başarısızsa OSRM kullanılır.
+
+### Rota sağlayıcıları değerlendirmesi (24 Ekim 2026)
+2016 iGISMAP rota API karşılaştırması güncel resmî belgelerle yeniden ele
+alındı. Hedef: TomTom Orbis v3 canlı trafik ve gerçek alternatifler, OSRM
+trafiksiz yedek. GraphHopper/ HERE ancak geçerli API yetkisi ve cihaz
+testiyle değerlendirilecek. [Ayrıntılı değerlendirme](mola-native/TRAFFIC_PROVIDERS.md).

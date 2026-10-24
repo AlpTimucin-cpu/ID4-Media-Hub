@@ -35,6 +35,9 @@ final class Id4TomTomRouting {
         connection.setInstanceFollowRedirects(false);connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.setRequestProperty("TomTom-Api-Key",key);
+        // Orbis Routing v3 requires Attributes to select route geometry and
+        // summary fields; without this header the endpoint can reject POST.
+        connection.setRequestProperty("Attributes","routes.summary,routes.legs");
         connection.setRequestProperty("Content-Type","application/json");
         connection.setRequestProperty("Accept","application/json");
         byte[] body=request.toString().getBytes(StandardCharsets.UTF_8);
