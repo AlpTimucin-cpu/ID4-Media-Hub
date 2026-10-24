@@ -1350,8 +1350,6 @@ body.provider-active .traffic-map-badge{display:flex}
   <button type="button" id="layer-traffic">🚦 Trafik</button>
  </div>
  <div class="traffic-provider-choices" id="traffic-choices">
-  <button type="button" id="traffic-google">Google Trafik</button>
-  <button type="button" id="traffic-yandex">Yandex Trafik</button>
    <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
    <button type="button" id="traffic-tomtom-key">⚙ TomTom anahtarı</button>
   <button type="button" id="traffic-osm">OSM haritası</button>
@@ -2598,8 +2596,6 @@ function switchTraffic(which){
  if(map&&map.getZoom)zoom=map.getZoom();
  adapter.activate(which,center,zoom);
 }
-$('traffic-google').onclick=function(){switchTraffic('google')};
-$('traffic-yandex').onclick=function(){switchTraffic('yandex')};
 $('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
 $('traffic-tomtom-key').onclick=function(){native('tomtomKey')};
 $('traffic-osm').onclick=$('traffic-map-exit').onclick=function(){switchTraffic('osm')};

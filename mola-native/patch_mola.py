@@ -183,8 +183,7 @@ for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leafl
 # Browser keys are visible in distributed APKs; restrict API and allowed HTTPS
 # origin in the provider consoles and set billing caps. Keep blank if unavailable.
 public_keys={
-    "googleKey":os.environ.get("ID4_GOOGLE_MAPS_JS_KEY",""),
-    "yandexKey":os.environ.get("ID4_YANDEX_MAPS_JS_KEY",""),
+
     "tomtomKey":os.environ.get("ID4_TOMTOM_API_KEY",""),
 }
 for provider,key in public_keys.items():

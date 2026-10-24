@@ -138,9 +138,9 @@ assert(get('traffic-choices').classList.contains('open'),
  'traffic selector must expose official licensed provider choices');
 assert(get('traffic-help').textContent.includes('API anahtarı yok'),
  'without credentials the user must see the real provider limitation');
-get('traffic-google').onclick();
-assert(get('traffic-help').textContent.includes('SDK bileşeni bulunamadı'),
- 'without an official SDK do not claim the traffic layer is live');
+get('traffic-tomtom').onclick();
+assert(!html.includes('id="traffic-google"')&&!html.includes('id="traffic-yandex"'),
+ 'Google/Yandex unavailable UI removed');
 get('traffic-osm').onclick();
 assert(get('layer-status').textContent.includes('korunuyor'),
  'missing provider must preserve the working map instead of faking traffic');
