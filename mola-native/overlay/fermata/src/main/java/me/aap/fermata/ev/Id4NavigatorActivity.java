@@ -56,6 +56,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ExecutorService stationJobs=Executors.newSingleThreadExecutor();
     // Current Open-Meteo readings are MODEL values, never actual station sensors.
     private final ExecutorService currentWeatherJobs=Executors.newSingleThreadExecutor();
+    // User-triggered OSM camera queries must not block route, charging or weather.
+    private final ExecutorService safetyJobs=Executors.newSingleThreadExecutor();
+    private volatile long lastSafetyQueryAt=0;
+    private volatile long lastSafetySpeechAt=0;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
@@ -229,6 +233,28 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
         }
         @JavascriptInterface public void tripJournal() {ui.post(()->showTripJournal());}
+        @JavascriptInterface public void roadSafety(double south,double west,
+                                                   double north,double east){
+            ui.post(()->requestSafetyCameraViewport(south,west,north,east));
+        }
+        @JavascriptInterface public void safetyAnnounce(double cameraLat,
+                double cameraLon){
+            ui.post(()->{
+                if(destroyed||!voice||position==null||!position.hasAccuracy()||
+                   position.getAccuracy()>35)return;
+                long now=System.currentTimeMillis();
+                if(now-position.getTime()<0||now-position.getTime()>15000 ||
+                   now-lastSafetySpeechAt<120000)return;
+                if(!valid(cameraLat,cameraLon))return;
+                float[] distance=new float[1];
+                Location.distanceBetween(position.getLatitude(),
+                    position.getLongitude(),cameraLat,cameraLon,distance);
+                if(distance[0]<=350){
+                    lastSafetySpeechAt=now;
+                    announce("OpenStreetMap kaydına göre ileride sabit hız kamerası olabilir. Hız sınırına uyun.");
+                }
+            });
+        }
         @JavascriptInterface public void sensors() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4ObdActivity.class)));
         }
@@ -525,6 +551,34 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }
     }
 
+    // OSM public Overpass resources: only explicit user taps, 90s throttle,
+    // bounded 0.42-degree viewport; never scrape a country-wide database.
+    private void requestSafetyCameraViewport(double south,double west,
+            double north,double east){
+        if(destroyed)return;
+        if(!Id4RoadSafety.validViewport(south,west,north,east)){
+            send("molaSafetyError",record("safety",
+                "Sabit kamera noktaları için haritayı yakınlaştır (12+)."));
+            return;
+        }
+        long now=System.currentTimeMillis();
+        if(now-lastSafetyQueryAt<90000){
+            send("molaSafetyError",record("safety",
+                "OSM sorguları sınırlıdır. 90 saniye sonra yeniden dene."));
+            return;
+        }
+        lastSafetyQueryAt=now;
+        safetyJobs.execute(()->{
+            try{
+                JSONObject packet=Id4RoadSafety.retrieve(south,west,north,east);
+                if(!destroyed)send("molaSafetyCameras",packet);
+            }catch(Exception e){
+                if(!destroyed)send("molaSafetyError",record("safety",
+                    "OSM sabit kamera verisi alınamadı (ağ veya kota)."));
+            }
+        });
+    }
+
     private void requestGps() {
         if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;
@@ -554,7 +608,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         JSONObject j=new JSONObject();
         try{j.put("lat",location.getLatitude());j.put("lon",location.getLongitude());
             j.put("accuracy",location.getAccuracy());
-            j.put("timeMs",location.getTime());}catch(Exception ignored){}
+            j.put("timeMs",location.getTime());
+            // Speed comes ONLY from a recent GPS speed estimate; never infer
+            // it from map geometry or assume a posted road speed limit.
+            long age=System.currentTimeMillis()-location.getTime();
+            if(location.hasSpeed() && location.hasAccuracy() &&
+               location.getAccuracy()<=35 && age>=0&&age<=15000 &&
+               Float.isFinite(location.getSpeed()) &&
+               location.getSpeed()>=0&&location.getSpeed()<=70)
+                j.put("speedKmh",Math.round(location.getSpeed()*3.6));}catch(Exception ignored){}
         send("molaPosition",j);
         long liveFixAge=System.currentTimeMillis()-location.getTime();
         if(liveFixAge>=0 && liveFixAge<=30000 && location.getAccuracy()<=60)
@@ -1229,7 +1291,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     @Override protected void onDestroy(){
         destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        jobs.shutdownNow();stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
+        jobs.shutdownNow();stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();
+        safetyJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();

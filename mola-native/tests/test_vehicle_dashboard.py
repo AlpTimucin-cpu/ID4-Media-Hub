@@ -15,6 +15,17 @@ assert 'addTab(tabs,"⚡ Şarj",this::stationsScreen)' in ev
 assert "Id4ObdActivity.java" in patch
 assert "Id4NavigatorActivity.java" in patch
 assert "Id4TripJournal.java" in patch
+assert "Id4RoadSafety.java" in patch
+camera=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java").read_text()
+assert 'highway' in camera and 'speed_camera' in camera
+assert 'LIMIT=120' in camera and '.42' in camera
+assert "© OpenStreetMap contributors (ODbL)" in camera
+assert "mobile radars" in camera
+act=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java").read_text()
+assert "safetyJobs.shutdownNow()" in act
+assert "lastSafetyQueryAt<90000" in act
+assert 'j.put("speedKmh"' in act
+assert "distance[0]<=350" in act
 trip=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java").read_text()
 assert "getAccuracy()>35" in trip
 assert "getString(KEY" in trip
