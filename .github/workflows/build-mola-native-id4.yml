@@ -68,6 +68,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node --check integration/mola-native/tests/test_basemap.js
+          node integration/mola-native/tests/test_basemap.js
           node --check integration/mola-native/tests/test_navigator.js
           node integration/mola-native/tests/test_navigator.js \
             integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html

@@ -194,6 +194,13 @@ assert(html.includes('.sheet.route-active:not(.details-open){display:none!import
  'old legacy route sheet still covers landscape map');
 assert(html.includes('id="co-trip-arrival"')&&html.includes('id="co-trip-charge-button"'),
  'trip bar missing transparent charge and model arrival elements');
+assert(html.includes('id="map-health"')&&html.includes('id="map-retry"')&&
+       html.includes('id="layer-map-retry"'),
+ 'blocked public tile servers require user-visible retry');
+assert(html.includes('id4-basemap.js')&&html.includes('id4-offline-geography.js'),
+ 'offline geographic fallback must be packaged and loaded before navigation');
+assert(!html.includes('class="dock-climate"')&&!html.includes('>KLİMA<'),
+ 'unsupported climate controls must be removed, not merely disabled');
 assert(html.includes('id="map-credit"'),
  'OpenStreetMap attribution must be visible and not hidden by route sheet');
 assert(typeof mapActions.tileEvents.tileerror==='function' &&

@@ -157,6 +157,8 @@ city_license=overlay/"fermata/src/main/assets/id4/CITY_DATA_LICENSE.txt"
 leaflet_js=overlay/"fermata/src/main/assets/id4/leaflet.js"
 leaflet_css=overlay/"fermata/src/main/assets/id4/leaflet.css"
 leaflet_license=overlay/"fermata/src/main/assets/id4/LEAFLET_LICENSE.txt"
+basemap_controller=overlay/"fermata/src/main/assets/id4/id4-basemap.js"
+basemap_geography=overlay/"fermata/src/main/assets/id4/id4-offline-geography.js"
 traffic_provider=overlay/"fermata/src/main/assets/id4/traffic-provider.js"
 traffic_config=overlay/"fermata/src/main/assets/id4/traffic-config.js"
 charge=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeHistory.java"
@@ -173,7 +175,7 @@ launcher_icon=overlay/"fermata/src/main/res/drawable/id4_launcher.xml"
 tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting.java"
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety])
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety])
 for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety]:
     target=root/f.relative_to(overlay)
     if target.exists():
@@ -205,6 +207,8 @@ allowed=set(SOURCE_SHA) | {
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),
+    str(basemap_controller.relative_to(overlay)),
+    str(basemap_geography.relative_to(overlay)),
     str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),

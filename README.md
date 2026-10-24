@@ -148,3 +148,21 @@ stil katmanları altında kaybolan araç ekranı artık doğru sırayla görün�
 Başarılı sayfa renderi, uygulama içi Android Auto/OBD/TomTom gerçek cihaz
 testi anlamına gelmez. İçerik Google/Yandex canlı trafik sağlayıcılarını
 tekrar eklemez; TomTom kullanıcı anahtarı GitHub'a yazılmaz.
+
+## 24 Ekim — haritanın boş kalmasına karşı bağımsız coğrafya katmanı
+
+Tek OSM karo sunucusu cevap vermediğinde arka planda düz lacivert görünmesi
+engellendi. Uygulama yalnız kullanıcının görüntülediği harita karolarını önce
+OSM Foundation, sonra OSM France üzerinden açmayı dener. Her iki kaynak
+erişilemezse uygulamayla birlikte dağıtılan **Natural Earth 110m kamu malı
+ülke sınırları** ve Türkiye il merkezleri (MIT) görünür kalır.
+Kaydırma, yakınlaştırma ve hedef seçimi çalışır; **bu coğrafi görünüm sokak
+haritası, çevrimdışı yol ağı veya trafik bilgisi değildir**. Durum ekranında
+hangi kaynak açıldığı belirtilir ve kullanıcı manuel **↻ Yeniden dene**
+yapabilir. OpenStreetMap kaynaklarını toplu indirme/önbellek doldurma yoktur.
+Uygulama alt menüsündeki çalışmayan tüm klima, set sıcaklığı ve koltuk
+ısıtma düğmeleri HTML ve CSS'den silindi.
+
+Natural Earth lisansı: https://www.naturalearthdata.com/about/terms-of-use/
+OSM Foundation karo politikası: https://operations.osmfoundation.org/policies/tiles/
+OSM France kullanım şartları: https://www.openstreetmap.fr/usage/
