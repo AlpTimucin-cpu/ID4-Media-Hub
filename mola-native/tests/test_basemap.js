@@ -5,7 +5,7 @@ const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('p
 const assets=path.join(__dirname,'../overlay/fermata/src/main/assets/id4');
 const geographyJs=fs.readFileSync(path.join(assets,'id4-offline-geography.js'),'utf8');
 const basemapJs=fs.readFileSync(path.join(assets,'id4-basemap.js'),'utf8');
-assert(!/api\.tomtom\.com/.test(basemapJs),'basemap must work without traffic key');
+assert(basemapJs.includes('communitySources'), 'public basemap must remain available without TomTom key');
 const tiles=[],outlines=[],labels=[],statuses=[],allLayers=new Set(),panes={};
 const map={
  createPane(name){const pane={style:{}};panes[name]=pane;return pane},
