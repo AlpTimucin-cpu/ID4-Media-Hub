@@ -1320,7 +1320,7 @@ body.provider-active .traffic-map-badge{display:flex}
  <button id="dock-stations" type="button">⚡ Şarj</button>
  <button id="dock-traffic" class="status-unavailable" type="button">🚦 Trafik: kapalı</button>
  <button id="dock-obd" class="status-unavailable" type="button">▣ OBD: ölçüm yok</button>
- <button id="dock-auto" class="status-unavailable" type="button">▤ Auto: destek yok</button>
+ <button id="dock-journal" type="button">▣ Yolculuklar</button>
  <button id="dock-layers" type="button">☰ Katmanlar</button>
 </nav>
 <div class="top"><div class="brand"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS · YOLCULUK VE ARAÇ MERKEZİ</small>
@@ -1835,6 +1835,7 @@ function native(name){
    case 'back':bridge.back();break;
    case 'stations':bridge.stations();break;
    case 'sensors':bridge.sensors();break;
+   case 'tripJournal':bridge.tripJournal();break;
    case 'tomtomKey':bridge.configureTomTom();break;
    case 'selectObd':bridge.selectObd();break;
    case 'disconnectObd':bridge.disconnectObd();break;
@@ -2611,7 +2612,7 @@ if(map&&map.on){
 }
 
 $('dock-obd').onclick=function(){native('sensors')};
-$('dock-auto').onclick=function(){msg('ID.4 navigasyon için CarAppService bulunmuyor; Android Auto ekranında doğrulanmadı.')};
+$('dock-journal').onclick=function(){native('tripJournal')};
 $('co-connect').onclick=function(){native('selectObd')};
 $('co-disconnect').onclick=function(){
  native('disconnectObd');

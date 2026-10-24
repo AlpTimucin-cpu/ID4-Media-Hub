@@ -60,6 +60,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ArrayList<Step> steps=new ArrayList<>();
     private WebView web;
     private Id4LiveTelemetry telemetry;
+    private final Id4TripJournal tripJournal=new Id4TripJournal();
     private Id4StationCatalog stationCatalog;
     private volatile int stationRequestId;
     private volatile int routeStationRequestId;
@@ -227,6 +228,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         @JavascriptInterface public void stations() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
         }
+        @JavascriptInterface public void tripJournal() {ui.post(()->showTripJournal());}
         @JavascriptInterface public void sensors() {
             ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4ObdActivity.class)));
         }
@@ -547,6 +549,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     @Override public void onLocationChanged(Location location) {
         if(destroyed)return;
+        tripJournal.accept(location,System.currentTimeMillis());
         position=location;
         JSONObject j=new JSONObject();
         try{j.put("lat",location.getLatitude());j.put("lon",location.getLongitude());
@@ -574,6 +577,53 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             announce(step.instruction);lastSpeech=System.currentTimeMillis();nextStep++;
         }
     }
+
+    /** Explicitly opt-in GPS-only trip summary, no storage of GPS track. */
+    private void showTripJournal(){
+        if(destroyed||isFinishing())return;
+        JSONArray past=Id4TripJournal.list(this);
+        StringBuilder info=new StringBuilder();
+        if(tripJournal.recording())
+            info.append("● Kayıt etkin · ").append(tripJournal.distanceKm()).append(" km\\n\\n");
+        else info.append("GPS kaydı kapalı\\n\\n");
+        for(int i=0;i<Math.min(8,past.length());i++){
+            JSONObject row=past.optJSONObject(i);
+            if(row==null)continue;
+            java.text.SimpleDateFormat fmt=new java.text.SimpleDateFormat(
+                "dd.MM.yyyy HH:mm",new Locale("tr","TR"));
+            info.append(fmt.format(new java.util.Date(row.optLong("startedAt"))))
+                .append(" · ").append(row.optDouble("distanceKm"))
+                .append(" km · ").append(row.optLong("durationMin"))
+                .append(" dk\\n");
+        }
+        if(past.length()==0)info.append("Henüz GPS yolculuğu kaydedilmedi.\\n");
+        info.append("\\nKonum ve güzergâh saklanmaz. Enerji ve maliyet ölçülmediyse boş bırakılır.");
+        new AlertDialog.Builder(this).setTitle("ID.4 · Yolculuk Geçmişi")
+            .setMessage(info.toString())
+            .setPositiveButton(tripJournal.recording()?"Kaydı durdur":"GPS kaydını başlat",
+                (dialog,which)->{
+                    if(tripJournal.recording()){
+                        boolean saved=tripJournal.finish(this,System.currentTimeMillis());
+                        send("molaStatus",record("trip",saved?
+                          "GPS yolculuğu kaydedildi.":"GPS mesafesi/süresi yetersiz; kayıt yok."));
+                    }else if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=
+                             PackageManager.PERMISSION_GRANTED){
+                        requestGps();
+                        send("molaStatus",record("trip","GPS iznini verdikten sonra yeniden başlat."));
+                    }else{
+                        tripJournal.start(System.currentTimeMillis());
+                        requestGps();
+                        send("molaStatus",record("trip","GPS yolculuk kaydı başladı."));
+                    }
+                })
+            .setNeutralButton("Geçmişi temizle",(dialog,which)->
+                new AlertDialog.Builder(this).setTitle("Yolculuk geçmişini sil?")
+                    .setMessage("Yerel yolculuk özetleri silinir.")
+                    .setNegativeButton("İptal",null)
+                    .setPositiveButton("Sil",(d,w)->Id4TripJournal.erase(this)).show())
+            .setNegativeButton("Kapat",null).show();
+    }
+
     private void announce(String instruction){
         if(voice && tts!=null && !instruction.isEmpty())
             ui.post(()->tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"mola-direction"));
@@ -1169,6 +1219,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         resumeRouteAfterPause=false;
     }
     @Override protected void onPause(){
+        // Consent does not extend to background tracking; save and stop here.
+        if(tripJournal.recording())tripJournal.finish(this,System.currentTimeMillis());
         resumeRouteAfterPause=running;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         running=false; if(tts!=null)tts.stop();

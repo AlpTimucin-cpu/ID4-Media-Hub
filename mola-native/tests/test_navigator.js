@@ -64,6 +64,7 @@ const win={
   visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
   configureTomTom(){calls.tomtomKey=(calls.tomtomKey||0)+1},
+  tripJournal(){calls.journal=(calls.journal||0)+1},
   landscape(...args){calls.orientation.push(args)},
   chooseAlternative(index){calls.chosen.push(index)}
  }
@@ -93,11 +94,13 @@ function typing(field,query){
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
-for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-auto']){
+for(const id of ['dock-home','dock-route','dock-stations','dock-traffic','dock-obd','dock-journal']){
  assert(html.includes('id="'+id+'"'),'reference-style dock missing '+id);
 }
 assert(html.includes('left:39%')&&html.includes('grid-template-columns:28%'),
  'wide cockpit left instruments and bottom route layout missing');
+get('dock-journal').onclick();
+assert.equal(calls.journal,1,'journal button reaches Android');
 get('dock-route').onclick();
 assert(get('sheet').classList.contains('search-open'),'dock route must open search');
 get('dock-route').onclick();

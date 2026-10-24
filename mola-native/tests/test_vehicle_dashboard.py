@@ -14,6 +14,11 @@ assert 'addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewAc
 assert 'addTab(tabs,"⚡ Şarj",this::stationsScreen)' in ev
 assert "Id4ObdActivity.java" in patch
 assert "Id4NavigatorActivity.java" in patch
+assert "Id4TripJournal.java" in patch
+trip=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java").read_text()
+assert "getAccuracy()>35" in trip
+assert "getString(KEY" in trip
+assert "actualEnergyKwh" in trip and "actualChargeCostTry" in trip
 assert "Id4TomTomRouting.java" in patch
 tomtom=(root/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting.java").read_text()
 assert "apiVersion=3" in tomtom

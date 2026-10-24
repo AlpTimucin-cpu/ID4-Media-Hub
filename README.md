@@ -87,3 +87,13 @@ bağlantısı API anahtarı varsa ayrı şekilde denenir, başarısızsa OSRM ku
 alındı. Hedef: TomTom Orbis v3 canlı trafik ve gerçek alternatifler, OSRM
 trafiksiz yedek. GraphHopper/ HERE ancak geçerli API yetkisi ve cihaz
 testiyle değerlendirilecek. [Ayrıntılı değerlendirme](mola-native/TRAFFIC_PROVIDERS.md).
+
+### Yeni: İzinli GPS yolculuk günlüğü
+
+Silent But Fast'teki yolculuk takibi yaklaşımından esinlenen bağımsız modül.
+Kokpitte **▣ Yolculuklar** düğmesiyle gerçek GPS sürüşü açıkça başlatılır.
+Ön planda, hatalı/eski konumları dışlayarak km/süre toplanır; koordinatlar
+saklanmaz. Kayıt için en az 30 saniye, 200 metre ve iki doğru GPS örneği
+gereklidir. Son 30 özet telefona özel depoda tutulur; tümünü temizleyebilirsin.
+Ölçülmemiş gerçek enerji veya maliyet uydurulmaz. Android Auto deneyimi bu
+modülden ayrı olup halen doğrulanmamıştır.
