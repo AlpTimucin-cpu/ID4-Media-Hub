@@ -74,3 +74,10 @@ Resmî yoğunluk ve yol olayları raster katmanı `Katmanlar → Trafik → TomT
 Telefon launcher adı **ID.4 Yol Arkadaşım**. Özel koyu lacivert, ID.4/elektrikli araç temalı vektör simgesi vardır. Uygulamaya dokununca önce yatay araç kokpiti açılır. Ekrandaki **Mola** düğmesi medya ana ekranına döner; mevcut medya oynatma sınıfları değiştirilmedi. Bu ayrı `.id4preview` paketidir; yüklü Mola 3.2'yi güncellemez. Android Auto navigasyon ekranı yine doğrulanmış değildir.
 
 **OSRM alternatif arama stratejisi:** Resmî OSRM `alternatives=6` seçeneğiyle birincil yola ek olarak en fazla altı farklı güzergâh araştırılır. Gerçekten bulunan bütün yollar (koruyucu üst sınır 12) renkli çizgilerle aynı haritada gösterilir. OSRM daha az yol döndürürse uygulama bunu dürüstçe gösterir; her iki nokta arasında sınırsız sayıda rota garantisi verilemez. <https://project-osrm.org/docs/v26.6.1/http>
+
+### Canlı trafik sadeleştirmesi — 24 Ekim 2026
+Google/Yandex canlı trafik seçenekleri kaldırıldı; bu iki servis için çalışan
+canlı sağlayıcı erişimi doğrulanmamıştı. Android trafik katmanı yalnız
+**TomTom Orbis** ve **OpenStreetMap** ile çalışır. Gerçek TomTom akış karosu
+başarılı olmadıkça canlı etiket görünmez. Trafik hesaplayan Orbis v3 rota
+bağlantısı API anahtarı varsa ayrı şekilde denenir, başarısızsa OSRM kullanılır.

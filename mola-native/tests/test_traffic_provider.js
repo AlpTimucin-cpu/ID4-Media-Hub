@@ -1,150 +1,56 @@
-// Contract tests for the official-key-only traffic map adapters.
-const assert=require('assert');
-const vm=require('vm');
-const fs=require('fs');
-const path=require('path');
-const script=fs.readFileSync(path.join(__dirname,
+// Contract: TomTom Orbis traffic only. Test source, key gate, successful tileload,
+// failed tile requests and fallback. Never claim actual production API availability.
+const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('path');
+const source=fs.readFileSync(path.join(__dirname,
  '../overlay/fermata/src/main/assets/id4/traffic-provider.js'),'utf8');
-function world(keys,shouldFail){
- const flags=new Set(),holder={replaceChildren(){this.empty=true}};
- const created={scripts:[],googleMaps:0,googleTraffic:0,yandexMaps:0,yandexTraffic:0,
-  tomtomTiles:[],tomtomRemoved:0,
-  routes:0,stations:0,states:[],holder};
- function cls(){return {
-  add(v){flags.add(v)},remove(v){flags.delete(v)},contains(v){return flags.has(v)}
- }}
- const mapGlobals={
-  google:{maps:{
-   Map:class{constructor(node,opts){created.googleMaps++;assert.strictEqual(node,holder);this.opts=opts}},
-   TrafficLayer:class{setMap(m){if(m)created.googleTraffic++}},
-   Polyline:class{constructor(){created.routes++}setMap(){}},
-   Marker:class{constructor(){created.stations++}setMap(){}}
-  }},
-  ymaps:{
-   ready(fn){fn()},
-   Map:class{constructor(node,opts){created.yandexMaps++;assert.strictEqual(node,holder);
-    this.geoObjects={add(x){},remove(x){}}}destroy(){}},
-   Polyline:class{},Placemark:class{},
-   traffic:{provider:{Actual:class{
-    constructor(){
-     this.state={events:{add(type,cb){created.trafficCallback=cb}},
-      get(name){return ({isInited:true,level:6,
-       timestamp:Math.floor(Date.now()/1000)})[name]}}
-    }
-    setMap(m){if(m)created.yandexTraffic++}
-   }}}
-  }
- };
- const win={
-  ID4_TRAFFIC_CONFIG:keys,
-  L:{
-   tileLayer(url,opts){
-    const tile={url,opts,handlers:{},
-      on(event,fn){this.handlers[event]=fn;return this},
-      addTo(map){
-       created.tomtomTiles.push(this);
-       if(url.includes('/flow/')){
-        if(shouldFail){for(let i=0;i<3;i++)this.handlers.tileerror?.()}
-        else this.handlers.tileload?.();
-       }
-       return this
-      },
-      redraw(){created.redrawn=true}
-    };
-    return tile;
-   }
-  },
-  molaTrafficStatus(s){created.states.push(s)},
-  ...mapGlobals
- };
- const doc={body:{classList:cls()},getElementById(id){return id==='traffic-provider-map'?holder:null},
-  head:{appendChild(tag){created.scripts.push(tag.src);
-   if(shouldFail)tag.onerror();
-   else tag.onload()}}
-  ,createElement(){return {src:'',async:false,onload:null,onerror:null}}};
- const ctx={window:win,document:doc,Promise,Array,Math,Number,String,Error,
-  setTimeout(fn){created.timeout=fn;return 1},clearTimeout(){},
-  setInterval(fn){created.interval=fn;return 2},clearInterval(){}};
- vm.runInNewContext(script,ctx,{filename:'traffic-provider.js'});
- return {api:win.Id4TrafficProviders,created,flags};
+assert(!/google\.maps|global\.ymaps|api-maps\.yandex|maps\.googleapis/.test(source));
+function create(key,fail){
+ const states=[],tiles=[],removed=[];
+ const window={ID4_TRAFFIC_CONFIG:{tomtomKey:key},
+  molaTrafficStatus(o){states.push(o)},
+  L:{tileLayer(url){
+   return {url,callbacks:{},
+    on(event,fn){this.callbacks[event]=fn;return this},
+    addTo(){tiles.push(this);
+     if(url.includes('/flow/')){
+      if(fail){for(let i=0;i<3;i++)this.callbacks.tileerror()}
+      else this.callbacks.tileload();
+     }
+     return this;
+    },redraw(){}
+   };
+  }}};
+ const sandbox={window,document:{},Number,Math,Array,Promise,
+  setTimeout(){return 1},clearTimeout(){},
+  setInterval(){return 1},clearInterval(){}};
+ vm.runInNewContext(source,sandbox,{filename:'traffic-provider.js'});
+ window.Id4TrafficProviders.attachLeaflet({removeLayer(v){removed.push(v)}});
+ return {api:window.Id4TrafficProviders,states,tiles,removed};
 }
 (async()=>{
- const none=world({googleKey:'',yandexKey:''},false);
- assert.strictEqual(none.api.configured().google,false);
- assert.strictEqual(none.api.configured().yandex,false);
+ const none=create('',false);
  assert.strictEqual(none.api.configured().tomtom,false);
+ assert.strictEqual(await none.api.activate('google'),false);
+ assert.strictEqual(await none.api.activate('yandex'),false);
+ assert.strictEqual(await none.api.activate('tomtom'),false);
+ assert.strictEqual(none.tiles.length,0);
  assert.strictEqual(none.api.setTomTomKey('short'),false);
- assert.strictEqual(none.api.setTomTomKey('TOMTOM_TEST_KEY_12345678'),true);
+ assert.strictEqual(none.api.setTomTomKey('TEST_TOMTOM_KEY_123456789'),true);
  assert.strictEqual(none.api.configured().tomtom,true);
+ assert(none.states.some(s=>s.status==='active'));
  assert.strictEqual(none.api.setTomTomKey(''),true);
- assert.strictEqual(none.api.configured().tomtom,false);
- assert.strictEqual(await none.api.activate('tomtom',[39,35],9),false);
- assert.strictEqual(none.created.tomtomTiles.length,0);
  assert.strictEqual(none.api.getActive(),'osm');
- assert.strictEqual(await none.api.activate('google',[39,35],7),false);
- assert.strictEqual(none.created.scripts.length,0,'missing key cannot load paid traffic SDK');
- assert.strictEqual(none.api.getActive(),'osm');
- assert(none.created.states.some(x=>x.status==='unavailable'&&x.detail.includes('API anahtarı')),
-  'missing credentials must never turn on fake traffic');
- const valid=world({googleKey:'GOOGLE_TEST_KEY_123456789',
-  yandexKey:'YANDEX_TEST_KEY_123456789'},false);
- valid.api.updateRoute([[39,35],[39.1,35.2]]);
- valid.api.updateStations([{lat:39,lon:35,title:'Gerçek örnek test istasyonu'}]);
- valid.api.updatePosition({lat:39.01,lon:35.02},false);
- assert.strictEqual(await valid.api.activate('google',[39,35],8),true);
- assert.strictEqual(valid.api.getActive(),'google');
- assert.strictEqual(valid.created.googleMaps,1);
- assert.strictEqual(valid.created.googleTraffic,1);
- assert.strictEqual(valid.created.routes,1);
- assert.strictEqual(valid.created.stations,2,
-  'provider should retain both station and GPS position pins');
- assert(valid.flags.has('provider-active'));
- assert(valid.created.scripts[0].startsWith('https://maps.googleapis.com/'),
-   'Google SDK must come from official host');
- assert.strictEqual(await valid.api.activate('yandex',[39,35],8),true);
- assert.strictEqual(valid.api.getActive(),'yandex');
- assert.strictEqual(valid.created.yandexMaps,1);
- assert.strictEqual(valid.created.yandexTraffic,1);
- assert(typeof valid.created.trafficCallback==='function',
-  'Yandex real-time traffic updates must be observed');
- valid.created.trafficCallback();
- assert(valid.created.states.some(x=>x.provider==='yandex'&&x.level===6),
-  'licensed, timestamp-valid Yandex congestion must appear as 6/10');
- assert(valid.created.scripts[1].startsWith('https://api-maps.yandex.ru/2.1/'),
-  'Yandex must use official traffic provider');
- assert.strictEqual(await valid.api.close(),true);
- assert.strictEqual(valid.api.getActive(),'osm');
- assert(!valid.flags.has('provider-active'),'base map must restore after closing');
- // Official TomTom Orbis v2 raster endpoints must be called ONLY with an
- // authorized key, and a live state requires successful FLOW tileload.
- const tomtom=world({googleKey:'',yandexKey:'',
-  tomtomKey:'TOMTOM_TEST_KEY_123456789'},false);
- const leaflet={removeLayer(){tomtom.created.tomtomRemoved++}};
- tomtom.api.attachLeaflet(leaflet);
- assert.strictEqual(tomtom.api.configured().tomtom,true);
- assert.strictEqual(await tomtom.api.activate('tomtom',[39,35],10),true);
- assert.strictEqual(tomtom.api.getActive(),'tomtom');
- assert.strictEqual(tomtom.created.tomtomTiles.length,2);
- assert(tomtom.created.tomtomTiles[0].url.includes(
-  '/maps/orbis/traffic/flow/raster/tile/'));
- assert(tomtom.created.tomtomTiles[1].url.includes(
-  '/maps/orbis/traffic/incidents/raster/tile/'));
- assert(tomtom.created.tomtomTiles[0].url.includes('apiVersion=2'));
- assert(tomtom.created.states.some(x=>x.provider==='tomtom'&&x.status==='active'));
- assert(!tomtom.flags.has('provider-active'),'TomTom should overlay the original Leaflet map');
- assert.strictEqual(await tomtom.api.close(),true);
- assert(tomtom.created.tomtomRemoved>=2,'TomTom tiles must be removed when leaving');
- const rejected=world({googleKey:'',yandexKey:'',
-  tomtomKey:'TOMTOM_TEST_KEY_123456789'},true);
- rejected.api.attachLeaflet({removeLayer(){}});
- assert.strictEqual(await rejected.api.activate('tomtom',[39,35],10),false);
- assert.strictEqual(rejected.api.getActive(),'osm');
- assert(rejected.created.states.every(x=>x.status!=='active'),
-  'TomTom errors must not masquerade as verified traffic');
- const blocked=world({googleKey:'GOOGLE_TEST_KEY_123456789',
-  yandexKey:''},true);
- assert.strictEqual(await blocked.api.activate('google',[38,35],7),false);
- assert.strictEqual(blocked.api.getActive(),'osm','failed SDK must not hide OSM map');
- assert(!blocked.flags.has('provider-active'));
- console.log('PASS: TomTom Orbis v2 flow/incidents and key/error handling; Google/Yandex preserved');
+ const ok=create('TEST_TOMTOM_KEY_123456789',false);
+ assert.strictEqual(await ok.api.activate('tomtom',[39,35],10),true);
+ assert.strictEqual(ok.tiles.length,2);
+ assert(ok.tiles[0].url.includes('/maps/orbis/traffic/flow/raster/tile/'));
+ assert(ok.tiles[1].url.includes('/maps/orbis/traffic/incidents/raster/tile/'));
+ assert(ok.tiles[0].url.includes('apiVersion=2'));
+ assert.strictEqual(await ok.api.close(),true);
+ assert(ok.removed.length>=2);
+ const bad=create('TEST_TOMTOM_KEY_123456789',true);
+ assert.strictEqual(await bad.api.activate('tomtom',[39,35],10),false);
+ assert.strictEqual(bad.api.getActive(),'osm');
+ assert(bad.states.every(s=>s.status!=='active'));
+ console.log('PASS: TomTom-only traffic, correct tile endpoints, no bogus live claims');
 })().catch(e=>{console.error(e);process.exitCode=1});

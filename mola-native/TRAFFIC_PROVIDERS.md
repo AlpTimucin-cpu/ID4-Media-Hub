@@ -112,3 +112,9 @@ silme düğmesi mevcuttur; varsayılan GitHub secret olmadan kullanabilirsin.
 Anahtar kaydedilince Leaflet haritası hazırsa TomTom'dan gerçek trafik
 katmanları otomatik yüklenmeyi dener. Başarılı flow döşemesi gelmeden
 canlı etiket gösterilmez, hata halinde OSM haritası korunur. Bu, gerçek Android/harita testi yerine geçmez.
+
+### 24 Ekim 2026: Google/Yandex kaldırıldı
+Google ve Yandex JavaScript SDK trafik adaptörleri çalıştığı doğrulanmadığı için
+uygulamadan ve derleme ortamından çıkartıldı. Trafik menüsü yalnız TomTom Orbis
+ve OSM seçeneklerini içerir. Depoda eski sağlayıcılara ait bazı tarihsel
+notlar referans amaçlı bulunabilir, ancak derlenen uygulamada bu kod yoktur.
