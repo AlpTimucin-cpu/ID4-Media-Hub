@@ -549,8 +549,9 @@ assert(get('sheet').classList.contains('details-open'),'details could not be exp
 get('route-details').onclick();
 assert(!get('sheet').classList.contains('details-open'),'details could not be collapsed');
 
-assert(get('traffic-source').textContent.includes('Canlı trafik'),
-  'route must not claim unlicensed live traffic');
+assert(get('traffic-source').textContent.includes('trafik yoğunluğunu içermez') &&
+       !get('traffic-source').textContent.includes('canlı trafik rota süresine dahil'),
+  'OSRM test route must disclose that live traffic is excluded from ETA');
 assert(get('tripdata').textContent.includes('510 km'),'route distance absent');
 assert(globalThis.lastRouteBoundsOptions.paddingBottomRight[1]>=200,
   'route viewport hides map beneath info sheet');
