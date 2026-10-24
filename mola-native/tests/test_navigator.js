@@ -136,13 +136,13 @@ get('traffic-choices').classList.remove('open');
 get('layer-traffic').onclick();
 assert(get('traffic-choices').classList.contains('open'),
  'traffic selector must expose official licensed provider choices');
-assert(get('traffic-help').textContent.includes('API anahtarı yok'),
+assert(get('traffic-help').textContent.includes('API anahtarı gerekli'),
  'without credentials the user must see the real provider limitation');
 get('traffic-tomtom').onclick();
 assert(!html.includes('id="traffic-google"')&&!html.includes('id="traffic-yandex"'),
  'Google/Yandex unavailable UI removed');
 get('traffic-osm').onclick();
-assert(get('layer-status').textContent.includes('korunuyor'),
+assert(get('layer-status').textContent.includes('OpenStreetMap'),
  'missing provider must preserve the working map instead of faking traffic');
 get('layer-route').onclick();
 
@@ -694,7 +694,7 @@ assert.equal(get('co-reroute').style.display,'none',
 assert(html.includes('id="traffic-map-badge"') && html.includes('id="traffic-map-exit"'),
  'licensed map must disclose provider and allow one-tap OSM return');
 assert(html.includes('id="traffic-station-panel"'),
- 'Google/Yandex charging pins must offer destination and CCS actions');
+ 'charging station action panel retains destination and CCS controls');
 win.molaTrafficStationClick({lat:NaN,lon:34,title:'Invalid'});
 assert(!get('traffic-station-panel').classList.contains('open'),
  'invalid station cannot open map action panel');
