@@ -787,7 +787,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 String via=hasStop?
                     String.format(Locale.US,"%.6f,%.6f",stopLon,stopLat):"";
                 String query="/route/v1/driving/"+a+(hasStop?";"+via:"")+";"+b+
-                    "?overview=full&geometries=geojson&steps=true&alternatives=6";
+                    "?overview=full&geometries=geojson&steps=true&alternatives=true";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
                 String trafficKey=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
@@ -816,8 +816,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         activeRouteProvider=hosts[attempt];
                     }catch(Exception e){
                         if(problems.length()>0)problems.append(" | ");
-                        problems.append("Sağlayıcı ").append(attempt+1).append(": ")
-                            .append(e.getClass().getSimpleName());
+                        problems.append("OSRM ").append(attempt+1).append(": ")
+                            .append(routeFailure(e));
                     }
                 }
                 if(out==null)throw new IllegalStateException(problems.toString());
@@ -825,10 +825,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 if(destroyed||myGeneration!=generation)return;
                 renderRouteOption(routes,0,verifiedGps,hasStop,myGeneration);
             }catch(Exception e){
+                final String detail=routeFailure(e);
                 ui.post(()->{
                     if(destroyed||myGeneration!=generation)return;
-                    send("molaStatus",record("error",
-                        "Rota çizilemedi. Ağ bağlantısını kontrol edip yeniden dene."));
+                    send("molaStatus",record("error","Rota oluşturulamadı · "+detail));
                 });
             }
         });
@@ -1233,6 +1233,16 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private static boolean valid(double lat,double lon){
         return Double.isFinite(lat)&&Double.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46;
+    }
+    private static String routeFailure(Exception e){
+        if(e instanceof java.net.SocketTimeoutException)return "Servis zaman aşımı";
+        if(e instanceof java.net.UnknownHostException)return "Sunucu adresi çözülemedi";
+        if(e instanceof javax.net.ssl.SSLException)return "Güvenli bağlantı kurulamadı";
+        String m=e.getMessage();
+        if(m!=null && m.matches("HTTP [0-9]{3}"))return m;
+        if(m!=null && m.startsWith("OSRM ") && m.length()<180)return m;
+        if(e instanceof org.json.JSONException)return "Rota yanıtı çözümlenemedi";
+        return "Rota servisi yanıt vermedi";
     }
     private static String fetch(String address,int max)throws Exception{
         HttpURLConnection c=(HttpURLConnection)new URL(address).openConnection();

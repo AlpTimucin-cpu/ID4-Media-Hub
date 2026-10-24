@@ -23,6 +23,8 @@ overlay=Path(sys.argv[2]).resolve()
 if not (root/"fermata/src/main/AndroidManifest.xml").is_file():
     raise SystemExit("Not a Mola source tree")
 SOURCE_SHA = {
+    "fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardCard.java":
+        "650ead19a67c100149c52afc78598e7812d4997f",
     "fermata/src/main/res/layout/dashboard_fragment.xml":
         "16d50f3996366f0fd463d9d1ba5de7d522f975fb",
     "fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java":
@@ -38,40 +40,78 @@ for relative, expected in SOURCE_SHA.items():
     if actual!=expected:
         raise SystemExit(f"UNRECOGNIZED upstream change: {relative}; refusing to modify.")
 
-# Preserve the original dashboard structure and add ONE isolated button.
+
+# Declare a stable destination ID without a separate small button.
 layout=root/"fermata/src/main/res/layout/dashboard_fragment.xml"
 source=layout.read_text(encoding="utf-8")
 anchor='<androidx.recyclerview.widget.RecyclerView android:id="@+id/dashboard_list"'
 assert source.count(anchor)==1
 source=source.replace(anchor,
-    '''<Button android:id="@+id/id4_ev_hub_entry"
-        android:layout_width="match_parent" android:layout_height="48dp"
-        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
-        android:text="⚡ ID.4 • Araç Merkezi"
-        android:textAllCaps="false" android:textSize="15sp" />
- '''+anchor)
+    '<View android:id="@+id/id4_ev_hub_entry" android:layout_width="0dp" '
+    'android:layout_height="0dp" android:visibility="gone" />\n '+anchor)
 ET.fromstring(source)
 layout.write_text(source,encoding="utf-8")
-
-# Only one added lifecycle-independent click callback. No TV/MediaSession
-# lifecycle, addon routes, playback behavior or source registration changes.
+card=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardCard.java"
+source=card.read_text(encoding="utf-8")
+anchor="\tstatic DashboardCard recentShelf(Context ctx) {"
+assert source.count(anchor)==1
+source=source.replace(anchor,'''    static DashboardCard id4Journey() {
+        return new DashboardCard(null, null, R.id.id4_ev_hub_entry, R.drawable.id4_launcher,
+            "Yol Arkadaşım", "Harita, rota ve araç bilgileri", true, false, false, null, null);
+    }
+'''+anchor)
+card.write_text(source,encoding="utf-8")
 fragment=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java"
 source=fragment.read_text(encoding="utf-8")
-anchor='		RecyclerView list = view.findViewById(R.id.dashboard_list);'
+anchor="\t\t\tmodelBuilder.rebuild(cards, smartTopCard);"
 assert source.count(anchor)==1
-source=source.replace(anchor,
-    '''        View id4Entry = view.findViewById(R.id.id4_ev_hub_entry);
-        if (id4Entry != null) {
-            // Navigation preview is phone-only until a compliant AA
-            // navigation host implementation can be tested.
-            id4Entry.setVisibility(
-                activity.getRuntimeHostMode().usesAutomotivePresentation()
-                    ? View.GONE : View.VISIBLE);
-            id4Entry.setOnClickListener(button ->
-                requireContext().startActivity(new android.content.Intent(
-                    requireContext(), me.aap.fermata.ev.Id4NavigatorActivity.class)));
-        }
-''' + anchor)
+source=source.replace(anchor,anchor+'''
+            if (!activity.getRuntimeHostMode().usesAutomotivePresentation())
+                cards.add(0, DashboardCard.id4Journey());
+''')
+anchor="\t\tprivate boolean isFeatured(int position) {"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+'''
+            if (cards.get(position).targetId == R.id.id4_ev_hub_entry) return true;
+''')
+anchor="\t\t\tDashboardCard card = cards.get(position);\n\t\t\tif (card.recentShelf)"
+assert source.count(anchor)==1
+source=source.replace(anchor,'''            DashboardCard card = cards.get(position);
+            if (card.targetId == R.id.id4_ev_hub_entry) {
+                applyLaunchCardFontScale(holder.itemView, true);
+                holder.itemView.setBackground(MediaHubStyle.launcher(ctx, 0xff328dd9));
+                holder.title.setText(card.title);
+                holder.subtitle.setText(card.subtitle);
+                holder.subtitle.setVisibility(View.VISIBLE);
+                holder.icon.setVisibility(View.GONE);
+                if (holder.eyebrow != null) holder.eyebrow.setVisibility(View.GONE);
+                holder.itemView.setOnLongClickListener(null);
+                holder.actions.setVisibility(View.GONE);
+                if (holder.heroBadge != null) holder.heroBadge.setVisibility(View.GONE);
+                if (holder.heroArt != null) {
+                    holder.heroArt.setImageTintList(null);
+                    holder.heroArt.setImageResource(R.drawable.id4_journey_banner);
+                    holder.heroArt.setVisibility(View.VISIBLE);
+                }
+                View arrow = holder.itemView.findViewById(R.id.dashboard_hero_arrow);
+                if (arrow != null) {
+                    android.graphics.drawable.GradientDrawable circle =
+                        new android.graphics.drawable.GradientDrawable();
+                    circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                    circle.setColor(0xff173d58);
+                    circle.setStroke(1, 0xff5488a8);
+                    arrow.setBackground(circle);
+                    arrow.setVisibility(View.VISIBLE);
+                }
+                bindEditActions(holder, card, false);
+                holder.itemView.setOnClickListener(v -> {
+                    if (!editMode && acceptClick())
+                        ctx.startActivity(new android.content.Intent(ctx,
+                            me.aap.fermata.ev.Id4NavigatorActivity.class));
+                });
+                return;
+            }
+            if (card.recentShelf)''')
 fragment.write_text(source,encoding="utf-8")
 
 # Register a non-exported Activity. Existing media service is unchanged.
@@ -171,12 +211,13 @@ station_catalog=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationCatal
 station_types=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4StationTypes.java"
 charge_advisor=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeAdvisor.java"
 charge_cost=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java"
+journey_banner=overlay/"fermata/src/main/res/drawable/id4_journey_banner.xml"
 launcher_icon=overlay/"fermata/src/main/res/drawable/id4_launcher.xml"
 tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting.java"
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,tomtom_routing,trip_journal,road_safety]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,trip_journal,road_safety])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,trip_journal,road_safety]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -212,7 +253,7 @@ allowed=set(SOURCE_SHA) | {
     str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
-    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay)),str(tomtom_routing.relative_to(overlay)),str(trip_journal.relative_to(overlay)),str(road_safety.relative_to(overlay))}
+    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay)),str(journey_banner.relative_to(overlay)),str(tomtom_routing.relative_to(overlay)),str(trip_journal.relative_to(overlay)),str(road_safety.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():

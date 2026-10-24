@@ -45,6 +45,7 @@ jobs:
           cat >/tmp/expected.txt <<'EOF'
           fermata/src/auto/AndroidManifest.xml
           fermata/src/main/AndroidManifest.xml
+          fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardCard.java
           fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java
           fermata/src/main/res/layout/dashboard_fragment.xml
           EOF
@@ -75,6 +76,20 @@ jobs:
             integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/traffic-provider.js
           node integration/mola-native/tests/test_traffic_provider.js
+      - name: Render and validate cockpit at phone and reference sizes
+        run: |
+          npm install --prefix "$RUNNER_TEMP/id4-browser" playwright
+          NODE_PATH="$RUNNER_TEMP/id4-browser/node_modules" \
+          CHROME_BIN="$(command -v google-chrome)" \
+          ID4_SCREENSHOTS="$RUNNER_TEMP/id4-layout" \
+          node integration/mola-native/tests/test_cockpit_layout.cjs
+      - name: Upload cockpit visual checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ID4-Cockpit-Layout-Checks
+          path: ${{ runner.temp }}/id4-layout
+          retention-days: 7
       - name: Test local ID.4 charge history and data freshness
         shell: bash
         run: |

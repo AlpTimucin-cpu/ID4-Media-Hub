@@ -1434,6 +1434,73 @@ body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
 }
 /* Native TomTom street-dark tiles must not be inverted by legacy theme. */
 body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
+/* Height-aware cockpit: all eight vehicle cards remain in view on a phone.
+   Coordinates and values are populated exclusively by the existing live callbacks. */
+@media (min-width:640px) and (orientation:landscape){
+ :root{--hud-top:clamp(44px,10.2vh,88px);--hud-dock:clamp(44px,9.5vh,82px);--hud-gap:clamp(5px,1.3vh,12px)}
+ .top{height:var(--hud-top)!important;min-height:0!important;padding:0 1.6vw!important}
+ .top .brand{height:100%!important;gap:1vw!important;flex-basis:31%!important;max-width:31%!important}
+ .brand .vw-symbol{width:6.9vh!important;height:6.9vh!important;flex-basis:6.9vh!important}
+ .top .brand strong{font-size:clamp(10px,2.7vh,24px)!important;letter-spacing:0!important}
+ .top .brand small{font-size:clamp(8px,1.65vh,14px)!important;margin-top:2px!important}
+ .top .cockpit-tabs{flex-basis:38%!important;max-width:38%!important}
+ .top .cockpit-tabs button{min-height:0!important;height:6.7vh!important;max-height:none!important;padding:0 1vw!important;font-size:clamp(10px,2vh,17px)!important;border-radius:1.7vh!important}
+ .header-live-info{gap:1vw!important;flex-basis:25%!important}
+ .header-clock{font-size:clamp(12px,2.8vh,24px)!important}
+ .header-temp{font-size:clamp(11px,2.3vh,20px)!important}
+ .header-badge{font-size:clamp(8px,1.5vh,13px)!important;padding:.7vh .7vw!important;max-width:none!important}
+ #header-traffic-status:before{content:none!important}
+ #header-traffic-status{border-color:#846d4b!important;color:#e6c88f!important}
+ #header-traffic-status.is-live{border-color:#2b8b77!important;color:#43ebbc!important}
+ #vehicle-cockpit{inset:var(--hud-top) 0 var(--hud-dock)!important}
+ #vehicle-cockpit .cockpit-left{left:1.6%!important;top:var(--hud-gap)!important;bottom:var(--hud-gap)!important;width:35%!important;max-width:none!important;display:grid!important;grid-template-rows:minmax(0,27fr) minmax(0,21fr) minmax(0,49fr)!important;gap:var(--hud-gap)!important;overflow:visible!important;max-height:none!important}
+ #vehicle-cockpit .cockpit-left>.cockpit-panel{height:auto!important;min-height:0!important;max-height:none!important;padding:1.5vh 1.2vw 1vh 6.5vw!important}
+ #vehicle-cockpit .cockpit-left>.cockpit-slim{display:none!important}
+ .cockpit-left .cockpit-title{font-size:clamp(8px,1.8vh,15px)!important;margin-bottom:.5vh!important}
+ .cockpit-left #co-sensor-age{position:static!important;max-width:100%!important;text-align:left!important;font-size:clamp(7px,1.3vh,11px)!important;margin:0!important}
+ .cockpit-left .cockpit-main-value{font-size:clamp(25px,8.8vh,76px)!important;line-height:1!important;letter-spacing:-1px!important}
+ .cockpit-left #co-soc{font-size:clamp(25px,8vh,70px)!important}
+ .co-reserve-note{font-size:clamp(7px,1.4vh,12px)!important}
+ .co-hero-icon,.co-hero-icon.road{left:1.3vw!important;top:3vh!important;width:4vw!important;height:9vh!important}
+ .co-hero-icon svg{width:100%!important;height:100%!important}
+ .cockpit-left .cockpit-bar{height:1.7vh!important;bottom:1.3vh!important;left:1.2vw!important;right:1.2vw!important}
+ #vehicle-cockpit .cockpit-smallgrid{height:100%!important;min-height:0!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;gap:var(--hud-gap)!important}
+ #vehicle-cockpit .cockpit-smallgrid .cockpit-panel{display:flex!important;padding:1vh 1vw!important;gap:.4vh!important;overflow:hidden!important}
+ #vehicle-cockpit .cockpit-smallgrid .cockpit-title{font-size:clamp(7px,1.55vh,13px)!important;line-height:1.12!important}
+ #vehicle-cockpit .cockpit-smallgrid .cockpit-value{font-size:clamp(11px,2.8vh,24px)!important;line-height:1.12!important;white-space:normal!important}
+ #vehicle-cockpit .cockpit-right{top:var(--hud-gap)!important;right:1.4%!important;width:20%!important;max-width:none!important;height:58%!important;max-height:none!important;overflow:visible!important}
+ #vehicle-cockpit .cockpit-right .cockpit-panel{box-sizing:border-box!important;height:100%!important;max-height:none!important;min-height:0!important;padding:1.5vh 1.1vw!important;display:flex!important;flex-direction:column!important;gap:0!important}
+ .cockpit-right .co-turn{grid-template-columns:3vw minmax(0,1fr)!important;gap:.6vw!important;min-height:0!important;padding:0 0 1vh!important;margin:0 0 .5vh!important}
+ .co-turn-arrow{font-size:4.8vh!important}
+ .co-turn strong{font-size:clamp(12px,2.7vh,23px)!important}
+ .co-turn .cockpit-direction{font-size:clamp(8px,1.6vh,14px)!important;line-height:1.2!important;min-height:0!important}
+ #vehicle-cockpit .cockpit-right .co-nav-row{flex:1 1 0!important;min-height:0!important;padding:.3vh 0!important;gap:.7vw!important}
+ .co-nav-icon{font-size:2.7vh!important;width:2vw!important;min-width:2vw!important}
+ #vehicle-cockpit .cockpit-right .co-nav-row .cockpit-title{font-size:clamp(7px,1.4vh,12px)!important}
+ #vehicle-cockpit .cockpit-right .co-nav-row .cockpit-value{font-size:clamp(11px,2.5vh,22px)!important}
+ #vehicle-cockpit .cockpit-right .co-nav-meta small{display:none!important}
+ #vehicle-cockpit .cockpit-right #co-destination{display:block!important;font-size:clamp(8px,1.5vh,13px)!important;max-height:3.2vh!important}
+ #vehicle-cockpit .cockpit-tripbar{left:38.5%!important;right:1.4%!important;bottom:var(--hud-gap)!important;height:20%!important;min-height:0!important;max-height:none!important;padding:1.4vh 1.3vw!important;gap:1vw!important;grid-template-columns:25% minmax(0,1fr) 20%!important}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-label,#vehicle-cockpit .cockpit-tripbar .tripbar-sub{font-size:clamp(7px,1.5vh,13px)!important}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-number{font-size:clamp(12px,2.7vh,23px)!important}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-mid{font-size:clamp(7px,1.35vh,12px)!important}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track{height:1.8vh!important;min-height:0!important;margin:1.1vh 0!important}
+ #vehicle-cockpit .cockpit-tripbar #co-alt-toggle{font-size:clamp(8px,1.5vh,13px)!important;min-height:0!important;padding:.5vh .5vw!important}
+ .drive-dock{height:var(--hud-dock)!important;padding:.5vh 1vw!important}
+ .drive-dock button{height:100%!important;max-height:none!important;min-height:0!important;padding:0!important}
+ .drive-dock button .dock-icon{font-size:clamp(16px,3.2vh,28px)!important}
+ .drive-dock button .dock-label{font-size:clamp(8px,1.5vh,13px)!important}
+ .buttons{top:calc(var(--hud-top) + var(--hud-gap))!important;left:38.5%!important}
+ .buttons button{height:5.2vh!important;width:5.2vh!important;min-height:24px!important;min-width:24px!important;font-size:2.5vh!important}
+ .map-health{top:calc(var(--hud-top) + var(--hud-gap))!important;left:50%!important;max-width:27%!important}
+ #route-map-alts{top:calc(var(--hud-top) + 7vh)!important;left:38.5%!important;font-size:1.7vh!important}
+ .map-credit{bottom:calc(var(--hud-dock) + 2px)!important;font-size:clamp(7px,1.4vh,12px)!important}
+ .cockpit-toast{bottom:calc(var(--hud-dock) + 22vh)!important;left:39%!important;max-width:38%!important;font-size:clamp(9px,1.7vh,15px)!important}
+ .sheet.search-open,.sheet.details-open{top:calc(var(--hud-top) + var(--hud-gap))!important;bottom:calc(var(--hud-dock) + var(--hud-gap))!important;left:38%!important;right:22%!important}
+ #map .leaflet-tile-pane{filter:invert(.92) hue-rotate(178deg) brightness(.68) saturate(.2)!important}
+ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
+}
+
 </style>
 </head><body>
 <div id="map"></div>
@@ -2921,7 +2988,12 @@ $('traffic-station-stop').onclick=function(){
 };
 window.molaTrafficStatus=function(o){
  var headStatus=$('header-traffic-status');
- if(headStatus && o)headStatus.textContent=o.provider==='tomtom' && o.status==='active'?'TomTom canlı': 'Trafik: —';
+ if(headStatus && o){
+  var live=o.provider==='tomtom' && o.status==='active';
+  var configured=window.Id4TrafficProviders&&window.Id4TrafficProviders.configured().tomtom;
+  headStatus.textContent=live?'Trafik canlı':(configured?'Trafik kapalı':'Trafik: anahtar yok');
+  headStatus.classList[live?'add':'remove']('is-live');
+ }
  if(!o)return;
  var active=o.provider==='tomtom'&&o.status==='active';
  $('traffic-help').textContent=String(o.detail||'Trafik verisi yok');
@@ -3057,6 +3129,11 @@ $('station-suggestion-choose').onclick=function(){
 };
 $('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
 $('allSensors').onclick=function(){native('sensors')};
+if(window.Id4TrafficProviders && map){
+ if(window.Id4TrafficProviders.configured().tomtom)switchTraffic('tomtom');
+ else window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
+  detail:'Canlı trafik için TomTom anahtarı gerekli. Trafik menüsünden anahtar ekleyebilirsin.'});
+}
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
 </script></body></html>
