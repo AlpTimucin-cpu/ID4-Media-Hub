@@ -926,6 +926,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 packet.put("alternatives",routes.length());
                 packet.put("routePreviews",routePreviewGeometries(routes));
                 packet.put("routeIndex",optionIndex);
+                packet.put("routeGeneration",myGeneration);
                 packet.put("provider",activeRouteProvider);
                 boolean tomtom=selected.optBoolean("trafficAware",false) &&
                     activeRouteProvider.startsWith("TomTom Orbis v3");
@@ -993,6 +994,30 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         packet.optDouble("durationMin",Double.NaN),
                         System.currentTimeMillis());
                     send("molaRoute",packet);
+                    // A route selection starts one bounded, read-only OSM query
+                    // for sampled fixed-camera records, independent of GPS.
+                    // Never block route display or claim complete camera coverage.
+                    long safetyNow=System.currentTimeMillis();
+                    if(safetyNow-lastSafetyQueryAt>=90000){
+                        lastSafetyQueryAt=safetyNow;
+                        final int safetyGeneration=myGeneration;
+                        try{
+                            JSONArray routeCoords=selected.getJSONObject("geometry")
+                                .getJSONArray("coordinates");
+                            safetyJobs.execute(()->{
+                                try{
+                                    JSONObject cameras=Id4RoadSafety.retrieveCorridor(routeCoords)
+                                        .put("routeGeneration",safetyGeneration);
+                                    if(!destroyed&&generation==safetyGeneration)
+                                        send("molaSafetyCameras",cameras);
+                                }catch(Exception e){
+                                    if(!destroyed&&generation==safetyGeneration)
+                                        send("molaSafetyError",record("safety",
+                                            "OSM kamera verisi doğrulanamadı; rota korunuyor."));
+                                }
+                            });
+                        }catch(Exception ignored){}
+                    }
                     final JSONObject routeData=selected;
                     activeWeatherRoute=routeData;
                     lastJourneyWeatherRefreshAt=System.currentTimeMillis();
