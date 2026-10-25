@@ -2576,8 +2576,23 @@ window.molaManeuver=function(o){
  $('co-maneuver').textContent=o.instruction.slice(0,90)+' · yaklaşık '+
    Math.round(o.straightLineMeters)+' m (kuş uçuşu)';
 };
+var selectedScenarioSoc=80,scenarioMeasured=false;
+var newestStationTicket=-1;
 window.molaAlternatives=function(data){
  if(!data||!Array.isArray(data.options))return;
+ // A slow station response for an older 80/100 selection must never
+ // override a newer scenario, even if JavaScript events arrive out of order.
+ if(Number.isInteger(data.routeGeneration)&&
+    Number.isInteger(activeRouteGeneration)&&
+    data.routeGeneration!==activeRouteGeneration)return;
+ if(Number.isInteger(data.stationTicket)){
+  if(data.stationTicket<newestStationTicket)return;
+  newestStationTicket=data.stationTicket;
+ }
+ if(!scenarioMeasured && data.options.some(function(opt){
+   return opt&&opt.socAssumed===true &&
+    Number.isFinite(opt.scenarioStartSoc)&&opt.scenarioStartSoc!==selectedScenarioSoc;
+ }))return;
  routeOptions=data.options.slice(0,12);
  chosenRouteIndex=Number(data.selectedIndex)||0;
  var list=$('co-alts-list');list.replaceChildren();
@@ -2603,7 +2618,8 @@ window.molaAlternatives=function(data){
   var energy=Number.isFinite(opt.chargeLowKwh)&&Number.isFinite(opt.chargeHighKwh)?
    ' · '+Math.round(opt.chargeLowKwh)+'–'+Math.round(opt.chargeHighKwh)+' kWh':'';
   details.textContent=opt.km+' km · '+opt.minutes+' dk · '+count+energy+
-   (opt.socAssumed?' · %80 SoC varsayımı':' · OBD SoC modeli')+
+   (opt.socAssumed?' · %'+Math.round(Number(opt.scenarioStartSoc)||80)+' SoC senaryosu':
+     ' · OBD SoC modeli')+
    (opt.stationsKnown?
      ' · '+opt.ccsCount+' yakın CCS kaydı':' · CCS listesi alınamadı');
   summary.appendChild(name);summary.appendChild(details);
@@ -2656,6 +2672,7 @@ window.molaAlternativeError=function(o){
 };
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
+ newestStationTicket=-1;
  cachedJourneyWeather=null;
  safetyActive=true;
  activeRouteGeneration=Number.isInteger(o.routeGeneration)?o.routeGeneration:null;
@@ -3040,7 +3057,17 @@ $('co-focus').onclick=function(){
 $('co-expand').onclick=function(){native('landscape',false)};
 $('go-fullscreen').onclick=function(){native('landscape',true)};
 
-$('dock-stations').onclick=function(){native('stations')};
+function showChargingInCurrentMap(){
+ // Preserve route / media / OBD state: do NOT start another Android Activity.
+ $('co-alts').classList.remove('open');
+ document.body.classList.remove('alts-open');
+ setRouteDetails(false);
+ setMapLayerMenu(true);
+ setStationLayer('all');
+ msg('⚡ EPDK şarj noktaları bu haritada gösteriliyor. Canlı doluluk/fiyat doğrulanmadı.');
+}
+window.molaOpenStations=function(){showChargingInCurrentMap()};
+$('dock-stations').onclick=showChargingInCurrentMap;
 $('dock-safety').onclick=$('layer-safety').onclick=function(){
  safetyActive=!safetyActive;
  $('dock-safety').classList[safetyActive?'add':'remove']('active');
@@ -3057,10 +3084,7 @@ $('layer-safety-voice').onclick=function(){
  $('layer-safety-voice').textContent=safetyVoice?
   '🔊 Sesli uyarı açık':'🔇 Sesli uyarı kapalı';
 };
-$('co-station-tab').onclick=function(){
- setMapLayerMenu(true);
- setStationLayer('all');
-};
+$('co-station-tab').onclick=showChargingInCurrentMap;
 $('layer-all').onclick=function(){setStationLayer('all')};
 $('layer-ccs').onclick=function(){setStationLayer('ccs')};
 $('layer-route').onclick=function(){setStationLayer('route')};
@@ -3199,11 +3223,28 @@ if(map&&map.on){
 
 $('dock-obd').onclick=function(){native('obdSettings')};
 $('layer-obd-settings').onclick=function(){setMapLayerMenu(false);native('obdSettings')};
-$('soc-choice-80').onclick=function(){native('setScenarioSoc',80)};
-$('soc-choice-100').onclick=function(){native('setScenarioSoc',100)};
+function pickRouteScenario(pct){
+ if(pct!==80&&pct!==100)return;
+ // Immediate interactive feedback; native state will persist and recalculate
+ // an estimate from cached route geometry before EPDK enrichment.
+ if(scenarioMeasured){
+  msg('Güncel OBD doluluğu varken varsayılan SoC kullanılmaz.');return;
+ }
+ selectedScenarioSoc=pct;
+ $('soc-choice-80').classList.toggle('selected',pct===80);
+ $('soc-choice-100').classList.toggle('selected',pct===100);
+ $('soc-scenario-note').textContent='%'+pct+' senaryosu seçildi · rota maliyeti yenileniyor…';
+ $('co-cost').textContent='%'+pct+' senaryosu hesaplanıyor…';
+ if(!native('setScenarioSoc',pct))
+  $('soc-scenario-note').textContent='OBD senaryosu ile bağlantı kurulamadı.';
+}
+$('soc-choice-80').onclick=function(){pickRouteScenario(80)};
+$('soc-choice-100').onclick=function(){pickRouteScenario(100)};
 window.molaSocScenario=function(packet){
  if(!packet)return;
  var measured=packet.measured===true,pct=Math.round(Number(packet.percent));
+ scenarioMeasured=measured;
+ if(!measured&&(pct===80||pct===100))selectedScenarioSoc=pct;
  $('soc-scenario-choice').hidden=measured;
  $('soc-choice-80').classList.toggle('selected',!measured&&pct===80);
  $('soc-choice-100').classList.toggle('selected',!measured&&pct===100);
@@ -3219,7 +3260,7 @@ $('co-disconnect').onclick=function(){
  msg('OBD adaptörü serbest bırakılıyor. Car Scanner uygulamasında yeniden bağlan.');
 };
 $('charge').onclick=$('charge-map').onclick=function(){showVisibleStations()};
-$('charge-list').onclick=function(){native('stations')};
+$('charge-list').onclick=showChargingInCurrentMap;
 $('route-map-alts').onclick=function(){$('co-alt-toggle').onclick()};
 $('co-alt-toggle').onclick=function(){
  if(!currentRouteProgress){msg('Önce rota oluşturmalısın.');return}
