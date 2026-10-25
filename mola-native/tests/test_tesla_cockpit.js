@@ -41,6 +41,17 @@ const context=vm.createContext({window:win,Date:class extends Date {
 },Number,Math,String,Array});
 vm.runInContext(source,context,{filename:'id4-tesla-cockpit.js'});
 assert.equal(win.mapResizes,1,'one existing map was resized, not recreated');
+// Re-entry must not stack multiple native callback listeners or timers.
+assert.equal(win.ID4TeslaCockpit.start(),true);
+assert.equal(win.mapResizes,1,'start() is idempotent');
+// Missing/malformed packets are common when POCO F5 loses its ELM327 socket.
+assert.doesNotThrow(()=>win.molaTelemetry(undefined));
+assert.doesNotThrow(()=>win.molaPosition(null));
+assert.doesNotThrow(()=>win.molaCurrentWeather({modelBased:false}));
+assert.equal(element('id4-side-soc').textContent,'— %');
+assert.equal(element('id4-drive-speed').textContent,'—');
+// Reset counts: the malformed data still passes through Mola callback first.
+telemetryCalls=0;positionCalls=0;weatherCalls=0;
 assert.equal(win.ID4TeslaCockpit.parseSoc('64 %'),64);
 assert.equal(win.ID4TeslaCockpit.parseSoc('105%'),null);
 assert.equal(win.ID4TeslaCockpit.parseSoc('<img onerror=alert(1)>'),null);
