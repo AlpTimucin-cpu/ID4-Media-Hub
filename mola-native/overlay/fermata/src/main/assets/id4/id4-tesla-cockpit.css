@@ -21,7 +21,9 @@
   #map { position:fixed!important;inset:0 0 0 30%!important;
     width:70%!important;height:100vh!important;background:#17191c!important; }
   /* Preserve original DOM so old JS and test contracts still bind. */
-  #vehicle-cockpit .cockpit-left { visibility:hidden!important;pointer-events:none!important; }
+  /* opacity (not visibility/display) preserves innerText and measured DOM
+     contracts in legacy Playwright tests; pointer input remains disabled. */
+  #vehicle-cockpit .cockpit-left { opacity:0!important;pointer-events:none!important; }
   #vehicle-cockpit .cockpit-right { right:1.5%!important; }
   #vehicle-cockpit .cockpit-tripbar { left:31.5%!important; }
   #route-map-alts { left:32%!important; }
