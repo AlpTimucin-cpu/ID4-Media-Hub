@@ -99,10 +99,14 @@ function renderStop(){
   if(!holder)return;
   var st=S.suggested;
   var signature=st&&S.routeKm?String(st.id)+':'+st.km+':'+S.routeKm:'';
+  if(!st){
+    // The previous route's candidate must disappear immediately after a new
+    // route, provider error or invalid station payload.
+    stopSignature=''; holder.textContent=''; return;
+  }
   if(signature===stopSignature)return;
-  stopSignature=signature;
-  holder.textContent='';
-  if(!st||!finite(S.routeKm)||S.routeKm<=0||
+  stopSignature=signature; holder.textContent='';
+  if(!finite(S.routeKm)||S.routeKm<=0||
      !finite(st.km)||st.km<0||st.km>S.routeKm)return;
   var ratio=st.km/S.routeKm*100;
   var pin=root.document.createElement('span');
@@ -124,7 +128,7 @@ function render(){
   set('id4-drive-speed',finite(gps)?Math.round(gps):'—');
   set('id4-drive-gear','Vites: '+(fresh&&S.gear?S.gear:'—'));
   set('id4-side-soc',finite(soc)?Math.round(soc)+' %':'— %');
-  set('id4-side-temp',weather?Math.round(S.temp)+' °C':'— °C');
+  set('id4-side-temp',weather?Math.round(S.temp)+'°C':'— °C');
   set('id4-side-wind',weather?Math.round(S.wind)+' km/sa':'— km/sa');
   set('id4-side-voltage',fresh&&finite(S.voltage)?Math.round(S.voltage)+' V':'— V');
   set('id4-side-battery-temp',fresh&&finite(S.batteryTemp)?
@@ -218,6 +222,7 @@ function onRoute(p){
   // One route only: the Mola original has already drawn the polyline.
   S.routeActive=true;S.routeKm=p.distanceKm;S.routeCoords=p.coordinates;
   S.suggested=null;stopSignature='';
+  try{var oldPin=el('id4-route-stop-markers');if(oldPin)oldPin.textContent=''}catch(_){}
   S.energyLow=range(p.energyLowKwh,0,2000);
   S.energyHigh=range(p.energyHighKwh,0,2000);
   if(S.energyLow===null||S.energyHigh===null||S.energyLow>S.energyHigh){
