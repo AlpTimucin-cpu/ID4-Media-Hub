@@ -26,6 +26,8 @@
   var origin = null, destination = null;
   var route = null, weather = null;
   var stations = [], visibleStations = [];
+  // A native route packet is partial; never treat it as a full-country DC index.
+  var routeStationSnapshot = null;
   var incidents = [];
   var car = { speed: null, soc: null, receivedAt: 0 };
   var currentLocation = null, locationAt = 0;
@@ -228,6 +230,13 @@ function renderStations() {
   layers.stations.clearLayers();
   visibleStations = [];
   if (!route) { setText('id4-station-count', '—'); highlightNearestDC(true); return; }
+  if (!stations.length && routeStationSnapshot) {
+    // Show the genuine EPDK route packet in the HUD; Mola renders its markers.
+    visibleStations = routeStationSnapshot.items;
+    setText('id4-station-count', routeStationSnapshot.total + ' (rota)');
+    highlightNearestDC(true);
+    return;
+  }
   var grid = indexRoute(route.line);
   // Tüm istasyon listesi filtrelenir; sadece koridordakiler çizilir.
   for (var i = 0; i < stations.length; i++) {
@@ -256,6 +265,10 @@ function highlightNearestDC(force) {
   if (!force && markers.nearestDC && Date.now() - lastNearestAt < CFG.nearestRefreshMs) return;
   if (markers.nearestDC) { map.removeLayer(markers.nearestDC); markers.nearestDC = null; }
   lastNearestAt = Date.now();
+  if (!stations.length) {
+    setText('id4-nearest-dc', 'Tam EPDK listesi aktarılmadı');
+    return;
+  }
   var nearest = null, best = Infinity;
   // Rota dışındaki DC de en yakın olabilir; TÜM gerçek istasyonları tara.
   for (var i = 0; i < stations.length; i++) {
@@ -343,7 +356,7 @@ function clearRoute() {
   routeEpoch++;
   abortCurrent();
   if (layers.route) layers.route.clearLayers();
-  route = null; weather = null;
+  route = null; weather = null; routeStationSnapshot = null;
   if (layers.stations) layers.stations.clearLayers();
   if (markers.nearestDC) { map.removeLayer(markers.nearestDC); markers.nearestDC = null; }
   setText('id4-route', '—'); setText('id4-weather', '—');
@@ -577,6 +590,25 @@ function loadStations(entries) {
   renderStations();
   return stations.length;
 }
+function setRouteStations(packet) {
+  if (!packet || packet.kind !== 'route' || !Array.isArray(packet.items)) return 0;
+  var unique = new Map();
+  packet.items.forEach(function (item, i) {
+    if (!item || item.cluster) return;
+    var station = sanitizeStation(Object.assign({}, item, {
+      dc: item.ccs === true || item.dc === true
+    }), i);
+    if (station) unique.set(station.id + ':' + station.lat + ':' + station.lon, station);
+  });
+  var items = Array.from(unique.values());
+  var reported = finiteNumber(packet.total);
+  routeStationSnapshot = {
+    items: items,
+    total: reported !== null && reported >= items.length ? Math.floor(reported) : items.length
+  };
+  if (route && !stations.length) renderStations();
+  return items.length;
+}
 function importIncidents(entries) {
   if (!Array.isArray(entries)) return 0;
   var byId = new Map();
@@ -662,6 +694,7 @@ function init(existingMap) {
      setOrigin: setOrigin,
      setTarget: setTarget,
      setStations: loadStations,
+     setRouteStations: setRouteStations,
      setEnergyProfile: setEnergyProfile,
      updateCarData: updateCarData,
      updateLocation: updateLocation,
