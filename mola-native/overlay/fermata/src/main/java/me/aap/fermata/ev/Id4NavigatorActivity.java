@@ -57,6 +57,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ExecutorService routeWeatherJobs=Executors.newSingleThreadExecutor();
     // Station requests must not hold back route or weather processing.
     private final ExecutorService stationJobs=Executors.newSingleThreadExecutor();
+    // Slow public routing variants must not hold the first route/map hostage.
+    private final ExecutorService variantJobs=Executors.newSingleThreadExecutor();
     // Current Open-Meteo readings are MODEL values, never actual station sensors.
     private final ExecutorService currentWeatherJobs=Executors.newSingleThreadExecutor();
     // User-triggered OSM camera queries must not block route, charging or weather.
@@ -343,7 +345,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             ui.post(()->{
                 if(destroyed)return;
                 running=false;generation++;stationRequestId++;routeStationRequestId++;
-                cachedAlternatives=null;steps.clear();nextStep=0;
+                cachedAlternatives=null;activeIncidentRoute=null;
+                lastIncidentPollAt=0;steps.clear();nextStep=0;
             });
         }
         @JavascriptInterface public void suggest(String field,String query,int requestId){
@@ -506,7 +509,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("chargeNeededModel",estimate.maxStops>0)
                     .put("chargeLowKwh",Math.round(estimate.chargeMinKwh*10)/10.0)
                     .put("chargeHighKwh",Math.round(estimate.chargeMaxKwh*10)/10.0)
-                    .put("stationsKnown",false);
+                    .put("stationsKnown",false)
+                    .put("preference",route.optString("id4RoutePreference","standard"))
+                    .put("tollVerified",route.optBoolean("id4TollVerified",false));
                 if(estimate.priceEstimateAvailable){
                     row.put("costMinTry",estimate.costMinTry)
                        .put("costMaxTry",estimate.costMaxTry)
@@ -717,7 +722,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("energyLowKwh",Math.round(roadKm*.16*10)/10.0)
                     .put("energyHighKwh",Math.round(roadKm*.24*10)/10.0)
                     .put("socKnown",Double.isFinite(soc))
-                    .put("ccsCount",0).put("reachableCcsModel",false);
+                    .put("ccsCount",0).put("reachableCcsModel",false)
+                    .put("preference",route.optString("id4RoutePreference","standard"))
+                    .put("tollVerified",route.optBoolean("id4TollVerified",false));
                 // Display an EXPLICIT 80% assumption when BMS SoC is missing.
                 // Charge count models energy-equivalent stops, not real socket
                 // availability or a verified detour to a specific charger.
@@ -1166,7 +1173,23 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     " | Valhalla açık kaynak rota alınamadı");
                 JSONArray routes=out.getJSONArray("routes");
                 if(destroyed||myGeneration!=generation)return;
+                // An original OSRM/Orbis route is a genuine geometry, but toll
+                // status is unknown until provider toll sections are verified.
+                for(int i=0;i<routes.length();i++){
+                    JSONObject route=routes.optJSONObject(i);
+                    if(route!=null && !route.has("id4RoutePreference")){
+                        route.put("id4RoutePreference","standard")
+                            .put("id4TollVerified",false);
+                    }
+                }
                 renderRouteOption(routes,0,verifiedGps,hasStop,myGeneration);
+                // Add actual (not invented) shorter and toll-avoid geometry on a
+                // separate worker, without delaying the first route, forecast,
+                // safety pins or user controls. TomTom routes are kept separate.
+                if(!activeRouteProvider.startsWith("TomTom Orbis") && !hasStop){
+                    variantJobs.execute(()->enrichRouteVariants(routes,myGeneration,
+                        fromLat,fromLon,toLat,toLon));
+                }
             }catch(Exception e){
                 final String detail=routeFailure(e);
                 ui.post(()->{
@@ -1174,6 +1197,49 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     send("molaStatus",record("error","Rota oluşturulamadı · "+detail));
                 });
             }
+        });
+    }
+
+    private void enrichRouteVariants(JSONArray existing,int ticket,
+                                     double fromLat,double fromLon,
+                                     double toLat,double toLon){
+        boolean changed=false;
+        for(String mode:new String[]{"shorter","avoid-tolls","avoid-motorways"}){
+            if(destroyed||generation!=ticket||existing.length()>=9)return;
+            try{
+                JSONArray more=Id4ValhallaRouting.variant(
+                    fromLat,fromLon,toLat,toLon,Double.NaN,Double.NaN,mode);
+                for(int i=0;i<more.length()&&existing.length()<9;i++){
+                    JSONObject candidate=more.optJSONObject(i);
+                    if(candidate==null)continue;
+                    boolean novel=true;
+                    for(int k=0;k<existing.length();k++){
+                        if(!Id4ValhallaRouting.distinct(existing.getJSONObject(k),candidate)){
+                            novel=false;break;
+                        }
+                    }
+                    if(novel){existing.put(candidate);changed=true;}
+                }
+            }catch(Exception ignored){
+                // Public endpoint may be down or disable hard exclusions;
+                // never claim a successfully avoided toll on failures.
+            }
+        }
+        if(!changed || destroyed || generation!=ticket)return;
+        ui.post(()->{
+            if(destroyed||generation!=ticket)return;
+            cachedAlternatives=existing;
+            try{
+                JSONObject packet=new JSONObject()
+                    .put("routeGeneration",ticket)
+                    .put("count",existing.length())
+                    .put("routePreviews",routePreviewGeometries(existing));
+                send("molaRouteVariants",packet);
+                int stationTicket=++routeStationRequestId;
+                sendFastChargePreview(existing,selectedAlternativeIndex,ticket,stationTicket);
+                stationJobs.execute(()->loadAlternativeCards(existing,ticket,
+                    stationTicket,selectedAlternativeIndex,cachedHasStop));
+            }catch(Exception ignored){}
         });
     }
 
@@ -1197,7 +1263,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             shape.put(new JSONArray().put(last.optDouble(1)).put(last.optDouble(0)));
             result.put(new JSONObject().put("index",i).put("coordinates",shape)
                 .put("km",Math.round(route.optDouble("distance")/100.0)/10.0)
-                .put("minutes",Math.round(route.optDouble("duration")/60.0)));
+                .put("minutes",Math.round(route.optDouble("duration")/60.0))
+                .put("preference",route.optString("id4RoutePreference","standard")));
         }
         return result;
     }
@@ -1774,7 +1841,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();searchJobs.shutdownNow();routeWeatherJobs.shutdownNow();
-        stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();
+        stationJobs.shutdownNow();variantJobs.shutdownNow();
+        currentWeatherJobs.shutdownNow();
         safetyJobs.shutdownNow();incidentJobs.shutdownNow();
         if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
