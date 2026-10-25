@@ -124,8 +124,24 @@
       try {
         if (typeof type !== 'string' ||
             !Object.prototype.hasOwnProperty.call(commands, type)) return false;
-        var packet = normalizePacket(raw), callback = w[commands[type]];
-        if (!packet || typeof callback !== 'function') return false;
+        var packet = normalizePacket(raw);
+        if (!packet) return false;
+        // Legacy caller spelling is intentionally preserved for the cockpit
+        // contract. It does NOT enable or bypass Android Auto's parked-only
+        // video restrictions. It only opens this APK's original media UI.
+        if (type === 'status' &&
+            packet.command === 'LAUNCH_MOLA_32_NO_PARK') {
+          if (!w.MolaNative || typeof w.MolaNative.openMedia !== 'function')
+            return false;
+          w.MolaNative.openMedia(); // Android @JavascriptInterface, allowlisted.
+          return true;
+        }
+        // Reject command-like packets that are not an explicit allowlisted
+        // media handoff: arbitrary Java bridge method calls are forbidden.
+        if (Object.prototype.hasOwnProperty.call(packet, 'command'))
+          return false;
+        var callback = w[commands[type]];
+        if (typeof callback !== 'function') return false;
         callback(packet); // Original Mola first, addon second.
         return true;
       } catch (error) {
