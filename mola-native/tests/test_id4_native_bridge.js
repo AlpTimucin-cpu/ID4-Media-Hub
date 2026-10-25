@@ -51,9 +51,9 @@ assert.equal(bridge.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK'}),true,
 assert.equal(mediaOpened,1,'Mola opened through allowlisted native method once');
 assert.equal(bridge.receive('status',{command:'DISABLE_PARK_WINDOW'}),false,
  'never accept a driving-restriction bypass command');
-assert.equal(bridge.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK',arg:'unexpected'}),true,
- 'known fixed command is permitted but no arbitrary argument is forwarded');
-assert.equal(mediaOpened,2,'no untrusted arguments forwarded to Java');
+assert.equal(bridge.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK',arg:'unexpected'}),false,
+ 'reject extra command arguments rather than forwarding attacker-controlled extras');
+assert.equal(mediaOpened,1,'no additional native launch on malformed packet');
 assert.equal(bridge.receive('telemetry',[]),false);
 assert.equal(bridge.receive('route',JSON.stringify({coordinates:[[35,39],[36,40]]})),true);
 assert.deepEqual(order,['molaRoute']);
