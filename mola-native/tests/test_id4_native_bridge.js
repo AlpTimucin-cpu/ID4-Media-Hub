@@ -22,7 +22,10 @@ const addon={
     return {ok:!!(p.metadata && p.metadata.coverage==='country' &&
       p.stations.length===5000)};
   },
-  setStations(stations,metadata){calls.push('country');return stations.length},
+  setStations(stations,metadata){
+    if(!stations){calls.push('countryReset');return 0}
+    calls.push('country');return stations.length
+  },
   getState(){return {soc:18,position:null,countryStationsVerified:false}}
 };
 const w={ID4LiveMap:addon,id4LiveLeafletMap:{addLayer(){}},
@@ -53,6 +56,10 @@ assert.equal(bridge.epdkCountry({metadata:{coverage:'country'},stations:[]}),fal
 const national=Array.from({length:5000},(_,i)=>({id:'test-'+i}));
 assert.equal(bridge.epdkCountry({metadata:{coverage:'country'},stations:national}),true);
 assert(calls.includes('country'),'only validated full-country may reach core');
+// A malformed country refresh must explicitly clear any old highlight.
+const resetsBefore=calls.filter(x=>x==='countryReset').length;
+assert.equal(bridge.epdkCountry('{invalid JSON'),false);
+assert.equal(calls.filter(x=>x==='countryReset').length,resetsBefore+1);
 assert.equal(bridge.receive('telemetry',{fresh:true,soc:'18.3'}),true);
 assert(calls.some(p=>Array.isArray(p)&&p[0]==='telemetry'&&p[2]===18.3));
 assert.equal(bridge.receive('telemetry',{fresh:false,soc:'12'}),true);
