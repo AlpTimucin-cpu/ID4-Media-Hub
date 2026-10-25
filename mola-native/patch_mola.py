@@ -213,7 +213,7 @@ car_caps=root/"fermata/src/auto/res/xml/automotive_app_desc.xml"
 caps_source=car_caps.read_text(encoding="utf-8")
 assert caps_source.count('    <uses name="media" />')==1
 caps_source=caps_source.replace('    <uses name="media" />',
-    '    <uses name="media" />\\n    <uses name="template" />')
+    '    <uses name="media" />\n    <uses name="template" />')
 ET.fromstring(caps_source)
 car_caps.write_text(caps_source,encoding="utf-8")
 
