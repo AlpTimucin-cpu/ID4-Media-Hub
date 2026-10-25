@@ -140,7 +140,7 @@ public final class Id4OverviewActivity extends Activity {
         page.addView(text("TÜM ÖLÇÜMLER",12,true,AQUA));
         Button sensors=new Button(this);sensors.setText("25 MEB sorgusu ve şarj kayıtları  ›");
         sensors.setAllCaps(false);
-        sensors.setOnClickListener(v->startActivity(new Intent(this,Id4ObdActivity.class)));
+        sensors.setOnClickListener(v->startActivity(new Intent(this,Id4NavigatorActivity.class).putExtra("openObdSettings",true)));
         page.addView(sensors);
         page.addView(text("Kaynak: Bluetooth ELM327 · salt-okunur deneysel MEB sorguları. Car Scanner ile aynı anda bağlanma. Çalışmayan sensörler boş bırakılır.",11,false,0xff89aab5));
         render(latest);
