@@ -81,6 +81,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private volatile int generation;
     private int nextStep;
     private volatile JSONArray cachedAlternatives;
+    private volatile JSONObject activeWeatherRoute;
+    private volatile long lastJourneyWeatherRefreshAt;
     private volatile boolean cachedRouteGps, cachedHasStop;
     private long lastSpeech;
     private volatile long lastCurrentWeatherAt;
@@ -170,6 +172,23 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
+        @JavascriptInterface public void refreshJourneyWeather(){
+            ui.post(()->{
+                JSONObject route=activeWeatherRoute;
+                long now=System.currentTimeMillis();
+                if(route==null){send("molaJourneyWeatherError",record("weather",
+                    "Önce bir rota oluştur."));return;}
+                if(now-lastJourneyWeatherRefreshAt<120000){
+                    send("molaJourneyWeatherError",record("weather",
+                        "Yol tahmini iki dakikada bir yenilenebilir."));return;
+                }
+                lastJourneyWeatherRefreshAt=now;
+                final int activeGeneration=generation;
+                send("molaJourneyWeatherLoading",record("weather",
+                    "Rota boyunca güncel tahminler yenileniyor."));
+                routeWeatherJobs.execute(()->loadJourneyWeather(route,activeGeneration));
+            });
+        }
         @JavascriptInterface public void refreshWeather(){
             ui.post(()->{
                 Location loc=position;
@@ -776,6 +795,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             System.currentTimeMillis()-position.getTime()<=30000;
         final int myGeneration=++generation;
         cachedAlternatives=null;
+        activeWeatherRoute=null;
+        getSharedPreferences("id4_route_weather_v1",MODE_PRIVATE).edit()
+            .remove("packet").apply();
         running=false;
         routeStationRequestId++; // Invalidate the previous ROUTE charger batch only.
         jobs.execute(()->{
@@ -972,6 +994,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         System.currentTimeMillis());
                     send("molaRoute",packet);
                     final JSONObject routeData=selected;
+                    activeWeatherRoute=routeData;
+                    lastJourneyWeatherRefreshAt=System.currentTimeMillis();
                     // Populate a GPS-independent current MODEL weather report at
                     // the selected start; actual GPS takes precedence when fresh.
                     try{
@@ -1179,8 +1203,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             double total=cumulative[cumulative.length-1];
             if(total<10)throw new IllegalStateException("Boş güzergah");
             StringBuilder latitudes=new StringBuilder(),longitudes=new StringBuilder();
-            double[] routeLats=new double[5],routeLons=new double[5];
-            double[] fractions={0,.25,.5,.75,1};
+            double[] routeLats=new double[7],routeLons=new double[7];
+            double[] fractions={0,1.0/6,2.0/6,.5,4.0/6,5.0/6,1};
             long now=System.currentTimeMillis()/1000L;
             for(double fraction:fractions){
                 double desired=fraction*total;int j=1;
@@ -1190,7 +1214,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 double t=Math.max(0,Math.min(1,(desired-cumulative[j-1])/divisor));
                 double latitude=a.getDouble(1)+(b.getDouble(1)-a.getDouble(1))*t;
                 double longitude=a.getDouble(0)+(b.getDouble(0)-a.getDouble(0))*t;
-                int waypoint=(int)Math.round(fraction*4);
+                int waypoint=(int)Math.round(fraction*6);
                 routeLats[waypoint]=latitude;routeLons[waypoint]=longitude;
                 if(latitudes.length()>0){latitudes.append(',');longitudes.append(',');}
                 latitudes.append(String.format(Locale.US,"%.5f",latitude));
@@ -1199,7 +1223,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             int forecastHours=Math.max(5,Math.min(72,(int)Math.ceil(durationSec/3600)+3));
             String url="https://api.open-meteo.com/v1/forecast?latitude="+latitudes+
                 "&longitude="+longitudes+
-                "&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code"+
+                "&hourly=temperature_2m,precipitation_probability,precipitation,"+
+                "wind_speed_10m,wind_gusts_10m,visibility,snowfall,weather_code"+
                 "&forecast_hours="+forecastHours+"&timeformat=unixtime&timezone=GMT";
             JSONArray regions=new JSONArray(fetch(url,700000));
             if(regions.length()!=fractions.length)
@@ -1212,6 +1237,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 JSONArray temp=data.getJSONArray("temperature_2m");
                 JSONArray rain=data.getJSONArray("precipitation_probability");
                 JSONArray wind=data.getJSONArray("wind_speed_10m");
+                JSONArray gust=data.optJSONArray("wind_gusts_10m");
+                JSONArray visibility=data.optJSONArray("visibility");
+                JSONArray snowfall=data.optJSONArray("snowfall");
+                JSONArray precipitationMm=data.optJSONArray("precipitation");
                 JSONArray codes=data.getJSONArray("weather_code");
                 long at=now+(long)(fractions[i]*durationSec);
                 long smallest=Long.MAX_VALUE;int closest=0;
@@ -1224,24 +1253,55 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("etaMinutes",(int)Math.round(fractions[i]*durationSec/60.0))
                     .put("latitude",routeLats[i])
                     .put("longitude",routeLons[i])
-                    .put("forecastTime",hours.optLong(closest));
+                    .put("forecastTime",hours.optLong(closest))
+                    .put("arrivalTime",at);
                 double celsius=temp.optDouble(closest,Double.NaN);
                 double precipitation=rain.optDouble(closest,Double.NaN);
                 double windKmh=wind.optDouble(closest,Double.NaN);
                 if(smallest<=5400 && Double.isFinite(celsius) &&
                    Double.isFinite(precipitation) && Double.isFinite(windKmh)) {
+                    double gustKmh=gust==null?Double.NaN:gust.optDouble(closest,Double.NaN);
+                    double viewMeters=visibility==null?Double.NaN:
+                        visibility.optDouble(closest,Double.NaN);
+                    double snowCm=snowfall==null?Double.NaN:
+                        snowfall.optDouble(closest,Double.NaN);
+                    double rainMm=precipitationMm==null?Double.NaN:
+                        precipitationMm.optDouble(closest,Double.NaN);
+                    int code=codes.optInt(closest,-1);
                     item.put("available",true).put("temperature",celsius)
                         .put("rainProbability",precipitation)
-                        .put("wind",windKmh)
-                        .put("weatherCode",codes.optInt(closest,-1));
+                        .put("wind",windKmh).put("weatherCode",code);
+                    if(Double.isFinite(gustKmh))item.put("windGust",gustKmh);
+                    if(Double.isFinite(viewMeters))item.put("visibilityMeters",viewMeters);
+                    if(Double.isFinite(snowCm))item.put("snowfallCm",snowCm);
+                    if(Double.isFinite(rainMm))item.put("precipitationMm",rainMm);
+                    // Forecast risk labels describe MODEL possibilities, not
+                    // observed road surface state or a closed road.
+                    JSONArray risks=new JSONArray();
+                    if(viewMeters>=0 && viewMeters<1000)risks.put("Düşük görüş");
+                    if(gustKmh>=60)risks.put("Kuvvetli rüzgâr");
+                    if(code>=95 && code<=99)risks.put("Gök gürültülü yağış");
+                    if((code>=71&&code<=77)||code==85||code==86 ||
+                       (snowCm>0.2))risks.put("Kar tahmini");
+                    if((code>=56&&code<=57)||(code>=66&&code<=67))
+                        risks.put("Donan yağış olasılığı");
+                    if(precipitation>=70 && !(code>=71&&code<=77))
+                        risks.put("Yüksek yağış olasılığı");
+                    if(risks.length()>0)item.put("risks",risks);
                 }else item.put("available",false);
                 stations.put(item);
             }
             JSONObject result=new JSONObject().put("cards",stations)
                 .put("source","Open-Meteo").put("resolution","saatlik model")
                 .put("updatedAt",System.currentTimeMillis())
-                .put("liveConditions",false);
-            if(!destroyed && generation==routeGeneration)send("molaJourneyWeather",result);
+                .put("liveConditions",false)
+                .put("trafficAwareEta",activeRouteProvider.startsWith("TomTom Orbis"))
+                .put("etaAssumption","Rota oluşturulurken hesaplanan sürüş süresi; şarj ve duraklama dahil değildir");
+            if(!destroyed && generation==routeGeneration){
+                getSharedPreferences("id4_route_weather_v1",MODE_PRIVATE).edit()
+                    .putString("packet",result.toString()).apply();
+                send("molaJourneyWeather",result);
+            }
         }catch(Exception e){
             if(!destroyed && generation==routeGeneration)
                 send("molaJourneyWeatherError",record("weather",
