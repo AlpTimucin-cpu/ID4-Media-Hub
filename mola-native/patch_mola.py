@@ -107,7 +107,8 @@ source=source.replace(anchor,'''            DashboardCard card = cards.get(posit
                 holder.itemView.setOnClickListener(v -> {
                     if (!editMode && acceptClick())
                         ctx.startActivity(new android.content.Intent(ctx,
-                            me.aap.fermata.ev.Id4NavigatorActivity.class));
+                            me.aap.fermata.ev.Id4NavigatorActivity.class)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                 });
                 return;
             }
