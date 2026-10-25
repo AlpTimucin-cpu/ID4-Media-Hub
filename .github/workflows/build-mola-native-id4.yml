@@ -80,6 +80,9 @@ jobs:
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-navigator-adapter.js
           node --check integration/mola-native/tests/test_live_map.js
           node integration/mola-native/tests/test_live_map.js
+          # Tesla skin is separate from the tested route/OBD bridge.
+          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-tesla-cockpit.js
+          node integration/mola-native/tests/test_tesla_cockpit.js
           node --check integration/mola-native/tests/test_id4_native_bridge.js
           node integration/mola-native/tests/test_id4_native_bridge.js
           python3 - <<'PY'
@@ -221,6 +224,7 @@ jobs:
                   "id4-offline-geography.js","id4-basemap.js",
                   "traffic-provider.js","traffic-config.js",
                   "leaflet.js","leaflet.css","maplibre-gl.js","maplibre-gl.css",
+                  "id4-tesla-cockpit.css","id4-tesla-cockpit.js",
                   "maplibre-gl-leaflet.js","MAPLIBRE_LICENSE.txt","MAPLIBRE_LEAFLET_LICENSE.txt",
               ]
               missing=["assets/id4/"+name for name in scripts
@@ -229,6 +233,9 @@ jobs:
               for name in ["id4-offline-geography.js","id4-basemap.js"]:
                   assert 'src="'+name+'"' in html
                   assert len(apk.read("assets/id4/"+name))>1000
+              assert 'id="id4-tesla-side"' in html
+              assert 'src="id4-tesla-cockpit.js"' in html
+              assert 'href="id4-tesla-cockpit.css"' in html
               assert "Id4BaseMap.init(map" in html
               assert 'class="dock-climate"' not in html
               assert 'KLİMA</' not in html
