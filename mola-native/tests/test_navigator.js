@@ -103,7 +103,7 @@ for(const id of ['dock-traffic','dock-safety','layer-weather','layer-traffic','l
 assert(html.includes('id="route-weather-shortcut" class="header-weather-button" role="status"'),
  'weather is a read-only status, not a button');
 assert(html.includes('safetyActive=true;') &&
-       html.includes('if(map && currentRouteProgress && w.available===true)'),
+       html.includes('if(map && currentRouteProgress && (w.available===true||w.nowAvailable===true))'),
  'route must automatically enable sampled camera records and weather markers');
 assert(html.includes("if(traffic.configured().tomtom&&traffic.getActive()!=='tomtom')"),
  'configured live traffic must activate automatically on route');
