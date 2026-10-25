@@ -65,19 +65,44 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  m.updateCarData(50,19);
  assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
  const near={id:'near',lat:39.02,lon:35.02,dc:true,title:'Nearest DC'};
- assert.equal(m.setStations([near]),1);
+ assert.equal(m.setStations([near]),0);
+ assert.equal(m.getEPDKValidation().ok,false);
  assert.equal(m.isCountryDataReady(),false);
- assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
+ assert.equal(el('id4-nearest-dc').textContent,'—');
  // Incomplete metadata must not promote a regional data slice.
  m.setStations([near],{source:'EPDK',coverage:'country',complete:true,
    geocodedCount:1,verifiedAtUtc:new Date(clock).toISOString()});
  assert.equal(m.isCountryDataReady(),false);
  // Deliberately using generated *test fixtures*, not claiming live EPDK records.
- const national=Array.from({length:5000},(_,i)=>({
-   id:'test-'+i,lat:40,lon:36,dc:true,title:'Far test station'}));
- national[0]=near;
+ const fixture=(id,lat=40,lon=36)=>({
+   id,coordinates:{lat,lng:lon},socketType:'DC',power_kw:50,
+   currentStatus:'unknown',title:'Test DC '+id,operator:'TEST ONLY'
+ });
+ const national=Array.from({length:5000},(_,i)=>fixture('test-'+i));
+ national[0]=fixture('near',39.02,35.02);
+ national[0].title='Nearest DC';
  const metadata={source:'EPDK',coverage:'country',complete:true,
    geocodedCount:national.length,verifiedAtUtc:new Date(clock).toISOString()};
+ assert.equal(m.validateEPDKDataContract({stations:national,metadata}).ok,true);
+ // Explicit mandatory-fields checks and fail-closed reject (no partial map).
+ for (const field of ['id','coordinates','socketType','power_kw','currentStatus']){
+   const batch=national.slice();
+   batch[0]={...batch[0]};
+   delete batch[0][field];
+   assert.equal(m.validateEPDKDataContract({stations:batch,metadata}).ok,false,
+     'reject missing '+field);
+ }
+ const duplicate=national.slice();
+ duplicate[1]={...duplicate[0]};
+ assert.equal(m.validateEPDKDataContract({stations:duplicate,metadata}).ok,false);
+ const invalidLive=national.slice();
+ invalidLive[0]={...invalidLive[0],currentStatus:'available'};
+ assert.equal(m.validateEPDKDataContract({stations:invalidLive,metadata}).ok,false,
+   'do not trust untimed live availability');
+ const validLive=national.slice();
+ validLive[0]={...validLive[0],currentStatus:'available',
+   statusObservedAtUtc:new Date(clock).toISOString()};
+ assert.equal(m.validateEPDKDataContract({stations:validLive,metadata}).ok,true);
  assert.equal(m.setStations(national,metadata),5000);
  assert.equal(m.isCountryDataReady(),true);
  assert.match(el('id4-nearest-dc').textContent,/Nearest DC/);
@@ -105,18 +130,23 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  // A stale EPDK date disables nearest-DC even when coverage was once complete.
  m.setStations(national,{...metadata,verifiedAtUtc:'2024-01-01T00:00:00Z'});
  assert.equal(m.isCountryDataReady(),false);
- assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
+ assert.equal(el('id4-nearest-dc').textContent,'—');
  // Geometric 5 km buffer: near 4.9 km accepted; far 5.2 km rejected.
  const horizontal={coordinates:[[35,39],[35.12,39]],distanceKm:11,durationMin:10};
  assert.equal(m.ingestNativeRoute(horizontal),true);
  m.updateLocation(39,35);
  m.updateCarData(0,80);
- m.setStations([
-  {id:'inside',lat:39.044,lon:35.06,dc:true,title:'4.9 km from route'},
-  {id:'outside',lat:39.047,lon:35.06,dc:true,title:'5.2 km from route'}
- ]);
+ const corridorNational=Array.from({length:5000},(_,i)=>fixture('away-'+i));
+ corridorNational[0]=fixture('inside',39.044,35.06); // ~4.89 km
+ corridorNational[1]=fixture('outside',39.047,35.06); // ~5.23 km
+ assert.equal(m.setStations(corridorNational,{
+   ...metadata,verifiedAtUtc:new Date(clock).toISOString()}),5000);
  assert.equal(m.getState().corridorStations,1);
- assert.equal(el('id4-station-count').textContent,'1 (kısmi)');
+ assert.equal(el('id4-station-count').textContent,'1');
+ // Replacing with a partial dataset must leave zero addon station pins.
+ assert.equal(m.setStations([corridorNational[0]],metadata),0);
+ assert.equal(m.getState().countryStationsVerified,false);
+ assert.equal(el('id4-station-count').textContent,'—');
  // Independently exercise temperature-only, wind-only and neutral conditions.
  const cases=[
   {temperature_2m:-5,wind_speed_10m:40,expected:1.15},
@@ -135,5 +165,5 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  assert(kwh.every(Number.isFinite),'measured energy profile must yield numeric kWh');
  assert(kwh[0]>kwh[3] && Math.abs(kwh[0]/kwh[3]-1.15)<0.07,
    'weather penalty should be applied once, not twice');
- console.log('PASS: 5 km buffer, national EPDK coverage guard, SoC, stale GPS, low battery and weather energy');
+ console.log('PASS: phase-3 EPDK strict contract, 5 km buffer, SoC, GPS fail-safe and single weather multiplier');
 })().catch(error=>{console.error(error);process.exitCode=1});
