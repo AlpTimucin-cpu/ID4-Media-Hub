@@ -513,10 +513,28 @@ win.molaAlternatives({selectedIndex:1,fastestIndex:0,shortestIndex:1,
   stationsKnown:true,ccsCount:35,socKnown:true,chargeNeededModel:true,
   costMinTry:792,costMaxTry:1616,tariffOperator:'ZES',
   tariffChecked:'2026-10-22'}]});
-assert(get('co-cost').textContent.includes('792–1616 TL'),
+assert(get('co-cost').textContent.includes('792–1.616 TL'),
  'automatic estimate must use known verified network price range');
 assert(get('co-cost-note').textContent.includes('soket'),
  'cost summary must explain it is not a live confirmed bill');
+win.molaAlternatives({selectedIndex:0,fastestIndex:0,shortestIndex:0,
+ chargeAwareIndex:-1,options:[{
+ index:0,km:525,minutes:405,energyLowKwh:84,energyHighKwh:126,
+ stationsKnown:false,ccsCount:0,socKnown:false,socAssumed:true,
+ chargeNeededModel:true,chargeStopsMin:2,chargeStopsMax:3,
+ chargeLowKwh:50.2,chargeHighKwh:92.2,
+ costMinTry:386.5,costMaxTry:1520.38,
+ priceType:'market-scenario',priceBasis:'Türkiye pazar senaryosu',
+ tariffChecked:'2026-10-16'
+}]});
+assert(get('co-alts-list').children[0].children[0].children[1].textContent.includes('2–3 DC mola'),
+ 'model stop count must be visible even without BMS SoC');
+assert(get('co-cost').textContent.includes('2–3 DC mola')&&
+ get('co-cost').textContent.includes('387–1.520 TL'),
+ 'model-priced charge count and TRY range must replace Fiyat yok');
+assert(get('co-cost-note').textContent.includes('%80 çıkış senaryosu'),
+ 'unknown BMS SoC must never be represented as a measured state');
+
 
 assert.equal(get('co-maneuver').textContent,'Devam et',
  'cockpit first maneuver must be drawn from OSRM instructions');
