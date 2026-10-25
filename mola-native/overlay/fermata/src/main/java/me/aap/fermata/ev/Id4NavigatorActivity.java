@@ -432,6 +432,77 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }catch(Exception ignored){}
         send("molaSocScenario",j);
     }
+    /**
+     * The instant, local estimate MUST NOT wait for EPDK download, catalogue
+     * parsing or four expensive route-corridor scans. Returning cached source
+     * station counts for a new SoC is also unsafe, so mark them unknown here.
+     * An asynchronous EPDK enrichment may replace these cards afterwards.
+     */
+    private void sendFastChargePreview(JSONArray options,int selectedIndex,int version,
+                                       int stationTicket){
+        if(options==null||options.length()==0)return;
+        try{
+            Id4EnergyData.Snapshot reading=Id4EnergyData.load(this,System.currentTimeMillis());
+            double measured=reading.hasSoc()?reading.soc:Double.NaN;
+            int assumption=scenarioSoc();
+            int count=Math.min(12,options.length());
+            JSONArray rows=new JSONArray();
+            int shortestIndex=0,fastestIndex=0;
+            double shortest=Double.POSITIVE_INFINITY,fastest=Double.POSITIVE_INFINITY;
+            for(int i=0;i<count;i++){
+                JSONObject route=options.optJSONObject(i);
+                if(route==null)continue;
+                double km=route.optDouble("distance",Double.NaN)/1000.0;
+                double minutes=route.optDouble("duration",Double.NaN)/60.0;
+                if(!Double.isFinite(km)||km<=0||km>4000||
+                   !Double.isFinite(minutes)||minutes<=0)continue;
+                if(km<shortest){shortest=km;shortestIndex=i;}
+                if(minutes<fastest){fastest=minutes;fastestIndex=i;}
+                Id4TripChargePlan.Estimate estimate=Id4TripChargePlan.estimate(
+                    km,measured,"",java.time.LocalDate.now(),assumption);
+                JSONObject row=new JSONObject()
+                    .put("index",i)
+                    .put("km",Math.round(km*10.0)/10.0)
+                    .put("minutes",Math.round(minutes))
+                    .put("energyLowKwh",Math.round(km*1.6)/10.0)
+                    .put("energyHighKwh",Math.round(km*2.4)/10.0)
+                    .put("socKnown",estimate.measuredSoc)
+                    .put("socAssumed",!estimate.measuredSoc)
+                    .put("scenarioStartSoc",estimate.startSoc)
+                    .put("chargeStopsMin",estimate.minStops)
+                    .put("chargeStopsMax",estimate.maxStops)
+                    .put("chargeNeededModel",estimate.maxStops>0)
+                    .put("chargeLowKwh",Math.round(estimate.chargeMinKwh*10)/10.0)
+                    .put("chargeHighKwh",Math.round(estimate.chargeMaxKwh*10)/10.0)
+                    .put("stationsKnown",false);
+                if(estimate.priceEstimateAvailable){
+                    row.put("costMinTry",estimate.costMinTry)
+                       .put("costMaxTry",estimate.costMaxTry)
+                       .put("priceBasis",estimate.priceBasis)
+                       .put("tariffSource",estimate.priceSource)
+                       .put("priceType","market-scenario")
+                       .put("tariffChecked","2026-10-16");
+                }
+                rows.put(row);
+            }
+            JSONObject response=new JSONObject().put("options",rows)
+                .put("selectedIndex",selectedIndex)
+                .put("fastestIndex",fastestIndex)
+                .put("shortestIndex",shortestIndex)
+                .put("chargeAwareIndex",-1)
+                .put("routeGeneration",version)
+                .put("stationTicket",stationTicket)
+                .put("livePrices",false).put("liveAvailability",false)
+                .put("fastPreview",true);
+            if(!destroyed&&generation==version&&
+               routeStationRequestId==stationTicket)
+                send("molaAlternatives",response);
+        }catch(Exception e){
+            send("molaAlternativeError",record("alternatives",
+                "Şarj senaryosu hesaplanamadı: "+e.getClass().getSimpleName()));
+        }
+    }
+
     private void refreshScenarioRoutes(){
         JSONArray options=cachedAlternatives;
         if(options==null||options.length()==0)return;
@@ -439,6 +510,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         int version=generation;
         int index=selectedAlternativeIndex;
         boolean stop=cachedHasStop;
+        // Immediate value update, before any slow EPDK work.
+        sendFastChargePreview(options,index,version,ticket);
         stationJobs.execute(()->loadAlternativeCards(options,version,ticket,index,stop));
         JSONObject choice=options.optJSONObject(index);
         if(choice!=null)stationJobs.execute(()->loadRouteStations(choice,version,ticket));
@@ -571,9 +644,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 points.add(new Id4StationCatalog.Point(finalPt.getDouble(1),finalPt.getDouble(0)));
             }
             Id4EnergyData.Snapshot snapshot=Id4EnergyData.load(this,System.currentTimeMillis());
-            double soc=snapshot.hasSoc()?snapshot.soc:Double.NaN;
+            double soc=snapshot.hasSoc()?snapshot.soc:scenarioSoc();
             double roadKm=route.getDouble("distance")/1000.0;
             JSONObject packet=stationCatalog.alongRoute(points,roadKm,soc);
+            packet.put("socAssumed",!snapshot.hasSoc());
+            packet.put("scenarioStartSoc",soc);
             if(route.getJSONArray("legs").length()>1){
                 packet.remove("suggested"); // already travelling via a stop; avoid second suggestion
                 packet.put("stopIncluded",true);
@@ -1108,6 +1183,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         System.currentTimeMillis());
                     send("molaRoute",packet);
                     sendScenarioStatus();
+                    // Show source-labeled pricing and stop count immediately;
+                    // wait for EPDK only to enrich station availability hints.
+                    final int instantStationTicket=routeStationRequestId;
+                    sendFastChargePreview(routes,optionIndex,myGeneration,instantStationTicket);
                     if(!Id4EnergyData.load(this,System.currentTimeMillis()).hasSoc())
                         ui.postDelayed(this::promptScenarioIfMissing,600);
                     // A route selection starts one bounded, read-only OSM query
