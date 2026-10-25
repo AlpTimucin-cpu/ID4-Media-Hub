@@ -82,6 +82,12 @@ public final class Id4CarPoiService extends CarAppService {
 
             ItemList.Builder list=new ItemList.Builder();
             list.addItem(new Row.Builder()
+                .setTitle("☁ ID.4 · Yol boyunca hava")
+                .addText("Rota başlangıcı, yol noktaları, varış ve meteoroloji riski")
+                .setOnClickListener(()->getScreenManager().push(
+                    new Id4CarRouteWeatherScreen(getCarContext())))
+                .build());
+            list.addItem(new Row.Builder()
                 .setTitle("🚙 ID.4 · OBD bağlantısı")
                 .addText("Adaptör bağla · ECU durumunu kontrol et")
                 .setOnClickListener(()->getScreenManager().push(
@@ -95,9 +101,9 @@ public final class Id4CarPoiService extends CarAppService {
                     .addText(message).build());
             }else{
                 // Host-safe pagination: never flood the driving UI with >6 rows.
-                int first=page*4;
+                int first=page*3;
                 if(first>=stations.length()){page=0;first=0;}
-                int count=Math.min(stations.length(),first+4);
+                int count=Math.min(stations.length(),first+3);
                 for(int i=first;i<count;i++){
                     JSONObject station=stations.optJSONObject(i);
                     if(station==null)continue;
@@ -125,11 +131,11 @@ public final class Id4CarPoiService extends CarAppService {
                         new Id4CarStationDetailsScreen(getCarContext(),selected,ageLabel)));
                     list.addItem(row.build());
                 }
-                if(stations.length()>4){
-                    final int pageCount=(stations.length()+3)/4;
+                if(stations.length()>3){
+                    final int pageCount=(stations.length()+2)/3;
                     list.addItem(new Row.Builder()
                         .setTitle("Diğer şarj noktaları")
-                        .addText("Sayfa "+(page+1)+"/"+pageCount+" · sonraki 4 nokta")
+                        .addText("Sayfa "+(page+1)+"/"+pageCount+" · sonraki 3 nokta")
                         .setOnClickListener(()->{
                             page=(page+1)%pageCount;
                             invalidate();
