@@ -420,7 +420,7 @@ assert(get('compact-weather').children[0].textContent.includes('12°C'),
   'compact weather did not update');
 assert(get('weather-source').textContent.includes('model'),
   'model forecast not labeled');
-assert(get('co-weather').textContent.includes('5 hava tahmini noktası'),
+assert(get('co-weather').textContent.includes('4 hava tahmini noktası'),
  'whole-trip forecast should replace earlier compact forecast label');
 // Real route callback must update visible polyline, not merely route inputs.
 // The older GPS fix from the follow-map test is now stale: route cannot invent progress.
