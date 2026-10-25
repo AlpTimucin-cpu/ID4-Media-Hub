@@ -229,6 +229,9 @@ decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
 word_core=overlay/"fermata/src/main/assets/id4/id4-live-map.js"
 word_adapter=overlay/"fermata/src/main/assets/id4/id4-navigator-adapter.js"
+# Premium display layer is additive: original navigation, media and EPDK remain.
+tesla_css=overlay/"fermata/src/main/assets/id4/id4-tesla-cockpit.css"
+tesla_js=overlay/"fermata/src/main/assets/id4/id4-tesla-cockpit.js"
 word_addon_css=overlay/"fermata/src/main/assets/id4/id4-live-addon.css"
 city_license=overlay/"fermata/src/main/assets/id4/CITY_DATA_LICENSE.txt"
 leaflet_js=overlay/"fermata/src/main/assets/id4/leaflet.js"
@@ -256,8 +259,8 @@ valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRou
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
 traffic_incidents=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TrafficIncidents.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,word_core,word_adapter,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
-for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,decoder,nav_html,word_core,word_adapter,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
+for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -292,7 +295,7 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
 allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
     str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),
-    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
+    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(tesla_css.relative_to(overlay)),str(tesla_js.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),
