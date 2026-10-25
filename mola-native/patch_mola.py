@@ -223,6 +223,7 @@ obd=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ObdActivity.java"
 auto_poi=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarPoiService.java"
 auto_obd=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarObdScreen.java"
 auto_station=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarStationDetailsScreen.java"
+auto_weather=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarRouteWeatherScreen.java"
 navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
 decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
@@ -250,8 +251,8 @@ tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting
 valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRouting.java"
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,auto_poi,auto_obd,auto_station])
-for f in [java,html,obd,auto_poi,auto_obd,auto_station,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,auto_poi,auto_obd,auto_station,auto_weather])
+for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -285,7 +286,7 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
-    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(navigator.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),
     str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
