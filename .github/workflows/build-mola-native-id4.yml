@@ -75,6 +75,24 @@ jobs:
           node --check integration/mola-native/tests/test_basemap.js
           node integration/mola-native/tests/test_basemap.js
           node --check integration/mola-native/tests/test_navigator.js
+          # Word delivery: parse-check both attached scripts before packaging.
+          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-live-map.js
+          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-navigator-adapter.js
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('integration/mola-native/overlay/fermata/src/main/assets/id4')
+          html=(root/'navigator.html').read_text()
+          core=(root/'id4-live-map.js').read_text()
+          adapter=(root/'id4-navigator-adapter.js').read_text()
+          assert html.count('window.id4LiveLeafletMap=map')==1
+          assert html.count('window.ID4_LIVE_ATTACH_ONLY=true')==1
+          assert html.count('src="id4-live-map.js"')==1
+          assert html.count('src="id4-navigator-adapter.js"')==1
+          assert 'ingestNativeRoute' in core and 'attachExistingMap' in core
+          assert 'window.id4LiveLeafletMap' in adapter or 'id4LiveLeafletMap' in adapter
+          assert 'localIncidentKey' in core and 'corridorKm: 5' in core
+          print('PASS: Word addon attaches to existing navigator, no duplicate map')
+          PY
           node integration/mola-native/tests/test_navigator.js \
             integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/traffic-provider.js
