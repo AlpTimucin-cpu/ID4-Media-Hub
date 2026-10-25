@@ -29,6 +29,15 @@ const fs = require('node:fs');
   assert.deepEqual(issues, [], 'Vehicle cards clipped at ' + width + 'x' + height);
   assert.match(await page.locator('#header-traffic-status').innerText(), /anahtar yok/);
   assert.equal(await page.locator('#co-soc').innerText(), '— %');
+  // Avoid duplicating live telemetry as a third navigation card.
+  // The existing addon still runs; only its redundant UI is hidden.
+  assert.equal(await page.locator('#id4-live-addon').evaluate(
+    e => getComputedStyle(e).display), 'none',
+    'new left instruments must replace visual addon card in landscape');
+  // The premium overlay must show no manufactured SoC, range or power.
+  assert.equal(await page.locator('#id4-side-soc').innerText(), '— %');
+  assert.equal(await page.locator('#id4-side-range').innerText(), '— km');
+  assert.equal(await page.locator('#id4-side-power').innerText(), '— kW');
   // Open route search on the real page, not a mocked DOM.
   await page.locator('#co-route-tab').click();
   assert.equal(await page.locator('#to').isVisible(), true);
