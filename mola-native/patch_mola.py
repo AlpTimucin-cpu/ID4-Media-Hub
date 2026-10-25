@@ -194,6 +194,7 @@ auto_source=auto_source.replace(app_icon,
 # entry for read-only EPDK stations, NOT full map/navigation projection.
 auto_service='''        <service
             android:name="me.aap.fermata.ev.Id4CarPoiService"
+            android:enabled="true"
             android:exported="true"
             android:label="ID.4 Yol Arkadaşım"
             android:icon="@drawable/id4_launcher">
