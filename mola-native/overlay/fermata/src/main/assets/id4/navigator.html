@@ -2748,12 +2748,12 @@ window.molaAlternatives=function(data){
  routeOptions.forEach(function(opt){
   if(!opt||!Number.isInteger(opt.index)||!Number.isFinite(opt.km)||
     !Number.isFinite(opt.minutes))return;
-  var kind=String(opt.preference||'standard');
+  var kind=String(opt.routePreference||opt.preference||'standard');
   if(routeFilter==='fast'&&opt.index!==data.fastestIndex)return;
   if(routeFilter==='short'&&opt.index!==data.shortestIndex)return;
   if(routeFilter==='long'&&(!longest||opt.index!==longest.index))return;
   if(routeFilter==='avoid'&&kind!=='avoid-tolls')return;
-  if(routeFilter==='standard'&&kind==='avoid-tolls')return;
+  if(routeFilter==='standard'&&kind!=='standard')return;
   var item=document.createElement('button');
   item.type='button';
   item.className='alt-item'+(opt.index===chosenRouteIndex?' is-selected':'');
