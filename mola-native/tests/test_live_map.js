@@ -37,13 +37,13 @@ const map={addLayer(){},removeLayer(){},on(){},closePopup(){},
  fitBounds(){},setView(){},getBounds(){return {getSouth(){return 36},getWest(){return 28},getNorth(){return 42},getEast(){return 44}}}};
 let clock=Date.now();
 class ControlledDate extends Date { static now(){return clock} }
+let forecast={temperature_2m:-5,wind_speed_10m:40};
 const win={ID4_LIVE_ATTACH_ONLY:true,
  localStorage:{getItem(){return null},setItem(){}},
  setTimeout,clearTimeout,setInterval(){},addEventListener(){},dispatchEvent(){},
  fetch:async function(url){
    assert.match(url,/api\.open-meteo\.com\/v1\/forecast/);
-   return {ok:true,json:async()=>({current:{temperature_2m:-5,
-     wind_speed_10m:40,time:Math.floor(clock/1000)}})};
+   return {ok:true,json:async()=>({current:{...forecast,time:Math.floor(clock/1000)}})};
  }};
 const ctx={window:win,document:doc,L,Map,Date:ControlledDate,Math,Number,String,Array,
  Set,JSON,Promise,Event,AbortController,console};
@@ -106,5 +106,34 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  m.setStations(national,{...metadata,verifiedAtUtc:'2024-01-01T00:00:00Z'});
  assert.equal(m.isCountryDataReady(),false);
  assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
- console.log('PASS: route corridor, certified national index, SoC, stale GPS, low battery, weather-energy model');
+ // Geometric 5 km buffer: near 4.9 km accepted; far 5.2 km rejected.
+ const horizontal={coordinates:[[35,39],[35.12,39]],distanceKm:11,durationMin:10};
+ assert.equal(m.ingestNativeRoute(horizontal),true);
+ m.updateLocation(39,35);
+ m.updateCarData(0,80);
+ m.setStations([
+  {id:'inside',lat:39.044,lon:35.06,dc:true,title:'4.9 km from route'},
+  {id:'outside',lat:39.047,lon:35.06,dc:true,title:'5.2 km from route'}
+ ]);
+ assert.equal(m.getState().corridorStations,1);
+ assert.equal(el('id4-station-count').textContent,'1 (kısmi)');
+ // Independently exercise temperature-only, wind-only and neutral conditions.
+ const cases=[
+  {temperature_2m:-5,wind_speed_10m:40,expected:1.15},
+  {temperature_2m:-3,wind_speed_10m:10,expected:1.15},
+  {temperature_2m:12,wind_speed_10m:35,expected:1.15},
+  {temperature_2m:12,wind_speed_10m:10,expected:1}
+ ];
+ const kwh=[];
+ for(const trial of cases){
+  forecast={temperature_2m:trial.temperature_2m,wind_speed_10m:trial.wind_speed_10m};
+  assert.equal(m.ingestNativeRoute(horizontal),true);
+  await new Promise(resolve=>setTimeout(resolve,12));
+  assert.equal(m.getState().weather.multiplier,trial.expected);
+  kwh.push(Number.parseFloat(el('id4-range').textContent));
+ }
+ assert(kwh.every(Number.isFinite),'measured energy profile must yield numeric kWh');
+ assert(kwh[0]>kwh[3] && Math.abs(kwh[0]/kwh[3]-1.15)<0.07,
+   'weather penalty should be applied once, not twice');
+ console.log('PASS: 5 km buffer, national EPDK coverage guard, SoC, stale GPS, low battery and weather energy');
 })().catch(error=>{console.error(error);process.exitCode=1});
