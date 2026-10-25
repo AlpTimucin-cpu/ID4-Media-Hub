@@ -84,6 +84,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private volatile JSONObject activeWeatherRoute;
     private volatile long lastJourneyWeatherRefreshAt;
     private volatile boolean cachedRouteGps, cachedHasStop;
+    private volatile int selectedAlternativeIndex;
+    private boolean socPromptShown;
     private long lastSpeech;
     private volatile long lastCurrentWeatherAt;
     private volatile double lastCurrentWeatherLat=Double.NaN,
@@ -144,6 +146,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             @Override public void onPageFinished(WebView v,String url){
                 if(!PAGE.equals(url) || destroyed)return;
                 send("molaTelemetry",obdPacket(latestObd));
+                sendScenarioStatus();
                 applyLocalTomTomKey();
                 Intent source=getIntent();
                 if(source==null || !source.hasExtra("toLat") || !source.hasExtra("toLon"))return;
@@ -219,7 +222,20 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     enabled?"Yatay tam ekran açılıyor.":"Ekran yönü serbest bırakıldı."));
             });
         }
-        @JavascriptInterface public void selectObd() {ui.post(()->selectObdAdapter());}
+        @JavascriptInterface public void selectObd() {ui.post(()->showObdSettings());}
+        @JavascriptInterface public void obdSettings(){ui.post(()->showObdSettings());}
+        @JavascriptInterface public void setScenarioSoc(int pct){
+            if(pct!=80&&pct!=100)return;
+            ui.post(()->{
+                if(destroyed)return;
+                getSharedPreferences("id4_soc_scenario_v1",MODE_PRIVATE).edit()
+                    .putInt("start_soc",pct).apply();
+                sendScenarioStatus();
+                refreshScenarioRoutes();
+                send("molaStatus",record("energy",
+                    "%"+pct+" başlangıç değeri senaryodur; ölçülmüş batarya SoC değildir."));
+            });
+        }
         @JavascriptInterface public void disconnectObd(){
             ui.post(()->{
                 getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE).edit()
@@ -280,7 +296,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             });
         }
         @JavascriptInterface public void sensors() {
-            ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4ObdActivity.class)));
+            // Avoid the separate legacy OBD Activity which can terminate on some
+            // Android 15 devices. This in-place dialog cannot drop the cockpit.
+            ui.post(()->showObdSettings());
         }
         @JavascriptInterface public void voice(boolean on) {
             voice=on;if(!on && tts!=null)tts.stop();
@@ -394,6 +412,74 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }catch(Exception ignored){}
         return p;
     }
+    private int scenarioSoc(){
+        int stored=getSharedPreferences("id4_soc_scenario_v1",MODE_PRIVATE)
+            .getInt("start_soc",80);
+        return stored==100?100:80;
+    }
+    private void sendScenarioStatus(){
+        Id4EnergyData.Snapshot reading=Id4EnergyData.load(this,System.currentTimeMillis());
+        JSONObject j=new JSONObject();
+        try{
+            j.put("measured",reading.hasSoc());
+            j.put("percent",reading.hasSoc()?reading.soc:scenarioSoc());
+            j.put("userSelected",getSharedPreferences("id4_soc_scenario_v1",
+                MODE_PRIVATE).contains("start_soc"));
+        }catch(Exception ignored){}
+        send("molaSocScenario",j);
+    }
+    private void refreshScenarioRoutes(){
+        JSONArray options=cachedAlternatives;
+        if(options==null||options.length()==0)return;
+        int ticket=++routeStationRequestId;
+        int version=generation;
+        int index=selectedAlternativeIndex;
+        boolean stop=cachedHasStop;
+        stationJobs.execute(()->loadAlternativeCards(options,version,ticket,index,stop));
+        JSONObject choice=options.optJSONObject(index);
+        if(choice!=null)stationJobs.execute(()->loadRouteStations(choice,version,ticket));
+    }
+    private void promptScenarioIfMissing(){
+        if(socPromptShown||destroyed||isFinishing())return;
+        if(Id4EnergyData.load(this,System.currentTimeMillis()).hasSoc())return;
+        socPromptShown=true;
+        new AlertDialog.Builder(this)
+            .setTitle("Başlangıç bataryası · OBD SoC okunamadı")
+            .setMessage("Şarj ve TL tahmini için başlangıç şarjını seç. Gerçek araç ölçümü değildir.")
+            .setSingleChoiceItems(new String[]{
+                "%80 ile başlayacağım", "%100 ile başlayacağım"},
+                scenarioSoc()==100?1:0,(dialog,choice)->{
+                    dialog.dismiss();
+                    int percent=choice==1?100:80;
+                    getSharedPreferences("id4_soc_scenario_v1",MODE_PRIVATE).edit()
+                        .putInt("start_soc",percent).apply();
+                    sendScenarioStatus();
+                    refreshScenarioRoutes();
+                })
+            .setNegativeButton("Şimdi değil",null).show();
+    }
+    private void showObdSettings(){
+        if(destroyed||isFinishing())return;
+        String mac=getSharedPreferences("id4_obd_pairing_v1",MODE_PRIVATE)
+            .getString("paired_mac",null);
+        String device=mac==null?"Henüz adaptör seçilmedi":"Kaydedilen adaptör: "+mac;
+        String status=latestObd==null?"OBD bağlı değil":latestObd.status;
+        new AlertDialog.Builder(this)
+            .setTitle("ID.4 · OBD bağlantı ayarları")
+            .setMessage(device+"\\n"+status+"\\n\\n"+
+                "Telefon Bluetooth ayarlarından ELM327'yi eşleştir. Car Scanner "
+                +"bağlıysa önce bağlantısını kes; iki uygulama aynı Bluetooth soketini "
+                +"paylaşamaz. ECU'ya yazma veya kodlama yapılmaz.")
+            .setPositiveButton("Adaptör seç / bağlan",(d,w)->selectObdAdapter())
+            .setNeutralButton("Bluetooth ayarları",(d,w)->{
+                try{
+                    startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));
+                }catch(Exception e){
+                    send("molaStatus",record("obd","Bluetooth ayarları açılamadı."));
+                }
+            })
+            .setNegativeButton("Kapat",null).show();
+    }
     /** Explicit first selection; only paired adapters, no background scan. */
     @SuppressWarnings("deprecation")
     private void selectObdAdapter() {
@@ -504,6 +590,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         double chargeScore=Double.NEGATIVE_INFINITY;
         Id4EnergyData.Snapshot facts=Id4EnergyData.load(this,System.currentTimeMillis());
         double soc=facts.hasSoc()?facts.soc:Double.NaN;
+        int assumption=scenarioSoc();
         int count=Math.min(12,alternatives.length());
         try{
             for(int k=0;k<count;k++){
@@ -524,7 +611,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 // Charge count models energy-equivalent stops, not real socket
                 // availability or a verified detour to a specific charger.
                 Id4TripChargePlan.Estimate plan=Id4TripChargePlan.estimate(
-                    roadKm,soc,"",java.time.LocalDate.now());
+                    roadKm,soc,"",java.time.LocalDate.now(),assumption);
                 item.put("socAssumed",!plan.measuredSoc);
                 item.put("scenarioStartSoc",plan.startSoc);
                 item.put("chargeNeededModel",plan.maxStops>0);
@@ -552,8 +639,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         JSONArray last=coords.getJSONArray(coords.length()-1);
                         line.add(new Id4StationCatalog.Point(last.getDouble(1),last.getDouble(0)));
                     }
-                    double routePlanningSoc=Double.isFinite(soc)?soc:
-                        Id4TripChargePlan.ASSUMED_START_SOC;
+                    double routePlanningSoc=Double.isFinite(soc)?soc:assumption;
                     JSONObject stationData=stationCatalog.alongRoute(
                         line,roadKm,routePlanningSoc);
                     item.put("stationsKnown",true);
@@ -572,7 +658,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         // available; otherwise retain the dated market scenario.
                         Id4TripChargePlan.Estimate networkPlan=Id4TripChargePlan.estimate(
                             roadKm,soc,suggested.optString("operator"),
-                            java.time.LocalDate.now());
+                            java.time.LocalDate.now(),assumption);
                         if(networkPlan.operatorRate&&networkPlan.priceEstimateAvailable){
                             item.put("costMinTry",networkPlan.costMinTry)
                                 .put("costMaxTry",networkPlan.costMaxTry)
@@ -1009,6 +1095,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     if(myGeneration!=generation||destroyed)return;
                     cachedAlternatives=routes;
                     cachedRouteGps=verifiedGps;cachedHasStop=hasStop;
+                    selectedAlternativeIndex=optionIndex;
                     steps.clear();steps.addAll(parsed);nextStep=0;
                     running=verifiedGps&&!parsed.isEmpty();
                     Id4EnergyData.saveRoute(this,
@@ -1016,6 +1103,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         packet.optDouble("durationMin",Double.NaN),
                         System.currentTimeMillis());
                     send("molaRoute",packet);
+                    sendScenarioStatus();
+                    if(!Id4EnergyData.load(this,System.currentTimeMillis()).hasSoc())
+                        ui.postDelayed(this::promptScenarioIfMissing,600);
                     // A route selection starts one bounded, read-only OSM query
                     // for sampled fixed-camera records, independent of GPS.
                     // Never block route display or claim complete camera coverage.
