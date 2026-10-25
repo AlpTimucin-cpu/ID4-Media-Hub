@@ -1562,6 +1562,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  .route-weather-map-pin{font-size:10px;padding:2px 3px}
 }
 </style>
+<link rel="stylesheet" href="id4-tesla-cockpit.css">
 </head><body>
 <div id="map"></div>
 <div id="route-weather-map-status" role="status" hidden>☁ Yol havası · rota bekleniyor</div>
@@ -1621,6 +1622,31 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
    <small id="co-status">Car Scanner kapalıyken ELM327 bağla.</small>
   </div>
  </div>
+ <!-- Visual-only Tesla sidebar: legacy cockpit DOM/callback IDs remain intact.
+      No sample speed, BMS charge or shift state: unverified data displays —. -->
+ <aside id="id4-tesla-side" class="id4-tesla-side" aria-label="Araç ve hava göstergeleri">
+  <section class="id4-tesla-card">
+   <div class="id4-tesla-caption">Hız · GPS</div>
+   <div class="id4-drive-row"><strong id="id4-drive-speed" class="id4-drive-speed">—</strong>
+      <span class="id4-drive-unit">km/sa</span></div>
+   <div id="id4-drive-gear" class="id4-drive-gear">Vites: —</div>
+  </section>
+  <section class="id4-tesla-card id4-tesla-battery">
+   <div class="id4-tesla-caption">Batarya doluluğu · OBD</div>
+   <div class="id4-battery-head"><strong id="id4-side-soc" class="id4-soc-text">— %</strong></div>
+   <div class="id4-progress"><div id="id4-side-bar-fill" role="progressbar"
+       aria-label="Batarya doluluğu" aria-valuemin="0" aria-valuemax="100"></div></div>
+   <div id="id4-energy-impact" class="id4-energy-impact" hidden></div>
+  </section>
+  <section class="id4-tesla-card">
+   <div class="id4-tesla-caption">Dış hava · Open-Meteo modeli</div>
+   <div class="id4-weather-grid">
+    <div class="id4-weather-pill"><small>Sıcaklık</small><strong id="id4-side-temp">— °C</strong></div>
+    <div class="id4-weather-pill"><small>Rüzgâr</small><strong id="id4-side-wind">— km/sa</strong></div>
+   </div>
+  </section>
+  <div id="id4-drive-provenance" class="id4-provenance" role="status">Gerçek veri bekleniyor</div>
+ </aside>
  <div class="cockpit-right">
   <div class="cockpit-panel">
     <div class="co-turn"><span class="co-turn-arrow" aria-hidden="true">↱</span><div>
@@ -3482,4 +3508,6 @@ window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,1
 <script>window.ID4_LIVE_ATTACH_ONLY=true;</script>
 <script src="id4-live-map.js"></script>
 <script src="id4-navigator-adapter.js"></script>
+<!-- Passive observer; loaded last so it never replaces native bridge contracts. -->
+<script src="id4-tesla-cockpit.js"></script>
 </body></html>
