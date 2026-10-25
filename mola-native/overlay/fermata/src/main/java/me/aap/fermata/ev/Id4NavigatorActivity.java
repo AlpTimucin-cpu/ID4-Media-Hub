@@ -160,7 +160,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             " ID4YolArkadasim/0.5 (+https://github.com/AlpTimucin-cpu/ID4-Media-Hub)");
         st.setCacheMode(WebSettings.LOAD_DEFAULT); // respect server HTTP caching
 
-        st.setDomStorageEnabled(false);
+        // Word's local, device-only incident reports use origin-scoped localStorage.
+        // WebViewAssetLoader serves HTTPS assets; file access remains disabled.
+        st.setDomStorageEnabled(true);
         st.setAllowFileAccess(false);
         st.setAllowContentAccess(false);
         st.setJavaScriptCanOpenWindowsAutomatically(false);
