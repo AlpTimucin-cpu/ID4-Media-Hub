@@ -11,11 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
- * Opt-in OpenStreetMap fixed speed-camera map layer.
+ * Route-triggered, sampled OpenStreetMap fixed speed-camera map layer.
  *
  * Radarbot's APK does not grant a license to its private database or APIs.
  * This retrieves ONLY publicly ODbL-licensed OSM "highway=speed_camera"
- * nodes in a bounded viewport. A public Overpass instance is rate-limited.
+ * nodes in bounded sample areas. A public Overpass instance is rate-limited.
  * It is NOT a radar detector, a verified enforcement database or a source
  * for active speed limits, mobile radars or speed-camera-free routes.
  */
@@ -42,9 +42,51 @@ final class Id4RoadSafety {
             south,west,north,east);
     }
 
+    /**
+     * Automatically inspect small, sampled neighborhoods of a *real* route.
+     * One bounded Overpass union request; deliberately not a nationwide camera
+     * crawl. Coverage is partial: missing pins MUST NOT imply no cameras.
+     */
+    static JSONObject retrieveCorridor(JSONArray routeCoordinates)throws Exception {
+        if(routeCoordinates==null || routeCoordinates.length()<2)
+            throw new IllegalArgumentException("No road geometry");
+        StringBuilder query=new StringBuilder("[out:json][timeout:13];(");
+        int samples=0;
+        for(int i=0;i<=8;i++){
+            int index=(int)Math.round((routeCoordinates.length()-1)*i/8.0);
+            JSONArray xy=routeCoordinates.optJSONArray(index);
+            if(xy==null||xy.length()<2)continue;
+            double longitude=xy.optDouble(0,Double.NaN);
+            double latitude=xy.optDouble(1,Double.NaN);
+            if(!Double.isFinite(latitude)||!Double.isFinite(longitude)||
+               latitude<35||latitude>43||longitude<25||longitude>46)continue;
+            double south=Math.max(35,latitude-.055);
+            double north=Math.min(43,latitude+.055);
+            double west=Math.max(25,longitude-.065);
+            double east=Math.min(46,longitude+.065);
+            if(!validViewport(south,west,north,east))continue;
+            query.append(String.format(Locale.US,
+                "node[\"highway\"=\"speed_camera\"](%.6f,%.6f,%.6f,%.6f);",
+                south,west,north,east));
+            samples++;
+        }
+        if(samples<2)throw new IllegalArgumentException("Insufficient route sample");
+        query.append(");out body 120;");
+        JSONObject result=fetchCameras(query.toString(),35,25,43,46);
+        result.put("coverage","sampled route neighborhoods only")
+              .put("sampleCount",samples)
+              .put("detail","Rota çevresinde sınırlı OSM örneklemesi; yolun tümü taranmadı.");
+        return result;
+    }
+
     static JSONObject retrieve(double south,double west,double north,double east)
         throws Exception{
         String query=queryText(south,west,north,east);
+        return fetchCameras(query,south,west,north,east);
+    }
+
+    private static JSONObject fetchCameras(String query,double south,double west,
+        double north,double east)throws Exception{
         String request=OVERPASS+URLEncoder.encode(query,"UTF-8");
         HttpURLConnection c=(HttpURLConnection)new URL(request).openConnection();
         c.setConnectTimeout(8000);c.setReadTimeout(15000);
