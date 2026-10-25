@@ -1205,7 +1205,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                                      double toLat,double toLon){
         boolean changed=false;
         for(String mode:new String[]{"shorter","avoid-tolls","avoid-motorways"}){
-            if(destroyed||generation!=ticket||existing.length()>=9)return;
+            if(destroyed||generation!=ticket)return;
+            if(existing.length()>=9)break;
             try{
                 JSONArray more=Id4ValhallaRouting.variant(
                     fromLat,fromLon,toLat,toLon,Double.NaN,Double.NaN,mode);
