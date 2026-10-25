@@ -36,6 +36,8 @@ jobs:
 
           ID4_TOMTOM_API_KEY: ${{ secrets.ID4_TOMTOM_API_KEY }}
         run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
+      - name: Verify Android Auto discovery manifest and preserved Mola media
+        run: python3 integration/mola-native/tests/test_android_auto_manifest.py mola
       - name: Ensure changes do not touch Mola playback classes
         shell: bash
         run: |
