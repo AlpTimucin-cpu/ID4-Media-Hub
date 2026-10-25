@@ -931,4 +931,30 @@ assert(get('safety-status').textContent.includes('sınırlı örnekleme'),
  'limited OSM camera coverage must be disclosed');
 assert.equal(drawnMarkers.length,priorCameraCount+1,
  'automatic route should show real OSM camera record');
+// Toll labels never claim that a free road was verified: public Valhalla may
+// ignore a requested exclusion, and no bridge/road-fee tariffs are available.
+assert(html.includes('alt-filter-avoid')&&
+       html.includes('Ücretli yoldan kaçınma isteği · teyitsiz'),
+  'traffic-free and toll-avoid routing preferences must not fabricate confirmed toll status');
+assert(html.includes('window.molaRouteVariants=function(packet)'),
+  'slowly discovered real alternatives must update map without replacing route');
+assert(html.includes('5 dk otomatik yenileme (model)'),
+  'route weather is polled on a model cadence, not called second-by-second live');
+context.window.molaRoute({...routeCase,routeGeneration:42});
+const beforeIncidentPins=drawnMarkers.length;
+context.window.molaTrafficIncidents({source:'TomTom Orbis Incident Details',
+ routeGeneration:41,items:[{id:'x',lat:38.99,lon:34.13,
+  category:'roadWorks',label:'Yol çalışması bildirimi',aheadMeters:2000}]});
+assert.equal(drawnMarkers.length,beforeIncidentPins,
+ 'stale TomTom incident batch must never overwrite current route');
+context.window.molaTrafficIncidents({source:'TomTom Orbis Incident Details',
+ routeGeneration:42,items:[{id:'live-event',lat:38.99,lon:34.13,
+  category:'roadWorks',label:'Yol çalışması bildirimi',aheadMeters:2000,
+  description:'Bakım çalışması'}]});
+assert.equal(drawnMarkers.length,beforeIncidentPins+1,
+ 'provider incident must appear as a genuine map pin');
+assert(get('traffic-event-map-status').textContent.includes('1 olay bildirimi'),
+ 'current incident coverage must display provider and count, not say no accidents');
+assert(drawnMarkers[drawnMarkers.length-1].popup.textContent.includes('yön eşleşmesi'),
+ 'incidents must not be portrayed as verified same-lane road closures');
 console.log('PASS: automatically enabled, scoped cameras and no driver-facing toggles');
