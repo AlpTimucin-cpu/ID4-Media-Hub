@@ -61,6 +61,15 @@ final class Id4CarObdScreen extends Screen {
             .addText(clean(measured.batteryTemp)+" · "+clean(measured.voltage))
             .build());
 
+        long now=System.currentTimeMillis();
+        boolean ecuFresh=latest.connected && latest.ecuReplyAt>0 &&
+            now>=latest.ecuReplyAt && now-latest.ecuReplyAt<12000;
+        rows.addItem(new Row.Builder().setTitle("MEB ECU cevap kontrolü")
+            .addText(ecuFresh?
+                "Pozitif UDS yanıtları: "+latest.ecuReplyCount+" · PID kalibrasyonu bekleniyor":
+                "Henüz güncel pozitif ECU yanıtı yok")
+            .build());
+
         rows.addItem(new Row.Builder()
             .setTitle(latest.connected || connecting?"OBD bağlantısını ayır":"OBD bağla")
             .addText(latest.connected || connecting?
