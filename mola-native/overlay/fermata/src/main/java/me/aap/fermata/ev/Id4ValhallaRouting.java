@@ -20,6 +20,19 @@ final class Id4ValhallaRouting {
 
     static JSONArray alternatives(double a,double b,double c,double d,
                                   double viaLat,double viaLon) throws Exception {
+        return variant(a,b,c,d,viaLat,viaLon,"standard");
+    }
+
+    /**
+     * Returns only actual engine geometry. Toll exclusion is EXPERIMENTAL
+     * on public Valhalla servers: hard exclusions can be ignored by a host.
+     * Consequently "avoid-tolls" means preference, never verified free travel.
+     */
+    static JSONArray variant(double a,double b,double c,double d,
+                             double viaLat,double viaLon,String mode)throws Exception {
+        if(!"standard".equals(mode)&&!"shorter".equals(mode)&&
+           !"avoid-tolls".equals(mode)&&!"avoid-motorways".equals(mode))
+            throw new IllegalArgumentException("Unknown route mode");
         JSONArray points=new JSONArray()
             .put(new JSONObject().put("lat",a).put("lon",b));
         boolean hasStop=valid(viaLat,viaLon);
@@ -27,12 +40,20 @@ final class Id4ValhallaRouting {
         points.put(new JSONObject().put("lat",c).put("lon",d));
         JSONObject parameters=new JSONObject()
             .put("locations",points)
-            .put("costing","auto")
+            .put("costing","shorter".equals(mode)?"auto_shorter":"auto")
             .put("units","km")
             .put("format","osrm")
             .put("shape_format","geojson")
-            .put("alternates",hasStop?0:2)
+            .put("alternates",hasStop||!"standard".equals(mode)?0:2)
             .put("directions_options",new JSONObject().put("language","tr-TR"));
+        if("avoid-tolls".equals(mode)||"avoid-motorways".equals(mode)){
+            // Many public servers disable this Valhalla *hard exclusion*;
+            // record it only as a request, not a verified road attribute.
+            parameters.put("costing_options",new JSONObject()
+                .put("auto",new JSONObject()
+                    .put("exclude_tolls","avoid-tolls".equals(mode))
+                    .put("exclude_highways","avoid-motorways".equals(mode))));
+        }
         String encoded=URLEncoder.encode(parameters.toString(),"UTF-8");
         HttpURLConnection connection=(HttpURLConnection)new URL(ENDPOINT+encoded).openConnection();
         connection.setRequestMethod("GET");
@@ -77,7 +98,12 @@ final class Id4ValhallaRouting {
                     double lat=pair.optDouble(1,Double.NaN);
                     if(!valid(lat,lon)){correct=false;break;}
                 }
-                if(correct)validRoutes.put(route);
+                if(correct){
+                    route.put("id4RoutePreference",mode);
+                    route.put("id4TollVerified",false);
+                    route.put("id4Source","Valhalla OSM public test");
+                    validRoutes.put(route);
+                }
             }
             return validRoutes;
         }finally{connection.disconnect();}
