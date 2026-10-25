@@ -29,7 +29,7 @@ const assert = require('node:assert/strict');
   await page.waitForTimeout(1500);
   await page.screenshot({path:path.join(out,'openfreemap-turkiye.png')});
   // Pan/zoom the actual Leaflet map; vector layer must follow it and load detail.
-  await page.evaluate(()=>map.setView([41.015,28.979],11,{animate:false}));
+  await page.evaluate(()=>window.molaDestination({lat:41.015,lon:28.979,label:'İstanbul'}));
   await page.waitForTimeout(7000);
   await page.screenshot({path:path.join(out,'openfreemap-istanbul.png')});
   assert.deepEqual(oldRaster,[],'Old OSM raster tile server must never be contacted');
