@@ -86,7 +86,7 @@
  .id4-drive-unit,.id4-drive-gear{font-size:clamp(8px,1.4vh,12px);color:#c8dce7;}
  /* The add-on's 'CANLI YOL VERİSİ' duplicate is still populated for legacy
     integrations, but the new left dashboard is its sole visual presentation. */
- .cockpit-right #id4-live-addon {display:none!important;}
+ #vehicle-cockpit .cockpit-right #id4-live-addon {display:none!important;}
  /* Existing Mola guidance card. Native callback is sole source of navigation. */
  #vehicle-cockpit .cockpit-right{top:var(--hud-gap,12px)!important;right:1.4%!important;
   width:20%!important;max-width:none!important;display:block!important;overflow:visible!important;
