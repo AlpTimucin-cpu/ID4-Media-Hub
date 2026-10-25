@@ -149,6 +149,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 sendScenarioStatus();
                 applyLocalTomTomKey();
                 Intent source=getIntent();
+                if(source!=null && source.getBooleanExtra("openObdSettings",false)){
+                    source.removeExtra("openObdSettings");
+                    ui.postDelayed(()->showObdSettings(),250);
+                }
                 if(source==null || !source.hasExtra("toLat") || !source.hasExtra("toLon"))return;
                 double lat=source.getDoubleExtra("toLat",Double.NaN);
                 double lon=source.getDoubleExtra("toLon",Double.NaN);
@@ -680,7 +684,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .put("chargeAwareIndex",chargeIndex)
                 .put("livePrices",false).put("liveAvailability",false)
                 .put("modelNote","16–24 kWh/100 km, 52 kWh, %15 rezerv, DC hedef %80. "
-                   +"OBD yoksa %80 çıkış senaryosu. Maliyet kaynaklı pazar/ağ tahmini; "
+                   +"OBD yoksa kullanıcı %80 / %100 senaryosu seçebilir. Maliyet kaynaklı pazar/ağ tahmini; "
                    +"CCS yakınlığı gerçek şarj durağı ve yol erişimi değildir.");
             if(!destroyed && generation==routeGeneration && routeStationRequestId==stationTicket)
                 send("molaAlternatives",response);
