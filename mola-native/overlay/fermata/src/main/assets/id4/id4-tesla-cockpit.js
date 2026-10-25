@@ -94,34 +94,57 @@
     // label if its original timestamp has expired.
     render();
   }
+  // Protect callback registration as well as execution: a missing DOM or
+  // partially initialized native WebView must never abort Mola startup.
   function observe(name,handler){
-    var previous=root[name];
-    if(typeof previous!=='function')return false;
-    root[name]=function(packet){
-      var output;
-      try{output=previous.apply(this,arguments)}
-      catch(err){try{root.console.error('Mola callback '+name,err)}catch(_ignored){}}
-      try{handler(packet)}catch(err){
-        try{root.console.warn('ID4 observer '+name,err)}catch(_ignored){}
-      }
-      return output;
-    };
-    return true;
+    try{
+      var previous=root[name];
+      if(typeof previous!=='function')return false;
+      // Idempotent: development hot reload cannot stack duplicate wrappers.
+      if(previous.__id4TeslaObserver===true)return true;
+      var wrapped=function(packet){
+        var output;
+        try{output=previous.apply(this,arguments)}
+        catch(err){try{root.console.error('Mola callback '+name,err)}catch(_ignored){}}
+        try{handler(packet)}catch(err){
+          try{root.console.warn('ID4 observer '+name,err)}catch(_ignored){}
+        }
+        return output;
+      };
+      wrapped.__id4TeslaObserver=true;
+      root[name]=wrapped;
+      return true;
+    }catch(err){
+      try{root.console.warn('ID4 cockpit registration failed: '+name,err)}
+      catch(_ignored){}
+      return false;
+    }
   }
+  var started=false;
   function start(){
-    if(!root.document||!root.document.getElementById('id4-tesla-side'))return false;
-    observe('molaTelemetry',onTelemetry);
-    observe('molaPosition',onPosition);
-    observe('molaCurrentWeather',onWeather);
-    observe('molaCurrentWeatherError',onWeatherError);
-    render();
-    root.setInterval(render,1000);
-    // CSS modifies the width of the ORIGINAL Leaflet map; recalculate once.
-    try{root.requestAnimationFrame(function(){
-      var map=root.id4LiveLeafletMap;
-      if(map&&typeof map.invalidateSize==='function')map.invalidateSize({animate:false});
-    })}catch(_ignored){}
-    return true;
+    try{
+      if(started)return true;
+      if(!root.document||!root.document.getElementById('id4-tesla-side'))return false;
+      observe('molaTelemetry',onTelemetry);
+      observe('molaPosition',onPosition);
+      observe('molaCurrentWeather',onWeather);
+      observe('molaCurrentWeatherError',onWeatherError);
+      render();
+      // A failed background timer must not suppress the safe initial HUD.
+      try{root.setInterval(render,1000)}catch(_ignored){}
+      // Resizing is safe only on the already-existing single Leaflet map.
+      try{root.requestAnimationFrame(function(){
+        try{
+          var map=root.id4LiveLeafletMap;
+          if(map&&typeof map.invalidateSize==='function')map.invalidateSize({animate:false});
+        }catch(_ignored){}
+      })}catch(_ignored){}
+      started=true;
+      return true;
+    }catch(err){
+      try{root.console.warn('ID4 cockpit initialization failed',err)}catch(_ignored){}
+      return false;
+    }
   }
   // Export narrow pure verification hooks for offline regression tests.
   root.ID4TeslaCockpit={start:start,render:render,
