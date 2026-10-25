@@ -220,10 +220,11 @@ charge_cost=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java"
 journey_banner=overlay/"fermata/src/main/res/drawable/id4_journey_banner.xml"
 launcher_icon=overlay/"fermata/src/main/res/drawable/id4_launcher.xml"
 tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting.java"
+valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRouting.java"
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,trip_journal,road_safety])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,trip_journal,road_safety]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety])
+for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -267,7 +268,7 @@ allowed=set(SOURCE_SHA) | {
     str(traffic_provider.relative_to(overlay)),str(traffic_config.relative_to(overlay)),
     str(charge.relative_to(overlay)),str(charge_store.relative_to(overlay)),str(energy_facts.relative_to(overlay)),str(energy_model.relative_to(overlay)),
     str(live_monitor.relative_to(overlay)),str(overview.relative_to(overlay)),
-    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay)),str(journey_banner.relative_to(overlay)),str(tomtom_routing.relative_to(overlay)),str(trip_journal.relative_to(overlay)),str(road_safety.relative_to(overlay))}
+    str(station_catalog.relative_to(overlay)),str(station_types.relative_to(overlay)),str(charge_advisor.relative_to(overlay)),str(charge_cost.relative_to(overlay)),str(launcher_icon.relative_to(overlay)),str(journey_banner.relative_to(overlay)),str(tomtom_routing.relative_to(overlay)),str(valhalla_routing.relative_to(overlay)),str(trip_journal.relative_to(overlay)),str(road_safety.relative_to(overlay))}
 changes=subprocess.check_output(
     ["git","-C",str(root),"status","--short"],text=True)
 for line in changes.splitlines():
