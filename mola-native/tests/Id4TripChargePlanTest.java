@@ -17,6 +17,22 @@ public final class Id4TripChargePlanTest {
             "market reference may be used only as indicative scenario");
         check(unknown.costMinTry>380&&unknown.costMaxTry>1500,
             "52+ kWh purchased and model market cost on 525km");
+        var full=Id4TripChargePlan.estimate(525,Double.NaN,"",today,100);
+        check(!full.measuredSoc && full.startSoc==100,
+            "100% initial energy must be a selected scenario, not measured SoC");
+        check(full.chargeMinKwh<unknown.chargeMinKwh &&
+              full.chargeMaxKwh<unknown.chargeMaxKwh,
+            "100% choice must reduce purchase energy compared with 80%");
+        check(full.costMinTry<unknown.costMinTry &&
+              full.costMaxTry<unknown.costMaxTry,
+            "100% scenario must reduce indicative TL charges");
+        var verifiedOverride=Id4TripChargePlan.estimate(525,61,"",today,100);
+        check(verifiedOverride.measuredSoc && verifiedOverride.startSoc==61,
+            "real measured SoC always overrides a selected 100% assumption");
+        boolean rejectsUnknown=false;
+        try{Id4TripChargePlan.estimate(525,Double.NaN,"",today,90);}
+        catch(IllegalArgumentException e){rejectsUnknown=true;}
+        check(rejectsUnknown,"only 80 and 100 are valid scenario choices");
         var measured=Id4TripChargePlan.estimate(525,40,"",today);
         check(measured.measuredSoc&&measured.startSoc==40,"fresh SoC takes precedence");
         check(measured.minStops==3&&measured.maxStops==4,
