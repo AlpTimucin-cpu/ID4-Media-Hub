@@ -787,7 +787,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 String via=hasStop?
                     String.format(Locale.US,"%.6f,%.6f",stopLon,stopLat):"";
                 String query="/route/v1/driving/"+a+(hasStop?";"+via:"")+";"+b+
-                    "?overview=full&geometries=geojson&steps=true&alternatives=true";
+                    "?overview=full&geometries=geojson&steps=true&alternatives=3";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
                 String trafficKey=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
@@ -820,7 +820,43 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                             .append(routeFailure(e));
                     }
                 }
-                if(out==null)throw new IllegalStateException(problems.toString());
+                // FOSSGIS Valhalla is a separate open-source road graph/router.
+                // Ask only when primary routing produced fewer than 3 choices.
+                // A live TomTom route must never be silently mixed with traffic-free
+                // alternatives and presented as traffic-aware.
+                if(out==null || (!activeRouteProvider.startsWith("TomTom Orbis")
+                        && out.optJSONArray("routes")!=null
+                        && out.optJSONArray("routes").length()<3)){
+                    try{
+                        JSONArray supplemental=Id4ValhallaRouting.alternatives(
+                            fromLat,fromLon,toLat,toLon,stopLat,stopLon);
+                        if(out==null){
+                            if(supplemental.length()>0){
+                                out=new JSONObject().put("routes",supplemental);
+                                activeRouteProvider="Valhalla (trafiksiz)";
+                            }
+                        }else{
+                            JSONArray existing=out.getJSONArray("routes");
+                            int added=0;
+                            for(int i=0;i<supplemental.length()&&existing.length()<6;i++){
+                                JSONObject option=supplemental.getJSONObject(i);
+                                boolean isNew=true;
+                                for(int j=0;j<existing.length();j++){
+                                    if(!Id4ValhallaRouting.distinct(existing.getJSONObject(j),option)){
+                                        isNew=false;break;
+                                    }
+                                }
+                                if(isNew){existing.put(option);added++;}
+                            }
+                            if(added>0)activeRouteProvider="OSRM + Valhalla (trafiksiz)";
+                        }
+                    }catch(Exception ignored){
+                        // Demo downtime, invalid response or rate limiting should
+                        // never erase a valid route returned by the main engine.
+                    }
+                }
+                if(out==null)throw new IllegalStateException(problems.toString()+
+                    " | Valhalla açık kaynak rota alınamadı");
                 JSONArray routes=out.getJSONArray("routes");
                 if(destroyed||myGeneration!=generation)return;
                 renderRouteOption(routes,0,verifiedGps,hasStop,myGeneration);
