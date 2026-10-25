@@ -125,6 +125,12 @@ jobs:
             integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java \
             integration/mola-native/tests/Id4ChargeCostTest.java
           java -ea -cp "$RUNNER_TEMP/charge-tests" me.aap.fermata.ev.Id4ChargeCostTest
+          javac -encoding UTF-8 -d "$RUNNER_TEMP/charge-tests" \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4EnergyModel.java \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4ChargeCost.java \
+            integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4TripChargePlan.java \
+            integration/mola-native/tests/Id4TripChargePlanTest.java
+          java -ea -cp "$RUNNER_TEMP/charge-tests" me.aap.fermata.ev.Id4TripChargePlanTest
           python3 - <<'PY'
           from pathlib import Path
           s=Path("integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java").read_text()
