@@ -114,3 +114,30 @@ The packaged Natural Earth fallback is explicitly only country geography.
 Upstream libraries: https://github.com/maplibre/maplibre-gl-js (BSD-3-Clause),
 https://github.com/maplibre/maplibre-gl-leaflet (ISC); notices are packaged with assets.
 Provider: https://openfreemap.org/quick_start/ .
+
+## Word canlı harita paketi — entegrasyon durumu (25.10.2026)
+
+Kaynak: `ID4_Yol_Arkadasim_Teknik_Dokuman_Kodlar_Dahil.docx`.
+Ana motor `overlay/fermata/src/main/assets/id4/id4-live-map.js`, adaptör
+`id4-navigator-adapter.js`; `navigator.html` mevcut Mola Leaflet haritasına
+`ID4_LIVE_ATTACH_ONLY` ile bağlanır. Tesla kokpit düzenini korumak için
+`id4-live-addon.css` kullanılır; Word içindeki bağımsız `standalone-index.html`
+mevcut kokpitin yerini almaz.
+
+- Mola `molaRoute` → gerçek geometri, rota orta noktası hava modeli ve enerji paneli.
+- Mola `molaPosition` ve `molaTelemetry` → yalnız taze, doğrulanan GPS/SoC.
+- Mola `molaStations` (`kind: route`) → gerçek EPDK rota kayıtlarının sayısı,
+  orijinal Mola şarj işaretçilerinden bağımsız, ikinci harita oluşturmadan aktarılır.
+- Rota koridoru listesi **Türkiye geneli tam DC listesi değildir**: küresel
+  en yakın DC bilgisi ancak ayrıca eksiksiz veri `setStations(...)` ile
+  verilirse sunulur. Fiyat, anlık doluluk veya yol sapması bu JSON'dan
+  doğrulanmış sayılmaz.
+- Open-Meteo model tahminidir, fiziksel canlı sensör değildir.
+- Yerel kazalar/yol kapanmaları Firebase bağlanmadıkça paylaşılmaz;
+  doğrulanmış trafik yoğunluğu olarak sunulmaz.
+
+Doğrulama: `node mola-native/tests/test_live_map.js` doğrudan paketlenecek JS'i
+kullanır; aynı kontrol `.github/workflows/build-mola-native-id4.yml` içinde
+APK derlemesinden önce çalışır. Gerçek ID.4, POCO F5, OBD ve Android Auto
+testleri ayrı kabul kapısıdır; bu kaynak değişikliği bir APK üretildiğini
+veya araçta doğrulandığını tek başına kanıtlamaz.
