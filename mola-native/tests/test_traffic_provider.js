@@ -37,7 +37,10 @@ function create(key,fail){
  assert.strictEqual(none.api.setTomTomKey('short'),false);
  assert.strictEqual(none.api.setTomTomKey('TEST_TOMTOM_KEY_123456789'),true);
  assert.strictEqual(none.api.configured().tomtom,true);
- assert(none.states.some(s=>s.status==='active'));
+ assert.strictEqual(none.tiles.length,0,
+  'Saving a key without a route must not start paid traffic tiles');
+ assert(!none.states.some(s=>s.status==='active'),
+  'Saving a key is not evidence of live traffic');
  assert.strictEqual(none.api.setTomTomKey(''),true);
  assert.strictEqual(none.api.getActive(),'osm');
  const ok=create('TEST_TOMTOM_KEY_123456789',false);
