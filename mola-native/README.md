@@ -99,3 +99,18 @@ HTML arayüzünün otomatik tarayıcı önizlemeleri `docs/screenshots/` içinde
 - https://project-osrm.org/
 - https://www.epdk.gov.tr/
 - https://github.com/moris545454/araba-/blob/main/LICENSE
+
+
+### OpenFreeMap vector basemap
+
+The phone cockpit uses OpenFreeMap (no API key) through bundled MapLibre GL JS 4.7.1
+and maplibre-gl-leaflet 0.1.3. Dark/light vector styles replace the former
+OSM Standard raster tiles and CSS inversion. OpenFreeMap covers Turkey as part
+of its global OpenMapTiles/OSM data; visible attribution remains required.
+Traffic still requires a separate live data provider; an open-source map is not
+a live congestion feed. A traffic key no longer changes the selected basemap.
+The packaged Natural Earth fallback is explicitly only country geography.
+
+Upstream libraries: https://github.com/maplibre/maplibre-gl-js (BSD-3-Clause),
+https://github.com/maplibre/maplibre-gl-leaflet (ISC); notices are packaged with assets.
+Provider: https://openfreemap.org/quick_start/ .

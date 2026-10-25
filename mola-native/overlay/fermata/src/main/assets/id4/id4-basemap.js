@@ -1,34 +1,15 @@
-/* Resilient ID.4 Leaflet basemap. Only current visible tiles are requested.
- * OSMF tiles: https://operations.osmfoundation.org/policies/tiles/
- * OSM France: https://www.openstreetmap.fr/usage/
- * Built-in Natural Earth public-domain country outlines appear until tiles load.
- * Never represent an outline-only map as a street-level offline navigator. */
+/* OpenFreeMap vector basemap rendered by bundled MapLibre + Leaflet adapter.
+ * Public instance: https://openfreemap.org/ (no API key).
+ * Data: OpenMapTiles / OpenStreetMap. Renderer: BSD-3-Clause / ISC.
+ * Natural Earth fallback is country geography, NOT offline street navigation. */
 (function(g){
 'use strict';
 var L=g.L,map=null,layer=null,outline=null,cityMarkers=[];
 var notify=function(){},state='uninitialized',success=false,errors=0;
 var timer=null,epoch=0,srcIndex=0,hasStarted=false,cityPoints=[];
-var tomtomKey='',dayMode=false;
-var communitySources=[
- {name:'OpenStreetMap',url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  attribution:'© OpenStreetMap contributors',maxZoom:19},
- {name:'OSM Fransa',url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-  attribution:'© OpenStreetMap contributors · © OpenStreetMap France',maxZoom:19}
-];
-function validKey(value){
- return typeof value==='string'&&/^[A-Za-z0-9_-]{15,200}$/.test(value);
-}
-function sources(){
- if(!validKey(tomtomKey))return communitySources;
- return [{
-  name:'TomTom Orbis',
-  url:'https://api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}'+
-      '?apiVersion=2&style='+(dayMode?'street-light':'street-dark')+
-      '&tileSize=256&geopoliticalView=TR&key='+encodeURIComponent(tomtomKey),
-  attribution:'© TomTom · Map data © OpenStreetMap contributors',
-  maxZoom:19
- }].concat(communitySources);
-}
+var dayMode=false;
+function sources(){return [{name:'OpenFreeMap',
+ url:'https://tiles.openfreemap.org/styles/'+(dayMode?'liberty':'dark')}];}
 function emit(kind,detail){
  state=kind;
  notify({status:kind,detail:detail,source:sources()[srcIndex]?.name||'',
@@ -84,33 +65,35 @@ function exhausted(){
  emit('offline','Çevrimiçi harita yüklenemedi · yalnız ülke sınırları · Yeniden dene');
 }
 function attempt(i){
- if(!map||!L||!L.tileLayer)return exhausted();
- discard();
- srcIndex=i;var generation=++epoch;success=false;errors=0;
- var options=sources();
- if(i>=options.length)return exhausted();
+ var generation=++epoch;
+ discard();success=false;errors=0;srcIndex=0;
  outlineVisible(true);
- emit('loading',options[i].name+' haritası yükleniyor…');
- var source=options[i];
- var tile=L.tileLayer(source.url,{maxZoom:source.maxZoom,attribution:source.attribution,
-  minZoom:2,noWrap:false,keepBuffer:1,updateWhenIdle:true,detectRetina:false});
- layer=tile;
- tile.on('tileload',function(){
-  if(generation!==epoch||success)return;
-  success=true;
-  if(timer!==null){clearTimeout(timer);timer=null}
-  outlineVisible(false);
-  emit('online',source.name+' haritası açık');
- });
- tile.on('tileerror',function(){
-  if(generation!==epoch||success)return;
-  if(++errors>=3)attempt(i+1);
- });
+ if(!map||!L||typeof L.maplibreGL!=='function')return exhausted();
+ emit('loading','OpenFreeMap vektör haritası yükleniyor…');
  timer=setTimeout(function(){
-  if(generation!==epoch||success)return;
-  attempt(i+1);
- },9500);
- try{tile.addTo(map)}catch(e){attempt(i+1)}
+  if(generation===epoch&&!success)exhausted();
+ },20000);
+ try{
+  layer=L.maplibreGL({style:sources()[0].url,interactive:false,
+   attribution:'© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors',
+   maxZoom:19}).addTo(map);
+  var gl=layer.getMaplibreMap();
+  function loaded(){
+   if(generation!==epoch||success||!gl.loaded()||!gl.areTilesLoaded())return;
+   success=true;
+   if(timer!==null){clearTimeout(timer);timer=null}
+   outlineVisible(false);
+   emit('online','OpenFreeMap · vektör harita');
+  }
+  gl.on('load',loaded);
+  gl.on('idle',loaded);
+  gl.on('error',function(){
+   // A single missing label/tile must not discard the whole map. The initial
+   // load deadline handles an unavailable provider without faking success.
+   if(generation===epoch&&!success)errors++;
+  });
+  loaded();
+ }catch(e){exhausted()}
 }
 g.Id4BaseMap={
  init:function(m,fn,cities){
@@ -120,16 +103,11 @@ g.Id4BaseMap={
   attempt(0);
  },
  retry:function(){if(!map)return false;attempt(0);return true},
- setTomTomKey:function(value){
-  if(typeof value!=='string'||(value!==''&&!validKey(value)))return false;
-  if(tomtomKey===value)return true;
-  tomtomKey=value;
-  if(map)attempt(0);
-  return true;
- },
+ // Traffic credentials never replace the user's chosen OpenFreeMap basemap.
+ setTomTomKey:function(value){return typeof value==='string'},
  setDay:function(value){
-  dayMode=!!value;
-  if(map&&validKey(tomtomKey))attempt(0);
+  var next=!!value;if(dayMode===next)return;
+  dayMode=next;if(map)attempt(0);
  },
  status:function(){return {status:state,online:state==='online',
   source:sources()[srcIndex]?.name||'',fallbackOnly:state==='offline'}},

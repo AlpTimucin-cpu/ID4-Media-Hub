@@ -12,7 +12,7 @@ assert(copyLoop[1].includes('basemap_controller')&&
        "basemap JS/geography must be COPIED into APK inputs");
  
 const basemapJs=fs.readFileSync(path.join(assets,'id4-basemap.js'),'utf8');
-assert(basemapJs.includes('communitySources'), 'public basemap must remain available without TomTom key');
+assert(!basemapJs.includes('tile.openstreetmap.'), 'old raster basemap must not return');
 const tiles=[],outlines=[],labels=[],statuses=[],allLayers=new Set(),panes={};
 const map={
  createPane(name){const pane={style:{}};panes[name]=pane;return pane},
@@ -32,8 +32,10 @@ const L={
   return {coords,options,addTo(m){labels.push(this);m.addLayer(this);return this}};
  },
  divIcon(opts){return opts},
- tileLayer(url,opts){
-  const layer={url,opts,events:{},on(name,fn){this.events[name]=fn;return this},
+ maplibreGL(opts){
+  const gl={events:{},ready:false,on(name,fn){this.events[name]=fn;return this},
+   loaded(){return this.ready},areTilesLoaded(){return this.ready}};
+  const layer={opts,gl,getMaplibreMap(){return gl},
    addTo(m){tiles.push(this);m.addLayer(this);return this}};
   return layer;
  }
@@ -50,44 +52,37 @@ vm.runInContext(basemapJs,ctx,{timeout:2500});
 const controller=window.Id4BaseMap;
 assert(controller&&typeof controller.init==='function');
 controller.init(map,s=>statuses.push(s),[['Ankara',39.9208,32.8541],['İstanbul',41.0082,28.9784]]);
-assert.equal(tiles.length,1,'only visible primary OSM tiles are requested');
-assert(tiles[0].url.includes('tile.openstreetmap.org'));
+assert.equal(tiles.length,1);
+assert.equal(tiles[0].opts.style,'https://tiles.openfreemap.org/styles/dark');
 assert.equal(controller.status().online,false);
-assert(outlines.length===1&&allLayers.has(outlines[0]),
- 'bundled geopolitical outline must show while tiles are loading');
-assert(labels.length>=1,'real city coordinate fallback should render');
-tiles[0].events.tileload();
-assert.equal(controller.status().online,true);
-assert(!allLayers.has(outlines[0]),'real tile success removes fallback overlay');
-assert(statuses.some(s=>s.status==='online'&&s.source==='OpenStreetMap'));
-controller.retry();
-assert.equal(tiles.length,2,'retry reloads the first provider only on request');
-tiles[1].events.tileerror();tiles[1].events.tileerror();tiles[1].events.tileerror();
-assert.equal(tiles.length,3,'OSM error must fail over to OSM France');
-assert(tiles[2].url.includes('tile.openstreetmap.fr/osmfr'));
-assert.equal(controller.status().online,false,'failover does not fake a live map');
-tiles[2].events.tileerror();tiles[2].events.tileerror();tiles[2].events.tileerror();
-assert.equal(controller.status().status,'offline',
- 'when both suppliers fail show explicit offline country outlines');
-assert(allLayers.has(outlines[0]),'geography remains visible without internet');
-assert(controller.retry(),'manual retry must work from offline map');
-assert.equal(tiles.length,4);
-tiles[3].events.tileload();
+assert(allLayers.has(outlines[0]),'show geography while vector tiles load');
+assert(labels.length>=1);
+tiles[0].gl.events.load();
+assert.equal(controller.status().online,false,'style-only event is not loaded tiles');
+tiles[0].gl.ready=true;tiles[0].gl.events.idle();
 assert.equal(controller.status().online,true);
 assert(!allLayers.has(outlines[0]));
-assert(controller.setTomTomKey('TEST_TOMTOM_BASEMAP_KEY_12345678'),
- 'runtime TomTom key must be accepted');
-assert.equal(controller.sources()[0],'TomTom Orbis');
-assert(tiles.at(-1).url.includes('/maps/orbis/display/raster/tile/'));
-assert(tiles.at(-1).url.includes('street-dark'));
-assert(tiles.at(-1).url.includes('geopoliticalView=TR'));
+assert.equal(controller.status().source,'OpenFreeMap');
+controller.retry();
+const failed=tiles.at(-1);
+failed.gl.events.error();
+assert.equal(controller.status().online,false);
+scheduled.at(-1)();
+assert.equal(controller.status().status,'offline');
+assert(allLayers.has(outlines[0]));
+controller.retry();
+// Stale successes from a removed map must never overwrite current state.
+failed.gl.ready=true;failed.gl.events.load();
+assert.equal(controller.status().online,false);
+const next=tiles.at(-1);next.gl.ready=true;next.gl.events.load();
+assert.equal(controller.status().online,true);
+const beforeKey=tiles.length;
+controller.setTomTomKey('TEST_KEY_NOT_A_SECRET');
+assert.equal(tiles.length,beforeKey,'traffic key must not replace chosen basemap');
 controller.setDay(true);
-assert(tiles.at(-1).url.includes('street-light'));
-for(let i=0;i<3;i++)tiles.at(-1).events.tileerror();
-assert(tiles.at(-1).url.includes('tile.openstreetmap.org'),
- 'TomTom denied: fallback to public OSM');
-assert(controller.setTomTomKey(''),'TomTom key should be removable');
-assert.equal(controller.sources()[0],'OpenStreetMap');
+assert.equal(tiles.at(-1).opts.style,'https://tiles.openfreemap.org/styles/liberty');
+controller.setDay(false);
+assert(tiles.at(-1).opts.style.endsWith('/dark'));
 controller.close();
 assert.equal(controller.status().status,'uninitialized');
-console.log('PASS: real tile success, two-provider failures, geographic fallback, retry and attribution');
+console.log('PASS: vector loading, real readiness, timeout, stale events, retry, day mode');

@@ -54,6 +54,8 @@ const L={
     bringToFront(){return this},getBounds(){return []}}}
 };
 const win={
+ ID4_OFFLINE_COUNTRIES:{},
+ Id4BaseMap:{init(map,callback){mapActions.baseStatus=callback},setDay(){},retry(){}},
  MolaNative:{
   suggest(field,q,id){calls.suggest.push({field,q,id})},
   route(...args){calls.route.push(args)},
@@ -203,15 +205,13 @@ assert(!html.includes('class="dock-climate"')&&!html.includes('>KLİMA<'),
  'unsupported climate controls must be removed, not merely disabled');
 assert(html.includes('id="map-credit"'),
  'OpenStreetMap attribution must be visible and not hidden by route sheet');
-assert(typeof mapActions.tileEvents.tileerror==='function' &&
-       typeof mapActions.tileEvents.tileload==='function',
- 'offline/online tile states must be handled');
-mapActions.tileEvents.tileerror();
-assert(get('map-credit').textContent.includes('yüklenemedi'),
- 'tile failure should tell the driver instead of showing a blank map');
-mapActions.tileEvents.tileload();
-assert(get('map-credit').textContent.includes('Çevrimiçi harita'),
- 'loaded tiles must clear the temporary warning');
+assert.equal(typeof mapActions.baseStatus,'function');
+mapActions.baseStatus({status:'offline',online:false,detail:'Harita yüklenemedi'});
+assert(get('map-health-text').textContent.includes('yüklenemedi'));
+assert(get('map-credit').textContent.includes('sokak/yol haritası değildir'));
+mapActions.baseStatus({status:'online',online:true,source:'OpenFreeMap',detail:'Vektör harita'});
+assert(get('map-credit').textContent.includes('OpenFreeMap'));
+assert(!get('map-health').classList.contains('is-offline'));
 assert(html.includes('id="co-soc"')&&html.includes('id="co-voltage"')&&
  html.includes('id="co-energy"'),'transparent cockpit missing core measurements');
 assert(html.includes('backdrop-filter:blur'),'cockpit overlays must be translucent');

@@ -47,7 +47,7 @@ function openTomTom(seq){
    if(finished)return;
    if(seq===requested&&!confirmed){
     reset();active='osm';
-    status('tomtom','TomTom trafik zaman aşımı: OSM haritası korundu.',false);
+    status('tomtom','TomTom trafik zaman aşımı: OpenFreeMap haritası korundu.',false);
    }
    finish(false);
   },12000);
@@ -61,7 +61,7 @@ function openTomTom(seq){
    if(seq!==requested||confirmed||finished)return;
    if(++errors>=3){
     clearTimeout(timeout);reset();active='osm';
-    status('tomtom','TomTom trafik döşemesi alınamadı (izin, kota veya ağ). OSM açık.',false);
+    status('tomtom','TomTom trafik döşemesi alınamadı (izin, kota veya ağ). OpenFreeMap açık.',false);
     finish(false);
    }
   }
@@ -78,7 +78,7 @@ function openTomTom(seq){
    },300000);
   }catch(e){
    clearTimeout(timeout);reset();active='osm';
-   status('tomtom','TomTom katmanı başlatılamadı; OSM açık.',false);
+   status('tomtom','TomTom katmanı başlatılamadı; OpenFreeMap açık.',false);
    finish(false);
   }
  });

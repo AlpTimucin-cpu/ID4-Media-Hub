@@ -112,6 +112,12 @@ source=source.replace(anchor,'''            DashboardCard card = cards.get(posit
                 return;
             }
             if (card.recentShelf)''')
+# Fixed navigation cards are not media SmartTop cards. Async media refresh must
+# never replace the journey destination (nor recent/favorites shelves).
+anchor="if (cards.get(i).fixed && !cards.get(i).recentShelf) return i;"
+assert source.count(anchor)==1
+source=source.replace(anchor,
+    "if (cards.get(i).fixed && cards.get(i).wide && !cards.get(i).recentShelf) return i;")
 fragment.write_text(source,encoding="utf-8")
 
 # Register a non-exported Activity. Existing media service is unchanged.
@@ -239,6 +245,14 @@ config_target=root/traffic_config.relative_to(overlay)
 config_target.write_text("window.ID4_TRAFFIC_CONFIG="+
     json.dumps(public_keys,ensure_ascii=True,separators=(",",":"))+";\n",
     encoding="utf-8")
+
+# Pinned open-source vector renderer, Leaflet adapter and license notices.
+for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
+             "MAPLIBRE_LICENSE.txt", "MAPLIBRE_LEAFLET_LICENSE.txt"]:
+    asset=overlay/"fermata/src/main/assets/id4"/name
+    assert asset.is_file(), "Missing vector map dependency: "+name
+    target=root/asset.relative_to(overlay)
+    target.write_bytes(asset.read_bytes())
 
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {

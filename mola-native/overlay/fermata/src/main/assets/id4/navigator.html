@@ -1502,6 +1502,9 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 }
 
+/* Vector styles supply their own colors; do not invert canvas or traffic. */
+#map .leaflet-tile-pane,body.day #map .leaflet-tile-pane{filter:none!important}
+#map .maplibregl-canvas{outline:none}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1676,7 +1679,7 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  <div class="traffic-provider-choices" id="traffic-choices">
    <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
    <button type="button" id="traffic-tomtom-key">⚙ TomTom anahtarı</button>
-  <button type="button" id="traffic-osm">OSM haritası</button>
+  <button type="button" id="traffic-osm">OpenFreeMap haritası</button>
   <div class="traffic-provider-note" id="traffic-help">Gerçek trafik: lisanslı API anahtarı gerekir.</div>
  </div>
  <div id="layer-status" class="map-layer-status">Şarj katmanını seç · EPDK kayıtları</div>
@@ -1734,7 +1737,10 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 <div id="traffic-source" class="state-line">Trafik / kaza / yol çalışması: Canlı sağlayıcı bağlı değil. Bu bilgiler rota süresine katılmıyor.</div>
 </div>
 <p class="notice">İl merkezleri: mevlutcelik/turkey-cities-data (MIT); ayrıntılı adresler: Photon/OSM. Rotalar OSRM kamu deneme servisi, harita OpenStreetMap verisi kullanır. Canlı trafik/kaza ve kesin şarj fiyatı bağlı değildir. Hava yalnızca API yanıtı alındığında model tahmini olarak gösterilir. GPS bazlı sesli uyarılar henüz gerçek araç üzerinde doğrulanmamıştır; güvenlik açısından tek navigasyon kaynağı olarak kullanmayın.</p></section>
+<link rel="stylesheet" href="maplibre-gl.css">
 <script src="leaflet.js"></script>
+<script src="maplibre-gl.js"></script>
+<script src="maplibre-gl-leaflet.js"></script>
 <script src="id4-offline-geography.js"></script>
 <script src="id4-basemap.js"></script>
 <script src="traffic-config.js"></script>
@@ -2799,24 +2805,12 @@ try{
    $('map-health-text').textContent=String(out.detail||'Harita bekleniyor');
    document.body.classList[out.source==='TomTom Orbis'?'add':'remove']('id4-tomtom-map');
    $('map-credit').textContent=out.online?
-    out.source==='TomTom Orbis'?'© TomTom · © OpenStreetMap contributors':
-    '© OpenStreetMap contributors'+(out.source==='OSM Fransa'?' · © OpenStreetMap France':''):
+    '© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors':
     '© Natural Earth (public domain) · sokak/yol haritası değildir';
   },CITY_DATA);
  }else{
-  // Safe old path if an asset accidentally fails to load.
-  var baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-   attribution:'© OpenStreetMap contributors',maxZoom:18,keepBuffer:1
-  }).addTo(map);
-  if(baseTiles.on){
-   baseTiles.on('tileerror',function(){
-    $('map-credit').textContent='© OpenStreetMap contributors · Harita karoları yüklenemedi';
-   });
-   baseTiles.on('tileload',function(){
-    $('map-credit').textContent='© OpenStreetMap contributors · Çevrimiçi harita';
-    $('map-health').classList.add('is-online');
-   });
-  }
+  $('map-health-text').textContent='Vektör harita bileşeni yüklenemedi';
+  $('map-credit').textContent='Harita kullanılamıyor';
  }
   map.on('click',function(e){
  setMapLayerMenu(false);
@@ -2998,7 +2992,7 @@ window.molaTrafficStatus=function(o){
  if(!o)return;
  var active=o.provider==='tomtom'&&o.status==='active';
  $('traffic-help').textContent=String(o.detail||'Trafik verisi yok');
- $('traffic-map-provider').textContent=active?'TomTom Orbis Trafik':'OpenStreetMap';
+ $('traffic-map-provider').textContent=active?'TomTom Orbis Trafik':'OpenFreeMap';
  $('dock-traffic-label').textContent=active?'TomTom açık':'Trafik kapalı';
  $('dock-traffic').classList[active?'remove':'add']('status-unavailable');
  $('traffic-mini-label').textContent=active?'🚦 TomTom Orbis canlı katman':'🚦 Trafik verisi yok';
@@ -3009,11 +3003,11 @@ window.molaTrafficStatus=function(o){
   $('traffic-'+name).classList[name===o.provider&&active?'add':'remove']('active');
  });
  $('map-credit').textContent=active?
-  '© OpenStreetMap contributors · © TomTom · Çevrimiçi trafik':
-  '© OpenStreetMap contributors · Çevrimiçi harita';
+  '© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors · © TomTom':
+  '© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors';
  $('traffic-source').textContent=active?
   'TomTom yoğunluk ve olaylar katmanı açık · rotanın ETA kaynağı ayrıca kontrol edilir':
-  'Trafik katmanı kapalı. OSM haritası açık.';
+  'Trafik katmanı kapalı. OpenFreeMap haritası açık.';
 };
 $('dock-traffic').onclick=function(){
  setMapLayerMenu(true);
@@ -3022,7 +3016,7 @@ $('dock-traffic').onclick=function(){
  var configured=adapter&&adapter.configured?adapter.configured():{tomtom:false};
  $('traffic-help').textContent='TomTom: '+
   (configured.tomtom?'API anahtarı ayarlı':'API anahtarı gerekli')+
-  ' · OSM haritasında trafik yok';
+  ' · OpenFreeMap haritasında trafik yok';
 };
 $('layer-traffic').onclick=function(){
  $('traffic-choices').classList.toggle('open');
@@ -3037,7 +3031,7 @@ function switchTraffic(which){
  var adapter=window.Id4TrafficProviders;
  if(!adapter||typeof adapter.activate!=='function'){
   window.molaTrafficStatus({provider:which,status:'unavailable',
-   detail:'Trafik SDK bileşeni bulunamadı; OSM haritası korunuyor.'});return;
+   detail:'Trafik SDK bileşeni bulunamadı; OpenFreeMap haritası korunuyor.'});return;
  }
  var center=[38.9,35.1],zoom=7;
  if(map&&map.getCenter){

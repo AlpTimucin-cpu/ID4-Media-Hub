@@ -58,6 +58,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Verify journey card survives media refresh
+        run: python3 integration/mola-native/tests/test_dashboard_identity.py mola
       - name: Ensure Tesla-style vehicle overview has no manual energy form
         shell: bash
         run: |
@@ -83,6 +85,12 @@ jobs:
           CHROME_BIN="$(command -v google-chrome)" \
           ID4_SCREENSHOTS="$RUNNER_TEMP/id4-layout" \
           node integration/mola-native/tests/test_cockpit_layout.cjs
+      - name: Verify live OpenFreeMap vector map in Turkey
+        run: |
+          NODE_PATH="$RUNNER_TEMP/id4-browser/node_modules" \
+          CHROME_BIN="$(command -v google-chrome)" \
+          ID4_SCREENSHOTS="$RUNNER_TEMP/id4-layout" \
+          node integration/mola-native/tests/test_vector_map.cjs
       - name: Upload cockpit visual checks
         if: always()
         uses: actions/upload-artifact@v4
@@ -183,7 +191,8 @@ jobs:
               scripts=[
                   "id4-offline-geography.js","id4-basemap.js",
                   "traffic-provider.js","traffic-config.js",
-                  "leaflet.js","leaflet.css",
+                  "leaflet.js","leaflet.css","maplibre-gl.js","maplibre-gl.css",
+                  "maplibre-gl-leaflet.js","MAPLIBRE_LICENSE.txt","MAPLIBRE_LEAFLET_LICENSE.txt",
               ]
               missing=["assets/id4/"+name for name in scripts
                        if "assets/id4/"+name not in entries]
