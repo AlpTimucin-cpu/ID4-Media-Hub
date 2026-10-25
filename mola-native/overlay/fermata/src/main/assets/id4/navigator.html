@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src https:; object-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src https:; worker-src 'self' blob:; object-src 'none'; form-action 'none'">
 <title>ID.4 Yol Arkadaşım • Kokpit</title>
 <link rel="stylesheet" href="leaflet.css">
 <style>
@@ -1504,6 +1504,7 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 
 /* Vector styles supply their own colors; do not invert canvas or traffic. */
 #map .leaflet-tile-pane,body.day #map .leaflet-tile-pane{filter:none!important}
+#map{filter:none!important}
 #map .maplibregl-canvas{outline:none}
 </style>
 </head><body>

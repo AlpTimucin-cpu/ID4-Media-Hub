@@ -10,9 +10,18 @@ const assert = require('node:assert/strict');
   const page = await browser.newPage({viewport:{width:1536,height:864}});
   const errors=[], oldRaster=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')console.log('BROWSER:',m.text().slice(0,350))});
+  page.on('requestfailed',r=>console.log('REQUEST FAILED:',r.url().split('?')[0],r.failure()?.errorText));
   page.on('request',r=>{if(/tile\.openstreetmap\./.test(r.url()))oldRaster.push(r.url())});
   await page.goto('file://'+path.resolve(__dirname,'../overlay/fermata/src/main/assets/id4/navigator.html'));
-  await page.waitForFunction(()=>window.Id4BaseMap.status().online,{},{timeout:60000});
+  try {
+   await page.waitForFunction(()=>window.Id4BaseMap.status().online,{},{timeout:60000});
+  } catch(e) {
+   console.log('MAP STATUS:',await page.evaluate(()=>window.Id4BaseMap.status()));
+   const out=process.env.ID4_SCREENSHOTS||'/tmp/id4-layout';fs.mkdirSync(out,{recursive:true});
+   await page.screenshot({path:path.join(out,'vector-load-failure.png')});
+   throw e;
+  }
   assert.equal(await page.evaluate(()=>window.Id4BaseMap.status().source),'OpenFreeMap');
   assert.equal(await page.locator('.maplibregl-canvas').count(),1);
   assert.match(await page.locator('#map-credit').innerText(),/OpenMapTiles/);

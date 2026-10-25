@@ -64,6 +64,36 @@ function exhausted(){
  discard();outlineVisible(true);
  emit('offline','Çevrimiçi harita yüklenemedi · yalnız ülke sınırları · Yeniden dene');
 }
+// Apply actual vector paint properties, not a color filter over raster tiles.
+function styleCockpit(gl){
+ if(dayMode||!gl.getStyle||!gl.setPaintProperty)return;
+ gl.getStyle().layers.forEach(function(item){
+  var id=item.id,type=item.type;
+  if(type==='background')gl.setPaintProperty(id,'background-color','#081d2b');
+  else if(type==='fill'){
+   if(id==='water')gl.setPaintProperty(id,'fill-color','#052d49');
+   else if(/wood|park|grass/.test(id)){
+    gl.setPaintProperty(id,'fill-color','#153b35');
+    if(item.paint&&item.paint['fill-pattern'])gl.setPaintProperty(id,'fill-pattern',null);
+   }else if(/residential/.test(id))gl.setPaintProperty(id,'fill-color','#173344');
+   else if(/building/.test(id)){
+    gl.setPaintProperty(id,'fill-color','#183343');
+    gl.setPaintProperty(id,'fill-outline-color','#27495b');
+   }
+  }else if(type==='line'){
+   if(/waterway/.test(id))gl.setPaintProperty(id,'line-color','#19516b');
+   else if(/highway|road/.test(id))gl.setPaintProperty(id,'line-color',
+    /casing/.test(id)?'#102c40':/motorway/.test(id)?'#5287a2':/major/.test(id)?'#37647c':'#25475c');
+   else if(/boundary/.test(id))gl.setPaintProperty(id,'line-color','#476072');
+  }else if(type==='symbol'&&item.layout&&item.layout['text-field']){
+   gl.setPaintProperty(id,'text-color',/water/.test(id)?'#75a5bf':'#bbd4e2');
+   gl.setPaintProperty(id,'text-halo-color','#081d2b');
+   gl.setPaintProperty(id,'text-halo-width',1.2);
+   if(/place|poi|water_name/.test(id))gl.setLayoutProperty(id,'text-field',
+    ['coalesce',['get','name:tr'],['get','name:latin'],['get','name']]);
+  }
+ });
+}
 function attempt(i){
  var generation=++epoch;
  discard();success=false;errors=0;srcIndex=0;
@@ -76,8 +106,10 @@ function attempt(i){
  try{
   layer=L.maplibreGL({style:sources()[0].url,interactive:false,
    attribution:'© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors',
-   maxZoom:19}).addTo(map);
+   maxZoom:19});
+  layer.addTo(map);
   var gl=layer.getMaplibreMap();
+  gl.on('style.load',function(){styleCockpit(gl)});
   function loaded(){
    if(generation!==epoch||success||!gl.loaded()||!gl.areTilesLoaded())return;
    success=true;
