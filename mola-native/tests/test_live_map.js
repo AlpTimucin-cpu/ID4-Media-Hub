@@ -35,15 +35,17 @@ const L={latLng(a){return {p:a,distanceTo(b){return metres(a,b.p)}}},
  popup(){return {setLatLng(){return this},setContent(){return this},openOn(){return this}}}};
 const map={addLayer(){},removeLayer(){},on(){},closePopup(){},
  fitBounds(){},setView(){},getBounds(){return {getSouth(){return 36},getWest(){return 28},getNorth(){return 42},getEast(){return 44}}}};
+let clock=Date.now();
+class ControlledDate extends Date { static now(){return clock} }
 const win={ID4_LIVE_ATTACH_ONLY:true,
  localStorage:{getItem(){return null},setItem(){}},
  setTimeout,clearTimeout,setInterval(){},addEventListener(){},dispatchEvent(){},
  fetch:async function(url){
    assert.match(url,/api\.open-meteo\.com\/v1\/forecast/);
    return {ok:true,json:async()=>({current:{temperature_2m:-5,
-     wind_speed_10m:40,time:'2026-10-25T12:00'}})};
+     wind_speed_10m:40,time:Math.floor(clock/1000)}})};
  }};
-const ctx={window:win,document:doc,L,Map,Date,Math,Number,String,Array,
+const ctx={window:win,document:doc,L,Map,Date:ControlledDate,Math,Number,String,Array,
  Set,JSON,Promise,Event,AbortController,console};
 vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
 (async()=>{
@@ -57,20 +59,52 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  ]}),1);
  assert.equal(el('id4-station-count').textContent,'7 (rota)');
  assert.equal(m.getState().corridorStations,1);
+
+ // A *partial* setStations array must NEVER become a global DC source.
  m.updateLocation(39.02,35.02);
  m.updateCarData(50,19);
- assert.match(el('id4-nearest-dc').textContent,/Tam EPDK listesi/);
- // The optional full-country dataset enables nearest-DC lookup.
- assert.equal(m.setStations([
-  {id:'near',lat:39.02,lon:35.02,dc:true,title:'Nearest DC'},
-  {id:'far',lat:40,lon:36,dc:true,title:'Distant DC'}
- ]),2);
+ assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
+ const near={id:'near',lat:39.02,lon:35.02,dc:true,title:'Nearest DC'};
+ assert.equal(m.setStations([near]),1);
+ assert.equal(m.isCountryDataReady(),false);
+ assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
+ // Incomplete metadata must not promote a regional data slice.
+ m.setStations([near],{source:'EPDK',coverage:'country',complete:true,
+   geocodedCount:1,verifiedAtUtc:new Date(clock).toISOString()});
+ assert.equal(m.isCountryDataReady(),false);
+ // Deliberately using generated *test fixtures*, not claiming live EPDK records.
+ const national=Array.from({length:5000},(_,i)=>({
+   id:'test-'+i,lat:40,lon:36,dc:true,title:'Far test station'}));
+ national[0]=near;
+ const metadata={source:'EPDK',coverage:'country',complete:true,
+   geocodedCount:national.length,verifiedAtUtc:new Date(clock).toISOString()};
+ assert.equal(m.setStations(national,metadata),5000);
+ assert.equal(m.isCountryDataReady(),true);
  assert.match(el('id4-nearest-dc').textContent,/Nearest DC/);
+ assert.equal(m.getState().countryStationsVerified,true);
+ // An invalid or stale telemetry value cannot carry over prior SoC.
+ m.updateCarData(30,101);
+ assert.equal(el('id4-soc').textContent,'—');
+ assert.equal(el('id4-nearest-dc').textContent,'—');
  m.updateCarData(30,21);
  assert.equal(el('id4-nearest-dc').textContent,'—');
  m.updateCarData(0,0);
  assert.equal(el('id4-soc').textContent,'0.0%');
+ assert.match(el('id4-nearest-dc').textContent,/Nearest DC/);
+ // Fresh SoC with an old GPS fix does not justify a highlighted station.
+ clock+=31000;
+ m.updateCarData(0,19);
+ assert.equal(el('id4-nearest-dc').textContent,'—');
+ m.updateLocation(39.02,35.02);
+ assert.match(el('id4-nearest-dc').textContent,/Nearest DC/);
+ // Measured energy profile is mandatory and weather applies exactly once.
+ assert.equal(m.setEnergyProfile({usableBatteryKWh:50,consumptionKWhPer100Km:18}),true);
  await new Promise(resolve=>setTimeout(resolve,40));
  assert.equal(m.getState().weather.multiplier,1.15);
- console.log('PASS: native route stations, no fictitious nearest DC, 0% SoC and live weather factor');
+ assert.match(el('id4-range').textContent,/kWh/);
+ // A stale EPDK date disables nearest-DC even when coverage was once complete.
+ m.setStations(national,{...metadata,verifiedAtUtc:'2024-01-01T00:00:00Z'});
+ assert.equal(m.isCountryDataReady(),false);
+ assert.match(el('id4-nearest-dc').textContent,/Güncel ve tam EPDK/);
+ console.log('PASS: route corridor, certified national index, SoC, stale GPS, low battery, weather-energy model');
 })().catch(error=>{console.error(error);process.exitCode=1});
