@@ -7,13 +7,24 @@
  */
 (function (w, d) {
   'use strict';
-  var mod = w.ID4LiveMap;
-  if (!mod || !w.id4LiveLeafletMap || !mod.attachExistingMap(w.id4LiveLeafletMap)) {
-    console.warn('ID4LiveMap: mevcut Mola haritasına erişilemiyor'); return;
+  var mod = w && w.ID4LiveMap;
+  try {
+    if (!mod || !w.id4LiveLeafletMap ||
+        !mod.attachExistingMap(w.id4LiveLeafletMap)) {
+      console.warn('ID4LiveMap: mevcut Mola haritasına erişilemiyor');
+      return;
+    }
+  } catch (error) {
+    // A partially initialized map must not take down Mola's TV or navigator.
+    console.warn('ID4LiveMap attach failed; leaving Mola untouched', error);
+    return;
   }
 
   // Üretimdeki arayüzün sağ tarafına küçük bir canlı bilgi kartı.
-  var target = d.querySelector('.cockpit-right');
+  var target = null;
+  try { target = d.querySelector('.cockpit-right'); }
+  catch (e) { console.warn('ID4 cockpit selector unavailable', e); }
+  try {
   if (target && !d.getElementById('id4-live-addon')) {
     var panel = d.createElement('div');
     panel.id = 'id4-live-addon'; panel.className = 'cockpit-panel';
@@ -28,11 +39,14 @@
       '<div id="id4-status">Yerel ihbar katmanı hazır.</div>';
     target.appendChild(panel);
   }
+  } catch (e) { console.warn('ID4 HUD panel unavailable', e); }
   var speed = null, soc = null, speedAt = 0, socAt = 0;
   function syncCar() {
     var now = Date.now();
-    mod.updateCarData(now - speedAt <= 30000 ? speed : null,
-                      now - socAt <= 30000 ? soc : null);
+    // Reject a time jump backwards; never revive stale measurements.
+    var freshSpeed = speedAt > 0 && now >= speedAt && now - speedAt <= 30000;
+    var freshSoc = socAt > 0 && now >= socAt && now - socAt <= 30000;
+    mod.updateCarData(freshSpeed ? speed : null, freshSoc ? soc : null);
   }
   function wrap(name, after) {
     var original = w[name];
@@ -40,13 +54,14 @@
     w[name] = function (packet) {
       var result;
       try {
-        result = original.apply(this, arguments); // Keep native Mola as the UI owner.
+        // Native Mola callback owns the UI, routes and media modules.
+        result = original.apply(this, arguments);
       } catch (e) {
-        // Never leave a Java→WebView callback as an uncaught page exception.
         console.warn('Mola native callback failed: ' + name, e);
-        var status = d.getElementById('id4-status');
-        if (status) status.textContent = 'Mola verisi işlenemedi: ' + name;
-        return undefined;
+        try {
+          var label = d.getElementById('id4-status');
+          if (label) label.textContent = 'Mola verisi işlenemedi: ' + name;
+        } catch (_) { /* DOM may be unavailable. */ }
       }
       try { after(packet); } catch (e) { console.warn('ID4Live addon ' + name, e); }
       return result;
@@ -85,15 +100,55 @@
     syncCar();
   });
   wrap('molaStatus', function (p) {
-    if (p && /durduruldu|iptal edildi/i.test(String(p.detail || ''))) mod.clearRoute();
-
-
-
-
-
+    if (p && /durduruldu|iptal edildi/i.test(String(p.detail || '')))
+      mod.clearRoute();
   });
-  // En yakın DC için istasyonların TAM veri kümesi bağımsız verilmelidir:
-  // window.ID4LiveMap.setStations(allEpdkStations)
-  // window.molaStations paketleri çoğu zaman sadece görünür ekran/rota alt kümesidir;
-  // bunları bütün Türkiye sanarak en yakın istasyon iddiası yapılmaz.
+
+  // Native can call this from evaluateJavascript using a safely quoted JSON
+  // string. Do not overwrite the actual Java @JavascriptInterface
+  // window.AndroidBridge. This is an optional JS endpoint.
+  function normalizePacket(raw) {
+    if (typeof raw === 'string') {
+      if (raw.length > 2 * 1024 * 1024) return null;
+      try { raw = JSON.parse(raw); } catch (_) { return null; }
+    }
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ?
+      raw : null;
+  }
+  var commands = Object.freeze({
+    route:'molaRoute', stations:'molaStations',
+    gps:'molaPosition', telemetry:'molaTelemetry', status:'molaStatus'
+  });
+  w.ID4NativeBridge = Object.freeze({
+    receive: function (type, raw) {
+      try {
+        if (typeof type !== 'string' ||
+            !Object.prototype.hasOwnProperty.call(commands, type)) return false;
+        var packet = normalizePacket(raw), callback = w[commands[type]];
+        if (!packet || typeof callback !== 'function') return false;
+        callback(packet); // Original Mola first, addon second.
+        return true;
+      } catch (error) {
+        console.warn('ID4 native packet refused:', error); return false;
+      }
+    },
+    snapshot: function () {
+      try { return mod.getState(); }
+      catch (_) { return {soc:null,position:null,countryStationsVerified:false}; }
+    },
+    epdkCountry: function (raw) {
+      try {
+        // Must be a verified COUNTRY batch; a Mola route subset is NEVER
+        // promoted into the national DC index. No assumed status or kW.
+        var packet = normalizePacket(raw);
+        if (!packet || !Array.isArray(packet.stations) || !packet.metadata ||
+            packet.metadata.coverage !== 'country') return false;
+        var verdict = mod.validateEPDKDataContract(packet);
+        if (!verdict || !verdict.ok) return false;
+        return mod.setStations(packet.stations, packet.metadata) > 0;
+      } catch (error) {
+        console.warn('ID4 EPDK batch refused:', error); return false;
+      }
+    }
+  });
 })(window, document);
