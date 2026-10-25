@@ -110,9 +110,10 @@ global.Id4TrafficProviders={
  setTomTomKey:function(key){
   if(typeof key!=='string'||(key!==''&&!validKey(key)))return false;
   requested++;reset();active='osm';config.tomtomKey=key;
-  status('tomtom',key?'TomTom anahtarı kaydedildi; bağlantı deneniyor.':
+  status('tomtom',key?
+     'TomTom anahtarı kaydedildi; rota oluşturulduğunda trafik otomatik yüklenecek.':
      'TomTom anahtarı temizlendi.',false);
-  if(key&&leafletMap)activate('tomtom',lastCenter,lastZoom);
+  // The route, not a settings screen or app launch, starts paid traffic tiles.
   return true;
  },
  updateViewport:function(c,z){
