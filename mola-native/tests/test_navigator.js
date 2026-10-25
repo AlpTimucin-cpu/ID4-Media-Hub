@@ -95,6 +95,19 @@ function typing(field,query){
  while(timeouts.length)timeouts.shift()();
  return calls.suggest[calls.suggest.length-1];
 }
+// Weather, traffic and fixed cameras have NO driver-facing toggles.
+for(const id of ['dock-traffic','dock-safety','layer-weather','layer-traffic','layer-safety']){
+ assert(new RegExp('id="'+id+'"[^>]*hidden|hidden[^>]*id="'+id+'"').test(html),
+  'legacy '+id+' toggle must be hidden from drivers');
+}
+assert(html.includes('id="route-weather-shortcut" class="header-weather-button" role="status"'),
+ 'weather is a read-only status, not a button');
+assert(html.includes('safetyActive=true;') &&
+       html.includes('if(map && currentRouteProgress && w.available===true)'),
+ 'route must automatically enable sampled camera records and weather markers');
+assert(html.includes("if(traffic.configured().tomtom&&traffic.getActive()!=='tomtom')"),
+ 'configured live traffic must activate automatically on route');
+
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
@@ -836,4 +849,19 @@ context.window.molaPosition({lat:38.123,lon:34.77,accuracy:80,
  timeMs:Date.now(),speedKmh:70});
 assert(!get('safety-speed').classList.contains('active'),
  'poor-accuracy GPS may not claim current measured speed');
-console.log('PASS: independent OSM camera warnings, opt-in and measured speed');
+// Test a current sampled OSM camera response and reject a prior route response.
+context.window.molaRoute({...routeCase,routeGeneration:42});
+const priorCameraCount=drawnMarkers.length;
+context.window.molaSafetyCameras({source:'© OpenStreetMap contributors (ODbL)',
+ routeGeneration:41,coverage:'sampled route neighborhoods only',
+ items:[{id:100101,lat:38.99,lon:34.13,kind:'fixed'}]});
+assert.equal(drawnMarkers.length,priorCameraCount,
+ 'old route-camera response must never draw stale pins');
+context.window.molaSafetyCameras({source:'© OpenStreetMap contributors (ODbL)',
+ routeGeneration:42,coverage:'sampled route neighborhoods only',
+ items:[{id:100101,lat:38.99,lon:34.13,kind:'fixed'}]});
+assert(get('safety-status').textContent.includes('sınırlı örnekleme'),
+ 'limited OSM camera coverage must be disclosed');
+assert.equal(drawnMarkers.length,priorCameraCount+1,
+ 'automatic route should show real OSM camera record');
+console.log('PASS: automatically enabled, scoped cameras and no driver-facing toggles');
