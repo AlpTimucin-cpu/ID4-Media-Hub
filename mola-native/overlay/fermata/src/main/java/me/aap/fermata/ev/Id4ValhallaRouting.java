@@ -28,7 +28,7 @@ final class Id4ValhallaRouting {
         JSONObject parameters=new JSONObject()
             .put("locations",points)
             .put("costing","auto")
-            .put("units","kilometers")
+            .put("units","km")
             .put("format","osrm")
             .put("shape_format","geojson")
             .put("alternates",hasStop?0:2)
