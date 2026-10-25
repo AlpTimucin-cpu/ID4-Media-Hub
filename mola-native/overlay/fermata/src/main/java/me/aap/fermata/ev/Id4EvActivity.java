@@ -733,7 +733,7 @@ public final class Id4EvActivity extends Activity {
             fetchAutomaticPrice(currentPage,tariff);
         }));
         panel.addView(button("🔌 OBD batarya ölçümlerini aç",()->
-            startActivity(new Intent(this,Id4ObdActivity.class))));
+            startActivity(new Intent(this,Id4NavigatorActivity.class).putExtra("openObdSettings",true))));
         panel.addView(button("🗺 Otomatik rota mesafesi al",()->
             startActivity(new Intent(this,Id4NavigatorActivity.class))));
         panel.addView(button("⚡ Şarj istasyonu seç",this::stationsScreen));
