@@ -38,7 +38,9 @@ assert '"traffic","live"' in tomtom
 assert 'setRequestProperty("TomTom-Api-Key",key)' in tomtom
 assert 'setRequestProperty("Attributes","routes.summary,routes.legs")' in tomtom
 assert 'trafficDelayDurationInSeconds' in tomtom
-assert "alternatives=true" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java").read_text()
+assert "alternatives=3" in (root/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java").read_text()
+assert "Id4ValhallaRouting.java" in patch
+assert "Id4CarPoiService.java" in patch
 assert 'Id4Launcher' in patch and '@drawable/id4_launcher' in patch
 assert "fermata/src/auto/AndroidManifest.xml" in patch
 assert "old_launcher='android:name=" in patch
