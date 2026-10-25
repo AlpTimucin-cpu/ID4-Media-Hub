@@ -1624,33 +1624,60 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  </div>
  <!-- Visual-only Tesla sidebar: legacy cockpit DOM/callback IDs remain intact.
       No sample speed, BMS charge or shift state: unverified data displays —. -->
- <aside id="id4-tesla-side" class="id4-tesla-side" aria-label="Araç ve hava göstergeleri">
-  <section class="id4-tesla-card">
-   <div class="id4-tesla-caption">Hız · GPS</div>
-   <div class="id4-drive-row"><strong id="id4-drive-speed" class="id4-drive-speed">—</strong>
-      <span class="id4-drive-unit">km/sa</span></div>
-   <div id="id4-drive-gear" class="id4-drive-gear">Vites: —</div>
-  </section>
-  <section class="id4-tesla-card id4-tesla-battery">
-   <div class="id4-tesla-caption">Batarya doluluğu · OBD</div>
-   <div class="id4-battery-head"><strong id="id4-side-soc" class="id4-soc-text">— %</strong></div>
-   <div class="id4-progress"><div id="id4-side-bar-fill" role="progressbar"
-       aria-label="Batarya doluluğu" aria-valuemin="0" aria-valuemax="100"></div></div>
-   <div id="id4-energy-impact" class="id4-energy-impact" hidden></div>
-  </section>
-  <section class="id4-tesla-card">
-   <div class="id4-tesla-caption">Dış hava · Open-Meteo modeli</div>
-   <div class="id4-weather-grid">
-    <div class="id4-weather-pill"><small>Sıcaklık</small><strong id="id4-side-temp">— °C</strong></div>
-    <div class="id4-weather-pill"><small>Rüzgâr</small><strong id="id4-side-wind">— km/sa</strong></div>
+ <aside id="id4-tesla-side" class="id4-tesla-side"
+       aria-label="ID.4 gerçek telemetri ve model göstergeleri">
+   <!-- Display-only overlay. Existing co-* DOM and Mola callback IDs remain intact. -->
+   <section class="id4-tesla-card id4-battery-card">
+     <div class="id4-hero-row">
+       <span class="id4-battery-glyph" aria-hidden="true">▣</span>
+       <div class="id4-hero-copy">
+         <div class="id4-tesla-caption">BATARYA DOLULUK · OBD</div>
+         <strong id="id4-side-soc" class="id4-soc-text">— %</strong>
+       </div>
+     </div>
+     <div class="id4-progress" aria-label="Doğrulanmış batarya doluluğu">
+       <div id="id4-side-bar-fill" role="progressbar"
+         aria-label="Batarya doluluğu" aria-valuemin="0" aria-valuemax="100"></div>
+     </div>
+   </section>
+   <section class="id4-tesla-card id4-range-card">
+     <div class="id4-range-row">
+       <span class="id4-range-symbol" aria-hidden="true">♢</span>
+       <div>
+         <div class="id4-tesla-caption">TAHMİNİ MENZİL · MODEL</div>
+         <strong id="id4-side-range" class="id4-range-value">— km</strong>
+         <div class="id4-range-label">OBD SoC + mevcut enerji modeli; ölçüm değil</div>
+       </div>
+     </div>
+   </section>
+   <div class="id4-tech-grid" aria-label="Doğrulanmış araç ve yol ölçümleri">
+     <div class="id4-mini-metric"><small>⚡ HV BATARYA GERİLİMİ</small>
+       <strong id="id4-side-voltage">— V</strong></div>
+     <div class="id4-mini-metric"><small>♧ BATARYA SICAKLIĞI</small>
+       <strong id="id4-side-battery-temp">— °C</strong></div>
+     <div class="id4-mini-metric"><small>⌁ ÇALIŞMA / ŞARJ</small>
+       <strong id="id4-side-mode">—</strong></div>
+     <div class="id4-mini-metric"><small>▥ ANLIK GÜÇ</small>
+       <strong id="id4-side-power">— kW</strong></div>
+     <div class="id4-mini-metric"><small>⌁ ORTALAMA TÜKETİM</small>
+       <strong id="id4-side-consumption" class="id4-small">— kWh/100 km</strong></div>
+     <div class="id4-mini-metric"><small>♢ YOL ENERJİSİ · MODEL</small>
+       <strong id="id4-side-energy" class="id4-small">— kWh</strong></div>
    </div>
-  </section>
-  <div id="id4-drive-provenance" class="id4-provenance" role="status">Gerçek veri bekleniyor</div>
+   <div class="id4-status-strip" role="status" aria-label="Canlı veri durumu">
+      <span class="id4-drive-row"><strong id="id4-drive-speed" class="id4-drive-speed">—</strong>
+        <small class="id4-drive-unit">km/sa · GPS</small></span>
+      <span id="id4-drive-gear" class="id4-drive-gear">Vites: —</span>
+      <span>☀ <b id="id4-side-temp">— °C</b></span>
+      <span>☁ <b id="id4-side-wind">— km/sa</b></span>
+      <span id="id4-energy-impact" class="id4-energy-impact" hidden></span>
+      <span id="id4-drive-provenance" class="id4-provenance" hidden>Doğrulama bekleniyor</span>
+   </div>
  </aside>
  <div class="cockpit-right">
   <div class="cockpit-panel">
     <div class="co-turn"><span class="co-turn-arrow" aria-hidden="true">↱</span><div>
-      <strong id="co-maneuver-distance">—</strong>
+      <strong id="co-maneuver-distance">—</strong><span id="id4-road-badge" class="id4-road-badge" hidden></span>
       <div id="co-maneuver" class="cockpit-direction">Güzergâh seçilmedi</div>
     </div></div>
     <div class="co-nav-row"><span class="co-nav-icon" aria-hidden="true">⚑</span><div class="co-nav-meta">
@@ -1687,7 +1714,10 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
   <div>
    <div class="tripbar-mid"><span id="co-trip-progress-label">Rota ilerlemesi yok</span>
      <span id="co-trip-charge">⚡ Şarj planlanmadı</span></div>
-   <div class="tripbar-track"><div id="co-trip-fill"></div></div>
+   <div class="tripbar-track"><div id="co-trip-fill"></div>
+      <!-- Only actual route-corridor Mola charge stop proposals produce marker nodes. -->
+      <div id="id4-route-stop-markers" class="id4-route-stop-markers" aria-hidden="true"></div>
+    </div>
    <div class="tripbar-mid"><span id="co-trip-battery">OBD SoC: —</span>
      <span id="co-trip-charge-km">Şarj km: —</span></div>
   </div>
