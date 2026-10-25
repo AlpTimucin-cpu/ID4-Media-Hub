@@ -518,14 +518,27 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("minutes",Math.round(minutes))
                     .put("energyLowKwh",Math.round(roadKm*.16*10)/10.0)
                     .put("energyHighKwh",Math.round(roadKm*.24*10)/10.0)
-                    .put("socKnown",Double.isFinite(soc)).put("ccsCount",0)
-                    .put("reachableCcsModel",false);
-                Id4ChargeCost.Estimate cost=Id4ChargeCost.estimate(
+                    .put("socKnown",Double.isFinite(soc))
+                    .put("ccsCount",0).put("reachableCcsModel",false);
+                // Display an EXPLICIT 80% assumption when BMS SoC is missing.
+                // Charge count models energy-equivalent stops, not real socket
+                // availability or a verified detour to a specific charger.
+                Id4TripChargePlan.Estimate plan=Id4TripChargePlan.estimate(
                     roadKm,soc,"",java.time.LocalDate.now());
-                item.put("chargeNeededModel",cost.needsStop);
-                if(cost.socKnown) {
-                    item.put("chargeLowKwh",Math.round(cost.purchasedLowKwh*10)/10.0);
-                    item.put("chargeHighKwh",Math.round(cost.purchasedHighKwh*10)/10.0);
+                item.put("socAssumed",!plan.measuredSoc);
+                item.put("scenarioStartSoc",plan.startSoc);
+                item.put("chargeNeededModel",plan.maxStops>0);
+                item.put("chargeStopsMin",plan.minStops)
+                    .put("chargeStopsMax",plan.maxStops);
+                item.put("chargeLowKwh",Math.round(plan.chargeMinKwh*10)/10.0)
+                    .put("chargeHighKwh",Math.round(plan.chargeMaxKwh*10)/10.0);
+                if(plan.priceEstimateAvailable){
+                    item.put("costMinTry",plan.costMinTry)
+                        .put("costMaxTry",plan.costMaxTry)
+                        .put("priceBasis",plan.priceBasis)
+                        .put("tariffSource",plan.priceSource)
+                        .put("priceType","market-scenario")
+                        .put("tariffChecked","2026-10-16");
                 }
                 try{
                     JSONArray coords=route.getJSONObject("geometry").getJSONArray("coordinates");
@@ -539,9 +552,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         JSONArray last=coords.getJSONArray(coords.length()-1);
                         line.add(new Id4StationCatalog.Point(last.getDouble(1),last.getDouble(0)));
                     }
-                    JSONObject stationData=stationCatalog.alongRoute(line,roadKm,soc);
+                    double routePlanningSoc=Double.isFinite(soc)?soc:
+                        Id4TripChargePlan.ASSUMED_START_SOC;
+                    JSONObject stationData=stationCatalog.alongRoute(
+                        line,roadKm,routePlanningSoc);
                     item.put("stationsKnown",true);
                     item.put("ccsCount",stationData.optInt("total",0));
+                    item.put("ccsCoverage","20 km azami kuş uçuşu koridor, erişim doğrulanmadı");
                     JSONObject suggested=stationData.optJSONObject("suggested");
                     if(suggested!=null&&!hasStop){
                         item.put("reachableCcsModel",true);
@@ -551,14 +568,18 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         double score=1000.0-Math.abs(roadKm-shortest)*.05-
                             minutes*.18+Math.min(100,stationData.optInt("total",0))*.25;
                         if(score>chargeScore){chargeScore=score;chargeIndex=k;}
-                        cost=Id4ChargeCost.estimate(
+                        // Prefer a still-current published network tariff if
+                        // available; otherwise retain the dated market scenario.
+                        Id4TripChargePlan.Estimate networkPlan=Id4TripChargePlan.estimate(
                             roadKm,soc,suggested.optString("operator"),
                             java.time.LocalDate.now());
-                        if(cost.tariffKnown){
-                            item.put("costMinTry",cost.minTry)
-                                .put("costMaxTry",cost.maxTry)
-                                .put("tariffOperator",cost.operator)
-                                .put("tariffSource",cost.tariffSource)
+                        if(networkPlan.operatorRate&&networkPlan.priceEstimateAvailable){
+                            item.put("costMinTry",networkPlan.costMinTry)
+                                .put("costMaxTry",networkPlan.costMaxTry)
+                                .put("priceBasis",networkPlan.priceBasis)
+                                .put("tariffOperator",suggested.optString("operator"))
+                                .put("tariffSource",networkPlan.priceSource)
+                                .put("priceType","published-network")
                                 .put("tariffChecked","2026-10-22");
                         }
                     }
@@ -572,8 +593,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .put("fastestIndex",fastIndex).put("shortestIndex",shortIndex)
                 .put("chargeAwareIndex",chargeIndex)
                 .put("livePrices",false).put("liveAvailability",false)
-                .put("modelNote","OSRM alternatifleri, 16–24 kWh/100 km, "
-                   +"52 kWh batarya ve %15 rezerv. CCS yakınlığı yol erişimi değildir.");
+                .put("modelNote","16–24 kWh/100 km, 52 kWh, %15 rezerv, DC hedef %80. "
+                   +"OBD yoksa %80 çıkış senaryosu. Maliyet kaynaklı pazar/ağ tahmini; "
+                   +"CCS yakınlığı gerçek şarj durağı ve yol erişimi değildir.");
             if(!destroyed && generation==routeGeneration && routeStationRequestId==stationTicket)
                 send("molaAlternatives",response);
         }catch(Exception e){
