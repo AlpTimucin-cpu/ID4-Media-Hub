@@ -1218,6 +1218,9 @@ body.provider-active .traffic-map-badge{display:flex}
 .safety-alert.active{display:block}
 #safety-status{font-size:11px;color:#ffe0ae;flex-basis:100%}
 #dock-safety.active,#layer-safety.active{background:#7f4c28!important;color:white!important}
+.osm-limit-marker{display:grid;place-items:center;width:38px;height:38px;
+ border-radius:50%;border:3px solid #e4f3fa;background:#183d60;
+ color:#fff;font-weight:800;font-size:13px;box-shadow:0 2px 6px #0009}
 .safety-marker{display:grid;place-items:center;width:31px;height:31px;
  border-radius:100px;background:#f8ba58;border:2px solid #ffedd0;font-size:17px}
 @media(orientation:landscape) and (max-height:680px){
@@ -1763,7 +1766,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=null;
 var routePreviewLines=[],routePreviewOptions=[];
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
-var safetyActive=false,safetyVoice=false,safetyMarkers=[],safetyItems=[];
+var safetyActive=false,safetyVoice=false,safetyMarkers=[],safetyLimitMarkers=[],safetyItems=[];
 var activeRouteGeneration=null;
 var lastSafetyAlertId=0,lastSafetyAlertTime=0;
 var cachedJourneyWeather=null;
@@ -2424,7 +2427,8 @@ function bindAutocomplete(field){
 /* User-triggered OSM fixed cameras, not Radarbot's private database. */
 function clearSafety(){
  if(map)safetyMarkers.forEach(function(marker){map.removeLayer(marker)});
- safetyMarkers=[];safetyItems=[];
+ if(map)safetyLimitMarkers.forEach(function(marker){map.removeLayer(marker)});
+ safetyMarkers=[];safetyLimitMarkers=[];safetyItems=[];
  $('safety-alert').classList.remove('active');
 }
 function loadSafety(){
@@ -2467,11 +2471,29 @@ window.molaSafetyCameras=function(packet){
   if(marker.bindPopup)marker.bindPopup(panel);
   safetyMarkers.push(marker);
  });
+ // Nearby OSM maxspeed ways are *not* map-matched and therefore MUST NOT
+ // become authoritative speed limits or automatic speed violation alerts.
+ var countLimits=0;
+ if(Array.isArray(packet.speedLimits))packet.speedLimits.slice(0,60).forEach(function(w){
+  if(!w||!Number.isInteger(w.id)||!valid(w.lat,w.lon)||
+     !Number.isInteger(w.speedKmh)||w.speedKmh<20||w.speedKmh>160||
+     w.roadMatched!==false||!map)return;
+  var marker=L.marker([w.lat,w.lon],{
+   icon:L.divIcon({className:'osm-speed-limit-pin',
+    html:'<span class="osm-limit-marker">'+w.speedKmh+'?</span>',
+    iconSize:[39,39],iconAnchor:[19,19]})
+  }).addTo(map);
+  var note=document.createElement('div');
+  note.textContent='OSM maxspeed '+w.speedKmh+
+    ' km/sa · yakındaki yol etiketi. Sürüş şeridi/yönü doğrulanmadı; yol işareti geçerlidir.';
+  if(marker.bindPopup)marker.bindPopup(note);
+  safetyLimitMarkers.push(marker);countLimits++;
+ });
  $('safety-status').textContent='OSM: '+safetyItems.length+
   ' sabit kamera kaydı · '+(packet.coverage==='sampled route neighborhoods only'?
      'rotadan sınırlı örnekleme, tüm güzergâh taranmadı.':
      'görünür alan; tam kapsama yok.')+
-  ' Mobil radarlar doğrulanmaz.';
+  ' · '+countLimits+' yakın OSM maxspeed kaydı (? = bu yola eşleşmedi). Mobil radarlar doğrulanmaz.';
 };
 window.molaSafetyError=function(packet){
  if(!safetyActive)return;
