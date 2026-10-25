@@ -281,8 +281,7 @@ function renderIncidents() {
   incidents.forEach(function (it) {
     var label = it.type === 'accident' ? '  💥 Kaza' : ' ⛔ Yol kapalı';
     var mark = L.marker([it.lat, it.lng], {
-                                            💥       ⛔
-      icon: icon(it.type === 'accident' ? ' ' : ' ', 'id4-incident')
+      icon: icon(it.type === 'accident' ? '💥' : '⛔', 'id4-incident')
     });
     var popup = document.createElement('div');
     var txt = document.createElement('strong'); txt.textContent = label;
@@ -317,10 +316,8 @@ function reportIncident(lat, lng, type) {
 function incidentPopup(latlng) {
   var root = document.createElement('div');
   var head = document.createElement('strong'); head.textContent = 'Bu noktada ne var?';
-
-  [['  💥
   root.appendChild(head);
-        Kaza', 'accident'], ['  ⛔ Yol Kapalı', 'closed']].forEach(function (arr) {
+  [['💥 Kaza', 'accident'], ['⛔ Yol Kapalı', 'closed']].forEach(function (arr) {
     var button = document.createElement('button');
     button.type = 'button'; button.textContent = arr[0];
     button.addEventListener('click', function () {
@@ -328,12 +325,9 @@ function incidentPopup(latlng) {
     });
     root.appendChild(button);
   });
-  // Mevcut index.html uzun bas → başlangıç davranışı korunur.
   var originButton = document.createElement('button');
-  originButton.type = 'button'; originButton.textContent = '
+  originButton.type = 'button'; originButton.textContent = '📍 Başlangıç yap';
   originButton.addEventListener('click', function () {
-                                                              📍 Başlangıç yap';
-
     setOrigin(latlng.lat, latlng.lng); map.closePopup();
   });
   root.appendChild(originButton);
