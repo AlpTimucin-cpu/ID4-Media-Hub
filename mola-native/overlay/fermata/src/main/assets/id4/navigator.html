@@ -1517,6 +1517,15 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 button#layer-weather,button#layer-traffic,button#layer-safety,
 button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!important}
 .header-weather-button{pointer-events:none;cursor:default}
+.soc-scenario-picker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+ padding:9px;border:1px solid #5589a2;border-radius:12px;background:#072e42;
+ margin-bottom:9px;font-size:12px;color:#c9e5ee}
+.soc-scenario-picker strong{font-size:12px}
+.soc-scenario-picker button{min-height:34px;padding:5px 12px;border:1px solid #72a8b9;
+ border-radius:8px;background:#0a3449;color:#effbff;font-weight:750}
+.soc-scenario-picker button.selected{background:#0b7468;border-color:#71f2ca}
+.soc-scenario-picker small{flex-basis:100%;font-size:10px;color:#f2d49b}
+.soc-scenario-picker[hidden]{display:none!important}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1570,7 +1579,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
    <div class="cockpit-panel"><div class="cockpit-title">YOL ENERJİSİ · MODEL</div><div id="co-energy" class="cockpit-value">— kWh</div></div>
   </div>
   <div class="cockpit-panel cockpit-slim">
-   <button type="button" id="co-connect">⌁ OBD bağla</button>
+   <button type="button" id="co-connect">⚙ OBD ayarları</button>
    <button type="button" id="co-disconnect">Ayır</button>
    <small id="co-status">Car Scanner kapalıyken ELM327 bağla.</small>
   </div>
@@ -1637,8 +1646,14 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 <div id="co-alts" class="cockpit-alts" aria-label="Elektrikli araç alternatif rotaları">
  <div class="alts-header"><span>Rota · Şarj · Maliyet</span>
   <button id="co-alts-close" type="button">Kapat</button></div>
+ <div id="soc-scenario-choice" class="soc-scenario-picker" hidden>
+  <strong>OBD SoC okunamadı · çıkış doluluğu</strong>
+  <button type="button" id="soc-choice-80">🔋 %80</button>
+  <button type="button" id="soc-choice-100">🔋 %100</button>
+  <small id="soc-scenario-note">Seçilen değer sadece rota planlama senaryosudur.</small>
+ </div>
  <div id="co-alts-list">Rota oluşturulunca seçenekler gelecek.</div>
- <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa %80 çıkış varsayılır. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
+ <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa kullanıcı %80 veya %100 çıkış senaryosu seçebilir. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
 </div>
 <nav class="drive-dock" aria-label="ID.4 hızlı araç komutları">
  <button id="dock-home" type="button" title="Mola ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
@@ -1678,6 +1693,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
   <button type="button" id="layer-close">✕ Kapat</button>
   <button type="button" id="layer-daynight">◐ Gündüz haritası</button>
   <button type="button" id="layer-map-retry">↻ Haritayı yeniden yükle</button>
+  <button type="button" id="layer-obd-settings">⚙ OBD bağlantı ayarları</button>
   <button type="button" id="traffic-tomtom-key">⚙ Harita servis anahtarı</button>
   <button type="button" id="layer-all">⚡ Tüm Türkiye</button>
   <button type="button" id="layer-ccs">⚡ CCS</button>
@@ -2612,7 +2628,9 @@ window.molaAlternatives=function(data){
   (selected.chargeStopsMin===selected.chargeStopsMax?
     String(selected.chargeStopsMin):
     selected.chargeStopsMin+'–'+selected.chargeStopsMax):'—';
- var scenario=selected.socAssumed?'%80 çıkış senaryosu':'SoC tabanlı model';
+ var scenario=selected.socAssumed?
+   '%'+(Number.isFinite(selected.scenarioStartSoc)?Math.round(selected.scenarioStartSoc):80)+
+   ' çıkış senaryosu':'SoC tabanlı model';
  if(!selected.chargeNeededModel){
   $('co-cost').textContent='⚡ 0 DC mola · yol üstü şarj 0 TL (model)';
   $('co-cost-note').textContent=scenario+' · ilk batarya enerjisinin maliyeti hariç';
@@ -3177,9 +3195,23 @@ if(map&&map.on){
  });
 }
 
-$('dock-obd').onclick=function(){native('sensors')};
+$('dock-obd').onclick=function(){native('obdSettings')};
+$('layer-obd-settings').onclick=function(){setMapLayerMenu(false);native('obdSettings')};
+$('soc-choice-80').onclick=function(){native('setScenarioSoc',80)};
+$('soc-choice-100').onclick=function(){native('setScenarioSoc',100)};
+window.molaSocScenario=function(packet){
+ if(!packet)return;
+ var measured=packet.measured===true,pct=Math.round(Number(packet.percent));
+ $('soc-scenario-choice').hidden=measured;
+ $('soc-choice-80').classList.toggle('selected',!measured&&pct===80);
+ $('soc-choice-100').classList.toggle('selected',!measured&&pct===100);
+ $('soc-scenario-note').textContent=measured?
+   'Gerçek ve güncel SoC bulundu; varsayılan şarj senaryosu devre dışı.':
+   '%'+pct+(packet.userSelected?' kullanıcı seçimi':' varsayılan senaryo')+
+   ' · araç ölçümü değildir; seçim şarj sayısı ve TL tahminini yeniler.';
+};
 $('dock-journal').onclick=function(){native('tripJournal')};
-$('co-connect').onclick=function(){native('selectObd')};
+$('co-connect').onclick=function(){native('obdSettings')};
 $('co-disconnect').onclick=function(){
  native('disconnectObd');
  msg('OBD adaptörü serbest bırakılıyor. Car Scanner uygulamasında yeniden bağlan.');
