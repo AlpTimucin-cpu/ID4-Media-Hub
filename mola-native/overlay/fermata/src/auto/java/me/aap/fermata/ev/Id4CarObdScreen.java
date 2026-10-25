@@ -15,7 +15,6 @@ import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
-import java.util.Locale;
 
 /**
  * Manual, foreground-only classic Bluetooth ELM327 connection in Android Auto.
@@ -92,11 +91,10 @@ final class Id4CarObdScreen extends Screen {
             message("Bluetooth izni yok. Telefonun uygulama ayarlarından izin ver.");
             return;
         }
-        if(c.getSharedPreferences("id4_obd_pairing_v1",CarContext.MODE_PRIVATE)
-              .getBoolean("manual_disconnect",false)){
-            message("Telefonda OBD ayır seçilmiş. Telefonda yeniden OBD bağla.");
-            return;
-        }
+        // A direct tap in Android Auto explicitly overrides the previous
+        // phone-only auto-reconnect block. Never connect merely on screen open.
+        c.getSharedPreferences("id4_obd_pairing_v1",CarContext.MODE_PRIVATE)
+            .edit().putBoolean("manual_disconnect",false).apply();
         String pairedMac=c.getSharedPreferences("id4_obd_pairing_v1",CarContext.MODE_PRIVATE)
             .getString("paired_mac","");
         if(pairedMac==null || !pairedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")){
