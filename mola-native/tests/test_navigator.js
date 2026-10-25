@@ -25,7 +25,7 @@ function el(){
 }
 function get(id){return elements[id]||(elements[id]=el());}
 const messages=[],timeouts=[],intervals=[];
-const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,disconnectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
+const calls={suggest:[],route:[],routeVia:[],location:0,stop:0,selectObd:0,obdSettings:0,socChoice:[],disconnectObd:0,visible:[],saved:[],orientation:[],chosen:[],filtered:[]};
 const drawnMarkers=[],drawnLines=[];
 const mapActions={pans:[],events:{},tileEvents:{}};
 const L={
@@ -61,7 +61,7 @@ const win={
   route(...args){calls.route.push(args)},
   routeVia(...args){calls.routeVia.push(args)},
   location(){calls.location++},stop(){calls.stop++},
-  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},disconnectObd(){calls.disconnectObd++},
+  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},obdSettings(){calls.obdSettings++},setScenarioSoc(pct){calls.socChoice.push(pct)},disconnectObd(){calls.disconnectObd++},
   visibleStations(...args){calls.visible.push(args)},
   visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
@@ -310,7 +310,11 @@ assert(html.includes('TAHMİNİ MENZİL · %15 REZERV'),
  'the model-range HUD label must disclose modelling and reserve assumption');
 assert.equal(get('co-power').textContent,'— kW','unverified kW must stay blank');
 get('co-connect').onclick();
-assert.equal(calls.selectObd,2,'full-screen OBD button is not wired');
+assert.equal(calls.obdSettings,1,'cockpit OBD settings must open without Activity navigation');
+get('dock-obd').onclick();
+assert.equal(calls.obdSettings,2,'OBD yok should open in-place settings');
+get('layer-obd-settings').onclick();
+assert.equal(calls.obdSettings,3,'OBD connection settings must be in tools');
 get('co-disconnect').onclick();
 assert.equal(calls.disconnectObd,1,
  'user must be able to release the ELM327 adapter for Car Scanner');
@@ -534,6 +538,27 @@ assert(get('co-cost').textContent.includes('2–3 DC mola')&&
  'model-priced charge count and TRY range must replace Fiyat yok');
 assert(get('co-cost-note').textContent.includes('%80 çıkış senaryosu'),
  'unknown BMS SoC must never be represented as a measured state');
+win.molaSocScenario({measured:false,percent:80,userSelected:false});
+assert(get('soc-scenario-choice').hidden===false,
+ 'when measured SoC is missing the 80/100 choice is visible');
+get('soc-choice-100').onclick();
+assert.equal(calls.socChoice[calls.socChoice.length-1],100,
+ 'driver-chosen 100 must trigger native recalculation');
+win.molaSocScenario({measured:false,percent:100,userSelected:true});
+assert(get('soc-choice-100').classList.contains('selected'),
+ 'selected 100 percent scenario is reflected by UI');
+win.molaAlternatives({selectedIndex:0,fastestIndex:0,shortestIndex:0,
+ chargeAwareIndex:-1,options:[{
+ index:0,km:525,minutes:405,energyLowKwh:84,energyHighKwh:126,
+ stationsKnown:false,ccsCount:0,socKnown:false,socAssumed:true,
+ scenarioStartSoc:100,chargeNeededModel:true,chargeStopsMin:1,chargeStopsMax:3,
+ chargeLowKwh:40,chargeHighKwh:86,costMinTry:300,costMaxTry:1400
+}]});
+assert(get('co-cost-note').textContent.includes('%100 çıkış senaryosu'),
+ 'UI must describe 100% as a user scenario and not a vehicle reading');
+win.molaSocScenario({measured:true,percent:74.5,userSelected:true});
+assert(get('soc-scenario-choice').hidden===true,
+ 'when fresh BMS SoC arrives the fallback selection is hidden');
 
 
 assert.equal(get('co-maneuver').textContent,'Devam et',
