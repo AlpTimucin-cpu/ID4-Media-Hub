@@ -38,7 +38,16 @@
     var original = w[name];
     if (typeof original !== 'function') return;
     w[name] = function (packet) {
-      var result = original.apply(this, arguments); // Mevcut Mola çalışmaya devam eder.
+      var result;
+      try {
+        result = original.apply(this, arguments); // Keep native Mola as the UI owner.
+      } catch (e) {
+        // Never leave a Java→WebView callback as an uncaught page exception.
+        console.warn('Mola native callback failed: ' + name, e);
+        var status = d.getElementById('id4-status');
+        if (status) status.textContent = 'Mola verisi işlenemedi: ' + name;
+        return undefined;
+      }
       try { after(packet); } catch (e) { console.warn('ID4Live addon ' + name, e); }
       return result;
     };
