@@ -1,102 +1,155 @@
-/* ID.4 Tesla-inspired cockpit skin — additive to Mola 2.2.2.
- * IMPORTANT: Do not disable/reparent Leaflet, route sheet, native bridge,
- * map attribution, Android Auto template UI or EPDK safeguards.
- * OpenFreeMap already uses its true 'dark' vector style via id4-basemap.js.
- * All changes are visual and limited to landscape WebView.
+/* ID.4 Yol Arkadaşım — reference cockpit, additive presentation layer.
+ * Never recreate Leaflet, conceal copyright credits, spoof native readings,
+ * or change Mola/Android Auto services. The original map occupies the canvas.
+ * This file is loaded AFTER legacy inline styles; desktop/test DOM stays intact.
  */
 :root {
-  --id4-premium-bg:#111111;
-  --id4-premium-fg:#ffffff;
-  --id4-premium-muted:#afb6bd;
-  --id4-premium-card:#202124;
-  --id4-premium-border:#37383c;
-  --id4-premium-green:#4be3b3;
-  --id4-premium-red:#ff555e;
+ --id4-night:#041421;--id4-glass:rgba(4,28,44,.86);
+ --id4-line:rgba(119,197,228,.34);--id4-white:#f4fbff;
+ --id4-soft:#b3d0e2;--id4-mint:#35efc3;--id4-red:#ff6170;
 }
 .id4-tesla-side { display:none; }
 @media (min-width:640px) and (orientation:landscape) {
-  html,body { background:var(--id4-premium-bg)!important;color:var(--id4-premium-fg)!important;
-    font-family:system-ui,-apple-system,Roboto,sans-serif!important; }
-  /* One existing Leaflet map. Width really 70%, not a clipped overlay. */
-  #map { position:fixed!important;inset:0 0 0 30%!important;
-    width:70%!important;height:100vh!important;background:#17191c!important; }
-  /* Preserve original DOM so old JS and test contracts still bind. */
-  /* opacity (not visibility/display) preserves innerText and measured DOM
-     contracts in legacy Playwright tests; pointer input remains disabled. */
-  #vehicle-cockpit .cockpit-left { opacity:0!important;pointer-events:none!important; }
-  #vehicle-cockpit .cockpit-right { right:1.5%!important; }
-  #vehicle-cockpit .cockpit-tripbar { left:31.5%!important; }
-  #route-map-alts { left:32%!important; }
-  .map-health { left:42%!important; }
-  #route-weather-map-status,#traffic-event-map-status { left:32%!important; }
-  .top { background:#111111f7!important;border-bottom:1px solid #36393d!important; }
-  /* Genuine dark-side instrumentation, with no demo values. */
-  #vehicle-cockpit .id4-tesla-side {
-    display:grid!important;position:absolute!important;left:0!important;
-    top:0!important;bottom:0!important;width:30%!important;z-index:4!important;
-    box-sizing:border-box!important;overflow:hidden!important;pointer-events:none!important;
-    padding:clamp(6px,1vh,12px) clamp(8px,1.2vw,19px)!important;
-    gap:clamp(4px,.9vh,10px)!important;
-    grid-template-rows:minmax(0,1.12fr) minmax(0,.9fr) minmax(0,.95fr) auto!important;
-    background:#111111!important;border-right:1px solid #35383a!important;
-    color:#fff!important;font-family:system-ui,-apple-system,Roboto,sans-serif!important;
-  }
-  .id4-tesla-card { background:linear-gradient(145deg,#232427,#18191c);
-    border:1px solid var(--id4-premium-border);border-radius:15px;
-    min-width:0;min-height:0;overflow:hidden;padding:clamp(7px,1vh,14px) clamp(9px,1vw,17px);
-    display:flex;flex-direction:column;justify-content:center; }
-  .id4-tesla-caption { color:var(--id4-premium-muted);font-size:clamp(9px,1.6vh,13px);
-    font-weight:650;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap; }
-  .id4-drive-speed { font-variant-numeric:tabular-nums;
-    font-size:clamp(30px,8vh,83px);line-height:1;font-weight:850;letter-spacing:-.045em;
-    color:#fff;text-shadow:0 0 14px #fff3; }
-  .id4-drive-unit { font-size:clamp(10px,1.8vh,15px);color:#b8bec6;margin-left:5px;font-weight:600; }
-  .id4-drive-gear { color:#d6dce3;font-size:clamp(10px,2.1vh,17px);font-weight:680;
-    margin-top:.4vh; }
-  .id4-drive-row { display:flex;align-items:baseline;gap:4px; }
-  .id4-battery-head { display:flex;align-items:baseline;justify-content:space-between;gap:6px; }
-  .id4-soc-text { color:var(--id4-premium-green);font-size:clamp(25px,5.5vh,51px);
-    line-height:1.15;font-variant-numeric:tabular-nums;font-weight:820; }
-  .id4-progress { height:clamp(8px,1.5vh,15px);border-radius:100px;background:#3f4248;
-    overflow:hidden;margin-top:.9vh; }
-  #id4-side-bar-fill { width:0%;height:100%;background:var(--id4-premium-green);
-    transition:width .35s ease,background .35s ease; }
-  .id4-energy-impact { color:#ffd19c;font-size:clamp(9px,1.6vh,12px);
-    margin-top:.7vh;line-height:1.2; }
-  .id4-weather-grid { display:grid;grid-template-columns:1fr 1fr;
-    gap:clamp(4px,.5vw,9px);margin-top:.6vh; }
-  .id4-weather-pill { border:1px solid #3b3d42;background:#25262a;border-radius:9px;
-    padding:clamp(5px,.7vh,9px);min-width:0; }
-  .id4-weather-pill strong { display:block;font-weight:750;
-    font-size:clamp(13px,3vh,23px);white-space:nowrap; }
-  .id4-weather-pill small { color:#bdc3c9;font-size:clamp(8px,1.4vh,11px); }
-  .id4-provenance { font-size:clamp(8px,1.35vh,11px);color:#9fa8ae;
-    line-height:1.15;max-height:3.6em;overflow:hidden; }
-  /* Less than 20% SoC: visual cue only. No fabricated station suggestions. */
-  body.id4-low-battery #id4-side-bar-fill { background:var(--id4-premium-red)!important; }
-  body.id4-low-battery .id4-soc-text { color:var(--id4-premium-red)!important; }
-  body.id4-low-battery .id4-tesla-battery {
-    border-color:#fa616b!important;box-shadow:inset 0 0 0 1px #ad374455,0 0 18px #ff59611b; }
-  body.id4-low-battery #map { box-shadow:inset 0 0 0 3px #ef595d88!important; }
-  /* Reuse current Leaflet zoom controls; do not add a second map or control plugin. */
-  .buttons { position:fixed!important;left:auto!important;right:1.2%!important;
-    top:auto!important;bottom:calc(var(--hud-dock,70px) + 9px)!important;
-    display:flex!important;flex-direction:column!important;gap:5px!important;
-    z-index:1180!important; }
-  .buttons #plus,.buttons #minus,.buttons #open-layers { display:block!important; }
-  .buttons button { border:1px solid #e9edf044!important;border-radius:11px!important;
-    background:rgba(255,255,255,.10)!important;color:#fff!important;
-    -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
-    min-width:35px!important;min-height:35px!important; }
-  /* Never obscure OpenStreetMap/OpenFreeMap attribution. */
-  #map-credit,.map-credit { right:6px!important;bottom:calc(var(--hud-dock,70px) + 1px)!important; }
+ html,body {background:var(--id4-night)!important;color:var(--id4-white)!important;
+  font-family:system-ui,-apple-system,Roboto,sans-serif!important;}
+ /* Reference image: REAL single fullscreen Leaflet/OpenFreeMap dark map behind
+    translucent instruments. Base MapLibre dark style is already configured. */
+ #map {position:fixed!important;inset:0!important;width:100%!important;height:100vh!important;
+  background:#071b2a!important;filter:none!important;}
+ #map .leaflet-tile-pane {filter:none!important;}
+ .top {background:rgba(2,20,34,.96)!important;border-bottom:1px solid #22536c!important;}
+ .top .brand {flex-basis:31.5%!important;max-width:31.5%!important;}
+ .top .cockpit-tabs button {background:linear-gradient(155deg,#0b4160,#082d45)!important;
+  color:#e9f8ff!important;border-color:#286887!important;}
+ .top .cockpit-tabs button.current {background:linear-gradient(155deg,#1b779c,#0b4969)!important;
+  border-color:#85d9ed!important;box-shadow:0 0 0 1px #418b9a!important;}
+ /* Keep pre-existing left DOM present for regression tests and callbacks.
+    Opacity rather than display/visibility preserves innerText assertions. */
+ #vehicle-cockpit .cockpit-left {opacity:0!important;pointer-events:none!important;}
+ #vehicle-cockpit .id4-tesla-side {
+  position:absolute!important;left:1.4%!important;top:var(--hud-gap,12px)!important;
+  bottom:var(--hud-gap,12px)!important;width:35%!important;z-index:4!important;
+  display:grid!important;gap:clamp(3px,.65vh,11px)!important;
+  grid-template-rows:minmax(0,1.3fr) minmax(0,.82fr) minmax(0,2.3fr) auto!important;
+  pointer-events:none!important;overflow:hidden!important;background:transparent!important;
+  box-sizing:border-box!important;color:#fff!important;
+ }
+ .id4-tesla-card,.id4-mini-metric {
+  background:linear-gradient(142deg,rgba(5,38,58,.87),rgba(2,23,37,.83));
+  border:1px solid var(--id4-line);border-radius:clamp(8px,1.5vh,19px);
+  box-shadow:0 5px 22px #00131c82;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  min-width:0;min-height:0;overflow:hidden;
+ }
+ .id4-tesla-card {padding:clamp(5px,1.5vh,17px) clamp(8px,1vw,20px);
+  display:flex;flex-direction:column;justify-content:center;}
+ .id4-tesla-caption {font-size:clamp(8px,1.6vh,15px);
+  color:var(--id4-soft);letter-spacing:.035em;font-weight:640;line-height:1.15;}
+ .id4-hero-row{display:flex;align-items:center;gap:clamp(5px,1.4vw,22px);
+  min-width:0;min-height:0;}
+ .id4-battery-glyph{display:grid;place-items:center;font-weight:600;color:#31ebbb;
+  flex:0 0 auto;font-size:clamp(25px,8.2vh,74px);line-height:1;}
+ .id4-hero-copy{min-width:0;flex:1;}
+ .id4-soc-text{display:block;font-size:clamp(27px,8.6vh,91px);
+  letter-spacing:-.05em;line-height:1.03;font-weight:900;color:var(--id4-mint);
+  text-shadow:2px 2px 0 #001723,0 0 13px #35efc333;
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+ .id4-progress{height:clamp(5px,1.7vh,19px);margin-top:clamp(3px,.75vh,10px);
+  border-radius:100px;background:#385874;overflow:hidden;}
+ #id4-side-bar-fill{width:0;height:100%;background:linear-gradient(90deg,#2bdca9,#44edcb);
+  border-radius:inherit;transition:width .35s ease,background .35s ease;}
+ .id4-range-card .id4-range-row{display:flex;align-items:center;gap:clamp(6px,1.2vw,20px);}
+ .id4-range-symbol{font-size:clamp(20px,6vh,54px);color:#e6f9ff;line-height:1;}
+ .id4-range-value{font-size:clamp(22px,7.2vh,68px);font-weight:900;letter-spacing:-.04em;
+  line-height:1.05;white-space:nowrap;text-shadow:2px 2px 0 #031524;}
+ .id4-range-label{font-size:clamp(8px,1.5vh,13px);color:var(--id4-soft);}
+ .id4-tech-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:repeat(3,minmax(0,1fr));gap:clamp(3px,.65vh,11px);
+  min-height:0;overflow:hidden;}
+ .id4-mini-metric{padding:clamp(4px,.8vh,13px) clamp(5px,.85vw,16px);
+  display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,.6vh,8px);}
+ .id4-mini-metric small{font-size:clamp(7px,1.45vh,13px);font-weight:630;
+  color:var(--id4-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+ .id4-mini-metric strong{font-size:clamp(12px,3vh,29px);color:#fff;
+  font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+ .id4-mini-metric strong.id4-small{font-size:clamp(10px,2.55vh,23px);}
+ .id4-status-strip{display:flex;align-items:center;justify-content:space-between;
+  gap:clamp(4px,.65vw,14px);font-size:clamp(8px,1.5vh,12px);
+  padding:clamp(2px,.45vh,7px) clamp(3px,.7vw,12px);
+  color:#d7edf7;min-height:0;border-radius:9px;
+  background:rgba(2,23,38,.79);border:1px solid #2c526a;overflow:hidden;}
+ .id4-status-strip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ .id4-energy-impact{font-size:clamp(8px,1.4vh,12px);color:#ffd496;}
+ .id4-drive-row{display:flex;align-items:center;gap:3px;}
+ .id4-drive-speed{font-weight:850;color:#fff;font-size:clamp(11px,2.1vh,20px);
+  font-variant-numeric:tabular-nums;}
+ .id4-drive-unit,.id4-drive-gear{font-size:clamp(8px,1.4vh,12px);color:#c8dce7;}
+ /* Existing Mola guidance card. Native callback is sole source of navigation. */
+ #vehicle-cockpit .cockpit-right{top:var(--hud-gap,12px)!important;right:1.4%!important;
+  width:20%!important;max-width:none!important;display:block!important;overflow:visible!important;
+  max-height:75%!important;}
+ #vehicle-cockpit .cockpit-right .cockpit-panel{
+  background:linear-gradient(145deg,rgba(3,34,51,.94),rgba(3,25,40,.91))!important;
+  border-color:var(--id4-line)!important;border-radius:clamp(10px,1.6vh,19px)!important;
+  box-shadow:0 9px 26px #00101b88!important;
+  padding:clamp(5px,1.15vh,17px)!important;min-height:0!important;
+ }
+ .id4-road-badge{display:inline-block;margin-left:5px;font-size:clamp(8px,1.5vh,13px);
+  font-weight:800;color:white;background:#1b70ed;border-radius:5px;padding:2px 6px;
+  max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+ .id4-road-badge[hidden]{display:none!important;}
+ .cockpit-right .co-turn-arrow{font-size:clamp(20px,5vh,50px)!important;}
+ .cockpit-right #co-maneuver-distance{font-size:clamp(17px,3.6vh,32px)!important;}
+ .cockpit-right #co-maneuver{display:block!important;font-size:clamp(10px,2vh,17px)!important;
+  max-height:3em!important;}
+ .cockpit-right #co-route-km,.cockpit-right #co-drive-time,
+ .cockpit-right #co-eta,.cockpit-right #co-stops{display:block!important;}
+ /* Existing Mola progress bar already calculates exact polyline GPS projection.
+    Its car pseudo-element depends on native --trip-percent; no fake 42%. */
+ #vehicle-cockpit .cockpit-tripbar{left:38.5%!important;right:1.4%!important;
+  bottom:var(--hud-gap,10px)!important;display:grid!important;
+  grid-template-columns:26% minmax(0,1fr) 23%!important;
+  background:rgba(2,29,46,.94)!important;
+  border-color:var(--id4-line)!important;box-shadow:0 8px 27px #00131bbb!important;
+  border-radius:clamp(10px,1.8vh,19px)!important;min-height:0!important;}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track{position:relative;}
+ .id4-route-stop-markers{position:absolute;inset:0;pointer-events:none;}
+ .id4-route-stop-pin{position:absolute;top:50%;transform:translate(-50%,-50%);
+  border-radius:50%;width:clamp(9px,1.7vh,16px);height:clamp(9px,1.7vh,16px);
+  background:var(--id4-mint);border:2px solid #052d42;
+  box-shadow:0 0 0 3px #33ebb12f;}
+ .id4-route-stop-pin:after{content:'⚡';position:absolute;bottom:100%;
+  left:50%;transform:translateX(-50%);font-size:clamp(10px,1.9vh,20px);}
+ .id4-route-stop-label{position:absolute;bottom:100%;margin-bottom:24px;
+  transform:translateX(-50%);font-size:clamp(8px,1.4vh,12px);
+  color:#b8f4e5;white-space:nowrap;}
+ .id4-route-stop-label.is-estimate{color:#ffe3ae;}
+ /* Do not display any unavailable model estimate as a measured SoC. */
+ body.id4-low-battery .id4-soc-text{color:var(--id4-red)!important;}
+ body.id4-low-battery #id4-side-bar-fill{background:var(--id4-red)!important;}
+ body.id4-low-battery .id4-battery-card{border-color:#ef6672!important;}
+ body.id4-low-battery #map{box-shadow:inset 0 0 0 3px #f36b7055!important;}
+ .buttons{left:auto!important;right:21.3%!important;top:calc(var(--hud-top,85px) + 8px)!important;
+  bottom:auto!important;display:flex!important;flex-direction:column!important;}
+ .buttons button{background:rgba(8,36,54,.78)!important;
+  border:1px solid #6faecc66!important;border-radius:10px!important;
+  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);color:#f5fbff!important;}
+ .buttons #plus,.buttons #minus,.buttons #open-layers{display:block!important;}
+ #map-credit,.map-credit{bottom:calc(var(--hud-dock,70px) + 2px)!important;right:6px!important;}
 }
-@media (min-width:640px) and (orientation:landscape) and (max-height:440px) {
-  #vehicle-cockpit .id4-tesla-side { padding:4px 8px!important;gap:4px!important; }
-  .id4-tesla-card { border-radius:10px;padding:4px 9px; }
-  .id4-drive-speed { font-size:clamp(27px,7.3vh,42px); }
-  .id4-soc-text { font-size:clamp(23px,5vh,32px); }
+@media (min-width:640px) and (orientation:landscape) and (max-height:480px){
+ #vehicle-cockpit .id4-tesla-side{width:35%!important;gap:3px!important;
+  grid-template-rows:minmax(0,1.15fr) minmax(0,.75fr) minmax(0,2.3fr) auto!important;}
+ .id4-tesla-card{padding:4px 8px!important;}
+ .id4-soc-text{font-size:clamp(22px,7.8vh,38px);}
+ .id4-range-value{font-size:clamp(19px,6.6vh,33px);}
+ .id4-mini-metric{padding:3px 5px!important;}
+ .id4-mini-metric small{font-size:clamp(7px,1.4vh,10px);}
+ .id4-mini-metric strong{font-size:clamp(10px,2.6vh,15px);}
+ .id4-status-strip{padding:2px 4px!important;}
+ #vehicle-cockpit .cockpit-right{width:20%!important;top:var(--hud-gap,5px)!important;}
+ #vehicle-cockpit .cockpit-right .cockpit-panel{padding:4px 6px!important;}
+ #vehicle-cockpit .cockpit-tripbar{bottom:4px!important;}
+ .buttons{top:calc(var(--hud-top,55px) + 3px)!important;}
 }
-@media (prefers-reduced-motion:reduce) {
-  #id4-side-bar-fill { transition:none; }
-}
+@media (prefers-reduced-motion:reduce){#id4-side-bar-fill{transition:none!important;}}
