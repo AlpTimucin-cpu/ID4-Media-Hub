@@ -300,6 +300,7 @@ for line in changes.splitlines():
     relative=line[3:].strip()
     if relative.endswith("/") and (
         relative.startswith("fermata/src/main/java/me/aap/fermata/ev/") or
+        relative.startswith("fermata/src/auto/java/me/aap/fermata/ev/") or
         relative == "fermata/src/main/assets/"):
         # git status collapses new untracked directories to one path;
         # the overlay inputs above are the only files we write there.
