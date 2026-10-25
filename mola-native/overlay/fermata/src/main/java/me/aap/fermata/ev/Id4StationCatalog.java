@@ -280,7 +280,7 @@ final class Id4StationCatalog {
             south=Math.min(south,p.lat);north=Math.max(north,p.lat);
             west=Math.min(west,p.lon);east=Math.max(east,p.lon);
         }
-        // Screen fast-pre-filter: approximate 15–20 km around route.
+        // Wide 20-km geographic prefilter; actual physical route access is not checked.
         south-=0.20;north+=0.20;west-=0.25;east+=0.25;
         List<Candidate> candidates=new ArrayList<>();
         int total=0;
@@ -294,7 +294,7 @@ final class Id4StationCatalog {
                 double d=distanceToSegmentKm(lat,lon,selected.get(j-1),selected.get(j));
                 if(d<nearest){nearest=d;closestSegment=j;}
             }
-            if(nearest>12.0)continue; // straight-line proximity, not detour time
+            if(nearest>20.0)continue; // straight-line proximity only, not detour time
             total++;
             double frac=projectionFraction(lat,lon,
                 selected.get(closestSegment-1),selected.get(closestSegment));
@@ -312,6 +312,7 @@ final class Id4StationCatalog {
             Id4ChargeAdvisor.assess(roadKm,observedSoc,0,0).chargeLikely;
         packet.put("chargeModel",!socKnown?"no-soc":chargeLikely?"charge-likely":"no-stop-model");
         packet.put("modelReserveSoc",Id4ChargeAdvisor.RESERVE_SOC);
+        packet.put("ccsCorridorRadiusKm",20.0);
         packet.put("modelNote","52 kWh, 16–24 kWh/100 km ve %15 rezerv varsayımı. "
             +"Gerçek sapma, yol erişimi ve soket doluluğu doğrulanmadı.");
         Candidate recommended=null;
