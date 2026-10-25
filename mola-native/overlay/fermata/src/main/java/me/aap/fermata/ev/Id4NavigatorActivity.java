@@ -203,6 +203,30 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             web.evaluateJavascript("window."+function+"("+data.toString()+")",null);
         });
     }
+    /**
+     * Keep this navigation Activity in the back stack so that the existing
+     * OSRM route, WebView map and SoC scenario survive a visit to the original
+     * Mola TV/IPTV/audio dashboard. Mola's own MediaSession/engine stays owned
+     * by its media component. Do not recreate it in this WebView Activity.
+     *
+     * This is a PHONE activity transition, not an Android Auto video launch.
+     * No CarSensors spoofing, parked restriction bypass or player overrides.
+     */
+    private void openMediaSafely(){
+        if(destroyed || isFinishing() || isDestroyed())return;
+        try{
+            Intent media=new Intent(this,me.aap.fermata.ui.activity.MainActivity.class);
+            media.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(media);
+        }catch(android.content.ActivityNotFoundException e){
+            send("molaStatus",record("media",
+                "Mola multimedya ekranı bu derlemede bulunamadı."));
+        }catch(SecurityException e){
+            send("molaStatus",record("media",
+                "Mola medya ekranına erişim izni verilmedi."));
+        }
+    }
+
     private JSONObject record(String status,String detail) {
         JSONObject j=new JSONObject();
         try{j.put("status",status);j.put("detail",detail);}catch(Exception ignored){}
@@ -210,6 +234,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     private final class Bridge {
         @JavascriptInterface public void location() {ui.post(()->requestGps());}
+        /** Phone media Activity handoff only; never overrides driving locks. */
+        @JavascriptInterface public void openMedia(){
+            ui.post(()->openMediaSafely());
+        }
         @JavascriptInterface public void refreshJourneyWeather(){
             ui.post(()->{
                 JSONObject route=activeWeatherRoute;
