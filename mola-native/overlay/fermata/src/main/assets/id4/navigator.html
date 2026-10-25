@@ -1534,6 +1534,19 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  box-shadow:0 3px 15px #00132188;font-size:11px;font-weight:700;
  color:#e0f5ff;line-height:1.35;white-space:normal}
 #route-weather-map-status[hidden]{display:none!important}
+#traffic-event-map-status{position:fixed;left:39%;top:229px;z-index:901;pointer-events:none;
+ border:1px solid #33768c;border-radius:9px;padding:5px 9px;background:#082d41ee;
+ color:#eafaff;font-size:10px;max-width:43%;line-height:1.35}
+#traffic-event-map-status[hidden]{display:none!important}
+.traffic-incident-pin{display:grid;place-items:center;width:35px;height:35px;
+ border:2px solid #f9d078;border-radius:50%;background:#5c3a22ed;
+ box-shadow:0 2px 9px #001627b7;color:#fff;font-size:17px}
+.traffic-incident-pin.closure{border-color:#ff9c9c;background:#793539ee}
+.route-alt-filters{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px}
+.route-alt-filters button{border:1px solid #4184a0;background:#113b51;
+ color:#e6f8ff;border-radius:8px;padding:5px 7px;font-size:10px}
+.route-alt-filters button.selected{background:#0d716b;border-color:#53efcb}
+@media(max-width:700px){#traffic-event-map-status{top:144px;left:24%;max-width:63%;font-size:9px}}
 #route-weather-map-status.risk{background:rgba(84,46,27,.96);
  border-color:#f0b76a;color:#fff0cd}
 .route-weather-map-pin{display:flex;align-items:center;gap:3px;
@@ -1551,6 +1564,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 </head><body>
 <div id="map"></div>
 <div id="route-weather-map-status" role="status" hidden>☁ Yol havası · rota bekleniyor</div>
+<div id="traffic-event-map-status" role="status" hidden>🚧 Trafik olayı bilgisi bekleniyor</div>
 <div id="safety-speed" class="safety-speed"><strong id="safety-kmh">—</strong><small>km/sa · GPS</small></div>
 <div id="safety-alert" class="safety-alert" role="status"></div>
 <div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -1673,6 +1687,14 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
   <button type="button" id="soc-choice-80">🔋 %80</button>
   <button type="button" id="soc-choice-100">🔋 %100</button>
   <small id="soc-scenario-note">Seçilen değer sadece rota planlama senaryosudur.</small>
+ </div>
+ <div class="route-alt-filters" id="route-alt-filters">
+  <button type="button" id="alt-filter-all" class="selected">Tümü</button>
+  <button type="button" id="alt-filter-fast">En hızlı</button>
+  <button type="button" id="alt-filter-short">En kısa</button>
+  <button type="button" id="alt-filter-long">Daha uzun</button>
+  <button type="button" id="alt-filter-avoid">Ücretli yoldan kaçın</button>
+  <button type="button" id="alt-filter-standard">Ücretli yol olabilir</button>
  </div>
  <div id="co-alts-list">Rota oluşturulunca seçenekler gelecek.</div>
  <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa kullanıcı %80 veya %100 çıkış senaryosu seçebilir. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
@@ -1805,6 +1827,7 @@ var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=nul
 var routePreviewLines=[],routePreviewOptions=[];
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
 var safetyActive=false,safetyVoice=false,safetyMarkers=[],safetyLimitMarkers=[],safetyItems=[];
+var trafficIncidentMarkers=[];
 var activeRouteGeneration=null;
 var lastSafetyAlertId=0,lastSafetyAlertTime=0;
 var cachedJourneyWeather=null;
@@ -1812,7 +1835,7 @@ var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
 var suggestedCharge=null;
 var currentRouteProgress=null,lastGpsFix=null,followMap=false,lastManeuverAt=0;
 var liveSoc=NaN,routeHasChargeStop=false;
-var routeOptions=[],chosenRouteIndex=0;
+var routeOptions=[],chosenRouteIndex=0,routeFilter='all',lastAlternativeData=null;
 function goodGps(x){
  return !!x&&valid(x.lat,x.lon)&&Number.isFinite(x.accuracy)&&
    x.accuracy<=60&&Number.isFinite(x.timeMs)&&
@@ -2255,7 +2278,7 @@ window.molaJourneyWeather=function(packet){
   nowCount+'/'+packet.cards.length+' noktada güncel model · '+
   available+'/'+packet.cards.length+' varış tahmini · '+refreshed+
   (issues.length?' · '+issues.length+' risk noktası':'')+
-  ' · 10 dk otomatik yenileme';
+  ' · 5 dk otomatik yenileme (model)';
  $('layer-status').textContent='☁ Rota boyunca '+available+'/'+packet.cards.length+' hava noktası hazır';
  $('co-weather').textContent='Yol boyunca '+available+
    ' varış tahmini ve '+nowCount+' güncel model noktası · haritadaki hava etiketleri';
@@ -2366,8 +2389,47 @@ function drawRoutePreviews(items,selected){
  if(line&&line.bringToFront)line.bringToFront();
 }
 
+function clearTrafficIncidents(){
+ if(map)trafficIncidentMarkers.forEach(function(m){map.removeLayer(m)});
+ trafficIncidentMarkers=[];
+ $('traffic-event-map-status').hidden=true;
+}
+window.molaTrafficIncidents=function(packet){
+ if(!packet||!Array.isArray(packet.items)||packet.source!=='TomTom Orbis Incident Details')return;
+ if(Number.isInteger(packet.routeGeneration)&&Number.isInteger(activeRouteGeneration)&&
+    packet.routeGeneration!==activeRouteGeneration)return;
+ clearTrafficIncidents();
+ packet.items.slice(0,12).forEach(function(e){
+  if(!e||!valid(e.lat,e.lon)||!Number.isFinite(e.aheadMeters)||!map)return;
+  var category=String(e.category||'');
+  var emoji=category==='accident'?'🚗':category==='roadClosed'?'⛔':
+   category==='roadWorks'?'🚧':category==='laneClosed'?'⚠️':'🚦';
+  var marker=L.marker([e.lat,e.lon],{icon:L.divIcon({
+   className:'traffic-incident-label',
+   html:'<span class="traffic-incident-pin'+(category==='roadClosed'?' closure':'')+'">'+emoji+'</span>',
+   iconSize:[37,37],iconAnchor:[19,19]})}).addTo(map);
+  var detail=document.createElement('div');
+  detail.textContent='TomTom: '+String(e.label||'Trafik olayı')+
+   ' · yaklaşık '+(e.aheadMeters/1000).toFixed(1)+' km ileride. '+
+   String(e.description||'')+
+   ' · Şerit/yön eşleşmesi doğrulanmadı. Canlı koşullar değişebilir.';
+  marker.bindPopup(detail);
+  trafficIncidentMarkers.push(marker);
+ });
+ $('traffic-event-map-status').hidden=false;
+ $('traffic-event-map-status').textContent=packet.items.length?
+   '🚧 TomTom: rota yakınında '+packet.items.length+' olay bildirimi · 4 dk kontrol':
+   '🚦 GPS çevresinde eşleşen olay kaydı yok · kapsama sınırlı';
+};
+window.molaTrafficIncidentError=function(){
+ clearTrafficIncidents();
+ $('traffic-event-map-status').hidden=false;
+ $('traffic-event-map-status').textContent=
+   '🚦 Trafik olay verisi yok · sesli uyarı üretilmedi';
+};
 function wipeRoute(){
  cachedJourneyWeather=null;
+ clearTrafficIncidents();
  safetyActive=false;
  activeRouteGeneration=null;
  clearSafety();
@@ -2651,6 +2713,16 @@ window.molaManeuver=function(o){
 };
 var selectedScenarioSoc=80,scenarioMeasured=false;
 var newestStationTicket=-1;
+function applyRouteFilter(filter){
+ routeFilter=filter;
+ ['all','fast','short','long','avoid','standard'].forEach(function(name){
+  $('alt-filter-'+name).classList.toggle('selected',name===filter);
+ });
+ if(lastAlternativeData)window.molaAlternatives(lastAlternativeData);
+}
+['all','fast','short','long','avoid','standard'].forEach(function(name){
+ $('alt-filter-'+name).onclick=function(){applyRouteFilter(name)};
+});
 window.molaAlternatives=function(data){
  if(!data||!Array.isArray(data.options))return;
  // A slow station response for an older 80/100 selection must never
@@ -2666,12 +2738,22 @@ window.molaAlternatives=function(data){
    return opt&&opt.socAssumed===true &&
     Number.isFinite(opt.scenarioStartSoc)&&opt.scenarioStartSoc!==selectedScenarioSoc;
  }))return;
+ lastAlternativeData=data;
  routeOptions=data.options.slice(0,12);
  chosenRouteIndex=Number(data.selectedIndex)||0;
  var list=$('co-alts-list');list.replaceChildren();
+ var longest=routeOptions.reduce(function(best,opt){
+  return opt&&Number.isFinite(opt.km)&&(!best||opt.km>best.km)?opt:best;
+ },null);
  routeOptions.forEach(function(opt){
   if(!opt||!Number.isInteger(opt.index)||!Number.isFinite(opt.km)||
     !Number.isFinite(opt.minutes))return;
+  var kind=String(opt.preference||'standard');
+  if(routeFilter==='fast'&&opt.index!==data.fastestIndex)return;
+  if(routeFilter==='short'&&opt.index!==data.shortestIndex)return;
+  if(routeFilter==='long'&&(!longest||opt.index!==longest.index))return;
+  if(routeFilter==='avoid'&&kind!=='avoid-tolls')return;
+  if(routeFilter==='standard'&&kind==='avoid-tolls')return;
   var item=document.createElement('button');
   item.type='button';
   item.className='alt-item'+(opt.index===chosenRouteIndex?' is-selected':'');
@@ -2681,6 +2763,11 @@ window.molaAlternatives=function(data){
   if(opt.index===data.fastestIndex)tags.push('En hızlı');
   if(opt.index===data.shortestIndex)tags.push('Az yol / enerji');
   if(opt.index===data.chargeAwareIndex)tags.push('CCS önerili');
+  if(longest&&opt.index===longest.index&&routeOptions.length>1)tags.push('Daha uzun');
+  if(kind==='shorter')tags.push('Kısa yol profili');
+  if(kind==='avoid-tolls')tags.push('Ücretli yoldan kaçınma isteği · teyitsiz');
+  if(kind==='avoid-motorways')tags.push('Otoyolsuz tercih · teyitsiz');
+  if(kind==='standard')tags.push('Ücretli geçiş bilinmiyor');
   name.textContent='Rota '+(opt.index+1)+' · '+(tags.join(' · ')||'Alternatif');
   var details=document.createElement('small');
   var lowStops=Number.isInteger(opt.chargeStopsMin)?opt.chargeStopsMin:null;
@@ -2712,6 +2799,8 @@ window.molaAlternatives=function(data){
   };
   list.appendChild(item);
  });
+ if(!list.children.length)
+  list.textContent='Bu koşulda doğrulanmış alternatif bulunamadı; mevcut rota korunur.';
  var selected=routeOptions.find(function(opt){return opt&&opt.index===chosenRouteIndex});
  if(!selected){$('co-cost').textContent='Maliyet: alternatif yok';return}
  var stops=Number.isInteger(selected.chargeStopsMin)&&
@@ -2743,8 +2832,19 @@ window.molaAlternativeError=function(o){
  $('co-cost').textContent='Alternatif şarj analizi alınamadı';
  $('co-cost-note').textContent=String(o&&o.detail||'Rota görüntüsü korunuyor');
 };
+window.molaRouteVariants=function(packet){
+ if(!packet||!Array.isArray(packet.routePreviews))return;
+ if(Number.isInteger(packet.routeGeneration)&&
+    Number.isInteger(activeRouteGeneration)&&packet.routeGeneration!==activeRouteGeneration)return;
+ drawRoutePreviews(packet.routePreviews,chosenRouteIndex);
+};
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
+ clearTrafficIncidents();
+ lastAlternativeData=null;routeFilter='all';
+ ['all','fast','short','long','avoid','standard'].forEach(function(n){
+  $('alt-filter-'+n).classList.toggle('selected',n==='all');
+ });
  newestStationTicket=-1;
  cachedJourneyWeather=null;
  safetyActive=true;
