@@ -15,6 +15,7 @@ import androidx.car.app.Screen;
 import androidx.car.app.Session;
 import androidx.car.app.SessionInfo;
 import androidx.car.app.model.Action;
+import androidx.car.app.model.ActionStrip;
 import androidx.car.app.model.ItemList;
 import androidx.car.app.model.ListTemplate;
 import androidx.car.app.model.Metadata;
@@ -59,17 +60,24 @@ public final class Id4CarPoiService extends CarAppService {
         private volatile String message="Şarj noktaları yükleniyor";
         private volatile boolean loading=true;
         private boolean started=false;
+        private int page=0;
+        private int requests=0;
+        private String ageLabel="Güncellik bilinmiyor";
 
         ChargingScreen(@NonNull CarContext context){super(context);}
 
         @NonNull @Override public Template onGetTemplate() {
             if(!started){
                 started=true;
-                new Thread(this::loadStationData,"id4-auto-epdk").start();
+                requestStationRefresh();
             }
             ListTemplate.Builder builder=new ListTemplate.Builder()
                 .setTitle("ID.4 · Şarj Noktaları")
-                .setHeaderAction(Action.APP_ICON);
+                .setHeaderAction(Action.APP_ICON)
+                .setActionStrip(new ActionStrip.Builder()
+                    .addAction(new Action.Builder().setTitle("Yenile")
+                        .setOnClickListener(this::requestStationRefresh).build())
+                    .build());
             // Never block the OBD entry behind a slow EPDK network download.
 
             ItemList.Builder list=new ItemList.Builder();
@@ -86,8 +94,11 @@ public final class Id4CarPoiService extends CarAppService {
                 list.addItem(new Row.Builder().setTitle("İstasyon bilgisi")
                     .addText(message).build());
             }else{
-                int count=Math.min(stations.length(),5);
-                for(int i=0;i<count;i++){
+                // Host-safe pagination: never flood the driving UI with >6 rows.
+                int first=page*4;
+                if(first>=stations.length()){page=0;first=0;}
+                int count=Math.min(stations.length(),first+4);
+                for(int i=first;i<count;i++){
                     JSONObject station=stations.optJSONObject(i);
                     if(station==null)continue;
                     String title=station.optString("title","Şarj istasyonu").trim();
@@ -109,14 +120,36 @@ public final class Id4CarPoiService extends CarAppService {
                             new Place.Builder(CarLocation.create(lat,lon)).build()
                         ).build());
                     }
+                    final JSONObject selected=station;
+                    row.setOnClickListener(()->getScreenManager().push(
+                        new Id4CarStationDetailsScreen(getCarContext(),selected,ageLabel)));
                     list.addItem(row.build());
+                }
+                if(stations.length()>4){
+                    final int pageCount=(stations.length()+3)/4;
+                    list.addItem(new Row.Builder()
+                        .setTitle("Diğer şarj noktaları")
+                        .addText("Sayfa "+(page+1)+"/"+pageCount+" · sonraki 4 nokta")
+                        .setOnClickListener(()->{
+                            page=(page+1)%pageCount;
+                            invalidate();
+                        }).build());
                 }
             }
             return builder.setSingleList(list.build()).build();
         }
 
-        private void loadStationData(){
+        private void requestStationRefresh(){
+            final int request=++requests;
+            loading=true;
+            page=0;
+            invalidate();
+            new Thread(()->loadStationData(request),"id4-auto-epdk").start();
+        }
+
+        private void loadStationData(int request){
             JSONArray found=new JSONArray();
+            String age="Güncellik bilinmiyor";
             String detail="Konum izni veya yakın tarihli GPS bilgisi bulunamadı. "+
                 "Telefonda ID.4 Yol Arkadaşım konum iznini açın.";
             try{
@@ -142,6 +175,8 @@ public final class Id4CarPoiService extends CarAppService {
                         JSONObject packet=catalog.inBounds(lat-.22,lon-.27,lat+.22,lon+.27,true);
                         found=packet.optJSONArray("items");
                         if(found==null)found=new JSONArray();
+                        long hours=packet.optLong("snapshotAgeHours",-1);
+                        if(hours>=0)age=hours+" saat önce güncellenmiş kayıt";
                         detail=found.length()==0?
                             "Bu bölgede güncel EPDK listesinde CCS kaydı bulunamadı.":
                             "EPDK · canlı doluluk veya anlık tarife içermez";
@@ -154,8 +189,11 @@ public final class Id4CarPoiService extends CarAppService {
             }
             final JSONArray ready=found;
             final String status=detail;
+            final String sourceAge=age;
             main.post(()->{
-                stations=ready;message=status;loading=false;invalidate();
+                if(request!=requests)return; // stale asynchronous reply must not replace new data
+                stations=ready;message=status;ageLabel=sourceAge;
+                loading=false;page=0;invalidate();
             });
         }
     }
