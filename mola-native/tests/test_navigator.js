@@ -15,7 +15,7 @@ const elements={};
 function el(){
  return {
   value:'',style:{},children:[],textContent:'',onclick:null,handlers:{},
-  classList:{_set:new Set(),add(c){this._set.add(c)},remove(c){this._set.delete(c)},contains(c){return this._set.has(c)},toggle(c){if(this._set.has(c)){this._set.delete(c);return false}this._set.add(c);return true}},
+  classList:{_set:new Set(),add(c){this._set.add(c)},remove(c){this._set.delete(c)},contains(c){return this._set.has(c)},toggle(c,force){if(typeof force==='boolean'){if(force)this._set.add(c);else this._set.delete(c);return force}if(this._set.has(c)){this._set.delete(c);return false}this._set.add(c);return true}},
   addEventListener(name,fn){this.handlers[name]=fn},
   appendChild(child){this.children.push(child)},
   replaceChildren(){this.children=[]},
