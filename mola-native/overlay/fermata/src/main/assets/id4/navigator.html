@@ -1526,9 +1526,31 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 .soc-scenario-picker button.selected{background:#0b7468;border-color:#71f2ca}
 .soc-scenario-picker small{flex-basis:100%;font-size:10px;color:#f2d49b}
 .soc-scenario-picker[hidden]{display:none!important}
+/* The route weather is on the MAP. No modal, secondary screen or refresh tap. */
+#journey-weather{display:none!important}
+#route-weather-map-status{position:fixed;left:39%;top:185px;z-index:901;
+ pointer-events:none;max-width:45%;padding:5px 9px;border-radius:10px;
+ border:1px solid #427c91;background:rgba(3,34,51,.91);
+ box-shadow:0 3px 15px #00132188;font-size:11px;font-weight:700;
+ color:#e0f5ff;line-height:1.35;white-space:normal}
+#route-weather-map-status[hidden]{display:none!important}
+#route-weather-map-status.risk{background:rgba(84,46,27,.96);
+ border-color:#f0b76a;color:#fff0cd}
+.route-weather-map-pin{display:flex;align-items:center;gap:3px;
+ max-width:94px;border-radius:10px;background:#073348f0;
+ color:#fff;border:1.5px solid #70bdd3;box-shadow:0 2px 10px #001a29bb;
+ padding:3px 5px;font-weight:800;font-size:12px;line-height:1.05;
+ white-space:nowrap;transform:translate(-3px,-4px)}
+.route-weather-map-pin small{font-size:8px;opacity:.86}
+.route-weather-map-pin.risk{background:#663b22f5;border-color:#ffc56f}
+@media (max-width:700px){
+ #route-weather-map-status{top:116px;left:24%;max-width:64%;font-size:9px}
+ .route-weather-map-pin{font-size:10px;padding:2px 3px}
+}
 </style>
 </head><body>
 <div id="map"></div>
+<div id="route-weather-map-status" role="status" hidden>☁ Yol havası · rota bekleniyor</div>
 <div id="safety-speed" class="safety-speed"><strong id="safety-kmh">—</strong><small>km/sa · GPS</small></div>
 <div id="safety-alert" class="safety-alert" role="status"></div>
 <div id="traffic-provider-map" aria-label="Resmî sağlayıcı trafik haritası"></div>
@@ -1713,10 +1735,10 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  </div>
  <div id="layer-status" class="map-layer-status">Şarj katmanını seç · EPDK kayıtları</div>
 </div>
-<div class="map-weather-journey" id="journey-weather">
+<div class="map-weather-journey" id="journey-weather" hidden aria-hidden="true">
  <div class="journey-title"><span>☁ Yol boyunca hava · saatlik model</span>
-  <button type="button" id="journey-refresh">↻ Yenile</button>
-  <button type="button" id="journey-close">Kapat</button></div>
+  <button type="button" id="journey-refresh" hidden tabindex="-1">↻ Yenile</button>
+  <button type="button" id="journey-close" hidden tabindex="-1">Kapat</button></div>
   <div id="journey-risk" class="journey-risk">Tahminler rota çizilince hesaplanır.</div>
  <div class="journey-points" id="journey-points">Rota oluşturulduğunda 7 hava noktası gösterilir.</div>
  <div class="journey-note" id="journey-note">Open-Meteo tahmini · Şarj ve mola beklemeleri dahil değildir; gerçek yol yüzeyi ölçümü değildir.</div>
@@ -2092,6 +2114,15 @@ function msg(t){
 function valid(lat,lon){return typeof lat==='number'&&typeof lon==='number'&&
  Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=35&&lat<=43&&lon>=25&&lon<=46}
 var lastCurrentWeatherAt=0;
+function weatherIcon(code){
+ return (code>=71&&code<=77)||code===85||code===86?'❄️':
+   code>=95?'⛈️':code>=51?'🌧️':
+   code===45||code===48?'🌫️':code>=3?'☁️':'☀️';
+}
+function weatherClock(unix){
+ return Number.isFinite(unix)&&unix>0?
+  new Date(unix*1000).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'—';
+}
 window.molaCurrentWeather=function(o){
  if(!o||o.modelBased!==true || !Number.isFinite(o.temperature) ||
     !Number.isFinite(o.precipitation)||!Number.isFinite(o.wind)||
@@ -2173,12 +2204,32 @@ window.molaJourneyWeather=function(packet){
     if(map)map.panTo([w.latitude,w.longitude],{animate:false});
    };
    // Weather automatically appears as map pins after genuine API results.
-   if(map && currentRouteProgress && w.available===true){
-    var marker=L.circleMarker([w.latitude,w.longitude],{
-      radius:6,color:'#fff',weight:2,fillColor:'#58afd9',fillOpacity:.98
+   if(map && currentRouteProgress && (w.available===true||w.nowAvailable===true)){
+    // One lightweight, source-backed information chip ON the road map.
+    // This is a model's current estimate, not a roadside observation.
+    var nowReady=w.nowAvailable===true&&Number.isFinite(w.nowTemperature)&&
+      Number.isFinite(w.nowWind)&&Number.isFinite(w.nowPrecipitation);
+    var forecastReady=w.available===true&&Number.isFinite(w.temperature);
+    var shownTemp=nowReady?w.nowTemperature:w.temperature;
+    var shownCode=nowReady?w.nowWeatherCode:w.weatherCode;
+    var hasRisk=Array.isArray(w.risks)&&w.risks.length>0;
+    var label=weatherIcon(shownCode)+' '+Math.round(shownTemp)+'°';
+    var iconHtml='<span class="route-weather-map-pin'+(hasRisk?' risk':'')+
+      '">'+label+'<small>'+(nowReady?'şimdi':'varış')+'</small></span>';
+    var marker=L.marker([w.latitude,w.longitude],{
+      icon:L.divIcon({className:'route-weather-label',
+       html:iconHtml,iconSize:[83,31],iconAnchor:[42,16]})
     }).addTo(map);
-    marker.bindPopup('☁ '+name+' · '+detail.textContent+
-      ' · saatlik Open-Meteo model tahmini');
+    var popup=document.createElement('div');
+    var currentText=nowReady?'Şimdi ('+weatherClock(w.nowTime)+
+      ') · '+Math.round(w.nowTemperature)+'°C · yağış '+
+      w.nowPrecipitation.toFixed(1)+' mm · rüzgâr '+Math.round(w.nowWind)+
+      ' km/sa':'Bu konumda güncel model değeri bulunamadı';
+    var etaText=forecastReady?'Varış '+time+' · '+detail.textContent:
+      'Varış saati için tahmin yok';
+    popup.textContent=name+' · '+currentText+' | '+etaText+
+     ' · Open-Meteo, model verisidir; anlık yol sensörü değildir.';
+    marker.bindPopup(popup);
     weatherMarkers.push(marker);
    }
   }
@@ -2194,21 +2245,42 @@ window.molaJourneyWeather=function(packet){
  $('route-weather-shortcut').classList.toggle('risk',issues.length>0);
  $('route-weather-shortcut').textContent=issues.length?
    '⚠ Yol havası '+issues.length:'☁ Yol havası '+available+'/'+packet.cards.length;
+ var routeMapWeather=$('route-weather-map-status');
+ routeMapWeather.hidden=false;
+ routeMapWeather.classList.toggle('risk',issues.length>0);
+ var nowCount=packet.cards.filter(function(w){return w&&w.nowAvailable===true}).length;
+ var refreshed=Number.isFinite(packet.updatedAt)?
+    new Date(packet.updatedAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'—';
+ routeMapWeather.textContent=(issues.length?'⚠️ ':'☁️ ')+
+  nowCount+'/'+packet.cards.length+' noktada güncel model · '+
+  available+'/'+packet.cards.length+' varış tahmini · '+refreshed+
+  (issues.length?' · '+issues.length+' risk noktası':'')+
+  ' · 10 dk otomatik yenileme';
  $('layer-status').textContent='☁ Rota boyunca '+available+'/'+packet.cards.length+' hava noktası hazır';
- $('co-weather').textContent='Yol boyunca '+available+' hava tahmini noktası · Ayrıntı için Yol havası';
+ $('co-weather').textContent='Yol boyunca '+available+
+   ' varış tahmini ve '+nowCount+' güncel model noktası · haritadaki hava etiketleri';
  $('journey-note').textContent='Open-Meteo · '+new Date(packet.updatedAt||Date.now())
    .toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+
    ' güncellendi · Model tahmini; istasyon ölçümü değildir. Trafik, şarj ve mola ETA’yı etkiler.';
 };
-window.molaJourneyWeatherLoading=function(o){$('journey-risk').textContent=String(o&&o.detail||'Güzergâh havası yenileniyor')};
+window.molaJourneyWeatherLoading=function(o){
+ $('journey-risk').textContent=String(o&&o.detail||'Güzergâh havası yenileniyor');
+ if(!cachedJourneyWeather){
+  $('route-weather-map-status').hidden=false;
+  $('route-weather-map-status').textContent='☁ Rota havası yükleniyor · model verisi';
+ }
+};
 window.molaJourneyWeatherError=function(packet){
  if(!cachedJourneyWeather){
   $('journey-points').textContent=String(packet&&packet.detail||
     'Yol boyunca saatlik model verisi alınamadı');
   $('route-weather-shortcut').textContent='☁ Hava alınamadı';
+  $('route-weather-map-status').hidden=false;
+  $('route-weather-map-status').textContent='⚠ Güzergâh havası alınamadı · çevrimdışı';
  }else{
   $('journey-risk').textContent='Yeni tahmin alınamadı; önceki hava modeli korunuyor. '+
    String(packet&&packet.detail||'İnternet bağlantısını kontrol et');
+  $('route-weather-map-status').textContent='⚠ Yeni hava verisi alınamadı · önceki model tahmini · güncellik kontrol et';
  }
 };
 window.molaWeatherError=function(packet){
@@ -2304,6 +2376,7 @@ function wipeRoute(){
  $('journey-weather').classList.remove('open');
  $('journey-points').textContent='Rota oluşturulunca 7 hava noktası gösterilir';
  $('route-weather-shortcut').textContent='☁ Yol havası';
+ $('route-weather-map-status').hidden=true;
  $('route-weather-shortcut').classList.remove('risk');
  cachedRouteStations=null;
  if(stationLayerMode==='route'){clearStationMarkers();
@@ -2684,6 +2757,8 @@ window.molaRoute=function(o){
  $('journey-points').textContent='Yol boyunca hava tahmini yükleniyor...';
  $('journey-risk').textContent='Rota meteoroloji modeli sorgulanıyor.';
  $('route-weather-shortcut').textContent='☁ Hava yükleniyor';
+ $('route-weather-map-status').hidden=false;
+ $('route-weather-map-status').textContent='☁ Rota boyunca güncel model ve varış havası alınıyor';
  $('route-weather-shortcut').classList.remove('risk');
  cachedRouteStations=null;
  // On a new route show route-corridor CCS without requiring a second tap,
@@ -3194,22 +3269,11 @@ function switchTraffic(which){
 $('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
 $('traffic-tomtom-key').onclick=function(){native('tomtomKey')};
 $('traffic-osm').onclick=$('traffic-map-exit').onclick=function(){switchTraffic('osm')};
-function hideJourneyWeather(){
- $('journey-weather').classList.remove('open');
- weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
- weatherMarkers=[];
-}
-$('layer-weather').onclick=function(){
- if(!currentRouteProgress){msg('Hava için önce rota oluştur.');return}
- setMapLayerMenu(false);
- if($('journey-weather').classList.contains('open')){
-  hideJourneyWeather();return;
- }
- $('journey-weather').classList.add('open');
- if(cachedJourneyWeather)window.molaJourneyWeather(cachedJourneyWeather);
- else $('journey-points').textContent='Yol boyunca model tahmini yükleniyor...';
-};
-$('journey-close').onclick=hideJourneyWeather;
+// The old modal remains only as an inaccessible internal data holder;
+ // route weather cannot be opened in a separate panel and the map chips persist.
+$('layer-weather').onclick=function(){};
+$('journey-close').onclick=function(){};
+
 // Weather is a live read-only status; no separate button.
 if(map&&map.on){
  map.on('moveend',function(){
