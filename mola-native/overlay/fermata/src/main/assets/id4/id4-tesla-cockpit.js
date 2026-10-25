@@ -310,6 +310,26 @@ function start(){
   observe('molaStations',onStations);
   observe('molaManeuver',onManeuver);
   observe('molaStatus',onStatus);
+  // Reuse existing onclick handlers for Mola, Route and Stations; this observer
+  // only synchronizes the selected tab appearance. It never calls the native
+  // bridge or starts an Android Activity, route or station fetch itself.
+  try{
+    ['co-media','co-route-tab','co-station-tab'].forEach(function(id){
+      var button=el(id);
+      if(!button||typeof button.addEventListener!=='function')return;
+      button.addEventListener('click',function(){
+        try{
+          ['co-media','co-route-tab','co-station-tab'].forEach(function(otherId){
+            var other=el(otherId);
+            if(other&&other.classList){
+              if(otherId===id)other.classList.add('current');
+              else other.classList.remove('current');
+            }
+          });
+        }catch(_){}
+      });
+    });
+  }catch(_){}
   tick();
   try{root.setInterval(tick,1000)}catch(_){}
   try{root.requestAnimationFrame(function(){
