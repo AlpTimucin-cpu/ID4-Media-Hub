@@ -51,6 +51,10 @@
       distanceKm: p.distanceKm, durationMin: p.durationMin,
       stopIncluded: p.stopIncluded === true });
   });
+  // A native route packet is only a subset of EPDK; never pass it to setStations().
+  wrap('molaStations', function (p) {
+    if (p && p.kind === 'route') mod.setRouteStations(p);
+  });
   wrap('molaPosition', function (p) {
     // Yerini bilinmeyen veya eski GPS'i kullanma.
     if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) ||
