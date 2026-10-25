@@ -70,7 +70,7 @@ public final class Id4CarPoiService extends CarAppService {
             ListTemplate.Builder builder=new ListTemplate.Builder()
                 .setTitle("ID.4 · Şarj Noktaları")
                 .setHeaderAction(Action.APP_ICON);
-            if(loading)return builder.setLoading(true).build();
+            // Never block the OBD entry behind a slow EPDK network download.
 
             ItemList.Builder list=new ItemList.Builder();
             list.addItem(new Row.Builder()
@@ -79,7 +79,10 @@ public final class Id4CarPoiService extends CarAppService {
                 .setOnClickListener(()->getScreenManager().push(
                     new Id4CarObdScreen(getCarContext())))
                 .build());
-            if(stations.length()==0){
+            if(loading){
+                list.addItem(new Row.Builder().setTitle("Şarj istasyonları yükleniyor")
+                    .addText("OBD bağlantısı bu sırada kullanılabilir.").build());
+            }else if(stations.length()==0){
                 list.addItem(new Row.Builder().setTitle("İstasyon bilgisi")
                     .addText(message).build());
             }else{
