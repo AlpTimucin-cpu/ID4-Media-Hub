@@ -2130,10 +2130,16 @@ window.molaJourneyWeather=function(packet){
   var detail=document.createElement('span');
   if(w.available===true&&Number.isFinite(w.temperature)&&
      Number.isFinite(w.rainProbability)&&Number.isFinite(w.wind)){
-   var icon=w.weatherCode>=51?'🌧':w.weatherCode>=3?'☁':'☀';
+   var icon=(w.weatherCode>=71&&w.weatherCode<=77)||w.weatherCode===85?'❄':
+    w.weatherCode>=95?'⛈':w.weatherCode>=51?'🌧':
+    w.weatherCode===45||w.weatherCode===48?'🌫':w.weatherCode>=3?'☁':'☀';
    detail.textContent=icon+' '+Math.round(w.temperature)+'°C'+
     ' · yağış %'+Math.round(w.rainProbability)+
-    ' · '+Math.round(w.wind)+' km/sa';
+    ' · '+Math.round(w.wind)+' km/sa'+
+    (Number.isFinite(w.windGust)?' · hamle '+Math.round(w.windGust):'')+
+    (Number.isFinite(w.visibilityMeters)&&w.visibilityMeters<2000?
+      ' · görüş '+Math.round(w.visibilityMeters)+' m':'')+
+    (Array.isArray(w.risks)&&w.risks.length?' · ⚠ '+w.risks.join(', '):'');
   }else detail.textContent='Tahmin yok';
   cell.appendChild(head);cell.appendChild(detail);
   if(valid(w.latitude,w.longitude)){
@@ -2169,8 +2175,14 @@ window.molaJourneyWeather=function(packet){
 };
 window.molaJourneyWeatherLoading=function(o){$('journey-risk').textContent=String(o&&o.detail||'Güzergâh havası yenileniyor')};
 window.molaJourneyWeatherError=function(packet){
- $('journey-points').textContent=String(packet&&packet.detail||
-   'Yol boyunca saatlik model verisi alınamadı');
+ if(!cachedJourneyWeather){
+  $('journey-points').textContent=String(packet&&packet.detail||
+    'Yol boyunca saatlik model verisi alınamadı');
+  $('route-weather-shortcut').textContent='☁ Hava alınamadı';
+ }else{
+  $('journey-risk').textContent='Yeni tahmin alınamadı; önceki hava modeli korunuyor. '+
+   String(packet&&packet.detail||'İnternet bağlantısını kontrol et');
+ }
 };
 window.molaWeatherError=function(packet){
  $('co-weather').textContent='Hava modeli verisi alınamadı';
@@ -2258,7 +2270,9 @@ function wipeRoute(){
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
  $('journey-weather').classList.remove('open');
- $('journey-points').textContent='Rota oluşturulunca 5 hava noktası gösterilir';
+ $('journey-points').textContent='Rota oluşturulunca 7 hava noktası gösterilir';
+ $('route-weather-shortcut').textContent='☁ Yol havası';
+ $('route-weather-shortcut').classList.remove('risk');
  cachedRouteStations=null;
  if(stationLayerMode==='route'){clearStationMarkers();
    $('layer-status').textContent='Rota CCS için yeni rota hesapla';
@@ -2573,6 +2587,9 @@ window.molaRoute=function(o){
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
  $('journey-points').textContent='Yol boyunca hava tahmini yükleniyor...';
+ $('journey-risk').textContent='Rota meteoroloji modeli sorgulanıyor.';
+ $('route-weather-shortcut').textContent='☁ Hava yükleniyor';
+ $('route-weather-shortcut').classList.remove('risk');
  cachedRouteStations=null;
  // On a new route show route-corridor CCS without requiring a second tap,
  // unless the driver deliberately chose a different map layer.
@@ -3084,6 +3101,7 @@ $('layer-weather').onclick=function(){
  else $('journey-points').textContent='Yol boyunca model tahmini yükleniyor...';
 };
 $('journey-close').onclick=hideJourneyWeather;
+$('route-weather-shortcut').onclick=function(){$('layer-weather').onclick()};
 if(map&&map.on){
  map.on('moveend',function(){
   if(stationLayerMode!=='all'&&stationLayerMode!=='ccs')return;
