@@ -304,8 +304,12 @@ function highlightNearestDC(force) {
     markers.nearestDC = L.marker([nearest.lat, nearest.lon], {
       zIndexOffset: 2000, icon: icon('⚡', 'id4-nearest-dc-pulse')
     }).bindPopup(stationPopup(nearest)).addTo(map);
-    var availability = nearest.currentStatus === 'available' ?
-      'müsait (tarihli veri)' : nearest.currentStatus === 'occupied' ?
+    var age = Date.now() - nearest.statusObservedAtMs;
+    var recentState = nearest.statusObservedAtMs > 0 &&
+      age >= 0 && age <= 15 * 60 * 1000;
+    var availability = recentState && nearest.currentStatus === 'available' ?
+      'müsait (tarihli veri)' :
+      recentState && nearest.currentStatus === 'occupied' ?
       'meşgul (tarihli veri)' : 'müsaitlik bilinmiyor';
     setText('id4-nearest-dc', nearest.title + ' • kuş uçuşu ' +
       best.toFixed(1) + ' km • ' + availability);
@@ -685,6 +689,8 @@ function validateEPDKDataContract(data) {
       normalized.push({
         id:key, lat:lat, lon:lon, dc:type==='DC',
         socketType:type, power_kw:power, currentStatus:state,
+        statusObservedAtMs: state === 'available' || state === 'occupied' ?
+          Date.parse(item.statusObservedAtUtc) : 0,
         title:String(item.title || item.name || 'Şarj istasyonu').slice(0,90),
         operator:String(item.operator || '').slice(0,60),
         sockets:type+' · '+power+' kW'
