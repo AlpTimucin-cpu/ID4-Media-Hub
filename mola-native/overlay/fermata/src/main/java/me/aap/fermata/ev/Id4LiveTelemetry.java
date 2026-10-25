@@ -26,12 +26,15 @@ final class Id4LiveTelemetry {
         String status="OBD bağlı değil";
         String soc="—", voltage="—", batteryTemp="—", chargeMode="—", cooling="—";
         long updatedAt=0L;
+        long ecuReplyAt=0L;
+        int ecuReplyCount=0;
         long socAt=0L, voltageAt=0L, batteryTempAt=0L, chargeModeAt=0L, coolingAt=0L;
         boolean connected=false;
         Data copy(){
             Data d=new Data();d.status=status;d.soc=soc;d.voltage=voltage;
             d.batteryTemp=batteryTemp;d.chargeMode=chargeMode;d.cooling=cooling;
             d.updatedAt=updatedAt;d.connected=connected;
+            d.ecuReplyAt=ecuReplyAt;d.ecuReplyCount=ecuReplyCount;
             d.socAt=socAt;d.voltageAt=voltageAt;d.batteryTempAt=batteryTempAt;
             d.chargeModeAt=chargeModeAt;d.coolingAt=coolingAt;return d;
         }
@@ -84,6 +87,7 @@ final class Id4LiveTelemetry {
         if(!connected) {
             data.soc="—";data.voltage="—";data.batteryTemp="—";
             data.chargeMode="—";data.cooling="—";data.updatedAt=0L;
+            data.ecuReplyAt=0L;data.ecuReplyCount=0;
             data.socAt=0;data.voltageAt=0;data.batteryTempAt=0;
             data.chargeModeAt=0;data.coolingAt=0;
         }
@@ -100,6 +104,8 @@ final class Id4LiveTelemetry {
             if(!Id4MebDecoder.isVehicleProfileValidated() &&
                 Id4MebDecoder.hasPositiveReply(did,response)){
                 lastRawResponseAt=System.currentTimeMillis();
+                data.ecuReplyAt=lastRawResponseAt;
+                if(data.ecuReplyCount<1000000)data.ecuReplyCount++;
                 publishForSession(session,
                     "ELM327: ECU yanıtı var · Car Scanner ile PID doğrulaması gerekli",true);
             }
