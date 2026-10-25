@@ -43,6 +43,7 @@ final class Id4TrafficIncidents {
         c.setConnectTimeout(7500);c.setReadTimeout(11000);
         c.setInstanceFollowRedirects(false);
         c.setRequestProperty("TomTom-Api-Key",key);
+        c.setRequestProperty("TomTom-Api-Version","2");
         c.setRequestProperty("Attributes",
             "incidents(type,geometry(type,coordinates),properties("+
             "id,iconCategory,events(description),timeValidity,probabilityOfOccurrence))");
@@ -89,7 +90,13 @@ final class Id4TrafficIncidents {
             }
         }
         if(count<2)throw new IllegalArgumentException("Empty geometry");
-        double gpsProgress=nearest(lat,lon,km,count,gpsLat,gpsLon)[1];
+        double[] position=nearest(lat,lon,km,count,gpsLat,gpsLon);
+        if(position[0]>700) return new JSONObject().put("items",new JSONArray())
+            .put("updatedAt",System.currentTimeMillis())
+            .put("source","TomTom Orbis Incident Details")
+            .put("coverage","GPS rota dışında; uyarılar devre dışı")
+            .put("liveObservations",false);
+        double gpsProgress=position[1];
         JSONArray items=new JSONArray();
         Set<String> seen=new HashSet<>();
         for(int i=0;i<original.length()&&i<200&&items.length()<24;i++){
