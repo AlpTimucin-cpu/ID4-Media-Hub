@@ -83,6 +83,27 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private volatile JSONArray cachedAlternatives;
     private volatile JSONObject activeWeatherRoute;
     private volatile long lastJourneyWeatherRefreshAt;
+    // Foreground-only refresh. Open-Meteo updates its MODELS periodically;
+    // polling more often would not make roadside sensor observations appear.
+    private static final long ROUTE_WEATHER_REFRESH_MS=10*60*1000L;
+    private boolean weatherForeground=false;
+    private final Runnable routeWeatherTicker=new Runnable(){
+        @Override public void run(){
+            if(destroyed || !weatherForeground)return;
+            JSONObject route=activeWeatherRoute;
+            long now=System.currentTimeMillis();
+            if(route!=null && now-lastJourneyWeatherRefreshAt>=ROUTE_WEATHER_REFRESH_MS){
+                lastJourneyWeatherRefreshAt=now;
+                final int ticket=generation;
+                send("molaJourneyWeatherLoading",record("weather",
+                    "Rota havası 10 dakikalık döngüyle yenileniyor."));
+                try{
+                    routeWeatherJobs.execute(()->loadJourneyWeather(route,ticket));
+                }catch(java.util.concurrent.RejectedExecutionException ignored){}
+            }
+            ui.postDelayed(this,60000L);
+        }
+    };
     private volatile boolean cachedRouteGps, cachedHasStop;
     private volatile int selectedAlternativeIndex;
     private boolean socPromptShown;
@@ -186,8 +207,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 if(route==null){send("molaJourneyWeatherError",record("weather",
                     "Önce bir rota oluştur."));return;}
                 if(now-lastJourneyWeatherRefreshAt<120000){
-                    send("molaJourneyWeatherError",record("weather",
-                        "Yol tahmini iki dakikada bir yenilenebilir."));return;
+                    send("molaJourneyWeatherLoading",record("weather",
+                        "Rota hava modeli az önce istendi; otomatik yenileme açık."));return;
                 }
                 lastJourneyWeatherRefreshAt=now;
                 final int activeGeneration=generation;
@@ -1450,6 +1471,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             int forecastHours=Math.max(5,Math.min(72,(int)Math.ceil(durationSec/3600)+3));
             String url="https://api.open-meteo.com/v1/forecast?latitude="+latitudes+
                 "&longitude="+longitudes+
+                "&current=temperature_2m,precipitation,weather_code,"+
+                "wind_speed_10m,wind_gusts_10m"+
                 "&hourly=temperature_2m,precipitation_probability,precipitation,"+
                 "wind_speed_10m,wind_gusts_10m,visibility,snowfall,weather_code"+
                 "&forecast_hours="+forecastHours+"&timeformat=unixtime&timezone=GMT";
@@ -1482,6 +1505,27 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("longitude",routeLons[i])
                     .put("forecastTime",hours.optLong(closest))
                     .put("arrivalTime",at);
+                // Current model conditions at *each* of the seven locations,
+                // distinct from the forecast for the time we reach that point.
+                JSONObject current=location.optJSONObject("current");
+                if(current!=null){
+                    long modelTime=current.optLong("time",0);
+                    double currentC=current.optDouble("temperature_2m",Double.NaN);
+                    double currentRain=current.optDouble("precipitation",Double.NaN);
+                    double currentWind=current.optDouble("wind_speed_10m",Double.NaN);
+                    if(modelTime>0&&Math.abs(modelTime-now)<=5400 &&
+                       Double.isFinite(currentC)&&Double.isFinite(currentRain)&&
+                       Double.isFinite(currentWind)){
+                        item.put("nowAvailable",true)
+                            .put("nowTime",modelTime)
+                            .put("nowTemperature",currentC)
+                            .put("nowPrecipitation",currentRain)
+                            .put("nowWind",currentWind)
+                            .put("nowWeatherCode",current.optInt("weather_code",-1));
+                        double nowGust=current.optDouble("wind_gusts_10m",Double.NaN);
+                        if(Double.isFinite(nowGust))item.put("nowWindGust",nowGust);
+                    }
+                }
                 double celsius=temp.optDouble(closest,Double.NaN);
                 double precipitation=rain.optDouble(closest,Double.NaN);
                 double windKmh=wind.optDouble(closest,Double.NaN);
@@ -1519,8 +1563,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 stations.put(item);
             }
             JSONObject result=new JSONObject().put("cards",stations)
-                .put("source","Open-Meteo").put("resolution","saatlik model")
+                .put("source","Open-Meteo").put("resolution","güncel model + saatlik varış tahmini")
                 .put("updatedAt",System.currentTimeMillis())
+                .put("refreshIntervalMinutes",10)
+                .put("routeGeneration",routeGeneration)
                 .put("liveConditions",false)
                 .put("trafficAwareEta",activeRouteProvider.startsWith("TomTom Orbis"))
                 .put("etaAssumption","Rota oluşturulurken hesaplanan sürüş süresi; şarj ve duraklama dahil değildir");
@@ -1625,6 +1671,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     }
     @Override protected void onResume(){
         super.onResume();updateImmersiveCockpit();
+        weatherForeground=true;
+        ui.removeCallbacks(routeWeatherTicker);
+        ui.post(routeWeatherTicker);
         if(telemetry!=null)autoConnectObd();
         // Restore only GPS monitoring that the user previously opted into.
         if(gpsTrackingRequested &&
@@ -1638,6 +1687,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         resumeRouteAfterPause=false;
     }
     @Override protected void onPause(){
+        weatherForeground=false;
+        ui.removeCallbacks(routeWeatherTicker);
         // Consent does not extend to background tracking; save and stop here.
         if(tripJournal.recording())tripJournal.finish(this,System.currentTimeMillis());
         resumeRouteAfterPause=running;
@@ -1646,6 +1697,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(telemetry!=null)telemetry.stop();super.onPause();
     }
     @Override protected void onDestroy(){
+        weatherForeground=false;
+        ui.removeCallbacks(routeWeatherTicker);
         destroyed=true;running=false;generation++;stationRequestId++;routeStationRequestId++;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();searchJobs.shutdownNow();routeWeatherJobs.shutdownNow();
