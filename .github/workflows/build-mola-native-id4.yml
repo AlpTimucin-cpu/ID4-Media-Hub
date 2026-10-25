@@ -259,6 +259,13 @@ jobs:
           # inspect the compiled manifest directly instead of grepping badging.
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/id4-compiled-manifest.txt
           grep -q 'Id4Launcher' /tmp/id4-compiled-manifest.txt
+          # Verify the COMPILED manifest, not only the pre-merge XML.
+          # Android Auto template apps are exposed through a real CarAppService;
+          # a phone LAUNCHER alias alone does not make them host discoverable.
+          grep -Fq 'com.google.android.gms.car.application' /tmp/id4-compiled-manifest.txt
+          grep -Fq 'me.aap.fermata.ev.Id4CarPoiService' /tmp/id4-compiled-manifest.txt
+          grep -Fq 'androidx.car.app.CarAppService' /tmp/id4-compiled-manifest.txt
+          grep -Fq 'androidx.car.app.category.POI' /tmp/id4-compiled-manifest.txt
           python3 - <<'PY'
           from pathlib import Path
           s=Path('/tmp/id4-compiled-manifest.txt').read_text()
