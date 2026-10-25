@@ -56,7 +56,14 @@
     var lat = finiteNumber(p[0]), lng = finiteNumber(p[1]);
     return validLL(lat, lng) ? [lat, lng] : null;
   }
-  function setText(id, value) { if ($(id)) $(id).textContent = String(value); }
+  // DOM is optional in standalone mode: a missing cockpit node must not abort
+  // a native Android callback or block navigation.
+  function setText(id, value) {
+    try {
+      var node = $(id);
+      if (node) node.textContent = value == null ? '—' : String(value);
+    } catch (error) { console.warn('ID4 DOM update:', id, error); }
+  }
   function status(msg) { setText('id4-status', msg); }
   function icon(content, css) {
     return L.divIcon({ className: '', html: '<span class="id4-pin ' + css + '">' + content + '</span>', iconSize: [32,
@@ -287,7 +294,9 @@ function highlightNearestDC(force) {
 
 
 
-     if (!stations[i].dc) continue;
+     if (!stations[i].dc ||
+        stations[i].currentStatus === 'offline' ||
+        stations[i].currentStatus === 'out_of_service') continue;
      var dist = kilometers(currentLocation, [stations[i].lat, stations[i].lon]);
      if (dist < best) { best = dist; nearest = stations[i]; }
     }
@@ -295,7 +304,11 @@ function highlightNearestDC(force) {
     markers.nearestDC = L.marker([nearest.lat, nearest.lon], {
       zIndexOffset: 2000, icon: icon('⚡', 'id4-nearest-dc-pulse')
     }).bindPopup(stationPopup(nearest)).addTo(map);
-    setText('id4-nearest-dc', nearest.title + ' • kuş uçuşu ' + best.toFixed(1) + ' km');
+    var availability = nearest.currentStatus === 'available' ?
+      'müsait (tarihli veri)' : nearest.currentStatus === 'occupied' ?
+      'meşgul (tarihli veri)' : 'müsaitlik bilinmiyor';
+    setText('id4-nearest-dc', nearest.title + ' • kuş uçuşu ' +
+      best.toFixed(1) + ' km • ' + availability);
 }
 
 // Sosyal ihbarlar, Firebase bağlanana kadar yalnızca bu cihazın yerel verisidir.
@@ -593,35 +606,129 @@ function updateLocation(lat, lon) {
   }
   return true;
 }
+// Phase 3 production contract: strict *connector-level* schema. The official
+// EPDK public snapshot currently has coordinates + raw socket descriptions,
+// but NOT trustworthy per-socket kW units or live currentStatus. Do not
+// synthesize missing fields or promote an EPDK-only snapshot to 'validated'.
+//
+// Input: {metadata:{source:'EPDK',coverage:'country',complete:true,
+//   verifiedAtUtc:'...',geocodedCount:N},stations:[
+//   {id:'...',coordinates:{lat:39,lng:35},socketType:'AC'|'DC',
+//    power_kw:50,currentStatus:'unknown'|'available'|'occupied'|'offline'|
+//       'out_of_service', statusObservedAtUtc?:'...'}]}
+//
+// 'available'/'occupied' require a fresh, explicit observation timestamp;
+// unknown is valid but can NEVER be presented as known availability.
+function validateEPDKDataContract(data) {
+  var errors = [], normalized = [];
+  function fail(reason) {
+    if (errors.length < 8) errors.push(reason);
+  }
+  try {
+    if (!data || typeof data !== 'object' ||
+        !Array.isArray(data.stations) ||
+        !data.metadata || typeof data.metadata !== 'object') {
+      return { ok: false, errors: ['EPDK veri yapısı eksik'], stations: [] };
+    }
+    var meta = data.metadata, input = data.stations;
+    var verifiedAt = Date.parse(meta.verifiedAtUtc);
+    var age = Date.now() - verifiedAt;
+    if (meta.source !== 'EPDK' || meta.coverage !== 'country' ||
+        meta.complete !== true) fail('Kapsam ve EPDK kaynağı doğrulanmadı');
+    if (!Number.isInteger(meta.geocodedCount) || meta.geocodedCount < 5000 ||
+        meta.geocodedCount !== input.length || input.length > 100000)
+      fail('Tam ülke kayıt sayısı doğrulanmadı');
+    if (!Number.isFinite(verifiedAt) || age < 0 ||
+        age > 72 * 60 * 60 * 1000)
+      fail('EPDK doğrulama zamanı geçersiz veya eski');
+    // Never spend O(N) CPU on an obviously incomplete or excessive batch.
+    if (errors.length) return {ok:false, errors:errors, stations:[]};
+    var ids = new Set();
+    for (var i = 0; i < input.length; i++) {
+      var item = input[i];
+      if (!item || typeof item !== 'object') {fail('Boş istasyon #' + i); break;}
+      var id = item.id;
+      var key = (typeof id === 'string' || typeof id === 'number') ?
+        String(id).trim() : '';
+      var p = item.coordinates;
+      var lat = p && p.lat, lon = p && p.lng;
+      var power = item.power_kw, type = item.socketType;
+      var state = item.currentStatus;
+      if (!key || key.length > 128 || ids.has(key)) {
+        fail('Benzersiz id hatası #' + i); break;
+      }
+      if (typeof lat !== 'number' || typeof lon !== 'number' ||
+          !Number.isFinite(lat) || !Number.isFinite(lon) ||
+          lat < 35 || lat > 43 || lon < 25 || lon > 46) {
+        fail('Türkiye koordinatları hatalı #' + i); break;
+      }
+      if (type !== 'AC' && type !== 'DC') {
+        fail('AC/DC socketType eksik #' + i); break;
+      }
+      if (typeof power !== 'number' || !Number.isFinite(power) ||
+          power <= 0 || power > 1000) {
+        fail('Doğrulanmış power_kw eksik #' + i); break;
+      }
+      if (['unknown','available','occupied','offline','out_of_service']
+            .indexOf(state) < 0) {
+        fail('currentStatus eksik veya geçersiz #' + i); break;
+      }
+      if (state === 'available' || state === 'occupied') {
+        var observedAt = Date.parse(item.statusObservedAtUtc);
+        var observedAge = Date.now() - observedAt;
+        if (!Number.isFinite(observedAt) || observedAge < 0 ||
+            observedAge > 15 * 60 * 1000) {
+          fail('Canlı soket durumu eski veya zaman damgası yok #' + i); break;
+        }
+      }
+      ids.add(key);
+      normalized.push({
+        id:key, lat:lat, lon:lon, dc:type==='DC',
+        socketType:type, power_kw:power, currentStatus:state,
+        title:String(item.title || item.name || 'Şarj istasyonu').slice(0,90),
+        operator:String(item.operator || '').slice(0,60),
+        sockets:type+' · '+power+' kW'
+      });
+    }
+    return {ok:errors.length===0 && normalized.length===input.length,
+      errors:errors, stations:errors.length?[]:normalized};
+  } catch (error) {
+    console.warn('EPDK contract exception', error);
+    return {ok:false, errors:['EPDK doğrulaması yapılamadı'],stations:[]};
+  }
+}
+var lastEPDKValidation = {ok:false, errors:['Veri henüz sağlanmadı']};
 function loadStations(entries, metadata) {
-  if (!Array.isArray(entries)) {
-    countrySnapshot = { complete: false, verifiedAt: 0 };
-    stations = []; renderStations();
+  // A regional array, a map viewport and an old EPDK JSON are all rejected
+  // atomically: no marker from the failed batch may survive on this addon.
+  var checked = validateEPDKDataContract({stations:entries,metadata:metadata});
+  lastEPDKValidation = {ok:checked.ok, errors:checked.errors.slice()};
+  if (!checked.ok) {
+    countrySnapshot = {complete:false, verifiedAt:0};
+    stations = [];
+    if (layers.stations) layers.stations.clearLayers();
+    if (markers.nearestDC && map) {
+      map.removeLayer(markers.nearestDC);
+      markers.nearestDC = null;
+    }
+    setText('id4-station-count','—');
+    setText('id4-nearest-dc','—');
+    status('EPDK veri sözleşmesi reddedildi: ' +
+      (checked.errors[0] || 'Eksik veri'));
     return 0;
   }
-  // Aynı istasyonun tekrarlanması için basit anahtar deduplikasyonu.
-  var unique = new Map();
-  entries.forEach(function (s, i) {
-    var x = sanitizeStation(s, i);
-    if (x) unique.set(x.id + ':' + x.lat + ':' + x.lon, x);
-  });
-  stations = Array.from(unique.values());
-  var checkedAt = Date.parse(metadata && metadata.verifiedAtUtc);
-  var count = finiteNumber(metadata && metadata.geocodedCount);
-  // The caller must affirm official scope, complete extraction and a fresh date.
-  // Minimum count catches accidentally passing a map viewport/corridor slice.
-  // Stale data can still render as partial, but cannot trigger nearest DC.
+  stations = checked.stations;
   countrySnapshot = {
-    complete: !!metadata && metadata.source === 'EPDK' &&
-      metadata.coverage === 'country' && metadata.complete === true &&
-      count !== null && Number.isInteger(count) && count >= 5000 &&
-      count === stations.length && Number.isFinite(checkedAt),
-    verifiedAt: Number.isFinite(checkedAt) ? checkedAt : 0
+    complete:true, verifiedAt:Date.parse(metadata.verifiedAtUtc)
   };
   renderStations();
   return stations.length;
 }
 function setRouteStations(packet) {
+  // Separate legacy Mola route subset: for existing UI count ONLY.
+  // It never enters validateEPDKDataContract(), because EPDK snapshot
+  // cannot certify live currentStatus or kW, and it never drives the
+  // nearest-country-DC highlight.
   if (!packet || packet.kind !== 'route' || !Array.isArray(packet.items)) return 0;
   var unique = new Map();
   packet.items.forEach(function (item, i) {
@@ -711,6 +818,41 @@ function init(existingMap) {
       window.dispatchEvent(new Event('id4:ready'));
   }
 
+  // Centralized fail-safe for every Android/native bridge entrypoint and
+  // Leaflet/DOM helper. Catches both synchronous exceptions and async
+  // rejections so malformed native JSON never escapes into the WebView.
+  function guarded(name, fn, fallback) {
+    return function () {
+      try {
+        var value = fn.apply(this, arguments);
+        if (value && typeof value.then === 'function') {
+          return value.catch(function (error) {
+            console.warn('ID4 ' + name, error);
+            status(name + ': veri kullanılamıyor');
+            return fallback;
+          });
+        }
+        return value;
+      } catch (error) {
+        console.warn('ID4 ' + name, error);
+        status(name + ': veri kullanılamıyor');
+        return fallback;
+      }
+    };
+  }
+  renderStations = guarded('istasyon haritası', renderStations, undefined);
+  highlightNearestDC = guarded('DC gösterimi', highlightNearestDC, undefined);
+  renderIncidents = guarded('ihbar haritası', renderIncidents, undefined);
+  renderTelemetry = guarded('araç göstergesi', renderTelemetry, undefined);
+  updateEnergy = guarded('enerji hesabı', updateEnergy, undefined);
+  drawRoute = guarded('rota çizimi', drawRoute, false);
+  loadStations = guarded('EPDK aktarımı', loadStations, 0);
+  setRouteStations = guarded('rota istasyonları', setRouteStations, 0);
+  updateCarData = guarded('SoC/hız', updateCarData, false);
+  updateLocation = guarded('konum', updateLocation, false);
+  setEnergyProfile = guarded('enerji profili', setEnergyProfile, false);
+  refreshWeather = guarded('hava durumu', refreshWeather, undefined);
+  init = guarded('harita başlatma', init, undefined);
   var api = {
      init: init,
      createRoute: createRoute,
@@ -725,6 +867,10 @@ function init(existingMap) {
      setOrigin: setOrigin,
      setTarget: setTarget,
      setStations: loadStations,
+     validateEPDKDataContract: validateEPDKDataContract,
+     getEPDKValidation: function () {
+       return {ok:lastEPDKValidation.ok,errors:lastEPDKValidation.errors.slice()};
+     },
      isCountryDataReady: isCountryDataReady,
      setRouteStations: setRouteStations,
      setEnergyProfile: setEnergyProfile,
@@ -742,6 +888,7 @@ function init(existingMap) {
      }
   };
   window.ID4LiveMap = api;
+  window.validateEPDKDataContract = validateEPDKDataContract;
   // Var olan Kotlin/Java evaluateJavascript çağrıları bu isimleri kullanabilir.
   window.id4ShowStations = loadStations;
   window.id4ShowRoute = drawRoute;
