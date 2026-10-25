@@ -2245,6 +2245,8 @@ function native(name){
    case 'safetyAnnounce':bridge.safetyAnnounce(a[0],a[1]);break;
    case 'tomtomKey':bridge.configureTomTom();break;
    case 'selectObd':bridge.selectObd();break;
+   case 'obdSettings':bridge.obdSettings();break;
+   case 'setScenarioSoc':bridge.setScenarioSoc(a[0]);break;
    case 'disconnectObd':bridge.disconnectObd();break;
    case 'visibleStations':bridge.visibleStations(a[0],a[1],a[2],a[3]);break;
    case 'visibleStationsFiltered':
