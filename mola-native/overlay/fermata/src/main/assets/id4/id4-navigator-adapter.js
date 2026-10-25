@@ -23,8 +23,7 @@
       '<div id="id4-soc-track"><div id="id4-soc-bar"></div></div>' +
       '<div class="id4-addon-row">Hava: <span id="id4-weather">—</span></div>' +
       '<div class="id4-addon-row">Enerji: <span id="id4-range">—</span></div>' +
-      '<div class="id4-addon-row">İstasyon: <span id="id4-station-count">—</span> · İhbar: <span id="id4-incident-
-count">—</span></div>' +
+      '<div class="id4-addon-row">İstasyon: <span id="id4-station-count">—</span> · İhbar: <span id="id4-incident-count">—</span></div>' +
       '<div class="id4-addon-row" id="id4-nearest-dc">—</div>' +
       '<div id="id4-status">Yerel ihbar katmanı hazır.</div>';
     target.appendChild(panel);
