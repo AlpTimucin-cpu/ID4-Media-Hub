@@ -61,7 +61,7 @@ const win={
   route(...args){calls.route.push(args)},
   routeVia(...args){calls.routeVia.push(args)},
   location(){calls.location++},stop(){calls.stop++},
-  voice(){},back(){},stations(){},sensors(){},selectObd(){calls.selectObd++},obdSettings(){calls.obdSettings++},setScenarioSoc(pct){calls.socChoice.push(pct)},disconnectObd(){calls.disconnectObd++},
+  voice(){},back(){calls.back=(calls.back||0)+1},openMedia(){calls.media=(calls.media||0)+1},stations(){},sensors(){},selectObd(){calls.selectObd++},obdSettings(){calls.obdSettings++},setScenarioSoc(pct){calls.socChoice.push(pct)},disconnectObd(){calls.disconnectObd++},
   visibleStations(...args){calls.visible.push(args)},
   visibleStationsFiltered(...args){calls.filtered.push(args)},
   saveStation(...args){calls.saved.push(args)},
@@ -145,6 +145,9 @@ get('dock-safety').onclick();
 assert(get('safety-status').textContent.includes('kapalı'));
 get('dock-journal').onclick();
 assert.equal(calls.journal,1,'journal button reaches Android');
+get('co-media').onclick();
+assert.equal(calls.media,1,'top Mola tab must dispatch to safe media launcher');
+assert.equal(calls.back||0,0,'media handoff must not destroy navigator Activity');
 get('dock-route').onclick();
 assert(get('sheet').classList.contains('search-open'),'dock route must open search');
 get('dock-route').onclick();
