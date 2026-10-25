@@ -2154,7 +2154,7 @@ window.molaJourneyWeather=function(packet){
     if(map)map.panTo([w.latitude,w.longitude],{animate:false});
    };
    // Weather automatically appears as map pins after genuine API results.
-   if(map && w.available===true){
+   if(map && currentRouteProgress && w.available===true){
     var marker=L.circleMarker([w.latitude,w.longitude],{
       radius:6,color:'#fff',weight:2,fillColor:'#58afd9',fillOpacity:.98
     }).addTo(map);
