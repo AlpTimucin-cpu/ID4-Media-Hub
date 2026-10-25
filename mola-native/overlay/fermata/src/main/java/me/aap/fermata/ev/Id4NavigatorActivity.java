@@ -470,7 +470,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         String status=latestObd==null?"OBD bağlı değil":latestObd.status;
         new AlertDialog.Builder(this)
             .setTitle("ID.4 · OBD bağlantı ayarları")
-            .setMessage(device+"\\n"+status+"\\n\\n"+
+            .setMessage(device+"\n"+status+"\n\n"+
                 "Telefon Bluetooth ayarlarından ELM327'yi eşleştir. Car Scanner "
                 +"bağlıysa önce bağlantısını kes; iki uygulama aynı Bluetooth soketini "
                 +"paylaşamaz. ECU'ya yazma veya kodlama yapılmaz.")
