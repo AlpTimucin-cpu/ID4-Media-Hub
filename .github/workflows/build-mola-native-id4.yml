@@ -253,6 +253,27 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           "$AAPT" dump badging "$APK" > /tmp/mola-preview-package.txt
+          # Final binary gate: uploaded Mola 3.2 is NOT the build input.
+          # Do not accidentally inherit its mic/file/video permissions.
+          "$AAPT" dump permissions "$APK" > /tmp/id4-preview-permissions.txt
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          manifest=Path('/tmp/id4-preview-permissions.txt').read_text()
+          rejected={
+              'android.permission.CAMERA',
+              'android.permission.RECORD_AUDIO',
+              'android.permission.READ_EXTERNAL_STORAGE',
+              'android.permission.READ_MEDIA_VIDEO',
+              'android.permission.READ_MEDIA_AUDIO',
+              'android.permission.MANAGE_EXTERNAL_STORAGE',
+              'android.permission.WRITE_EXTERNAL_STORAGE'
+          }
+          requested=set(re.findall(r"uses-permission(?:-sdk-\d+)?: name='([^']+)'",manifest))
+          found=sorted(requested.intersection(rejected))
+          assert not found, 'Unexpected microphone/camera/filesystem permissions: '+str(found)
+          print('PASS: final merged ID4 preview requests no microphone/camera/general media read permissions')
+          PY
           head -3 /tmp/mola-preview-package.txt
           grep -q 'id4preview' /tmp/mola-preview-package.txt
           # aapt badging omits some activity-alias labels on newer SDK tools:
