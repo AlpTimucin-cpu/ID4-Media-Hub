@@ -3250,7 +3250,20 @@ $('tts').onclick=function(){
  $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');
  $('tts').textContent=voice?'Kapat':'Aç';
 };
-$('dock-home').onclick=$('dock-apps').onclick=$('dock-music').onclick=$('back').onclick=$('co-media').onclick=function(){native('back')};
+function launchMolaMediaSafely(){
+  // Exact legacy request is retained for callers; it does not turn on video
+  // projection or circumvent Android Auto's parked-only video restrictions.
+  var sent=false;
+  try{
+    var transport=window.ID4NativeBridge;
+    if(transport && typeof transport.receive==='function')
+      sent=transport.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK'})===true;
+  }catch(e){console.warn('Mola media bridge failed',e)}
+  if(!sent)sent=native('openMedia'); // Same safe phone Activity transition.
+  if(!sent)msg('Mola multimedya ekranına bağlantı kurulamadı.');
+}
+$('dock-home').onclick=$('dock-apps').onclick=$('dock-music').onclick=
+ $('back').onclick=$('co-media').onclick=launchMolaMediaSafely;
 function toggleRouteSearch(){
  var sheet=document.querySelector('.sheet');
  if(sheet.classList.contains('route-active')){
