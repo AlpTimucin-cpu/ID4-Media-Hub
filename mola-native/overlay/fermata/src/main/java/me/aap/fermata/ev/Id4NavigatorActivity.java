@@ -499,6 +499,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     .put("index",i)
                     .put("km",Math.round(km*10.0)/10.0)
                     .put("minutes",Math.round(minutes))
+                    .put("routePreference",route.optString("id4RoutePreference","standard"))
+                    .put("tollVerified",false)
                     .put("energyLowKwh",Math.round(km*1.6)/10.0)
                     .put("energyHighKwh",Math.round(km*2.4)/10.0)
                     .put("socKnown",estimate.measuredSoc)
@@ -719,6 +721,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 JSONObject item=new JSONObject();
                 item.put("index",k).put("km",Math.round(roadKm*10)/10.0)
                     .put("minutes",Math.round(minutes))
+                    .put("routePreference",route.optString("id4RoutePreference","standard"))
+                    .put("tollVerified",false)
                     .put("energyLowKwh",Math.round(roadKm*.16*10)/10.0)
                     .put("energyHighKwh",Math.round(roadKm*.24*10)/10.0)
                     .put("socKnown",Double.isFinite(soc))
@@ -1168,6 +1172,41 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         // Demo downtime, invalid response or rate limiting should
                         // never erase a valid route returned by the main engine.
                     }
+                }
+                // Request real shorter / no-toll / no-motorway road geometries.
+                // Responses are distinct candidates, never synthetic dashed roads.
+                // Each provider may reject constraints; label preference only.
+                if(out!=null&&!hasStop && !activeRouteProvider.startsWith("TomTom Orbis")){
+                    final String[] variants={"shorter","avoid-tolls","avoid-motorways"};
+                    java.util.concurrent.ExecutorService variantWorkers=
+                        Executors.newFixedThreadPool(3);
+                    try{
+                        java.util.List<java.util.concurrent.Future<JSONArray>> futures=
+                            new ArrayList<>();
+                        for(String mode:variants){
+                            futures.add(variantWorkers.submit(()->Id4ValhallaRouting.variant(
+                                fromLat,fromLon,toLat,toLon,Double.NaN,Double.NaN,mode)));
+                        }
+                        JSONArray existing=out.getJSONArray("routes");
+                        for(java.util.concurrent.Future<JSONArray> future:futures){
+                            try{
+                                JSONArray result=future.get(12,java.util.concurrent.TimeUnit.SECONDS);
+                                for(int k=0;k<result.length()&&existing.length()<9;k++){
+                                    JSONObject candidate=result.getJSONObject(k);
+                                    boolean distinct=true;
+                                    for(int j=0;j<existing.length();j++){
+                                        if(!Id4ValhallaRouting.distinct(
+                                                existing.getJSONObject(j),candidate)){
+                                            distinct=false;break;
+                                        }
+                                    }
+                                    if(distinct)existing.put(candidate);
+                                }
+                            }catch(Exception ignored){
+                                // User retains primary route when a public host fails.
+                            }
+                        }
+                    }finally{variantWorkers.shutdownNow();}
                 }
                 if(out==null)throw new IllegalStateException(problems.toString()+
                     " | Valhalla açık kaynak rota alınamadı");
