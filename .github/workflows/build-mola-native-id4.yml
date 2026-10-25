@@ -80,6 +80,8 @@ jobs:
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-navigator-adapter.js
           node --check integration/mola-native/tests/test_live_map.js
           node integration/mola-native/tests/test_live_map.js
+          node --check integration/mola-native/tests/test_id4_native_bridge.js
+          node integration/mola-native/tests/test_id4_native_bridge.js
           python3 - <<'PY'
           from pathlib import Path
           root=Path('integration/mola-native/overlay/fermata/src/main/assets/id4')
