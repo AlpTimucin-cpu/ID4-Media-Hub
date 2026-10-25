@@ -136,23 +136,51 @@ mevcut kokpitin yerini almaz.
 - Yerel kazalar/yol kapanmaları Firebase bağlanmadıkça paylaşılmaz;
   doğrulanmış trafik yoğunluğu olarak sunulmaz.
 
-Tam ülke DC kaynağı için `setStations(stations, metadata)` sözleşmesi:
+### 3. aşama: katı EPDK veri sözleşmesi (fail-closed)
+
+`validateEPDKDataContract({stations,metadata})` kayıtları **atomik** olarak
+doğrular. Eksik / hatalı tek satırda bile **tüm yeni EPDK harita aktarımı
+reddedilir**; önceki işaret, sayı ve seçili DC kaydı temizlenir.
+Bu sözleşme orijinal Mola'nın bağımsız şarj ekranını değiştirmez.
+
 ```javascript
-window.ID4LiveMap.setStations(actualVerifiedEpdkStations, {
-  source: 'EPDK', coverage: 'country', complete: true,
-  geocodedCount: actualVerifiedEpdkStations.length,
-  verifiedAtUtc: actualEpdkSnapshotVerifiedUtc
+// Yalnızca gerçek, doğrulanmış sağlayıcı akışı bu alanları doldurabilir.
+const result = window.validateEPDKDataContract({
+  metadata: {
+    source: 'EPDK', coverage: 'country', complete: true,
+    geocodedCount: stations.length, verifiedAtUtc: epdkVerifiedAtUtc
+  },
+  stations: stations // Her kayıtta zorunlu alanlar:
+  // { id, coordinates: {lat, lng}, socketType:'AC'|'DC',
+  //   power_kw: number (>0),
+  //   currentStatus:'unknown'|'available'|'occupied'|'offline'|'out_of_service',
+  //   statusObservedAtUtc?: ISO-8601 }
 });
+if (result.ok) window.ID4LiveMap.setStations(stations, metadata);
 ```
-Bu iki `actual...` değeri üretimde gerçek EPDK içe aktarıcısından alınmalıdır.
-Yalnızca tam/kayıt sayısı tutarlı/en az 5000 tekil kayıt içeren ve 72 saatten yeni
-veriyle ülke çapında en yakın DC işaretleme etkinleşir. Bu, kapsam
-kontrolüdür; EPDK kökeninin kriptografik doğrulaması değildir.
-Kısmi veya eski veriler en yakın DC olarak işaretlenmez.
-Düşük SoC işaretleme için %20 altı gerçek SoC, 30 saniyeden yeni GPS ve
-30 saniyeden yeni telemetri birlikte zorunludur. Open-Meteo zaman damgası
-90 dakikadan eskiyse model tahmini reddedilir. Ölçülmüş kapasite ve tüketim
-profili yoksa varış yüzdesi hesaplanmaz.
+
+Ülke geneli verinin kabulü: kaynağı `EPDK`, kapsamı `country`,
+`complete:true`, 5.000+ benzersiz kayıttan oluşan eşleşen toplam sayı,
+Türkiye koordinatları ve en fazla 72 saatlik doğrulama tarihi.
+`available` veya `occupied` durumları ancak en fazla 15 dakika önceye ait
+`statusObservedAtUtc` alanıyla kabul edilir. `unknown` açıkça bilinmeyen
+müsaitliktir. `offline` ve `out_of_service` DC seçimine girmez.
+
+**Önemli veri sınırı:** Projenin mevcut resmi EPDK JSON anlık
+`currentStatus` veya doğrulanmış birimli `power_kw` içermiyor.
+Bu alanları EPDK'nın tarihli envanterinden tahmin ederek doldurmak
+**yasaktır**. Resmî snapshot tek başına bu katı sözleşmeyi geçemez;
+doğrulanmış, yetkili ek bir veri sağlayıcısı gelene kadar ülke genelinde
+en yakın DC işaretlemesi kapalı kalır. Mola'nın var olan istasyon
+görünümü ve `molaStations` rota özeti kendi orijinal veri kaynağıyla
+ayrı çalışır; 'anlık uygunluk' kanıtı değildir.
+
+Hız/SoC geçersiz veya 30 saniyeden eskiyse gösterge `—`; en yakın DC
+için ayrıca yeni GPS ve %20 altı SoC gerekir. Open-Meteo modeli
+90 dakikadan eskiyse kullanılmaz; sıcaklık <0°C **veya** rüzgâr
+>30 km/sa halinde enerji tüketimi **tek kez** ×1,15 olur.
+Ölçülmüş kapasite/tüketim profili yoksa varış SoC hesaplanmaz.
+
 Doğrulama: `node mola-native/tests/test_live_map.js` doğrudan paketlenecek JS'i
 kullanır; aynı kontrol `.github/workflows/build-mola-native-id4.yml` içinde
 APK derlemesinden önce çalışır. Gerçek ID.4, POCO F5, OBD ve Android Auto
