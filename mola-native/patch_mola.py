@@ -190,12 +190,37 @@ auto_source=auto_source.replace(app_icon,
     'android:icon="@drawable/id4_launcher"\n'
     '        android:label="ID.4 Yol Arkadaşım"\n'
     '        tools:replace="android:icon,android:label"',1)
+# Host-discoverable Android Auto POI service. This is a safe native template
+# entry for read-only EPDK stations, NOT full map/navigation projection.
+auto_service='''        <service
+            android:name="me.aap.fermata.ev.Id4CarPoiService"
+            android:exported="true"
+            android:label="ID.4 Yol Arkadaşım"
+            android:icon="@drawable/id4_launcher">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+'''
+assert auto_source.count("</application>")==1
+auto_source=auto_source.replace("</application>",auto_service+"    </application>")
 ET.fromstring(auto_source)
 auto_manifest.write_text(auto_source,encoding="utf-8")
+
+# Preserve the original Mola media/projection capabilities and ADD template.
+car_caps=root/"fermata/src/auto/res/xml/automotive_app_desc.xml"
+caps_source=car_caps.read_text(encoding="utf-8")
+assert caps_source.count('    <uses name="media" />')==1
+caps_source=caps_source.replace('    <uses name="media" />',
+    '    <uses name="media" />\\n    <uses name="template" />')
+ET.fromstring(caps_source)
+car_caps.write_text(caps_source,encoding="utf-8")
 
 java=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java"
 html=overlay/"fermata/src/main/assets/id4/index.html"
 obd=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ObdActivity.java"
+auto_poi=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarPoiService.java"
 navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
 decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
@@ -223,8 +248,8 @@ tomtom_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TomTomRouting
 valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRouting.java"
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety])
-for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety]:
+assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,auto_poi])
+for f in [java,html,obd,auto_poi,navigator,decoder,nav_html,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -256,9 +281,9 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
     target.write_bytes(asset.read_bytes())
 
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
-allowed=set(SOURCE_SHA) | {
+allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
-    str(obd.relative_to(overlay)),str(navigator.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(navigator.relative_to(overlay)),
     str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
