@@ -26,6 +26,9 @@
   var origin = null, destination = null;
   var route = null, weather = null;
   var stations = [], visibleStations = [];
+  var countrySnapshot = { complete: false, verifiedAt: 0 };
+  // Whole-country data is explicitly certified by the native importer; an array
+  // (or 5 km route packet) on its own never proves countrywide coverage.
   // A native route packet is partial; never treat it as a full-country DC index.
   var routeStationSnapshot = null;
   var incidents = [];
@@ -230,7 +233,7 @@ function renderStations() {
   layers.stations.clearLayers();
   visibleStations = [];
   if (!route) { setText('id4-station-count', '—'); highlightNearestDC(true); return; }
-  if (!stations.length && routeStationSnapshot) {
+  if (!isCountryDataReady() && routeStationSnapshot) {
     // Show the genuine EPDK route packet in the HUD; Mola renders its markers.
     visibleStations = routeStationSnapshot.items;
     setText('id4-station-count', routeStationSnapshot.total + ' (rota)');
@@ -250,14 +253,22 @@ function renderStations() {
       layers.stations.addLayer(marker);
     }
   }
-  setText('id4-station-count', visibleStations.length);
+  setText('id4-station-count', visibleStations.length +
+    (isCountryDataReady() ? '' : ' (kısmi)'));
   highlightNearestDC(true);
 }
 
+function isCountryDataReady() {
+  return countrySnapshot.complete && countrySnapshot.verifiedAt > 0 &&
+    Date.now() - countrySnapshot.verifiedAt >= 0 &&
+    Date.now() - countrySnapshot.verifiedAt <= 72 * 60 * 60 * 1000;
+}
 function highlightNearestDC(force) {
   if (!map) return;
   // GPS alınmadıysa haritanın merkezini veya rota başını gerçek konum diye kullanma.
-  if (!currentLocation || car.soc === null || car.soc >= 20 || isTelemetryStale()) {
+  if (!currentLocation || !locationAt ||
+      Date.now() - locationAt > CFG.telemetryStaleMs ||
+      car.soc === null || car.soc >= 20 || isTelemetryStale()) {
     if (markers.nearestDC) map.removeLayer(markers.nearestDC);
     markers.nearestDC = null;
     setText('id4-nearest-dc', '—'); return;
@@ -265,8 +276,8 @@ function highlightNearestDC(force) {
   if (!force && markers.nearestDC && Date.now() - lastNearestAt < CFG.nearestRefreshMs) return;
   if (markers.nearestDC) { map.removeLayer(markers.nearestDC); markers.nearestDC = null; }
   lastNearestAt = Date.now();
-  if (!stations.length) {
-    setText('id4-nearest-dc', 'Tam EPDK listesi aktarılmadı');
+  if (!isCountryDataReady()) {
+    setText('id4-nearest-dc', 'Güncel ve tam EPDK listesi doğrulanmadı');
     return;
   }
   var nearest = null, best = Infinity;
@@ -477,20 +488,24 @@ async function refreshWeather() {
   var controller = new AbortController(); weatherAbort = controller;
   var url = CFG.weatherUrl + '?latitude=' + pt[0].toFixed(5) +
     '&longitude=' + pt[1].toFixed(5) +
-    '&current=temperature_2m,wind_speed_10m&wind_speed_unit=kmh';
+    '&current=temperature_2m,wind_speed_10m&wind_speed_unit=kmh' +
+    '&timezone=GMT&timeformat=unixtime';
   try {
     var json = await fetchJSON(url, controller, 12000);
     if (epoch !== routeEpoch) return;
     var t = finiteNumber(json && json.current && json.current.temperature_2m);
     var w = finiteNumber(json && json.current && json.current.wind_speed_10m);
-    if (t === null || w === null || w < 0) throw new Error('Open-Meteo eksik anlık ölçüm');
+    var modelSec = finiteNumber(json && json.current && json.current.time);
+    if (t === null || w === null || w < 0 ||
+        modelSec === null || Math.abs(Date.now() - modelSec * 1000) > 90 * 60000)
+      throw new Error('Open-Meteo verisi eksik veya eski');
     // Bir veya her iki eşik aşılırsa YALNIZ bir defa +%15.
     weather = { temperatureC: t, windKmh: w, multiplier: (t < 0 || w > 30) ? 1.15 : 1,
-                time: String(json.current.time || '') };
+                time: new Date(modelSec * 1000).toISOString(), source: 'Open-Meteo model' };
     setText('id4-weather', t.toFixed(1) + '°C • rüzgâr ' + w.toFixed(0) + ' km/sa' +
       (weather.multiplier > 1 ? ' • tüketim +%15' : ''));
   } catch (e) {
-    if (epoch !== routeEpoch || controller.signal.aborted) return;
+    if (epoch !== routeEpoch) return;
     weather = null;
     setText('id4-weather', 'Hava verisi alınamadı');
     console.warn('Open-Meteo hata:', e);
@@ -578,8 +593,12 @@ function updateLocation(lat, lon) {
   }
   return true;
 }
-function loadStations(entries) {
-  if (!Array.isArray(entries)) return 0;
+function loadStations(entries, metadata) {
+  if (!Array.isArray(entries)) {
+    countrySnapshot = { complete: false, verifiedAt: 0 };
+    stations = []; renderStations();
+    return 0;
+  }
   // Aynı istasyonun tekrarlanması için basit anahtar deduplikasyonu.
   var unique = new Map();
   entries.forEach(function (s, i) {
@@ -587,6 +606,18 @@ function loadStations(entries) {
     if (x) unique.set(x.id + ':' + x.lat + ':' + x.lon, x);
   });
   stations = Array.from(unique.values());
+  var checkedAt = Date.parse(metadata && metadata.verifiedAtUtc);
+  var count = finiteNumber(metadata && metadata.geocodedCount);
+  // The caller must affirm official scope, complete extraction and a fresh date.
+  // Minimum count catches accidentally passing a map viewport/corridor slice.
+  // Stale data can still render as partial, but cannot trigger nearest DC.
+  countrySnapshot = {
+    complete: !!metadata && metadata.source === 'EPDK' &&
+      metadata.coverage === 'country' && metadata.complete === true &&
+      count !== null && Number.isInteger(count) && count >= 5000 &&
+      count === stations.length && Number.isFinite(checkedAt),
+    verifiedAt: Number.isFinite(checkedAt) ? checkedAt : 0
+  };
   renderStations();
   return stations.length;
 }
@@ -606,7 +637,7 @@ function setRouteStations(packet) {
     items: items,
     total: reported !== null && reported >= items.length ? Math.floor(reported) : items.length
   };
-  if (route && !stations.length) renderStations();
+  if (route && !isCountryDataReady()) renderStations();
   return items.length;
 }
 function importIncidents(entries) {
@@ -694,6 +725,7 @@ function init(existingMap) {
      setOrigin: setOrigin,
      setTarget: setTarget,
      setStations: loadStations,
+     isCountryDataReady: isCountryDataReady,
      setRouteStations: setRouteStations,
      setEnergyProfile: setEnergyProfile,
      updateCarData: updateCarData,
@@ -704,7 +736,9 @@ function init(existingMap) {
      getState: function () {
        return { routeKm: route ? route.distanceKm : null, weather: weather,
          soc: isTelemetryStale() ? null : car.soc, position: currentLocation,
-         corridorStations: visibleStations.length, localIncidents: incidents.length };
+         corridorStations: visibleStations.length,
+         countryStationsVerified: isCountryDataReady(),
+         localIncidents: incidents.length };
      }
   };
   window.ID4LiveMap = api;
