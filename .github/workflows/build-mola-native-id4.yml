@@ -44,6 +44,7 @@ jobs:
           git diff --name-only | tee /tmp/mola-modified.txt
           cat >/tmp/expected.txt <<'EOF'
           fermata/src/auto/AndroidManifest.xml
+          fermata/src/auto/res/xml/automotive_app_desc.xml
           fermata/src/main/AndroidManifest.xml
           fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardCard.java
           fermata/src/main/java/me/aap/fermata/ui/fragment/DashboardFragment.java
