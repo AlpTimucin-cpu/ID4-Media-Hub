@@ -131,6 +131,7 @@
         // video restrictions. It only opens this APK's original media UI.
         if (type === 'status' &&
             packet.command === 'LAUNCH_MOLA_32_NO_PARK') {
+          if (Object.keys(packet).length !== 1) return false;
           if (!w.MolaNative || typeof w.MolaNative.openMedia !== 'function')
             return false;
           w.MolaNative.openMedia(); // Android @JavascriptInterface, allowlisted.
