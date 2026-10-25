@@ -706,6 +706,7 @@ function loadStations(entries, metadata) {
   if (!checked.ok) {
     countrySnapshot = {complete:false, verifiedAt:0};
     stations = [];
+    visibleStations = [];
     if (layers.stations) layers.stations.clearLayers();
     if (markers.nearestDC && map) {
       map.removeLayer(markers.nearestDC);
