@@ -1506,6 +1506,9 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 #map .leaflet-tile-pane,body.day #map .leaflet-tile-pane{filter:none!important}
 #map{filter:none!important}
 #map .maplibregl-canvas{outline:none}
+.header-weather-button{background:#12405b;border:1px solid #356d85;border-radius:9px;color:#d7f2fb;min-height:32px;padding:4px 9px;font-size:11px;font-weight:700;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-weather-button.risk{background:#563920;border-color:#b28b47;color:#ffe6ab}
+.journey-risk{font-size:12px;color:#f3ce8b;padding:4px 8px;line-height:1.4}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1657,7 +1660,7 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  <button id="co-expand" type="button">▤ Dikey görünüm</button>
  <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div>
-<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span></div>
+<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span><button id="route-weather-shortcut" class="header-weather-button" type="button">☁ Yol havası</button></div>
 <button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button>
 <button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
 <button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
@@ -1686,10 +1689,12 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  <div id="layer-status" class="map-layer-status">Şarj katmanını seç · EPDK kayıtları</div>
 </div>
 <div class="map-weather-journey" id="journey-weather">
- <div class="journey-title"><span>Yol boyunca hava · saatlik model</span>
+ <div class="journey-title"><span>☁ Yol boyunca hava · saatlik model</span>
+  <button type="button" id="journey-refresh">↻ Yenile</button>
   <button type="button" id="journey-close">Kapat</button></div>
- <div class="journey-points" id="journey-points">Rota oluşturulduğunda 5 hava noktası gösterilir.</div>
- <div class="journey-note">Open-Meteo tahmini · Trafik gecikmeleri ve şarj bekleme süresi dahil değildir.</div>
+  <div id="journey-risk" class="journey-risk">Tahminler rota çizilince hesaplanır.</div>
+ <div class="journey-points" id="journey-points">Rota oluşturulduğunda 7 hava noktası gösterilir.</div>
+ <div class="journey-note" id="journey-note">Open-Meteo tahmini · Şarj ve mola beklemeleri dahil değildir; gerçek yol yüzeyi ölçümü değildir.</div>
 </div>
 <div class="map-note" id="map-note">Başlangıç ve varışı yazıp listeden seç · GPS isteğe bağlı.</div>
 <section class="sheet"><button type="button" id="route-panel-close">✕ Haritaya dön</button><div class="grip"></div>
@@ -2085,9 +2090,8 @@ window.molaCurrentWeatherError=function(o){
  }
  $('current-weather-chip').classList.add('stale');
 };
-$('current-weather-refresh').onclick=function(){
- native('refreshWeather');
-};
+$('current-weather-refresh').onclick=function(){native('refreshWeather');};
+$('journey-refresh').onclick=function(){native('refreshJourneyWeather');};
 window.molaWeather=function(packet){
  if(!packet||!Array.isArray(packet.cards)||packet.cards.length!==4)return;
  var cards=$('weather-cards').children;
@@ -2108,7 +2112,7 @@ window.molaWeather=function(packet){
   ' çözünürlüğünde rota noktası tahmini; 1 dakikalık canlı ölçüm değildir.';
 };
 window.molaJourneyWeather=function(packet){
- if(!packet||!Array.isArray(packet.cards)||packet.cards.length!==5)return;
+ if(!packet||!Array.isArray(packet.cards)||packet.cards.length<2||packet.cards.length>9)return;
  cachedJourneyWeather=packet;
  var list=$('journey-points');list.replaceChildren();
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
@@ -2119,7 +2123,10 @@ window.molaJourneyWeather=function(packet){
   cell.type='button';cell.className='journey-point';
   var head=document.createElement('strong');
   var name=w.percent===0?'Başlangıç':w.percent===100?'Varış':'%'+w.percent;
-  head.textContent=name;
+  var time=Number.isFinite(w.arrivalTime)&&w.arrivalTime>0?
+   new Date(w.arrivalTime*1000).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):
+   (Number.isFinite(w.etaMinutes)?'+'+w.etaMinutes+' dk':'');
+  head.textContent=name+(time?' · '+time:'');
   var detail=document.createElement('span');
   if(w.available===true&&Number.isFinite(w.temperature)&&
      Number.isFinite(w.rainProbability)&&Number.isFinite(w.wind)){
@@ -2144,9 +2151,23 @@ window.molaJourneyWeather=function(packet){
   }
   list.appendChild(cell);
  });
- $('layer-status').textContent='☁ Rota boyunca 5 noktada saatlik hava modeli hazır';
- $('co-weather').textContent='Yol boyunca 5 hava tahmini noktası · Ayrıntı için Yol havası';
+ var issues=packet.cards.filter(function(w){return w&&w.available===true&&
+   Array.isArray(w.risks)&&w.risks.length>0});
+ var available=packet.cards.filter(function(w){return w&&w.available===true}).length;
+ $('journey-risk').textContent=issues.length?
+   '⚠ Tahmini hava koşulları: '+issues.slice(0,3).map(function(w){
+     return '%'+w.percent+' '+w.risks.join(', ')}).join(' · '):
+   'Risk eşiğini aşan model tahmini yok; güvenli sürüş garantisi değildir.';
+ $('route-weather-shortcut').classList.toggle('risk',issues.length>0);
+ $('route-weather-shortcut').textContent=issues.length?
+   '⚠ Yol havası '+issues.length:'☁ Yol havası '+available+'/'+packet.cards.length;
+ $('layer-status').textContent='☁ Rota boyunca '+available+'/'+packet.cards.length+' hava noktası hazır';
+ $('co-weather').textContent='Yol boyunca '+available+' hava tahmini noktası · Ayrıntı için Yol havası';
+ $('journey-note').textContent='Open-Meteo · '+new Date(packet.updatedAt||Date.now())
+   .toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+
+   ' güncellendi · Model tahmini; istasyon ölçümü değildir. Trafik, şarj ve mola ETA’yı etkiler.';
 };
+window.molaJourneyWeatherLoading=function(o){$('journey-risk').textContent=String(o&&o.detail||'Güzergâh havası yenileniyor')};
 window.molaJourneyWeatherError=function(packet){
  $('journey-points').textContent=String(packet&&packet.detail||
    'Yol boyunca saatlik model verisi alınamadı');
@@ -2173,6 +2194,7 @@ function native(name){
    case 'chooseAlternative':bridge.chooseAlternative(a[0]);break;
    case 'location':bridge.location();break;
    case 'refreshWeather':bridge.refreshWeather();break;
+    case 'refreshJourneyWeather':bridge.refreshJourneyWeather();break;
    case 'landscape':bridge.landscape(a[0]);break;
    case 'voice':bridge.voice(a[0]);break;
    case 'stop':bridge.stop();break;
