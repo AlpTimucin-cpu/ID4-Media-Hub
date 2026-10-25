@@ -1,0 +1,153 @@
+package me.aap.fermata.ev;
+
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.annotation.NonNull;
+import androidx.car.app.CarAppService;
+import androidx.car.app.CarContext;
+import androidx.car.app.Screen;
+import androidx.car.app.Session;
+import androidx.car.app.SessionInfo;
+import androidx.car.app.model.Action;
+import androidx.car.app.model.ItemList;
+import androidx.car.app.model.ListTemplate;
+import androidx.car.app.model.Metadata;
+import androidx.car.app.model.Row;
+import androidx.car.app.model.Template;
+import androidx.car.app.model.Place;
+import androidx.car.app.model.CarLocation;
+import androidx.car.app.validation.HostValidator;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/**
+ * Android Auto point-of-interest entry for genuine EPDK CCS charge points.
+ * Uses approved templates, never projects the arbitrary phone WebView or video.
+ * Navigation-template map rendering is deliberately NOT claimed here.
+ */
+public final class Id4CarPoiService extends CarAppService {
+    @NonNull @Override public HostValidator createHostValidator() {
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)!=0)
+            return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR;
+        return new HostValidator.Builder(this)
+            .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+            .build();
+    }
+
+    @NonNull @Override public Session onCreateSession() {
+        return new JourneySession();
+    }
+    @NonNull @Override public Session onCreateSession(@NonNull SessionInfo sessionInfo) {
+        return new JourneySession();
+    }
+
+    private static final class JourneySession extends Session {
+        @NonNull @Override public Screen onCreateScreen(@NonNull Intent intent) {
+            return new ChargingScreen(getCarContext());
+        }
+    }
+
+    private static final class ChargingScreen extends Screen {
+        private final Handler main=new Handler(Looper.getMainLooper());
+        private volatile JSONArray stations=new JSONArray();
+        private volatile String message="Şarj noktaları yükleniyor";
+        private volatile boolean loading=true;
+        private boolean started=false;
+
+        ChargingScreen(@NonNull CarContext context){super(context);}
+
+        @NonNull @Override public Template onGetTemplate() {
+            if(!started){
+                started=true;
+                new Thread(this::loadStationData,"id4-auto-epdk").start();
+            }
+            ListTemplate.Builder builder=new ListTemplate.Builder()
+                .setTitle("ID.4 · Şarj Noktaları")
+                .setHeaderAction(Action.APP_ICON);
+            if(loading)return builder.setLoading(true).build();
+
+            ItemList.Builder list=new ItemList.Builder();
+            if(stations.length()==0){
+                list.addItem(new Row.Builder().setTitle("İstasyon bilgisi")
+                    .addText(message).build());
+            }else{
+                int count=Math.min(stations.length(),6);
+                for(int i=0;i<count;i++){
+                    JSONObject station=stations.optJSONObject(i);
+                    if(station==null)continue;
+                    String title=station.optString("title","Şarj istasyonu").trim();
+                    if(title.isEmpty())title="Şarj istasyonu";
+                    String operator=station.optString("operator","EPDK");
+                    String sockets=station.optString("sockets","Soket türü belirtilmedi");
+                    double distance=station.optDouble("distanceKm",Double.NaN);
+                    Row.Builder row=new Row.Builder()
+                        .setTitle(title)
+                        .addText(operator+" · "+sockets)
+                        .addText(Double.isFinite(distance)?
+                            String.format(java.util.Locale.forLanguageTag("tr-TR"),
+                                "Yaklaşık %.1f km · EPDK kaydı",distance):
+                            "EPDK kaydı · canlı doluluk doğrulanmadı");
+                    double lat=station.optDouble("lat",Double.NaN);
+                    double lon=station.optDouble("lon",Double.NaN);
+                    if(Double.isFinite(lat)&&Double.isFinite(lon)){
+                        row.setMetadata(new Metadata.Builder().setPlace(
+                            new Place.Builder(CarLocation.create(lat,lon)).build()
+                        ).build());
+                    }
+                    list.addItem(row.build());
+                }
+            }
+            return builder.setSingleList(list.build()).build();
+        }
+
+        private void loadStationData(){
+            JSONArray found=new JSONArray();
+            String detail="Konum izni veya yakın tarihli GPS bilgisi bulunamadı. "+
+                "Telefonda ID.4 Yol Arkadaşım konum iznini açın.";
+            try{
+                CarContext context=getCarContext();
+                if(context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==
+                       PackageManager.PERMISSION_GRANTED ||
+                   context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==
+                       PackageManager.PERMISSION_GRANTED){
+                    LocationManager lm=(LocationManager)context.getSystemService(
+                        android.content.Context.LOCATION_SERVICE);
+                    Location best=null;
+                    if(lm!=null)for(String name:new String[]{
+                        LocationManager.GPS_PROVIDER,LocationManager.NETWORK_PROVIDER}){
+                        try{
+                            Location loc=lm.getLastKnownLocation(name);
+                            if(loc!=null && (best==null||loc.getTime()>best.getTime()))best=loc;
+                        }catch(Exception ignored){}
+                    }
+                    if(best!=null&&System.currentTimeMillis()-best.getTime()<600000 &&
+                       best.getAccuracy()<=250){
+                        double lat=best.getLatitude(),lon=best.getLongitude();
+                        Id4StationCatalog catalog=new Id4StationCatalog(context);
+                        JSONObject packet=catalog.inBounds(lat-.22,lon-.27,lat+.22,lon+.27,true);
+                        found=packet.optJSONArray("items");
+                        if(found==null)found=new JSONArray();
+                        detail=found.length()==0?
+                            "Bu bölgede güncel EPDK listesinde CCS kaydı bulunamadı.":
+                            "EPDK · canlı doluluk veya anlık tarife içermez";
+                    }else{
+                        detail="Güncel konum yok. ID.4 uygulamasından konum alıp yeniden bağlanın.";
+                    }
+                }
+            }catch(Exception e){
+                detail="EPDK istasyon listesi şu anda alınamadı. Telefon internetini kontrol edin.";
+            }
+            final JSONArray ready=found;
+            final String status=detail;
+            main.post(()->{
+                stations=ready;message=status;loading=false;invalidate();
+            });
+        }
+    }
+}
