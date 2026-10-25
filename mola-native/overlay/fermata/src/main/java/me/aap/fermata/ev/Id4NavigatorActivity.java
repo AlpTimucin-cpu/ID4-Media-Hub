@@ -1173,41 +1173,6 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                         // never erase a valid route returned by the main engine.
                     }
                 }
-                // Request real shorter / no-toll / no-motorway road geometries.
-                // Responses are distinct candidates, never synthetic dashed roads.
-                // Each provider may reject constraints; label preference only.
-                if(out!=null&&!hasStop && !activeRouteProvider.startsWith("TomTom Orbis")){
-                    final String[] variants={"shorter","avoid-tolls","avoid-motorways"};
-                    java.util.concurrent.ExecutorService variantWorkers=
-                        Executors.newFixedThreadPool(3);
-                    try{
-                        java.util.List<java.util.concurrent.Future<JSONArray>> futures=
-                            new ArrayList<>();
-                        for(String mode:variants){
-                            futures.add(variantWorkers.submit(()->Id4ValhallaRouting.variant(
-                                fromLat,fromLon,toLat,toLon,Double.NaN,Double.NaN,mode)));
-                        }
-                        JSONArray existing=out.getJSONArray("routes");
-                        for(java.util.concurrent.Future<JSONArray> future:futures){
-                            try{
-                                JSONArray result=future.get(12,java.util.concurrent.TimeUnit.SECONDS);
-                                for(int k=0;k<result.length()&&existing.length()<9;k++){
-                                    JSONObject candidate=result.getJSONObject(k);
-                                    boolean distinct=true;
-                                    for(int j=0;j<existing.length();j++){
-                                        if(!Id4ValhallaRouting.distinct(
-                                                existing.getJSONObject(j),candidate)){
-                                            distinct=false;break;
-                                        }
-                                    }
-                                    if(distinct)existing.put(candidate);
-                                }
-                            }catch(Exception ignored){
-                                // User retains primary route when a public host fails.
-                            }
-                        }
-                    }finally{variantWorkers.shutdownNow();}
-                }
                 if(out==null)throw new IllegalStateException(problems.toString()+
                     " | Valhalla açık kaynak rota alınamadı");
                 JSONArray routes=out.getJSONArray("routes");
