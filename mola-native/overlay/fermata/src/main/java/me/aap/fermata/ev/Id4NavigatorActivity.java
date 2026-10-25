@@ -61,6 +61,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private final ExecutorService currentWeatherJobs=Executors.newSingleThreadExecutor();
     // User-triggered OSM camera queries must not block route, charging or weather.
     private final ExecutorService safetyJobs=Executors.newSingleThreadExecutor();
+    private final ExecutorService incidentJobs=Executors.newSingleThreadExecutor();
+    private static final long INCIDENT_REFRESH_MS=4*60*1000L;
+    private volatile long lastIncidentPollAt;
+    private volatile String lastSpokenIncidentId="";
+    private volatile long lastIncidentSpeechAt;
+    private volatile JSONArray activeIncidentRoute;
     private volatile long lastSafetyQueryAt=0;
     private volatile long lastSafetySpeechAt=0;
     private final Handler ui=new Handler(Looper.getMainLooper());
@@ -85,7 +91,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private volatile long lastJourneyWeatherRefreshAt;
     // Foreground-only refresh. Open-Meteo updates its MODELS periodically;
     // polling more often would not make roadside sensor observations appear.
-    private static final long ROUTE_WEATHER_REFRESH_MS=10*60*1000L;
+    private static final long ROUTE_WEATHER_REFRESH_MS=5*60*1000L;
     private boolean weatherForeground=false;
     private final Runnable routeWeatherTicker=new Runnable(){
         @Override public void run(){
@@ -96,7 +102,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 lastJourneyWeatherRefreshAt=now;
                 final int ticket=generation;
                 send("molaJourneyWeatherLoading",record("weather",
-                    "Rota havası 10 dakikalık döngüyle yenileniyor."));
+                    "Rota hava modeli 5 dakikada bir yenileniyor."));
                 try{
                     routeWeatherJobs.execute(()->loadJourneyWeather(route,ticket));
                 }catch(java.util.concurrent.RejectedExecutionException ignored){}
@@ -866,6 +872,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                location.getSpeed()>=0&&location.getSpeed()<=70)
                 j.put("speedKmh",Math.round(location.getSpeed()*3.6));}catch(Exception ignored){}
         send("molaPosition",j);
+        // Only fresh GPS fixes on the selected route request licensed incident
+        // data. Polls are throttled and do not block GPS navigation or maps.
+        maybeCheckTrafficIncidents(location);
         long liveFixAge=System.currentTimeMillis()-location.getTime();
         if(liveFixAge>=0 && liveFixAge<=30000 && location.getAccuracy()<=60)
             fetchCurrentWeather(location.getLatitude(),location.getLongitude(),true,false);
@@ -937,6 +946,63 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private void announce(String instruction){
         if(voice && tts!=null && !instruction.isEmpty())
             ui.post(()->tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"mola-direction"));
+    }
+    private void maybeCheckTrafficIncidents(Location gps){
+        if(destroyed||!weatherForeground||!gpsTrackingRequested ||
+           activeIncidentRoute==null||gps==null||!gps.hasAccuracy()||
+           gps.getAccuracy()>35)return;
+        long now=System.currentTimeMillis(),age=now-gps.getTime();
+        if(age<0||age>15000||now-lastIncidentPollAt<INCIDENT_REFRESH_MS)return;
+        String key=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+            .getString("tomtom","");
+        if(key==null||!key.matches("[A-Za-z0-9_-]{15,200}"))return;
+        lastIncidentPollAt=now;
+        final int ticket=generation;
+        final JSONArray road=activeIncidentRoute;
+        final double lat=gps.getLatitude(),lon=gps.getLongitude();
+        try{incidentJobs.execute(()->{
+            try{
+                JSONObject result=Id4TrafficIncidents.retrieve(key,road,lat,lon)
+                    .put("routeGeneration",ticket);
+                if(destroyed||!weatherForeground||generation!=ticket)return;
+                send("molaTrafficIncidents",result);
+                JSONArray rows=result.optJSONArray("items");
+                if(rows==null||rows.length()==0||!voice)return;
+                JSONObject nearest=null;double meters=Double.POSITIVE_INFINITY;
+                for(int i=0;i<rows.length();i++){
+                    JSONObject row=rows.optJSONObject(i);
+                    if(row==null)continue;
+                    double ahead=row.optDouble("aheadMeters",Double.NaN);
+                    if(Double.isFinite(ahead)&&ahead>=350&&ahead<=6000&&ahead<meters){
+                        nearest=row;meters=ahead;
+                    }
+                }
+                if(nearest==null)return;
+                String id=nearest.optString("id","");
+                if(id.equals(lastSpokenIncidentId)||
+                   System.currentTimeMillis()-lastIncidentSpeechAt<90000)return;
+                final String category=nearest.optString("label","trafik olayı");
+                final long approxKm=Math.max(1,Math.round(meters/1000));
+                ui.post(()->{
+                    Location current=position;
+                    long t=System.currentTimeMillis();
+                    if(destroyed||!weatherForeground||generation!=ticket||!voice||
+                        current==null||current.getAccuracy()>35||
+                        Math.abs(t-current.getTime())>15000||
+                        id.equals(lastSpokenIncidentId))return;
+                    // Proximity from road polyline does not prove same carriageway.
+                    lastSpokenIncidentId=id;lastIncidentSpeechAt=t;
+                    if(tts!=null)tts.speak("TomTom bildirimi: rota yakınında yaklaşık "+
+                        approxKm+" kilometre ileride "+category+
+                        " bulunuyor olabilir. Yol işaretlerini takip edin.",
+                        TextToSpeech.QUEUE_ADD,null,"id4-traffic-incident");
+                });
+            }catch(Exception e){
+                if(!destroyed&&weatherForeground&&generation==ticket)
+                    send("molaTrafficIncidentError",record("traffic",
+                        "TomTom olay ayrıntıları alınamadı; uyarı üretilmedi."));
+            }
+        });}catch(java.util.concurrent.RejectedExecutionException ignored){}
     }
     // Both departure and arrival use the same autocomplete lookup.
     // Queries only leave the phone after the user types 3+ characters.
@@ -1012,6 +1078,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         final int myGeneration=++generation;
         cachedAlternatives=null;
         activeWeatherRoute=null;
+        activeIncidentRoute=null;
+        lastIncidentPollAt=0;
+        lastSpokenIncidentId="";
         getSharedPreferences("id4_route_weather_v1",MODE_PRIVATE).edit()
             .remove("packet").apply();
         running=false;
@@ -1242,6 +1311,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     }
                     final JSONObject routeData=selected;
                     activeWeatherRoute=routeData;
+                    activeIncidentRoute=routeData.getJSONObject("geometry").getJSONArray("coordinates");
+                    lastIncidentPollAt=0;
+                    lastSpokenIncidentId="";
                     lastJourneyWeatherRefreshAt=System.currentTimeMillis();
                     // Populate a GPS-independent current MODEL weather report at
                     // the selected start; actual GPS takes precedence when fresh.
@@ -1565,7 +1637,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             JSONObject result=new JSONObject().put("cards",stations)
                 .put("source","Open-Meteo").put("resolution","güncel model + saatlik varış tahmini")
                 .put("updatedAt",System.currentTimeMillis())
-                .put("refreshIntervalMinutes",10)
+                .put("refreshIntervalMinutes",5)
                 .put("routeGeneration",routeGeneration)
                 .put("liveConditions",false)
                 .put("trafficAwareEta",activeRouteProvider.startsWith("TomTom Orbis"))
@@ -1703,7 +1775,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
         jobs.shutdownNow();searchJobs.shutdownNow();routeWeatherJobs.shutdownNow();
         stationJobs.shutdownNow();currentWeatherJobs.shutdownNow();
-        safetyJobs.shutdownNow();if(tts!=null){tts.stop();tts.shutdown();}
+        safetyJobs.shutdownNow();incidentJobs.shutdownNow();
+        if(tts!=null){tts.stop();tts.shutdown();}
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();
