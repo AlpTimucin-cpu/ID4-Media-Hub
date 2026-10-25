@@ -274,7 +274,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             ui.post(()->showTomTomKeyDialog());
         }
         @JavascriptInterface public void stations() {
-            ui.post(()->startActivity(new Intent(Id4NavigatorActivity.this,Id4EvActivity.class)));
+            // The user's dock must never navigate to an independent Activity:
+            // preserve the route, Mola media state and existing WebView.
+            ui.post(()->{
+                if(!destroyed)send("molaOpenStations",
+                    record("stations","EPDK şarj katmanı mevcut haritada açılıyor."));
+            });
         }
         @JavascriptInterface public void tripJournal() {ui.post(()->showTripJournal());}
         @JavascriptInterface public void roadSafety(double south,double west,
@@ -758,6 +763,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 .put("fastestIndex",fastIndex).put("shortestIndex",shortIndex)
                 .put("chargeAwareIndex",chargeIndex)
                 .put("livePrices",false).put("liveAvailability",false)
+                .put("routeGeneration",routeGeneration)
+                .put("stationTicket",stationTicket)
+                .put("fastPreview",false)
                 .put("modelNote","16–24 kWh/100 km, 52 kWh, %15 rezerv, DC hedef %80. "
                    +"OBD yoksa kullanıcı %80 / %100 senaryosu seçebilir. Maliyet kaynaklı pazar/ağ tahmini; "
                    +"CCS yakınlığı gerçek şarj durağı ve yol erişimi değildir.");
@@ -1185,8 +1193,6 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     sendScenarioStatus();
                     // Show source-labeled pricing and stop count immediately;
                     // wait for EPDK only to enrich station availability hints.
-                    final int instantStationTicket=routeStationRequestId;
-                    sendFastChargePreview(routes,optionIndex,myGeneration,instantStationTicket);
                     if(!Id4EnergyData.load(this,System.currentTimeMillis()).hasSoc())
                         ui.postDelayed(this::promptScenarioIfMissing,600);
                     // A route selection starts one bounded, read-only OSM query
@@ -1232,6 +1238,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     routeWeatherJobs.execute(()->loadJourneyWeather(routeData,myGeneration));
                     // Read-only EPDK snapshot route corridor; never block route rendering.
                     final int stationTicket=++routeStationRequestId;
+                    sendFastChargePreview(routes,optionIndex,myGeneration,stationTicket);
                     stationJobs.execute(()->loadRouteStations(routeData,myGeneration,stationTicket));
                     stationJobs.execute(()->loadAlternativeCards(routes,myGeneration,stationTicket,
                         optionIndex,hasStop));
