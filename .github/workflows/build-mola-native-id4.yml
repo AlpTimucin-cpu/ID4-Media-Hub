@@ -78,6 +78,8 @@ jobs:
           # Word delivery: parse-check both attached scripts before packaging.
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-live-map.js
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-navigator-adapter.js
+          node --check integration/mola-native/tests/test_live_map.js
+          node integration/mola-native/tests/test_live_map.js
           python3 - <<'PY'
           from pathlib import Path
           root=Path('integration/mola-native/overlay/fermata/src/main/assets/id4')
