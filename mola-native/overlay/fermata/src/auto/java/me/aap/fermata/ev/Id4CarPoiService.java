@@ -73,11 +73,17 @@ public final class Id4CarPoiService extends CarAppService {
             if(loading)return builder.setLoading(true).build();
 
             ItemList.Builder list=new ItemList.Builder();
+            list.addItem(new Row.Builder()
+                .setTitle("🚙 ID.4 · OBD bağlantısı")
+                .addText("Adaptör bağla · ECU durumunu kontrol et")
+                .setOnClickListener(()->getScreenManager().push(
+                    new Id4CarObdScreen(getCarContext())))
+                .build());
             if(stations.length()==0){
                 list.addItem(new Row.Builder().setTitle("İstasyon bilgisi")
                     .addText(message).build());
             }else{
-                int count=Math.min(stations.length(),6);
+                int count=Math.min(stations.length(),5);
                 for(int i=0;i<count;i++){
                     JSONObject station=stations.optJSONObject(i);
                     if(station==null)continue;
