@@ -1379,7 +1379,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     }
                     final JSONObject routeData=selected;
                     activeWeatherRoute=routeData;
-                    activeIncidentRoute=routeData.getJSONObject("geometry").getJSONArray("coordinates");
+                    JSONObject activeGeometry=routeData.optJSONObject("geometry");
+                    activeIncidentRoute=activeGeometry==null?null:
+                        activeGeometry.optJSONArray("coordinates");
                     lastIncidentPollAt=0;
                     lastSpokenIncidentId="";
                     lastJourneyWeatherRefreshAt=System.currentTimeMillis();
