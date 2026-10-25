@@ -1509,6 +1509,11 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
 .header-weather-button{background:#12405b;border:1px solid #356d85;border-radius:9px;color:#d7f2fb;min-height:32px;padding:4px 9px;font-size:11px;font-weight:700;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .header-weather-button.risk{background:#563920;border-color:#b28b47;color:#ffe6ab}
 .journey-risk{font-size:12px;color:#f3ce8b;padding:4px 8px;line-height:1.4}
+/* Route-only automatic forecasts, congestion and sampled OSM cameras. */
+.drive-dock button#dock-traffic,.drive-dock button#dock-safety,
+button#layer-weather,button#layer-traffic,button#layer-safety,
+button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!important}
+.header-weather-button{pointer-events:none;cursor:default}
 </style>
 </head><body>
 <div id="map"></div>
@@ -1639,9 +1644,9 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
  <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
- <button id="dock-traffic" class="status-unavailable" type="button" title="TomTom trafik"><span class="dock-icon">🚦</span><span class="dock-label" id="dock-traffic-label">Trafik kapalı</span></button>
+ <button id="dock-traffic" hidden tabindex="-1" aria-hidden="true" class="status-unavailable" type="button" title="TomTom trafik"><span class="dock-icon">🚦</span><span class="dock-label" id="dock-traffic-label">Trafik kapalı</span></button>
  <button id="dock-obd" class="status-unavailable" type="button" title="OBD araç bağlantısı"><span class="dock-icon">🚙</span><span class="dock-label" id="dock-obd-label">OBD yok</span></button>
- <button id="dock-safety" type="button" title="OSM sabit kamera katmanı"><span class="dock-icon">📷</span><span class="dock-label" id="dock-safety-label">Radar</span></button>
+ <button id="dock-safety" hidden tabindex="-1" aria-hidden="true" type="button" title="OSM sabit kamera katmanı"><span class="dock-icon">📷</span><span class="dock-label" id="dock-safety-label">Radar</span></button>
  <button id="dock-journal" type="button" title="Gerçek yolculuk günlüğü"><span class="dock-icon">▤</span><span class="dock-label">Yolculuklar</span></button>
  <button id="dock-layers" type="button" title="Harita katmanları"><span class="dock-icon">⚙</span><span class="dock-label">Ayarlar</span></button>
 </nav>
@@ -1660,7 +1665,7 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
  <button id="co-expand" type="button">▤ Dikey görünüm</button>
  <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div>
-<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span><button id="route-weather-shortcut" class="header-weather-button" type="button">☁ Yol havası</button></div>
+<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
 <button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button>
 <button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
 <button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
@@ -1670,20 +1675,21 @@ body.id4-tomtom-map #map .leaflet-tile-pane{filter:none!important}
   <button type="button" id="layer-close">✕ Kapat</button>
   <button type="button" id="layer-daynight">◐ Gündüz haritası</button>
   <button type="button" id="layer-map-retry">↻ Haritayı yeniden yükle</button>
+  <button type="button" id="traffic-tomtom-key">⚙ Harita servis anahtarı</button>
   <button type="button" id="layer-all">⚡ Tüm Türkiye</button>
   <button type="button" id="layer-ccs">⚡ CCS</button>
   <button type="button" id="layer-route">🛣 Rota CCS</button>
   <button type="button" id="layer-hide">Gizle</button>
-  <button type="button" id="layer-weather">☁ Yol havası</button>
-  <button type="button" id="layer-traffic">🚦 Trafik</button>
-   <button type="button" id="layer-safety">📷 Sabit kameralar · OSM</button>
-   <button type="button" id="layer-safety-voice">🔇 Ses kapalı</button>
+  <button type="button" id="layer-weather" hidden tabindex="-1" aria-hidden="true">☁ Yol havası</button>
+  <button type="button" id="layer-traffic" hidden tabindex="-1" aria-hidden="true">🚦 Trafik</button>
+   <button type="button" id="layer-safety" hidden tabindex="-1" aria-hidden="true">📷 Sabit kameralar · OSM</button>
+   <button type="button" id="layer-safety-voice" hidden tabindex="-1" aria-hidden="true">🔇 Ses kapalı</button>
    <div id="safety-status">OSM kamera kayıtları için haritayı yakınlaştır ve düğmeye dokun. Kaynak eksik olabilir.</div>
  </div>
  <div class="traffic-provider-choices" id="traffic-choices">
-   <button type="button" id="traffic-tomtom">TomTom Orbis Trafik</button>
-   <button type="button" id="traffic-tomtom-key">⚙ TomTom anahtarı</button>
-  <button type="button" id="traffic-osm">OpenFreeMap haritası</button>
+   <button type="button" id="traffic-tomtom" hidden tabindex="-1" aria-hidden="true">TomTom Orbis Trafik</button>
+   
+  <button type="button" id="traffic-osm" hidden tabindex="-1" aria-hidden="true">OpenFreeMap haritası</button>
   <div class="traffic-provider-note" id="traffic-help">Gerçek trafik: lisanslı API anahtarı gerekir.</div>
  </div>
  <div id="layer-status" class="map-layer-status">Şarj katmanını seç · EPDK kayıtları</div>
@@ -1758,6 +1764,7 @@ var map=null,markers={from:null,to:null},liveMarker=null,line=null,routeGlow=nul
 var routePreviewLines=[],routePreviewOptions=[];
 var stationMarkers=[],weatherMarkers=[],stationKind='',stationRequestPending=false;
 var safetyActive=false,safetyVoice=false,safetyMarkers=[],safetyItems=[];
+var activeRouteGeneration=null;
 var lastSafetyAlertId=0,lastSafetyAlertTime=0;
 var cachedJourneyWeather=null;
 var stationLayerMode='route',cachedRouteStations=null,viewportRefreshTimer=null;
@@ -2146,7 +2153,8 @@ window.molaJourneyWeather=function(packet){
    cell.onclick=function(){
     if(map)map.panTo([w.latitude,w.longitude],{animate:false});
    };
-   if(map && w.available===true && $('journey-weather').classList.contains('open')){
+   // Weather automatically appears as map pins after genuine API results.
+   if(map && w.available===true){
     var marker=L.circleMarker([w.latitude,w.longitude],{
       radius:6,color:'#fff',weight:2,fillColor:'#58afd9',fillOpacity:.98
     }).addTo(map);
@@ -2267,6 +2275,9 @@ function drawRoutePreviews(items,selected){
 
 function wipeRoute(){
  cachedJourneyWeather=null;
+ safetyActive=false;
+ activeRouteGeneration=null;
+ clearSafety();
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
  $('journey-weather').classList.remove('open');
@@ -2430,6 +2441,8 @@ function loadSafety(){
 window.molaSafetyCameras=function(packet){
  if(!safetyActive||!packet||!Array.isArray(packet.items)||
  packet.source!=='© OpenStreetMap contributors (ODbL)')return;
+ if(Number.isInteger(packet.routeGeneration)&&Number.isInteger(activeRouteGeneration)&&
+    packet.routeGeneration!==activeRouteGeneration)return;
  clearSafety();
  packet.items.slice(0,120).forEach(function(item){
   if(!item||!Number.isSafeInteger(item.id)||!valid(item.lat,item.lon))return;
@@ -2455,7 +2468,10 @@ window.molaSafetyCameras=function(packet){
   safetyMarkers.push(marker);
  });
  $('safety-status').textContent='OSM: '+safetyItems.length+
-  ' sabit kamera kaydı (görünür alan). Mobil radar ve güncel yerler doğrulanmadı.';
+  ' sabit kamera kaydı · '+(packet.coverage==='sampled route neighborhoods only'?
+     'rotadan sınırlı örnekleme, tüm güzergâh taranmadı.':
+     'görünür alan; tam kapsama yok.')+
+  ' Mobil radarlar doğrulanmaz.';
 };
 window.molaSafetyError=function(packet){
  if(!safetyActive)return;
@@ -2583,6 +2599,10 @@ window.molaAlternativeError=function(o){
 window.molaRoute=function(o){
  if(!o||!Array.isArray(o.coordinates))return;
  cachedJourneyWeather=null;
+ safetyActive=true;
+ activeRouteGeneration=Number.isInteger(o.routeGeneration)?o.routeGeneration:null;
+ clearSafety();
+ $('safety-status').textContent='OSM kamera kayıtları rota çevresinde sorgulanıyor (kısmi örnekleme).';
  $('journey-weather').classList.remove('open');
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
@@ -2697,6 +2717,13 @@ window.molaRoute=function(o){
  $('co-trip-charge-button').style.display='none';
  $('co-trip-charge-km').textContent='Mola km: —';
  suggestedCharge=null;$('station-suggestion').style.display='none';
+ // A route automatically enables genuinely configured traffic layers.
+ var traffic=window.Id4TrafficProviders;
+ if(traffic&&typeof traffic.configured==='function'){
+  if(traffic.configured().tomtom&&traffic.getActive()!=='tomtom')switchTraffic('tomtom');
+  else if(!traffic.configured().tomtom)window.molaTrafficStatus({
+   provider:'tomtom',status:'unavailable',detail:'Trafik anahtarı yok; OSRM süresi trafiksizdir.'});
+ }
  $('traffic-source').textContent=o.trafficAvailable===true&&
    String(o.provider||'').includes('TomTom')?
   'TomTom · canlı trafik rota süresine dahil'+
@@ -3101,7 +3128,7 @@ $('layer-weather').onclick=function(){
  else $('journey-points').textContent='Yol boyunca model tahmini yükleniyor...';
 };
 $('journey-close').onclick=hideJourneyWeather;
-$('route-weather-shortcut').onclick=function(){$('layer-weather').onclick()};
+// Weather is a live read-only status; no separate button.
 if(map&&map.on){
  map.on('moveend',function(){
   if(stationLayerMode!=='all'&&stationLayerMode!=='ccs')return;
@@ -3166,9 +3193,8 @@ $('station-suggestion-choose').onclick=function(){
 $('connect-obd').onclick=$('sensors').onclick=function(){native('selectObd')};
 $('allSensors').onclick=function(){native('sensors')};
 if(window.Id4TrafficProviders && map){
- if(window.Id4TrafficProviders.configured().tomtom)switchTraffic('tomtom');
- else window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
-  detail:'Canlı trafik için TomTom anahtarı gerekli. Trafik menüsünden anahtar ekleyebilirsin.'});
+ window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
+  detail:'Trafik verileri rota oluşturulduğunda otomatik kontrol edilir.'});
 }
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
