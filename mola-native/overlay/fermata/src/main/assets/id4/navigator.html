@@ -2622,7 +2622,8 @@ window.molaAlternatives=function(data){
    Math.round(selected.costMaxTry).toLocaleString('tr-TR')+' TL*';
   $('co-cost-note').textContent=scenario+' · '+
    String(selected.priceBasis||'tahmini fiyat')+
-   ' · kaynak tarihi '+String(selected.tariffChecked||'');
+   ' · kaynak tarihi '+String(selected.tariffChecked||'')+
+   ' · soket fiyatı, sapma ve işgaliye teyitsiz';
  }else{
   $('co-cost').textContent=stops+' DC mola · '+selected.chargeLowKwh+
    '–'+selected.chargeHighKwh+' kWh (model)';
