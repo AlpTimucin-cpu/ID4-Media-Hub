@@ -137,17 +137,26 @@
       catch (_) { return {soc:null,position:null,countryStationsVerified:false}; }
     },
     epdkCountry: function (raw) {
+      function reject() {
+        // Fail closed: do NOT keep highlighting a previous national DC set
+        // after the latest full-country transfer is malformed/rejected.
+        try { mod.setStations(null, null); } catch (_) { /* Already safe. */ }
+        return false;
+      }
       try {
         // Must be a verified COUNTRY batch; a Mola route subset is NEVER
         // promoted into the national DC index. No assumed status or kW.
         var packet = normalizePacket(raw);
         if (!packet || !Array.isArray(packet.stations) || !packet.metadata ||
-            packet.metadata.coverage !== 'country') return false;
+            packet.metadata.coverage !== 'country') return reject();
         var verdict = mod.validateEPDKDataContract(packet);
-        if (!verdict || !verdict.ok) return false;
-        return mod.setStations(packet.stations, packet.metadata) > 0;
+        if (!verdict || !verdict.ok) return reject();
+        if (mod.setStations(packet.stations, packet.metadata) <= 0)
+          return reject();
+        return true;
       } catch (error) {
-        console.warn('ID4 EPDK batch refused:', error); return false;
+        console.warn('ID4 EPDK batch refused:', error);
+        return reject();
       }
     }
   });
