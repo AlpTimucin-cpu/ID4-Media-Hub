@@ -1635,7 +1635,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <div class="alts-header"><span>Rota · Şarj · Maliyet</span>
   <button id="co-alts-close" type="button">Kapat</button></div>
  <div id="co-alts-list">Rota oluşturulunca seçenekler gelecek.</div>
- <div class="alts-caution">Şarj durakları model önerisidir. Soket doluluğu, detour süresi ve kesin fiyat doğrulanmadı.</div>
+ <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa %80 çıkış varsayılır. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
 </div>
 <nav class="drive-dock" aria-label="ID.4 hızlı araç komutları">
  <button id="dock-home" type="button" title="Mola ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
@@ -2555,14 +2555,25 @@ window.molaAlternatives=function(data){
   if(opt.index===data.chargeAwareIndex)tags.push('CCS önerili');
   name.textContent='Rota '+(opt.index+1)+' · '+(tags.join(' · ')||'Alternatif');
   var details=document.createElement('small');
-  details.textContent=opt.km+' km · '+opt.minutes+' dk · '+
-   Math.round(opt.energyLowKwh)+'–'+Math.round(opt.energyHighKwh)+' kWh (model)'+
-   (opt.stationsKnown?' · '+opt.ccsCount+' CCS adayı':' · CCS verisi yok');
+  var lowStops=Number.isInteger(opt.chargeStopsMin)?opt.chargeStopsMin:null;
+  var highStops=Number.isInteger(opt.chargeStopsMax)?opt.chargeStopsMax:null;
+  var count=lowStops!==null&&highStops!==null?
+   (lowStops===highStops?String(lowStops):lowStops+'–'+highStops)+' DC mola (model)':
+   'Şarj durak sayısı bilinmiyor';
+  var energy=Number.isFinite(opt.chargeLowKwh)&&Number.isFinite(opt.chargeHighKwh)?
+   ' · '+Math.round(opt.chargeLowKwh)+'–'+Math.round(opt.chargeHighKwh)+' kWh':'';
+  details.textContent=opt.km+' km · '+opt.minutes+' dk · '+count+energy+
+   (opt.socAssumed?' · %80 SoC varsayımı':' · OBD SoC modeli')+
+   (opt.stationsKnown?
+     ' · '+opt.ccsCount+' yakın CCS kaydı':' · CCS listesi alınamadı');
   summary.appendChild(name);summary.appendChild(details);
   var price=document.createElement('b');
   price.textContent=Number.isFinite(opt.costMinTry)&&Number.isFinite(opt.costMaxTry)?
-   Math.round(opt.costMinTry)+'–'+Math.round(opt.costMaxTry)+' TL*':
-   'Fiyat yok';
+   Math.round(opt.costMinTry).toLocaleString('tr-TR')+'–'+
+   Math.round(opt.costMaxTry).toLocaleString('tr-TR')+' TL*':
+   'Tarife verisi yok';
+  price.title=String(opt.priceBasis||'')+
+   ' · Kesin istasyon fiyatı değil; soket, indirim ve yol sapması doğrulanmadı';
   item.appendChild(summary);item.appendChild(price);
   item.onclick=function(){
    if(opt.index===chosenRouteIndex){$('co-alts').classList.remove('open');return}
@@ -2574,22 +2585,26 @@ window.molaAlternatives=function(data){
  });
  var selected=routeOptions.find(function(opt){return opt&&opt.index===chosenRouteIndex});
  if(!selected){$('co-cost').textContent='Maliyet: alternatif yok';return}
- if(!selected.socKnown){
-  $('co-cost').textContent='Maliyet: OBD SoC bekleniyor';
-  $('co-cost-note').textContent='Manuel giriş yok · BMS ölçümü gerekli';
- }else if(!selected.chargeNeededModel){
-  $('co-cost').textContent='Yol üstü DC şarj ihtiyacı: 0 kWh (model)';
-  $('co-cost-note').textContent='Başlangıç bataryasındaki elektriğin maliyeti hariç';
+ var stops=Number.isInteger(selected.chargeStopsMin)&&
+    Number.isInteger(selected.chargeStopsMax)?
+  (selected.chargeStopsMin===selected.chargeStopsMax?
+    String(selected.chargeStopsMin):
+    selected.chargeStopsMin+'–'+selected.chargeStopsMax):'—';
+ var scenario=selected.socAssumed?'%80 çıkış senaryosu':'SoC tabanlı model';
+ if(!selected.chargeNeededModel){
+  $('co-cost').textContent='⚡ 0 DC mola · yol üstü şarj 0 TL (model)';
+  $('co-cost-note').textContent=scenario+' · ilk batarya enerjisinin maliyeti hariç';
  }else if(Number.isFinite(selected.costMinTry)&&Number.isFinite(selected.costMaxTry)){
-  $('co-cost').textContent='DC şarj tahmini: '+
-   Math.round(selected.costMinTry)+'–'+Math.round(selected.costMaxTry)+' TL';
-  $('co-cost-note').textContent=String(selected.tariffOperator||'Operatör')+
-   ' · '+String(selected.tariffChecked||'')+
-   ' ağ tarifesi · soket, kayıp, işgal ücreti hariç';
+  $('co-cost').textContent=stops+' DC mola · '+
+   Math.round(selected.costMinTry).toLocaleString('tr-TR')+'–'+
+   Math.round(selected.costMaxTry).toLocaleString('tr-TR')+' TL*';
+  $('co-cost-note').textContent=scenario+' · '+
+   String(selected.priceBasis||'tahmini fiyat')+
+   ' · kaynak tarihi '+String(selected.tariffChecked||'');
  }else{
-  $('co-cost').textContent='Şarj enerjisi: '+selected.chargeLowKwh+
+  $('co-cost').textContent=stops+' DC mola · '+selected.chargeLowKwh+
    '–'+selected.chargeHighKwh+' kWh (model)';
-  $('co-cost-note').textContent='Kesin fiyat yok · operatör/soket tarifesi doğrulanamadı';
+  $('co-cost-note').textContent=scenario+' · geçerli TL/kWh fiyat kaynağı bulunamadı';
  }
 };
 window.molaAlternativeError=function(o){
