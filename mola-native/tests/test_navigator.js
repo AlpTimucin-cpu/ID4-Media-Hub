@@ -430,7 +430,7 @@ assert(get('journey-points').children[3].children[1].textContent.includes('Tahmi
  'unknown forecast must never be fabricated');
 get('layer-weather').onclick();
 assert(!get('journey-weather').classList.contains('open'),
- 'route-less weather cannot be presented as a real trip');
+ 'weather must never show a separate route modal');
 assert(get('weather-cards').children[0].children[1].textContent.includes('12°C'),
   'weather data did not update actual card');
 assert(get('compact-weather').children[0].textContent.includes('12°C'),
@@ -468,18 +468,42 @@ win.molaJourneyWeather({cards:[
   temperature:20,rainProbability:5,wind:11,weatherCode:0}
 ]});
 const beforeWeatherPins=drawnMarkers.length;
+assert.equal(beforeWeatherPins>0,true,
+ 'weather map badges must appear automatically with a genuine route');
+assert.equal(get('journey-weather').classList.contains('open'),false,
+ 'a separate weather panel must not appear');
+assert.equal(get('route-weather-map-status').hidden,false,
+ 'weather map overlay must show model freshness and counts');
+assert(get('route-weather-map-status').textContent.includes('otomatik yenileme'),
+ 'driver must see refresh cadence and distinguish model from live sensors');
 get('layer-weather').onclick();
-assert(get('journey-weather').classList.contains('open'),
- 'weather window must open with a real route');
-assert.equal(drawnMarkers.length,beforeWeatherPins+4,
- 'weather markers should render only when requested');
-get('journey-close').onclick();
-assert(!get('journey-weather').classList.contains('open'),
- 'route weather popup should close');
-get('layer-weather').onclick();
-assert.equal(drawnMarkers.length,beforeWeatherPins+8,
- 'cached weather should re-render without another network request');
-get('journey-close').onclick();
+assert.equal(drawnMarkers.length,beforeWeatherPins,
+ 'hidden legacy weather button must not redraw markers or open a modal');
+assert.equal(get('journey-weather').classList.contains('open'),false,
+ 'no modal is accessible via legacy layer handler');
+win.molaJourneyWeather({source:'Open-Meteo',updatedAt:Date.now(),cards:[
+  {percent:0,latitude:37.97,longitude:34.68,nowAvailable:true,
+   nowTime:Math.floor(Date.now()/1000),nowTemperature:16,
+   nowPrecipitation:0.2,nowWind:12,nowWeatherCode:1,
+   available:true,temperature:15,rainProbability:23,wind:11,weatherCode:0},
+  {percent:50,latitude:37.3,longitude:32.2,nowAvailable:true,
+   nowTime:Math.floor(Date.now()/1000),nowTemperature:8,
+   nowPrecipitation:1.3,nowWind:22,nowWeatherCode:61,
+   available:true,temperature:10,rainProbability:82,wind:25,weatherCode:61,
+   risks:['Yüksek yağış olasılığı']},
+  {percent:100,latitude:36.9,longitude:30.7,nowAvailable:true,
+   nowTime:Math.floor(Date.now()/1000),nowTemperature:20,
+   nowPrecipitation:0,nowWind:8,nowWeatherCode:0,
+   available:true,temperature:21,rainProbability:4,wind:7,weatherCode:0}
+]});
+assert.equal(drawnMarkers.length,beforeWeatherPins+3,
+ 'a new source-backed weather fetch must update route badge markers automatically');
+assert(get('route-weather-map-status').classList.contains('risk') &&
+ get('route-weather-map-status').textContent.includes('risk noktası'),
+ 'weather risk summary must be visible directly on the map');
+assert(drawnMarkers[drawnMarkers.length-2].popup.textContent.includes('Şimdi') &&
+ drawnMarkers[drawnMarkers.length-2].popup.textContent.includes('Varış'),
+ 'each weather map popup must distinguish current model from ETA forecast');
 assert(get('vehicle-cockpit').classList.contains('has-route'),'trip bar not enabled for route');
 assert.equal(get('co-trip-arrival').textContent,'—',
  'must not fabricate arrival SoC without current BMS measurement');
