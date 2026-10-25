@@ -28,8 +28,10 @@ const addon={
   },
   getState(){return {soc:18,position:null,countryStationsVerified:false}}
 };
+let mediaOpened=0;
 const w={ID4LiveMap:addon,id4LiveLeafletMap:{addLayer(){}},
- AndroidBridge:originalAndroidBridge};
+ AndroidBridge:originalAndroidBridge,
+ MolaNative:{openMedia(){mediaOpened++}}};
 for(const name of ['molaRoute','molaStations','molaPosition','molaTelemetry','molaStatus']){
  w[name]=()=>{
   order.push(name);
@@ -44,6 +46,14 @@ assert(w.ID4NativeBridge,'typed JS entrypoint exists');
 const bridge=w.ID4NativeBridge;
 assert.equal(bridge.receive('untrusted',{}),false);
 assert.equal(bridge.receive('telemetry','{invalid'),false);
+assert.equal(bridge.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK'}),true,
+ 'legacy tab handoff must call the safe native media launcher');
+assert.equal(mediaOpened,1,'Mola opened through allowlisted native method once');
+assert.equal(bridge.receive('status',{command:'DISABLE_PARK_WINDOW'}),false,
+ 'never accept a driving-restriction bypass command');
+assert.equal(bridge.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK',arg:'unexpected'}),true,
+ 'known fixed command is permitted but no arbitrary argument is forwarded');
+assert.equal(mediaOpened,2,'no untrusted arguments forwarded to Java');
 assert.equal(bridge.receive('telemetry',[]),false);
 assert.equal(bridge.receive('route',JSON.stringify({coordinates:[[35,39],[36,40]]})),true);
 assert.deepEqual(order,['molaRoute']);
