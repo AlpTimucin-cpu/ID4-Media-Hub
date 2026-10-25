@@ -8,6 +8,7 @@ const assert=require('node:assert/strict');
 const source=fs.readFileSync(path.resolve(__dirname,
   '../overlay/fermata/src/main/assets/id4/id4-navigator-adapter.js'),'utf8');
 const order=[],calls=[];
+let routeOriginalThrows=false;
 const originalAndroidBridge=Object.freeze({nativeMethod(){return 'preserved'}});
 const addon={
   attachExistingMap(map){calls.push('attach');return !!map},
@@ -27,7 +28,10 @@ const addon={
 const w={ID4LiveMap:addon,id4LiveLeafletMap:{addLayer(){}},
  AndroidBridge:originalAndroidBridge};
 for(const name of ['molaRoute','molaStations','molaPosition','molaTelemetry','molaStatus']){
- w[name]=()=>{order.push(name)};
+ w[name]=()=>{
+  order.push(name);
+  if(name==='molaRoute' && routeOriginalThrows)throw new Error('test callback failure');
+ };
 }
 const d={querySelector(){return null},getElementById(){return null}};
 vm.runInNewContext(source,{window:w,document:d,console,Date,Number,String,
@@ -63,7 +67,7 @@ assert.equal(bridge.receive('gps',{
  lat:39,lon:35,timeMs:Date.now(),accuracy:8,speedKmh:65
 }),true);
 assert.equal(calls.filter(x=>x==='gps').length,1);
-w.molaRoute=()=>{throw new Error('test callback failure')};
+routeOriginalThrows=true;
 assert.equal(bridge.receive('route',{coordinates:[[35,39],[36,40]]}),true,
  'a Mola callback exception must not kill the bridge');
 assert.equal(bridge.snapshot().soc,18);
