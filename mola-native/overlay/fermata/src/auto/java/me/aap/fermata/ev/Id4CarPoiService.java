@@ -81,12 +81,34 @@ public final class Id4CarPoiService extends CarAppService {
             // Never block the OBD entry behind a slow EPDK network download.
 
             ItemList.Builder list=new ItemList.Builder();
-            list.addItem(new Row.Builder()
-                .setTitle("☁ ID.4 · Yol boyunca hava")
-                .addText("Rota başlangıcı, yol noktaları, varış ve meteoroloji riski")
-                .setOnClickListener(()->getScreenManager().push(
-                    new Id4CarRouteWeatherScreen(getCarContext())))
-                .build());
+            // The car template shows a passive weather status only *after*
+            // a phone route has loaded forecast data: never a weather button.
+            try {
+                String saved=getCarContext().getSharedPreferences(
+                    "id4_route_weather_v1",CarContext.MODE_PRIVATE)
+                    .getString("packet","");
+                JSONObject weather=new JSONObject(saved);
+                JSONArray cards=weather.optJSONArray("cards");
+                long age=System.currentTimeMillis()-weather.optLong("updatedAt",0);
+                if(cards!=null && cards.length()>=2 && cards.length()<=9 &&
+                   age>=0 && age<3600000) {
+                    int available=0,risks=0;
+                    for(int i=0;i<cards.length();i++){
+                        JSONObject c=cards.optJSONObject(i);
+                        if(c==null||!c.optBoolean("available",false))continue;
+                        available++;
+                        JSONArray warnings=c.optJSONArray("risks");
+                        if(warnings!=null&&warnings.length()>0)risks++;
+                    }
+                    list.addItem(new Row.Builder()
+                        .setTitle("☁ Yol havası · otomatik")
+                        .addText(available+"/"+cards.length()+" noktada saatlik tahmin"+
+                            (risks>0?" · "+risks+" noktada olası risk":""))
+                        .build());
+                }
+            } catch(Exception ignored){
+                // Never invent forecast conditions from an absent or stale cache.
+            }
             list.addItem(new Row.Builder()
                 .setTitle("🚙 ID.4 · OBD bağlantısı")
                 .addText("Adaptör bağla · ECU durumunu kontrol et")
