@@ -34,7 +34,7 @@ public final class Id4TripChargePlan {
             priceSource=source;priceBasis=basis;operatorRate=operator;
             priceEstimateAvailable=Double.isFinite(minTry)&&Double.isFinite(maxTry);
             note=(measured?"Ölçülen başlangıç SoC'si ile model":
-                "%80 çıkış SoC varsayımı, gerçek araç ölçümü yok")+
+                "Kullanıcı seçimiyle çıkış SoC senaryosu, gerçek araç ölçümü yok")+
                 "; 52 kWh kullanılabilir batarya, %15 rezerv, DC'de %80 hedef"+
                 "; menzil ve istasyon erişimi kesin değildir.";
         }
@@ -42,10 +42,17 @@ public final class Id4TripChargePlan {
 
     public static Estimate estimate(double roadKm,double measuredSoc,
                                     String preferredOperator,LocalDate today){
+        return estimate(roadKm,measuredSoc,preferredOperator,today,80);
+    }
+    /** User-picked initial charge when the actual ECU SoC is unavailable. */
+    public static Estimate estimate(double roadKm,double measuredSoc,
+                                    String preferredOperator,LocalDate today,int scenarioSoc){
         if(!Double.isFinite(roadKm)||roadKm<=0||roadKm>4000||today==null)
             throw new IllegalArgumentException("Invalid route or date");
+        if(scenarioSoc!=80&&scenarioSoc!=100)
+            throw new IllegalArgumentException("Choose 80 or 100 percent");
         boolean measured=Double.isFinite(measuredSoc)&&measuredSoc>=0&&measuredSoc<=100;
-        double soc=measured?measuredSoc:ASSUMED_START_SOC;
+        double soc=measured?measuredSoc:scenarioSoc;
         double pack=Id4EnergyModel.ASSUMED_USABLE_KWH;
         double reserve=Id4EnergyModel.ASSUMED_RESERVE_PERCENT;
         double initialAvailable=Math.max(0,(soc-reserve)*pack/100.0);
