@@ -127,7 +127,8 @@ function progressNodes(line) {
 function remainingRouteDistance() {
   if (!route) return null;
   // GPS yoksa yalnız başlangıçtan tahmini mesafe kullanılabilir.
-  if (!currentLocation || Date.now() - locationAt > 30000)
+  if (!currentLocation || Date.now() < locationAt ||
+      Date.now() - locationAt > 30000)
     return { km: route.distanceKm, note: 'başlangıç esaslı' };
   var p = currentLocation, path = route.progress;
   var nearest = Infinity, along = 0;
@@ -274,6 +275,7 @@ function highlightNearestDC(force) {
   if (!map) return;
   // GPS alınmadıysa haritanın merkezini veya rota başını gerçek konum diye kullanma.
   if (!currentLocation || !locationAt ||
+      Date.now() < locationAt ||
       Date.now() - locationAt > CFG.telemetryStaleMs ||
       car.soc === null || car.soc >= 20 || isTelemetryStale()) {
     if (markers.nearestDC) map.removeLayer(markers.nearestDC);
@@ -533,7 +535,9 @@ async function refreshWeather() {
 }
 
 function isTelemetryStale() {
-  return !car.receivedAt || Date.now() - car.receivedAt > CFG.telemetryStaleMs;
+  // A clock jump backwards must not revive an obsolete OBD measurement.
+  var age = Date.now() - car.receivedAt;
+  return !car.receivedAt || age < 0 || age > CFG.telemetryStaleMs;
 }
 function updateCarData(speed, soc) {
   var s = finiteNumber(speed), p = finiteNumber(soc);
@@ -853,6 +857,14 @@ function init(existingMap) {
   renderTelemetry = guarded('araç göstergesi', renderTelemetry, undefined);
   updateEnergy = guarded('enerji hesabı', updateEnergy, undefined);
   drawRoute = guarded('rota çizimi', drawRoute, false);
+  createRoute = guarded('rota servisi', createRoute, false);
+  clearRoute = guarded('rota temizleme', clearRoute, undefined);
+  setOrigin = guarded('başlangıç', setOrigin, false);
+  setTarget = guarded('hedef', setTarget, false);
+  getBounds = guarded('harita sınırları', getBounds, null);
+  focus = guarded('harita odağı', focus, false);
+  importIncidents = guarded('yerel ihbar alımı', importIncidents, 0);
+  sendIncidentToDB = guarded('ihbar iletimi', sendIncidentToDB, undefined);
   loadStations = guarded('EPDK aktarımı', loadStations, 0);
   setRouteStations = guarded('rota istasyonları', setRouteStations, 0);
   updateCarData = guarded('SoC/hız', updateCarData, false);
@@ -868,7 +880,8 @@ function init(existingMap) {
      ingestNativeRoute: function (data) { return drawRoute(data, { draw: false }); },
      attachExistingMap: function (existingMap) {
        if (!existingMap || typeof existingMap.addLayer !== 'function') return false;
-       init(existingMap); return !!map;
+       init(existingMap);
+       return !!(map && layers.route && layers.stations && layers.incidents);
      },
      clearRoute: clearRoute,
      setOrigin: setOrigin,
@@ -888,7 +901,9 @@ function init(existingMap) {
      sendIncidentToDB: sendIncidentToDB,
      getState: function () {
        return { routeKm: route ? route.distanceKm : null, weather: weather,
-         soc: isTelemetryStale() ? null : car.soc, position: currentLocation,
+         soc: isTelemetryStale() ? null : car.soc,
+         position: !locationAt || Date.now() < locationAt ||
+           Date.now() - locationAt > CFG.telemetryStaleMs ? null : currentLocation,
          corridorStations: visibleStations.length,
          countryStationsVerified: isCountryDataReady(),
          localIncidents: incidents.length };
@@ -902,7 +917,9 @@ function init(existingMap) {
   window.id4ClearRoute = clearRoute;
   window.id4MapBounds = getBounds;
   window.id4Focus = focus;
-  window.id4IsReady = function () { return !!map; };
+  window.id4IsReady = function () {
+    return !!(map && layers.route && layers.stations && layers.incidents);
+  };
   window.id4GetRouteEndpoints = function () {
      return origin && destination ? [origin[1], origin[0], destination[1], destination[0]] : null;
   };
