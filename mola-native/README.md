@@ -136,6 +136,23 @@ mevcut kokpitin yerini almaz.
 - Yerel kazalar/yol kapanmaları Firebase bağlanmadıkça paylaşılmaz;
   doğrulanmış trafik yoğunluğu olarak sunulmaz.
 
+Tam ülke DC kaynağı için `setStations(stations, metadata)` sözleşmesi:
+```javascript
+window.ID4LiveMap.setStations(actualVerifiedEpdkStations, {
+  source: 'EPDK', coverage: 'country', complete: true,
+  geocodedCount: actualVerifiedEpdkStations.length,
+  verifiedAtUtc: actualEpdkSnapshotVerifiedUtc
+});
+```
+Bu iki `actual...` değeri üretimde gerçek EPDK içe aktarıcısından alınmalıdır.
+Yalnızca tam/kayıt sayısı tutarlı/en az 5000 tekil kayıt içeren ve 72 saatten yeni
+veriyle ülke çapında en yakın DC işaretleme etkinleşir. Bu, kapsam
+kontrolüdür; EPDK kökeninin kriptografik doğrulaması değildir.
+Kısmi veya eski veriler en yakın DC olarak işaretlenmez.
+Düşük SoC işaretleme için %20 altı gerçek SoC, 30 saniyeden yeni GPS ve
+30 saniyeden yeni telemetri birlikte zorunludur. Open-Meteo zaman damgası
+90 dakikadan eskiyse model tahmini reddedilir. Ölçülmüş kapasite ve tüketim
+profili yoksa varış yüzdesi hesaplanmaz.
 Doğrulama: `node mola-native/tests/test_live_map.js` doğrudan paketlenecek JS'i
 kullanır; aynı kontrol `.github/workflows/build-mola-native-id4.yml` içinde
 APK derlemesinden önce çalışır. Gerçek ID.4, POCO F5, OBD ve Android Auto
