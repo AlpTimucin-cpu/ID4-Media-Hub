@@ -38,8 +38,9 @@ const map={addLayer(){},removeLayer(){},on(){},closePopup(){},
 let clock=Date.now();
 class ControlledDate extends Date { static now(){return clock} }
 let forecast={temperature_2m:-5,wind_speed_10m:40};
+const savedLocal={};
 const win={ID4_LIVE_ATTACH_ONLY:true,
- localStorage:{getItem(){return null},setItem(){}},
+ localStorage:{getItem(k){return savedLocal[k]||null},setItem(k,v){savedLocal[k]=v}},
  setTimeout,clearTimeout,setInterval(){},addEventListener(){},dispatchEvent(){},
  fetch:async function(url){
    assert.match(url,/api\.open-meteo\.com\/v1\/forecast/);
@@ -59,6 +60,23 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  ]}),1);
  assert.equal(el('id4-station-count').textContent,'7 (rota)');
  assert.equal(m.getState().corridorStations,1);
+ // Personal accident/closure reports are local unverified notes. Old, future
+ // and malformed records must never masquerade as current road intelligence.
+ const localNow=new Date(clock).toISOString();
+ assert.equal(m.importIncidents([
+   {id:'acc1',lat:39, lng:35, type:'accident',timestamp:localNow},
+   {id:'old',lat:39, lng:35, type:'closed',
+    timestamp:new Date(clock-25*60*60*1000).toISOString()},
+   {id:'future',lat:39, lng:35, type:'accident',
+    timestamp:new Date(clock+60*60*1000).toISOString()},
+   {id:'bad',lat:999, lng:35, type:'accident',timestamp:localNow}
+ ]),1);
+ assert.match(el('id4-incident-count').textContent,/1 yerel ihbar.*doğrulanmadı/);
+ assert.equal(JSON.parse(savedLocal['id4-incidents-v1']).length,1);
+ assert.equal(m.removeLocalIncident('acc1'),true);
+ assert.equal(m.removeLocalIncident('acc1'),false);
+ assert.equal(m.getState().localIncidents,0);
+ assert.equal(JSON.parse(savedLocal['id4-incidents-v1']).length,0);
 
  // A *partial* setStations array must NEVER become a global DC source.
  m.updateLocation(39.02,35.02);
@@ -165,5 +183,12 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  assert(kwh.every(Number.isFinite),'measured energy profile must yield numeric kWh');
  assert(kwh[0]>kwh[3] && Math.abs(kwh[0]/kwh[3]-1.15)<0.07,
    'weather penalty should be applied once, not twice');
+ // Re-opening/importing past the 24-hour policy must drop expired entries.
+ const noteTime=new Date(clock).toISOString();
+ assert.equal(m.importIncidents([{id:'exp',lat:39,lng:35,
+   type:'closed',timestamp:noteTime}]),1);
+ clock+=24*60*60*1000+1;
+ assert.equal(m.importIncidents([]),0);
+ assert.equal(JSON.parse(savedLocal['id4-incidents-v1']).length,0);
  console.log('PASS: phase-3 EPDK strict contract, 5 km buffer, SoC, GPS fail-safe and single weather multiplier');
 })().catch(error=>{console.error(error);process.exitCode=1});
