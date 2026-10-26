@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.net.Uri;
 import android.content.res.Configuration;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -227,6 +228,81 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }
     }
 
+    /**
+     * Media catalogue commands are explicit user taps, not remote URLs.
+     * DRM services must use their official native application (or official web
+     * landing page). Never copy cookies, decrypt streams or bypass parked-only
+     * restrictions. Mola audio/video effects remain in its own MediaSession.
+     */
+    private void openMolaCatalogueItem(String item){
+        if(destroyed || isFinishing() || isDestroyed())return;
+        if(item==null)return;
+        switch(item){
+            case "netflix":
+                openOfficialVideo("com.netflix.mediaclient","https://www.netflix.com/");
+                return;
+            case "disney":
+                openOfficialVideo("com.disney.disneyplus","https://www.disneyplus.com/");
+                return;
+            case "prime":
+                openOfficialVideo("com.amazon.avod.thirdpartyclient","https://www.primevideo.com/");
+                return;
+            case "youtube":
+            case "tv":
+            case "mirror":
+            case "media":
+            case "radio":
+            case "podcast":
+            case "web":
+            case "windasist":
+            case "mola":
+            case "shortcuts":
+            case "settings":
+            case "equalizer":
+                // All these functions already belong to the pinned Mola
+                // dashboard. The original Equalizer controls an *actual*
+                // audio session; duplicating an equalizer here would not.
+                openMediaSafely();
+                return;
+            default:
+                send("molaStatus",record("media","Bilinmeyen medya kısayolu."));
+        }
+    }
+
+    private boolean movingWithRecentGps(){
+        Location p=position;
+        if(p==null || !p.hasAccuracy() || p.getAccuracy()>35 ||
+           !p.hasSpeed() || !Float.isFinite(p.getSpeed()))return false;
+        long elapsed=System.currentTimeMillis()-p.getTime();
+        return elapsed>=0 && elapsed<=15000 && p.getSpeed()>1.4f;
+    }
+
+    private void openOfficialVideo(String packageName,String site){
+        // Navigation remains alive. Do not present third-party DRM playback
+        // as if it were an embedded Mola media player.
+        if(movingWithRecentGps()){
+            send("molaStatus",record("media",
+                "Video uygulaması araç hareket ederken açılamaz. Güvenli şekilde park edin."));
+            return;
+        }
+        try{
+            Intent installed=getPackageManager().getLaunchIntentForPackage(packageName);
+            if(installed!=null){
+                installed.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(installed);
+                return;
+            }
+        }catch(SecurityException ignored){}
+        try{
+            Intent official=new Intent(Intent.ACTION_VIEW,Uri.parse(site));
+            official.addCategory(Intent.CATEGORY_BROWSABLE);
+            startActivity(official);
+        }catch(android.content.ActivityNotFoundException | SecurityException e){
+            send("molaStatus",record("media",
+                "Resmî video uygulaması veya bağlantıyı açabilen tarayıcı bulunamadı."));
+        }
+    }
+
     private JSONObject record(String status,String detail) {
         JSONObject j=new JSONObject();
         try{j.put("status",status);j.put("detail",detail);}catch(Exception ignored){}
@@ -237,6 +313,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         /** Phone media Activity handoff only; never overrides driving locks. */
         @JavascriptInterface public void openMedia(){
             ui.post(()->openMediaSafely());
+        }
+        @JavascriptInterface public void openMolaCard(String id){
+            if(id==null || id.length()>24)return;
+            ui.post(()->openMolaCatalogueItem(id));
         }
         @JavascriptInterface public void refreshJourneyWeather(){
             ui.post(()->{
