@@ -22,6 +22,13 @@ assert.match(html,/Date\.now\(\)-x\.timeMs>30000/);
 assert.match(html,/var pct=Math\.max\(0,Math\.min\(100,position\*100\)\)/);
 assert.match(html,/var iconPct=Math\.min\(92,Math\.max\(0,pct\)\)/);
 assert.match(html,/data\.roadKm\*\(1-position\)/);
+// The display-only premium timeline is sourced from the existing native
+// GPS projection; no static illustration values can reach it.
+assert(html.includes('id="ev-km-travelled"'));
+assert(html.includes('id="ev-km-remaining"'));
+assert(html.includes('function setTimelineDistances(travelled,remaining)'));
+assert(html.includes('setTimelineDistances(Math.max(0,data.roadKm-remaining),remaining)'));
+assert(html.includes('setTimelineDistances(NaN,NaN)'));
 // Existing native callback owns the source of truth; never poll a fabricated
 // JSON payload with static 120km/h or 68% battery values.
 assert.match(android,/new Id4LiveTelemetry\(/);
