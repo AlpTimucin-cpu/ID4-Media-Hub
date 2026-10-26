@@ -3,7 +3,7 @@
  * replace Android Auto media services, or spoof parked state. */
 (function (root, doc) {
  'use strict';
- var cards = [["tv","📺 TV","Canlı TV ve IPTV","tv"],["youtube","▶ YouTube","ID.4 YouTube oynatıcısı","youtube"],["mirror","▣ Ekran Yansıtma","ID.4 ekran yansıtma","mirror"],["netflix","NETFLIX","Resmî uygulama","netflix"],["disney","Disney+","Resmî uygulama","disney"],["prime","prime video","Resmî uygulama","prime"],["media","▣ Medya","Yerel video ve müzik","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastlar","Podcast bölümleri","podcast"],["web","◎ Web","Tarayıcı ve medya","web"],["windasist","WindAsist","ID.4 kısayolu","windasist"],["mola","ID.4 Yol Arkadaşım","ID.4 ana ekranı","mola"],["shortcuts","＋ Kısayol Ekle","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","ID.4 uygulama ayarları","settings"],["equalizer","▥ Ekolayzır","ID.4 ses efektleri","equalizer"]];
+ var cards = [["tv","📺 Canlı TV","İnternet televizyonu","tv"],["youtube","▶ Video","Video oynatıcı","youtube"],["mirror","▣ Ekran Yansıtma","Telefon ekranı","mirror"],["netflix","Film ve Dizi 1","Resmî servis","netflix"],["disney","Film ve Dizi 2","Resmî servis","disney"],["prime","Film ve Dizi 3","Resmî servis","prime"],["media","▣ Yerel Medya","Video ve müzik dosyaları","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastler","Sesli programlar","podcast"],["web","◎ Web","Tarayıcı","web"],["windasist","Yol Araçları","Ek araç özellikleri","windasist"],["mola","Elektrikli Yol Arkadaşım","Ana ekran","mola"],["shortcuts","＋ Kısayollar","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","Uygulama ayarları","settings"],["equalizer","▥ Ses","Ses ve ekolayzır","equalizer"]];
  var overlay = null, opened = false;
  function node(tag, cls, txt) {
   var el = doc.createElement(tag);
@@ -37,7 +37,7 @@
   }
   if (typeof root.molaStatus === 'function')
    root.molaStatus({status:'media',
-    detail:'Bu kısayol için yeni ID.4 Android uygulama sürümü gerekli.'});
+    detail:'Bu kısayol için yeni Elektrikli Yol Arkadaşım Android uygulama sürümü gerekli.'});
   return false;
  }
  function install() {
@@ -46,14 +46,14 @@
   overlay.id = 'id4-mola-drawer';
   overlay.hidden = true;
   overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-label', 'ID.4 Yol Arkadaşım medya uygulamaları');
+  overlay.setAttribute('aria-label', 'Elektrikli Yol Arkadaşım medya uygulamaları');
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-hidden', 'true');
   var panel = node('div', 'id4-mola-panel');
   var head = node('div', 'id4-mola-head');
   var title = node('div', 'id4-mola-title');
-  title.appendChild(node('strong', '', 'ID.4 Yol Arkadaşım · Medya'));
-  title.appendChild(node('small', '', 'ID.4 Yol Arkadaşım · mevcut oynatıcılar korunur'));
+  title.appendChild(node('strong', '', 'Elektrikli Yol Arkadaşım · Medya'));
+  title.appendChild(node('small', '', 'Elektrikli Yol Arkadaşım · mevcut oynatıcılar korunur'));
   var close = node('button', 'id4-mola-close', '✕ Kapat');
   close.id = 'id4-mola-close';
   close.type = 'button';close.onclick = function(){setOpen(false)};
@@ -69,7 +69,7 @@
   });
   panel.appendChild(head); panel.appendChild(grid);
   panel.appendChild(node('p', 'id4-mola-disclaimer',
-   'Netflix, Disney+ ve Prime Video resmî uygulamada veya tarayıcıda açılır. ' +
+   'Film ve dizi servisleri resmî uygulamada veya tarayıcıda açılır. ' +
    'TV, YouTube, radyo, Ekolayzır ve diğer özellikler ID.4 medya bölümüne geçer. ' +
    'DRM ve araç hareketi kısıtları değiştirilmez.'));
   overlay.appendChild(panel);
