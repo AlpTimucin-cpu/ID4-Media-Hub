@@ -249,7 +249,7 @@ jobs:
           ./gradlew --no-daemon --no-parallel verifyWebOnlyProductionGraph
           # The public Mola build.sh conflates APP_ID_SFX env with flavor.
           # Pass the suffix as an explicit Gradle *property* instead.
-          ./gradlew --no-daemon --no-parallel :fermata:packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview -PAPP_NAME="ID.4 Yol Arkadaşım"
+          ./gradlew --no-daemon --no-parallel :fermata:packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview -PAPP_NAME="Elektrikli Yol Arkadaşım"
           mkdir -p dist
           mapfile -t built < <(find fermata/build/outputs/apk_from_bundle -type f -name 'fermata*.apk' -print)
           test "${#built[@]}" -eq 1
