@@ -32,7 +32,9 @@ SOURCE_SHA = {
     "fermata/src/main/AndroidManifest.xml":
         "1b64290b44432b02c164f6f37b2cce4b0f2d1661",
     "fermata/src/auto/AndroidManifest.xml":
-        "a500a7129c99ff42f42270897c22f40c2615a4b4"
+        "a500a7129c99ff42f42270897c22f40c2615a4b4",
+    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java":
+        "29f69b94434a19ee71ad3a4ba9cf8b9b184a0182"
 }
 for relative, expected in SOURCE_SHA.items():
     actual=subprocess.check_output(
@@ -120,6 +122,40 @@ assert source.count(anchor)==1
 source=source.replace(anchor,
     "if (cards.get(i).fixed && cards.get(i).wide && !cards.get(i).recentShelf) return i;")
 fragment.write_text(source,encoding="utf-8")
+
+# Deliver named phone-only Mola screen requests to the *existing*
+# MainActivity delegate. This is an additive navigation convenience: no
+# changes to any TV/Radio/YouTube/media service implementation.
+main_activity=root/"fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+source=main_activity.read_text(encoding="utf-8")
+anchor="\t@Override\n\tprotected void onPause() {"
+assert source.count(anchor)==1
+source=source.replace(anchor,'''    /** Consume the app's literal destination exactly once, even across resume. */
+    private void openId4RequestedMolaModule() {
+        if (isCarActivity()) return;
+        android.content.Intent request = getIntent();
+        if (request == null) return;
+        String target = request.getStringExtra(me.aap.fermata.ev.Id4MolaDestination.EXTRA);
+        if (target == null || target.length() > 24) return;
+        request.removeExtra(me.aap.fermata.ev.Id4MolaDestination.EXTRA);
+        getActivityDelegate().onSuccess(delegate -> runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed())
+                me.aap.fermata.ev.Id4MolaDestination.navigate(delegate, target);
+        }));
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent incoming) {
+        super.onNewIntent(incoming);
+        setIntent(incoming);
+        openId4RequestedMolaModule();
+    }
+
+'''+anchor,1)
+anchor="\t\tactiveInstance = this;"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n        openId4RequestedMolaModule();",1)
+main_activity.write_text(source,encoding="utf-8")
 
 # Register a non-exported Activity. Existing media service is unchanged.
 manifest=root/"fermata/src/main/AndroidManifest.xml"
@@ -235,6 +271,7 @@ auto_obd=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarObdScreen.java"
 auto_station=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarStationDetailsScreen.java"
 auto_weather=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarRouteWeatherScreen.java"
 navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
+media_destination=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MolaDestination.java"
 decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
 word_core=overlay/"fermata/src/main/assets/id4/id4-live-map.js"
@@ -271,8 +308,8 @@ valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRou
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
 traffic_incidents=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TrafficIncidents.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
-for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
+assert all(f.is_file() for f in [java,html,obd,navigator,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
+for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -306,7 +343,7 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
-    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),str(media_destination.relative_to(overlay)),
     str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(tesla_css.relative_to(overlay)),str(tesla_js.relative_to(overlay)),str(media_hub_js.relative_to(overlay)),str(media_hub_css.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
