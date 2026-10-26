@@ -8,7 +8,8 @@ const legacy=fs.readFileSync(path.join(root,'mola-native/overlay/fermata/src/mai
 const cards=fs.readFileSync(path.join(root,'mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js'),'utf8');
 const readme=fs.readFileSync(path.join(root,'README.md'),'utf8');
 const tr=fs.readFileSync(path.join(root,'README_TR.md'),'utf8');
-for(const [file,content] of [['README',readme],['README_TR',tr],['kokpit',ui],['harita',legacy],['kartlar',cards]]){
+const changes=fs.readFileSync(path.join(root,'CHANGELOG.md'),'utf8');
+for(const [file,content] of [['README',readme],['README_TR',tr],['CHANGELOG',changes],['kokpit',ui],['harita',legacy],['kartlar',cards]]){
  assert(!/ID\.4 Yol Arkadaşım|Volkswagen ID\.4|VOLKSWAGEN|Mola 3\.2/i.test(content),
    file+': legacy public-facing brand remained');
 }
