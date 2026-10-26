@@ -18,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
-      - name: Download ID4 overlay
+      - name: Uygulama entegrasyon dosyalarını al
         uses: actions/checkout@v4
         with:
           path: integration
-      - name: Clone public GPL Mola at pinned commit
+      - name: GPL lisanslı medya tabanını al
         shell: bash
         run: |
           set -euo pipefail
@@ -31,13 +31,13 @@ jobs:
           git checkout --detach 3f45ad3557a25822c2a3a9f152f32ef82f57e005
           test "$(git rev-parse HEAD)" = "3f45ad3557a25822c2a3a9f152f32ef82f57e005"
           test -f LICENSE
-      - name: Apply only additive ID.4 overlay
+      - name: Elektrikli Yol Arkadaşım entegrasyonunu uygula
         # Never inject account API secrets into publicly downloadable APKs.
         # Each user supplies their own TomTom key in the native settings.
         run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
       - name: Verify Android Auto discovery manifest and preserved Mola media
         run: python3 integration/mola-native/tests/test_android_auto_manifest.py mola
-      - name: Ensure changes do not touch Mola playback classes
+      - name: Korunan medya oynatıcı kaynaklarını doğrula
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +68,7 @@ jobs:
           java-version: '17'
       - name: Verify journey card survives media refresh
         run: python3 integration/mola-native/tests/test_dashboard_identity.py mola
-      - name: Ensure Tesla-style vehicle overview has no manual energy form
+      - name: Araç görünümünde manuel enerji girişi olmadığını doğrula
         shell: bash
         run: |
           set -euo pipefail
@@ -162,11 +162,11 @@ jobs:
           CHROME_BIN="$(command -v google-chrome)" \
           ID4_SCREENSHOTS="$RUNNER_TEMP/id4-layout" \
           node integration/mola-native/tests/test_vector_map.cjs
-      - name: Upload cockpit visual checks
+      - name: Kokpit görünüm testlerini yükle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ID4-Cockpit-Layout-Checks
+          name: Elektrikli-Yol-Arkadasim-Gorsel-Testleri
           path: ${{ runner.temp }}/id4-layout
           retention-days: 7
       - name: Test local ID.4 charge history and data freshness
@@ -237,7 +237,7 @@ jobs:
             platforms;android-36
             build-tools;36.0.0
             ndk;29.0.14206865
-      - name: Build Mola's original app + new optional EV screen
+      - name: Elektrikli Yol Arkadaşım APK oluştur
         shell: bash
         working-directory: mola
         env:
@@ -254,7 +254,7 @@ jobs:
           mapfile -t built < <(find fermata/build/outputs/apk_from_bundle -type f -name 'fermata*.apk' -print)
           test "${#built[@]}" -eq 1
           cp "${built[0]}" dist/FermataX-id4preview.apk
-      - name: Verify packaged ID4 basemap scripts and removed climate
+      - name: Gerçek harita kodlarını ve paket izinlerini doğrula
         shell: bash
         run: |
           python3 - <<'PY'
@@ -293,7 +293,7 @@ jobs:
                   "Refusing public APK containing build-time traffic credentials")
               print("PASS: installed APK contains real map scripts, no climate widgets and no TomTom build key")
           PY
-      - name: Verify ID4 preview is SEPARATE from user's Mola 3.2
+      - name: Önizleme uygulamasının mevcut kullanıcı verilerini koruduğunu doğrula
         shell: bash
         run: |
           set -euo pipefail
@@ -351,7 +351,7 @@ jobs:
           mkdir -p output
           cp "$APK" output/Elektrikli-Yol-Arkadasim.apk
           sha256sum output/Elektrikli-Yol-Arkadasim.apk | tee output/SHA256.txt
-      - name: Upload testable standalone Mola fork APK
+      - name: Elektrikli Yol Arkadaşım APK paketini yükle
         uses: actions/upload-artifact@v4
         with:
           name: Elektrikli-Yol-Arkadasim-APK
