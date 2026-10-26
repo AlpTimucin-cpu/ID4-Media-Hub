@@ -904,12 +904,13 @@ const colored=drawnLines.filter(x=>x.options&&x.options.dashArray);
 assert(colored.length>=2,'all provided OSRM options must appear on map');
 colored[0].handlers.click();
 assert(calls.chosen.includes(1),'tap alternative polyline must select real route');
-assert(get('route-map-alts').textContent.includes('3 gerçek rota'));
+assert(get('route-map-alts').textContent.includes('3 rota · haritada 3'),
+ 'show actual route total and limited uncluttered on-map preview');
 context.window.molaRoute({...routeCase,alternatives:1,
  routePreviews:[routeCase.routePreviews[0]]});
 assert.equal(get('route-map-alts').style.display,'none',
  'one provider route is not multiple alternatives');
-console.log('PASS: all OSRM alternatives drawn as distinct clickable real geometries');
+console.log('PASS: actual OSRM alternatives retained in selector, up to two map previews clickable');
 
 /* Safety HUD smoke test after all earlier GPS opt-in assertions. */
 context.window.molaPosition({lat:38.123,lon:34.77,accuracy:10,
