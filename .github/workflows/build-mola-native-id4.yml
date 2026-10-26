@@ -23,6 +23,11 @@ jobs:
         with:
           path: integration
       - name: GPL lisanslı medya tabanını al
+        # The pinned source tree includes a large historical APK on Git LFS.
+        # Compiling needs the GPL sources only, not a 160 MB LFS binary.
+        # Downloading that unrelated binary sometimes returns GitHub LFS 502.
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
         shell: bash
         run: |
           set -euo pipefail
