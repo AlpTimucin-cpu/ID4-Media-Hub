@@ -329,6 +329,28 @@ function tick(){
   render();
  }catch(err){try{root.console.warn('ID4 visual tick',err)}catch(_){}}
 }
+
+/* Only a navigation selection indicator. Existing click owners (native/media/
+   OSRM/EPDK/settings) remain untouched, including their safety gates. */
+function markDockActive(id){
+ try{
+  ['dock-route','dock-stations','dock-apps','dock-journal','dock-layers']
+    .forEach(function(name){
+      var node=el(name);if(!node)return;
+      var selected=name===id;
+      if(node.classList&&typeof node.classList.add==='function'&&
+          typeof node.classList.remove==='function'){
+        if(selected)node.classList.add('eya-current');
+        else node.classList.remove('eya-current');
+      }
+      if(selected&&typeof node.setAttribute==='function')
+        node.setAttribute('aria-current','page');
+      if(!selected&&typeof node.removeAttribute==='function')
+        node.removeAttribute('aria-current');
+    });
+ }catch(_){}
+}
+
 function start(){
  try{
   if(started)return true;
@@ -341,6 +363,16 @@ function start(){
   observe('molaStations',onStations);
   observe('molaManeuver',onManeuver);
   observe('molaStatus',onStatus);
+  // Use the existing real navigation actions, never open a second map.
+  markDockActive('dock-route');
+  try{
+    ['dock-route','dock-stations','dock-apps','dock-journal','dock-layers']
+      .forEach(function(id){
+        var button=el(id);
+        if(button&&typeof button.addEventListener==='function')
+          button.addEventListener('click',function(){markDockActive(id)});
+      });
+  }catch(_){}
   // Reuse existing onclick handlers for Mola, Route and Stations; this observer
   // only synchronizes the selected tab appearance. It never calls the native
   // bridge or starts an Android Activity, route or station fetch itself.
@@ -350,6 +382,8 @@ function start(){
       if(!button||typeof button.addEventListener!=='function')return;
       button.addEventListener('click',function(){
         try{
+          markDockActive(id==='co-media'?'dock-apps':
+            id==='co-station-tab'?'dock-stations':'dock-route');
           ['co-media','co-route-tab','co-station-tab'].forEach(function(otherId){
             var other=el(otherId);
             if(other&&other.classList){

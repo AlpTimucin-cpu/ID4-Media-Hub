@@ -97,6 +97,7 @@ jobs:
           # Premium cockpit skin is separate from the tested route/OBD bridge.
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-tesla-cockpit.js
           node integration/mola-native/tests/test_tesla_cockpit.js
+          node integration/mola-native/tests/test_eya_cockpit.cjs
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
           node integration/mola-native/tests/test_mola_media.js
           node --check integration/mola-native/tests/test_id4_native_bridge.js
@@ -277,6 +278,7 @@ jobs:
                   "traffic-provider.js","traffic-config.js",
                   "leaflet.js","leaflet.css","maplibre-gl.js","maplibre-gl.css",
                   "id4-tesla-cockpit.css","id4-tesla-cockpit.js",
+                  "eya-cockpit-3070.css",
                   "maplibre-gl-leaflet.js","MAPLIBRE_LICENSE.txt","MAPLIBRE_LEAFLET_LICENSE.txt",
               ]
               missing=["assets/id4/"+name for name in scripts
@@ -288,6 +290,7 @@ jobs:
               assert 'id="id4-tesla-side"' in html
               assert 'src="id4-tesla-cockpit.js"' in html
               assert 'href="id4-tesla-cockpit.css"' in html
+              assert 'href="eya-cockpit-3070.css"' in html
               assert "Id4BaseMap.init(map" in html
               assert 'class="dock-climate"' not in html
               assert 'KLİMA</' not in html
