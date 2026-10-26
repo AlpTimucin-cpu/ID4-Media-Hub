@@ -2574,6 +2574,8 @@ function wipeRoute(){
  currentRouteProgress=null;
  $('route-progress-fill').style.width='0%';
  $('co-trip-fill').style.width='0%';
+ $('co-trip-track').classList.remove('gps-confirmed');
+ if($('cockpit-tripbar').style.setProperty)$('cockpit-tripbar').style.setProperty('--trip-percent','0%');
  $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
  $('route-progress-text').textContent='GPS rota ilerlemesi yok';
  if(line&&map){map.removeLayer(line);line=null}
