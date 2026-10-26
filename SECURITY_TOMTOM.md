@@ -6,6 +6,14 @@
 
 **Yeni çözüm:** Paylaşılan anahtar build ortamına verilmez. `patch_mola.py` `traffic-config.js` içine daima boş anahtar yazar, eski `ID4_TOMTOM_API_KEY` ortam değişkeni doluysa build'i reddeder. GitHub Actions final APK'daki config dosyasını doğrular.
 
+## Anahtar şifreli saklama (26 Ekim 2026)
+
+Kullanıcının yüklediği `Id4ApiKeyStore.java` temel alınarak Android Keystore'da AES-256-GCM ile saklama eklendi. Android 23 altındaki cihazlarda **düz metin/Base64 geri dönüş yolu yoktur**; anahtar kaydı güvenli değilse başarısız olur.
+
+Mevcut `Id4NavigatorActivity` yerel Android anahtar penceresi korunmuştur. Eski `id4_traffic_keys/tomtom` tercihi uygulama ilk kez anahtara ihtiyaç duyduğunda **bir defalık** şifreli depoya aktarılır ve düz metin kopyası silinir. Keystore anahtarı sıfırlanır veya bozulursa kullanıcı anahtarı yeniden girmek zorundadır.
+
+Yüklenen `Id4KeyBridge.java` ve `id4-tomtom-key.js` bu sürüme **bilerek eklenmedi**. `getTomTomKey()` gibi bir `@JavascriptInterface` çağrısı bütün WebView frame'lerine erişilebilir olabileceği için gereksiz erişim alanı yaratır. TomTom katmanını kullanan mevcut JavaScript, anahtarı yalnızca yerel Android kodundan sayfa yüklenince alır; anahtarın trafik URL'sinde görünmesi ise ayrı ve devam eden bir risktir. Bu çözüm yalnızca **cihazda saklama güvenliğini** artırır; tarayıcı çalışma zamanında mutlak gizlilik sağlamaz.
+
 ## Uygulamada kişisel anahtar
 
 1. Kullanıcı ID.4 Yol Arkadaşım içinde **Harita servis anahtarı** ekranını açar.
