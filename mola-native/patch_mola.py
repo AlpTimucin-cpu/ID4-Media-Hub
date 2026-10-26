@@ -10,6 +10,7 @@ silently replaced with brittle string patches.
 """
 from pathlib import Path
 import hashlib
+import re
 import os
 import json
 import subprocess
@@ -40,7 +41,11 @@ SOURCE_SHA = {
     "fermata/src/main/java/me/aap/fermata/ui/fragment/PlaybackPrefsBuilder.java":
         "3b63cc3e5ae64a91c47b3dc70efd3e06e46e58ee",
     "fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java":
-        "04f59c6fedeb2dcd611437f8f09fa72bb65a8d01"
+        "04f59c6fedeb2dcd611437f8f09fa72bb65a8d01",
+    "fermata/src/main/res/values/strings.xml":
+        "39a445e8e019d3303e94de568fbe900360428dd8",
+    "fermata/src/main/res/values-tr/strings.xml":
+        "d67c1ebc9bbf0f64210f3e5892d10334b5dd21d2"
 }
 for relative, expected in SOURCE_SHA.items():
     actual=subprocess.check_output(
@@ -48,6 +53,24 @@ for relative, expected in SOURCE_SHA.items():
     if actual!=expected:
         raise SystemExit(f"UNRECOGNIZED upstream change: {relative}; refusing to modify.")
 
+
+# Rebrand the *visible* fork, not its source symbols, package classes or GPL
+# provenance. The About section retains original upstream acknowledgements.
+for lang in ("values","values-tr"):
+    resource=root/f"fermata/src/main/res/{lang}/strings.xml"
+    branded=resource.read_text(encoding="utf-8")
+    def replace_visible_string(m):
+        name=m.group(1)
+        original=m.group(0)
+        if name=="about_html":
+            return original.replace(">Mola</H1>",">ID.4 Yol Arkadaşım</H1>")
+        return original.replace("Mola","ID.4 Yol Arkadaşım")
+    branded,n=re.subn(r'<string\\b[^>]*\\bname="([^"]+)"[^>]*>.*?</string>',
+                       replace_visible_string,branded,flags=re.S)
+    assert n>50,"Unexpected source resource structure"
+    # Preserve the original fork and Fermata authorship/licensing in About.
+    assert "Orijinal proje:" in branded or "Original project:" in branded
+    resource.write_text(branded,encoding="utf-8")
 
 # Declare a stable destination ID without a separate small button.
 layout=root/"fermata/src/main/res/layout/dashboard_fragment.xml"
@@ -447,7 +470,7 @@ for line in changes.splitlines():
     if relative not in allowed and not relative.startswith(
         "fermata/src/main/assets/id4/"):
         raise SystemExit("Unexpected modification: "+relative)
-print("Mola native ID.4 overlay applied. Original media source untouched.")
+print("ID.4 Yol Arkadaşım overlay applied. Original media source untouched.")
 print("Original source commit:",subprocess.check_output(
     ["git","-C",str(root),"rev-parse","HEAD"],text=True).strip())
 print(changes)
