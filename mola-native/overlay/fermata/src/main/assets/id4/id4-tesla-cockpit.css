@@ -156,3 +156,58 @@
  .buttons{top:calc(var(--hud-top,55px) + 3px)!important;}
 }
 @media (prefers-reduced-motion:reduce){#id4-side-bar-fill{transition:none!important;}}
+
+/* ID.4 cockpit layout stabilization — 26 Oct 2026
+ * The original route, MapLibre canvas, GPS and media systems stay untouched.
+ * These overrides address the 1536x691 landscape screenshot where the
+ * top bar, floating weather summary and route badges obscured the map. */
+@media (min-width:640px) and (orientation:landscape) {
+  .top .brand {
+    flex:0 1 28%!important;max-width:28%!important;min-width:0!important;
+    overflow:hidden!important;
+  }
+  .top .brand .brand-copy{min-width:0!important;overflow:hidden!important}
+  .top .brand strong{white-space:nowrap!important;overflow:hidden!important;
+    text-overflow:ellipsis!important}
+  /* The bottom Home button already opens the original media dashboard.
+   * No need to squeeze a second full app title between brand and route. */
+  .top .cockpit-tabs #co-media{display:none!important}
+  .top .cockpit-tabs{flex:1 1 31%!important;min-width:0!important;
+    max-width:none!important;gap:6px!important}
+  .top .cockpit-tabs button{flex:0 1 auto!important;min-width:0!important;
+    white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .header-live-info{flex:0 1 41%!important;max-width:41%!important;
+    min-width:0!important;gap:clamp(5px,.65vw,12px)!important;
+    margin-left:auto!important;overflow:hidden!important}
+  .header-live-info #header-traffic-status{font-size:clamp(8px,.74vw,11px)!important;
+    max-width:170px!important;min-width:0!important;white-space:nowrap!important;
+    overflow:hidden!important;text-overflow:ellipsis!important}
+  #id4-traffic-toggle{flex-shrink:0!important}
+  .header-weather-button{flex:0 1 auto!important;min-width:0!important;
+    max-width:118px!important;text-overflow:ellipsis!important}
+  /* Seven points still appear in the details list; three chip markers remain
+   * on the map. The long floating sentence is duplicated in the header. */
+  #route-weather-map-status{display:none!important}
+  #traffic-event-map-status{max-width:30vw!important;right:22%!important;left:auto!important;
+    top:calc(var(--hud-top,72px) + 6px)!important;overflow:hidden!important}
+  .route-weather-map-pin{font-size:11px!important;max-width:90px!important}
+  #route-map-alts{max-width:170px!important;overflow:hidden!important;
+    white-space:nowrap!important;text-overflow:ellipsis!important}
+  .map-credit{font-size:10px!important;max-width:37vw!important;
+    overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important}
+}
+@media (min-width:640px) and (orientation:landscape) and (max-width:1180px){
+ .header-live-info #header-traffic-status{display:none!important}
+ .header-live-info .header-weather-button{display:none!important}
+ .top .brand{flex-basis:30%!important;max-width:30%!important}
+ .top .cockpit-tabs{flex-basis:40%!important}
+ .header-live-info{flex-basis:30%!important;max-width:30%!important}
+}
+@media (orientation:portrait), (max-width:639px){
+  #route-weather-map-status{position:fixed!important;
+    top:auto!important;bottom:calc(var(--hud-dock,65px) + 14px)!important;
+    left:12px!important;right:12px!important;max-width:none!important;
+    font-size:10px!important;line-height:1.25!important;
+    overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important}
+  .route-weather-map-pin{font-size:10px!important;max-width:74px!important}
+}
