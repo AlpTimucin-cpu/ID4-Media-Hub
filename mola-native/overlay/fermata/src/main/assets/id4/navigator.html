@@ -96,7 +96,7 @@ button{font:inherit;cursor:pointer;border:0;touch-action:manipulation}#map{posit
 .sheet.route-active.details-open #route-form{display:none}
 .sheet.route-active.details-open #route-compact{position:sticky;top:0;background:#fafcfd;z-index:4;padding-bottom:8px}
 
-/* ID.4 cockpit: genuine DOM / live data over the actual Leaflet map, not a screenshot. */
+/* Gerçek araç kokpiti: genuine DOM / live data over the actual Leaflet map, not a screenshot. */
 .vehicle-cockpit{display:none;pointer-events:none}
 .cockpit-panel,.cockpit-tabs button,.cockpit-slim button{pointer-events:auto}
 @media (orientation:landscape) and (min-width:640px){
@@ -944,7 +944,7 @@ body.provider-active .traffic-map-badge{display:flex}
  .cockpit-tripbar .tripbar-mid{gap:2px}
 }
 
-/* One-glance ID.4 design: empty route summaries never obscure the map. */
+/* Tek bakışta araç tasarımı: empty route summaries never obscure the map. */
 @media (orientation:landscape) and (min-width:640px){
  .vehicle-cockpit:not(.has-route) .cockpit-right,
  .vehicle-cockpit:not(.has-route) .cockpit-bottom,
@@ -1048,7 +1048,7 @@ body.provider-active .traffic-map-badge{display:flex}
 }
 @media (orientation:portrait), (max-width:639px){.drive-dock{display:none}}
 
-/* FINAL VISUAL SYSTEM — reference 1536x864 Tesla-style ID.4 screenshot.
+/* FINAL VISUAL SYSTEM — reference 1536x864 sürüş ekranı görseli.
    Real Leaflet tiles/OSRM routes and verified ECU only: zero mock telemetry.
    Last stylesheet pass purposefully overrides conflicting legacy cockpit CSS. */
 :root{--id4-glass:rgba(3,27,44,.82);--id4-border:rgba(100,193,221,.40);
@@ -1232,7 +1232,7 @@ body.provider-active .traffic-map-badge{display:flex}
  .safety-speed{top:98px;left:auto;right:10px}
  .safety-alert{top:140px;left:10px;right:10px;max-width:none}
 }
-/* ID.4 COCKPIT V3 — 1536x864 reference design contract.
+/* ELEKTRİKLİ YOL ARKADAŞIM KOKPİT — 1536x864 reference design contract.
    Real OSM/TomTom maps, verified OBD and genuine routing callbacks remain.
    Never use stock sample numbers as live vehicle telemetry. */
 :root{--v3-bg:#041625;--v3-surface:rgba(2,28,46,.88);--v3-frame:rgba(105,190,223,.38);--v3-ink:#effbff;--v3-muted:#a7c4d3;--v3-green:#37edbd}
