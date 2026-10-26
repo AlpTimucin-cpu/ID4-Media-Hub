@@ -231,10 +231,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             startActivity(media);
         }catch(android.content.ActivityNotFoundException e){
             send("molaStatus",record("media",
-                "ID.4 Yol Arkadaşım medya ekranı bu sürümde bulunamadı."));
+                "Elektrikli Yol Arkadaşım medya ekranı bu sürümde bulunamadı."));
         }catch(SecurityException e){
             send("molaStatus",record("media",
-                "ID.4 Yol Arkadaşım medya ekranına erişim izni verilmedi."));
+                "Elektrikli Yol Arkadaşım medya ekranına erişim izni verilmedi."));
         }
     }
 
