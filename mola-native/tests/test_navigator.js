@@ -112,6 +112,13 @@ assert(html.includes("if(traffic.configured().tomtom&&traffic.getActive()!=='tom
 // Combined map and vehicle HUD: measured values only, with explicit OBD pairing.
 assert(html.includes('id="vehicle-cockpit"'),'landscape cockpit not on real map');
 assert(html.includes('id="cockpit-tripbar"'),'image-matched bottom route HUD missing');
+assert(html.includes('id="co-trip-track"')&&
+       html.includes("classList.add('gps-confirmed')")&&
+       html.includes("classList.remove('gps-confirmed')")&&
+       html.includes('Math.min(92,Math.max(0,pct))'),
+ 'route car icon must only follow fresh on-route GPS and stay inside track');
+assert(!html.includes("content:'ID.4'"),
+ 'legacy vehicle brand must not appear in rendered CSS');
 assert(html.includes('class="vw-symbol"'),'reference header VW artwork missing');
 assert(html.includes('id="header-clock"'),'actual local clock missing');
 assert(html.includes('id="header-temp"'),'actual modeled temperature slot missing');
