@@ -34,7 +34,7 @@ assert.equal(root.ID4MolaMediaHub.isOpen(),false);
 assert.equal(root.ID4MolaMediaHub.items().length,15);
 assert(entries['id4-mola-external-original'],
  'external original 3.2 optional launcher must be visible');
-assert.equal(root.ID4MolaMediaHub.openOriginalMedia instanceof Function,true);
+assert.equal(typeof root.ID4MolaMediaHub.openOriginalMedia,'function');
 
 for(const id of ['netflix','disney','prime','equalizer','radio','tv','mirror',
  'web','windasist','shortcuts','settings']){
