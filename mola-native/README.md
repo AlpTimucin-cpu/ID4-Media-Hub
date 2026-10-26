@@ -1,188 +1,34 @@
-# Mola'nın İçinde ID.4 — Kaynak Kod Koruması ve Entegrasyon
+# Elektrikli Yol Arkadaşım — Medya ve Araç Entegrasyonu
 
-## Kullanıcının isteği
-Elindeki **Mola 3.2** uygulamasının TV/IPTV/YouTube/tarayıcı, Mola oynatma motoru
-ve Android Auto işlemleri **kesinlikle bozulmadan** uygulama içine
-**Türkiye haritası, EPDK istasyonlar, maliyet ve yol/enerji hesapları** eklemek.
+Bu bölüm, açık kaynak GPL-3.0 medya uygulaması üzerine **Elektrikli Yol Arkadaşım** navigasyon, enerji, OBD ve şarj ekranının eklenmesini açıklar. Kullanıcı tarafından daha önce kurulan başka bir medya uygulamasının imzalı APK dosyası değiştirilmez; bu proje ayrı bir önizleme paketi oluşturur.
 
-## Mevcut kurulum güvenliği — çok önemli
-- Kullanıcının verdiği Mola 3.2 APK SHA256:
-  `2cf92adf8df595c97e8ac9b5c9e0d73f64e2e3ce8601756426773f14e50f3f47`
-- İncelenen açık Mola kaynağı: https://github.com/moris545454/araba-,
-  commit `3f45ad3557a25822c2a3a9f152f32ef82f57e005`,
-  README / Gradle katalogunda sürüm **2.2.2**.
-- **2.2.2 kaynaklarının, 3.2 APK'sının gerçek kaynak koduyla eşleştiği
-  doğrulanmadı.** Geliştirme, gerçek 3.2 APK binary'sinin üzerinde değil,
-  GPL-3.0 kaynaklı Mola 2.2.2 **ayrı test çatalında** yapılır.
-- Test derlemesi, `APP_ID_SFX=.id4preview` ile farklı kimlik alır;
-  **3.2 APK üzerine kurulmaz, 3.2'nin kullanıcı verilerini silmez**.
-- Kullanıcının Mola 3.2 APK'sını yeniden imzalamıyoruz ve içinde özel
-  şifre/oturum belirteci arayıp kopyalamıyoruz.
-- Gerçek 3.2'nin kendi kaynak deposu ve yetkili imza anahtarı varsa
-  aynı ekleme doğrudan o sürümün kaynağına taşınabilir. Yeni anahtar
-  eski imzalı APK'yı üzerine yükseltemez.
-- GPL-3.0 kaynak kullanıldığı için türetilen kod GPL yükümlülüklerine uygun
-  kaynak/attribution ile dağıtılmalıdır.
+## Kaynak ve lisans sınırı
 
-## Mola'nın çalışma davranışını koruyan değişiklik
-- GitHub Actions: `.github/workflows/build-mola-native-id4.yml`
-- Kesin kaynak kontrolü ve değişiklikler:
-  `mola-native/patch_mola.py`:
-  1. Orijinal Mola'nın üç dosyasının blob hash'lerini kontrol eder.
-  2. Ana dashboard XML'ine **tek bir ID.4 butonu** koyar.
-  3. DashboardFragment onViewCreated'a **tek tıklama callback'i** ekler.
-  4. Manifestte **exported=false** ayrı Activity tanımlar.
-  5. `Id4EvActivity.java` ve lokal harita HTML'sini yeni dizine ekler.
-  6. TV/radyo/podcast/YouTube/ExoPlayer/VLC/MediaProjection, araç servisleri,
-     kaynak listeleri, ana uygulama kimliği, güncelleme akışı ve kullanıcı
-     tercihleri gibi diğer kodlarda **sıfır değişiklik** hedefler.
-  7. Beklenmeyen dosya farklılıklarında işlemi iptal eder.
-- ID.4 ekranı ilk açılana kadar EPDK verisi/Leaflet yüklenmez.
-- Auto projection ortamında henüz Android Auto navigasyon şablonu
-  uyumluluğu doğrulanmadığı için ID.4 butonu **telefon Mola ekranında**
-  görünür; araç ekranındaki Mola davranışı korunur.
+Kullanılan özgün medya projesinin sürüm ve commit kimliği derleme betiğinde **sabitlenmiştir**. Bu önizleme sürümünün o projenin daha yeni, farklı bir kapalı dağıtımıyla birebir aynı olduğu iddia edilmez.
 
-## ID.4 ekranının doğrulanabilir ilk fonksiyonları
+Özgün medya motoru, eklenti ve oynatıcılar mümkün olduğu ölçüde dokunulmadan korunur. Kod değişiklikleri pinlenmiş kaynak ağacı üzerinde doğrulanır; kaynak hash'i değişirse işlem güvenli biçimde durur. Türetilen paket, ilgili açık kaynak lisansının kaynak kod erişimi ve atıf yükümlülüklerine tabidir. Ayrıntılar: [LICENSE](../LICENSE) ve [NOTICE](../NOTICE.md).
 
-**Türkiye haritası**
-- OpenStreetMap tile'ları + Leaflet ile uygulamanın içinde harita.
-- Adres araması komoot Photon demo servisinden **manuel ve düğmeye basınca** (makul kullanım sınırları içinde).
-- Haritaya dokununca hedef; uzun basınca başlangıç; OSRM açık demo
-  servisiyle rota **önizlemesi**. Tam navigasyon motoru, otomatik reroute,
-  sesli kılavuz ve canlı trafik mevcut değildir.
-- Haritada 55'ten fazla işaret aynı anda çizilmez, harita açılışı
-  ana Mola oynatıcısını yüklemeye veya durdurmaya çalışmaz.
-- Photon, OSRM, OSM demo tile'ları yüksek hacimli üretim için
-  ücretsiz sınırsız/garantili servis **değildir**. Büyümede lisanslı
-  tile, geocoder ve routing backend gereklidir.
+## Harita ve rota
 
-**Resmî şarj**
-- EPDK resmî `HALKA_ACIK` istasyon snapshot'u:
-  `data/charging/epdk_public_stations.json.gz`. Son doğrulanan
-  kayıtta **13.118 halka açık**, **3.908 özel** kayıt. Tarihli ve
-  koordinatlı kayıt; sayı zamanla değişebilir.
-- Konum, operatör, marka, adres, CCS/Type2/CHAdeMO soket türü.
-- EPDK normalize snapshot sınırlı SSL bağlantısıyla indirilir, gzip/JSON
-  arka planda işlenir, boyut/güncellik kontrol edilir.
-- Görünen alanda işaret sayısı sınırlıdır; tüm ülke bir defada WebView'a yüklenmez.
-  İstasyon listesi 25'li sayfalamayı, AC/DC filtrelerini, isteğe bağlı GPS mesafe
-  sıralamasını, Türkçe adres aramasını ve EPDK kaynağını yenilemeyi destekler.
-- Canlı soket doluluğu ve kesin istasyona özgü fiyat **BU VERİDE YOK**.
-  İzinli operatör/OCPI servislerinden sağlanana dek uydurulmaz.
-- Trugo ve ZES resmî yayınlanan, güncellik etiketli **genel tarife**
-  kaydı: `data/charging/operator_prices.json` (kesin soket fiyatı değil).
+- Tek bir Leaflet haritası açılır; diğer harita bileşenleri aynı örneğe bağlanır.
+- OSRM yanıtındaki gerçek GeoJSON rota geometrisi incelenip çizilir. Ağ başarısızsa olmayan rota oluşturulmuş gibi gösterilmez.
+- Navigasyon süresi kullanılan rota motorunun verdiği tahmindir; gerçek zamanlı trafiğin etkisi ayrıca doğrulanmadan katılmış sayılmaz.
+- İstasyonlar veri kaynağı ve güncellik durumuyla gösterilir. Anlık boş soket veya kesin fiyat verisi uydurulmaz.
 
-**Tesla-benzeri EV planlama (ID.4'ün sistemine müdahale yok)**
-- Batarya kullanılabilir kapasitesini manuel girme.
-- Yol tüketimi ve mesafesinden tahmini varış SoC.
-- Varışta istenen rezerv ile ek şarj ihtiyacı.
-- Seçilen şarj gücüne göre teorik şarj zamanı.
-- Seçilen tarife üzerinden tahmini şarj maliyeti.
-- Bu sonuçlar gerçek DC şarj eğrisini, mevsimi, hava durumunu,
-  yokuşu veya batarya yönetim sistemini içermez.
-- **Tesladaki araç kontrolü ve donanım özellikleri** (kapı/klima,
-  batarya ön ısıtma, SoH/BMS verileri, uzaktan bağlantı, Sentry,
-  Dog Mode, yazılım/OTA açma, Autopilot) yalnızca APK ekleyerek
-  güvenli biçimde kazanılamaz; VW yetkili API/donanım erişimi gerekir.
+## OBD köprüsü ve veri güvenliği
 
-## Derleme hedefi ve test durumu
-GitHub Actions pinli GPL Mola kaynağını alır, güvenli ID.4 overlay'ini uygular,
-mevcut medya kaynaklarının değişmediğini kontrol eder, otomatik testleri ve
-`packageAutoDebugUniversalApk -PAPP_ID_SFX=.id4preview` paketlemeyi çalıştırır.
-HTML arayüzünün otomatik tarayıcı önizlemeleri `docs/screenshots/` içindedir.
-**Gerçek telefon veya Android Auto aracında test edildiği anlamına gelmez.**
+- Araçtan gelen ölçümler mevcut Android Java telemetri sınıfının olaylarıyla ön uca iletilir.
+- İkinci bir herkese açık JavaScript arayüzü veya sabit JSON telemetri üreticisi eklenmez.
+- Gerçek SoC, voltaj, sıcaklık ve diğer ölçümler yalnız doğrulanmış/veri yaşı uygun olduğunda gösterilir.
+- Rota ilerlemesi güncel GPS noktasının yol geometrisine izdüşümünden türetilir; GPS yoksa ilerleme ölçülmüş gibi sunulmaz.
+- Çalışma sırasında ekran yeniden çizilirken orijinal medya hizmetleri durdurulmaz.
 
-## Kaynak ve kullanım politikaları
-- https://operations.osmfoundation.org/policies/tiles/
-- https://github.com/komoot/photon (kamu demo API'si makul kullanım; garanti yok)
-- https://www.openstreetmap.org/copyright
-- https://project-osrm.org/
-- https://www.epdk.gov.tr/
-- https://github.com/moris545454/araba-/blob/main/LICENSE
+## Sürüş odağı
 
+Telefon ve araç ekranlarının izin verilen uygulama kategorileri farklıdır. Görsel medya ve üçüncü taraf web servislerinin sürücü ekranında hareket hâlindeyken kullanımını açmaya yönelik kısıtlar kaldırılmaz.
 
-### OpenFreeMap vector basemap
+## Yeni marka
 
-The phone cockpit uses OpenFreeMap (no API key) through bundled MapLibre GL JS 4.7.1
-and maplibre-gl-leaflet 0.1.3. Dark/light vector styles replace the former
-OSM Standard raster tiles and CSS inversion. OpenFreeMap covers Turkey as part
-of its global OpenMapTiles/OSM data; visible attribution remains required.
-Traffic still requires a separate live data provider; an open-source map is not
-a live congestion feed. A traffic key no longer changes the selected basemap.
-The packaged Natural Earth fallback is explicitly only country geography.
+Kullanıcıya görünen uygulama başlığı **Elektrikli Yol Arkadaşım**dır. Eski sınıf, kaynak dizini, köprü olayı ve paket kimliği tanımlayıcıları Android güncelleme uyumluluğu nedeniyle şimdilik teknik düzeyde korunur. Bu adları toplu biçimde değiştirmek mevcut derleme testlerini ve uygulama verilerini etkileyebilir.
 
-Upstream libraries: https://github.com/maplibre/maplibre-gl-js (BSD-3-Clause),
-https://github.com/maplibre/maplibre-gl-leaflet (ISC); notices are packaged with assets.
-Provider: https://openfreemap.org/quick_start/ .
-
-## Word canlı harita paketi — entegrasyon durumu (25.10.2026)
-
-Kaynak: `ID4_Yol_Arkadasim_Teknik_Dokuman_Kodlar_Dahil.docx`.
-Ana motor `overlay/fermata/src/main/assets/id4/id4-live-map.js`, adaptör
-`id4-navigator-adapter.js`; `navigator.html` mevcut Mola Leaflet haritasına
-`ID4_LIVE_ATTACH_ONLY` ile bağlanır. Tesla kokpit düzenini korumak için
-`id4-live-addon.css` kullanılır; Word içindeki bağımsız `standalone-index.html`
-mevcut kokpitin yerini almaz.
-
-- Mola `molaRoute` → gerçek geometri, rota orta noktası hava modeli ve enerji paneli.
-- Mola `molaPosition` ve `molaTelemetry` → yalnız taze, doğrulanan GPS/SoC.
-- Mola `molaStations` (`kind: route`) → gerçek EPDK rota kayıtlarının sayısı,
-  orijinal Mola şarj işaretçilerinden bağımsız, ikinci harita oluşturmadan aktarılır.
-- Rota koridoru listesi **Türkiye geneli tam DC listesi değildir**: küresel
-  en yakın DC bilgisi ancak ayrıca eksiksiz veri `setStations(...)` ile
-  verilirse sunulur. Fiyat, anlık doluluk veya yol sapması bu JSON'dan
-  doğrulanmış sayılmaz.
-- Open-Meteo model tahminidir, fiziksel canlı sensör değildir.
-- Yerel kazalar/yol kapanmaları Firebase bağlanmadıkça paylaşılmaz;
-  doğrulanmış trafik yoğunluğu olarak sunulmaz.
-
-### 3. aşama: katı EPDK veri sözleşmesi (fail-closed)
-
-`validateEPDKDataContract({stations,metadata})` kayıtları **atomik** olarak
-doğrular. Eksik / hatalı tek satırda bile **tüm yeni EPDK harita aktarımı
-reddedilir**; önceki işaret, sayı ve seçili DC kaydı temizlenir.
-Bu sözleşme orijinal Mola'nın bağımsız şarj ekranını değiştirmez.
-
-```javascript
-// Yalnızca gerçek, doğrulanmış sağlayıcı akışı bu alanları doldurabilir.
-const result = window.validateEPDKDataContract({
-  metadata: {
-    source: 'EPDK', coverage: 'country', complete: true,
-    geocodedCount: stations.length, verifiedAtUtc: epdkVerifiedAtUtc
-  },
-  stations: stations // Her kayıtta zorunlu alanlar:
-  // { id, coordinates: {lat, lng}, socketType:'AC'|'DC',
-  //   power_kw: number (>0),
-  //   currentStatus:'unknown'|'available'|'occupied'|'offline'|'out_of_service',
-  //   statusObservedAtUtc?: ISO-8601 }
-});
-if (result.ok) window.ID4LiveMap.setStations(stations, metadata);
-```
-
-Ülke geneli verinin kabulü: kaynağı `EPDK`, kapsamı `country`,
-`complete:true`, 5.000+ benzersiz kayıttan oluşan eşleşen toplam sayı,
-Türkiye koordinatları ve en fazla 72 saatlik doğrulama tarihi.
-`available` veya `occupied` durumları ancak en fazla 15 dakika önceye ait
-`statusObservedAtUtc` alanıyla kabul edilir. `unknown` açıkça bilinmeyen
-müsaitliktir. `offline` ve `out_of_service` DC seçimine girmez.
-
-**Önemli veri sınırı:** Projenin mevcut resmi EPDK JSON anlık
-`currentStatus` veya doğrulanmış birimli `power_kw` içermiyor.
-Bu alanları EPDK'nın tarihli envanterinden tahmin ederek doldurmak
-**yasaktır**. Resmî snapshot tek başına bu katı sözleşmeyi geçemez;
-doğrulanmış, yetkili ek bir veri sağlayıcısı gelene kadar ülke genelinde
-en yakın DC işaretlemesi kapalı kalır. Mola'nın var olan istasyon
-görünümü ve `molaStations` rota özeti kendi orijinal veri kaynağıyla
-ayrı çalışır; 'anlık uygunluk' kanıtı değildir.
-
-Hız/SoC geçersiz veya 30 saniyeden eskiyse gösterge `—`; en yakın DC
-için ayrıca yeni GPS ve %20 altı SoC gerekir. Open-Meteo modeli
-90 dakikadan eskiyse kullanılmaz; sıcaklık <0°C **veya** rüzgâr
->30 km/sa halinde enerji tüketimi **tek kez** ×1,15 olur.
-Ölçülmüş kapasite/tüketim profili yoksa varış SoC hesaplanmaz.
-
-Doğrulama: `node mola-native/tests/test_live_map.js` doğrudan paketlenecek JS'i
-kullanır; aynı kontrol `.github/workflows/build-mola-native-id4.yml` içinde
-APK derlemesinden önce çalışır. Gerçek ID.4, POCO F5, OBD ve Android Auto
-testleri ayrı kabul kapısıdır; bu kaynak değişikliği bir APK üretildiğini
-veya araçta doğrulandığını tek başına kanıtlamaz.
+Kaynak dokümanın gerçek koda uygulanma detayları: [Teknik entegrasyon](../docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md). Bu açıklama fiziksel araç testi yerine geçmez.
