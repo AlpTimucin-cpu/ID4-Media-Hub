@@ -68,7 +68,7 @@ if(typeof module==='object'&&module.exports)module.exports=api;
 if(!root.document)return;
 var doc=root.document,route=null,candidate=null,corridorCandidates=[],scenario=null,measured=null,
     socAt=0,weather=null,weatherAt=0,packetTime=0,stationUpdated='',isOpen=false;
-var TTL=30000,WEATHER_TTL=3*3600000;
+var TTL=10000,WEATHER_TTL=3*3600000;
 function el(id){return doc.getElementById(id)}
 function set(id,v){var node=el(id);if(node)node.textContent=String(v)}
 function fmt(v,digits){return Number(v).toLocaleString('tr-TR',{minimumFractionDigits:digits||0,maximumFractionDigits:digits||0})}
@@ -251,7 +251,7 @@ function render() {
        startSoc:start,kwh100:c,capacityKwh:capacity});
  }catch(_){}
  var s=p.candidate;
- set('eya-trip-cost',s&&s.chargeMin!==null&&price!==null?
+ if(!(charged&&charged.stops&&charged.stops.length))set('eya-trip-cost',s&&s.chargeMin!==null&&price!==null?
    fmt(s.chargeKwh*price,0)+' ₺ · manuel fiyat':'— · gerçek tarife yok');
  var timeline=el('eya-trip-timeline');timeline.textContent='';
  point('Kalkış',clock(0)+' · %'+(source||'SoC bilinmiyor'),pct(p.startSoc),'origin');
@@ -313,7 +313,7 @@ safe('molaStations',function(p) {
 safe('molaTelemetry',function(d) {
  var now=Date.now();
  measured=null;socAt=0;
- if(d&&d.fresh===true&&(!Number.isFinite(d.measuredAtMs)||
+ if(d&&d.fresh===true&&(Number.isFinite(d.measuredAtMs)&&
       now-d.measuredAtMs>=0&&now-d.measuredAtMs<=TTL)) {
    measured=value(d.soc,0,100);
    if(measured!==null)socAt=now;

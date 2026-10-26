@@ -39,7 +39,7 @@ final class Id4LiveTelemetry {
             d.chargeModeAt=chargeModeAt;d.coolingAt=coolingAt;return d;
         }
         private static boolean recent(long at,long now){
-            return at>0 && now>=at && now-at<25000;
+            return at>0 && now>=at && now-at<10000;
         }
         /** Timestamp each sensor separately: a fresh voltage must not make stale SoC look live. */
         Data displayAt(long now){

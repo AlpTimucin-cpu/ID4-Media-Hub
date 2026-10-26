@@ -200,10 +200,54 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         });
         web.loadUrl(PAGE);
     }
+    /**
+     * Keep MolaNative as the only JavascriptInterface. Add event-stream
+     * notifications without replacing the tested legacy callback contract.
+     */
     private void send(String function, JSONObject data){
-        ui.post(()->{if(!destroyed && web!=null)
+        ui.post(()->{
+            if(destroyed||web==null||data==null)return;
             web.evaluateJavascript("window."+function+"("+data.toString()+")",null);
+            String eventName=null;
+            switch(function){
+                case "molaTelemetry":eventName="id4:obd";break;
+                case "molaRoute":eventName="id4:route";break;
+                case "molaPosition":eventName="id4:gps";break;
+                case "molaStations":eventName="id4:stations";break;
+                case "molaJourneyWeather":eventName="id4:weather";break;
+                case "molaManeuver":eventName="id4:maneuver";break;
+                default:break;
+            }
+            if(eventName==null)return;
+            try{
+                JSONObject payload=new JSONObject(data.toString());
+                payload.put("ts",System.currentTimeMillis());
+                if("id4:obd".equals(eventName)){
+                    boolean fresh=data.optBoolean("fresh",false);
+                    payload.put("soc",fresh?metricNumber(data.optString("soc"),0,100):JSONObject.NULL);
+                    payload.put("voltage",fresh?metricNumber(data.optString("voltage"),0,1000):JSONObject.NULL);
+                    payload.put("batTemp",fresh?metricNumber(data.optString("temperature"),-50,110):JSONObject.NULL);
+                    payload.put("power",JSONObject.NULL); // not calibrated
+                    payload.put("avgCons",JSONObject.NULL); // not calibrated
+                    payload.put("mode",fresh&&data.optLong("modeAt",0)>0?
+                        data.optString("chargeMode"):JSONObject.NULL);
+                }
+                web.evaluateJavascript("window.dispatchEvent(new CustomEvent("+
+                    JSONObject.quote(eventName)+",{detail:"+payload.toString()+"}))",null);
+            }catch(Exception ignored){}
         });
+    }
+    private static Object metricNumber(String raw,double min,double max){
+        if(raw==null)return JSONObject.NULL;
+        String s=raw.trim().replace(",",".");
+        java.util.regex.Matcher m=java.util.regex.Pattern
+            .compile("^(-?[0-9]+(?:\\.[0-9]+)?)\\s*(?:%|V|°C)?$")
+            .matcher(s);
+        if(!m.matches())return JSONObject.NULL;
+        try{
+            double n=Double.parseDouble(m.group(1));
+            return Double.isFinite(n)&&n>=min&&n<=max?n:JSONObject.NULL;
+        }catch(Exception ignored){return JSONObject.NULL;}
     }
     /**
      * Keep this navigation Activity in the back stack so that the existing
@@ -593,7 +637,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         JSONObject p=new JSONObject();
         Id4LiveTelemetry.Data shown=d.displayAt(System.currentTimeMillis());
         boolean fresh=d.connected && d.updatedAt>0 &&
-            System.currentTimeMillis()-d.updatedAt<25000;
+            System.currentTimeMillis()-d.updatedAt<10000;
         try{
             p.put("fresh",fresh);
             p.put("soc",fresh?shown.soc:"—");
@@ -601,6 +645,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             p.put("temperature",fresh?shown.batteryTemp:"—");
             p.put("chargeMode",fresh?shown.chargeMode:"—");
             p.put("status",d.status);
+            p.put("measuredAtMs",fresh && d.socAt>0?d.socAt:0L);
+            p.put("socAt",fresh && d.socAt>0?d.socAt:0L);
+            p.put("voltageAt",fresh && d.voltageAt>0?d.voltageAt:0L);
+            p.put("batTempAt",fresh && d.batteryTempAt>0?d.batteryTempAt:0L);
+            p.put("modeAt",fresh && d.chargeModeAt>0?d.chargeModeAt:0L);
+            p.put("ts",System.currentTimeMillis());
         }catch(Exception ignored){}
         return p;
     }
@@ -840,6 +890,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             double roadKm=route.getDouble("distance")/1000.0;
             JSONObject packet=stationCatalog.alongRoute(points,roadKm,soc);
             packet.put("socAssumed",!snapshot.hasSoc());
+            packet.put("routeGeneration",routeGeneration);
             packet.put("scenarioStartSoc",soc);
             if(route.getJSONArray("legs").length()>1){
                 packet.remove("suggested"); // already travelling via a stop; avoid second suggestion

@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 /** Cross-screen facts for ID.4 energy. No sample/demo telemetry is persisted. */
 public final class Id4EnergyData {
     private static final String PREFS="id4_energy_facts_v1";
-    public static final long SOC_TTL_MS=120_000L; // last OBD value, not a live socket
+    public static final long SOC_TTL_MS=10_000L; // last OBD value, not a live socket
     public static final long ROUTE_TTL_MS=12L*60*60*1000;
     private Id4EnergyData(){}
 
