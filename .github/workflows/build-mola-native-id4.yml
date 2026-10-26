@@ -98,6 +98,8 @@ jobs:
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-tesla-cockpit.js
           node integration/mola-native/tests/test_tesla_cockpit.js
           node integration/mola-native/tests/test_eya_cockpit.cjs
+          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/eya-trip-planner.js
+          node integration/mola-native/tests/test_eya_trip_planner.cjs
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
           node integration/mola-native/tests/test_mola_media.js
           node --check integration/mola-native/tests/test_id4_native_bridge.js
