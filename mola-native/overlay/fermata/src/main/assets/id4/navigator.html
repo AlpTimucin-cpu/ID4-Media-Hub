@@ -1583,6 +1583,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 <link rel="stylesheet" href="id4-mola-media.css">
 <link rel="stylesheet" href="eya-cockpit-3070.css">
 <link rel="stylesheet" href="eya-trip-planner.css">
+<link rel="stylesheet" href="eya-tesla-abrp.css">
 </head><body>
 <div id="map"></div>
 <div id="route-weather-map-status" role="status" hidden>☁ Yol havası · rota bekleniyor</div>
@@ -3722,5 +3723,8 @@ window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,1
 <!-- Passive observer; loaded last so it never replaces native bridge contracts. -->
 <script src="id4-tesla-cockpit.js"></script>
 <script src="id4-mola-media.js"></script>
+<script src="eya-charging-model.js"></script>
+<script src="eya-corridor-stations.js"></script>
+<script src="eya-energy-route.js"></script>
 <script src="eya-trip-planner.js"></script>
 </body></html>

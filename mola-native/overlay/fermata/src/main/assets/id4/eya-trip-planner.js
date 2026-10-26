@@ -66,7 +66,7 @@ function forecast(o) {
 var api={consumption:consumption,chargingMinutes:chargingMinutes,forecast:forecast};
 if(typeof module==='object'&&module.exports)module.exports=api;
 if(!root.document)return;
-var doc=root.document,route=null,candidate=null,scenario=null,measured=null,
+var doc=root.document,route=null,candidate=null,corridorCandidates=[],scenario=null,measured=null,
     socAt=0,weather=null,weatherAt=0,packetTime=0,stationUpdated='',isOpen=false;
 var TTL=30000,WEATHER_TTL=3*3600000;
 function el(id){return doc.getElementById(id)}
@@ -227,12 +227,41 @@ function render() {
  set('eya-trip-arrival-soc',p.hasSelectedStop?'— · alınacak enerji bilinmiyor':
    (p.arrivalSoc===null?'— · OBD veya senaryo gerekli':
       pct(p.arrivalSoc)+(p.arrivalSoc<reserve?' · şarj gerekebilir':'')));
+ var charged=root.EyaChargingModel&&root.EyaChargingModel.plan({
+   distanceKm:route.distanceKm,capacityKwh:capacity,speedKmh:speed,tempC:temp,
+   startSoc:start,minArrivalPct:reserve,maxChargePct:maxCharge,
+   priceTlKwh:price,stations:corridorCandidates});
+ if(charged&&charged.valid&&!route.stopIncluded){
+   if(charged.complete&&charged.arrivalSoc!==null){
+     set('eya-trip-arrival-soc',pct(charged.arrivalSoc)+' · model');
+     var mins=charged.stops.reduce(function(a,s){return a+s.chargeMin},0);
+     set('eya-trip-arrival-time',clock(p.durationMin+mins)+' · model');
+   }else if(charged.status){
+     set('eya-trip-arrival-soc','— · '+charged.status);
+   }
+   if(charged.stops.length){
+     var money=charged.stops.reduce(function(a,s){return a+(s.costTl||0)},0);
+     set('eya-trip-cost',price===null?'— · gerçek tarife yok':
+       fmt(money,0)+' ₺ · manuel fiyat');
+   }
+ }
+ try{
+   if(root.EyaEnergyRoute && route.coordinates)
+     root.EyaEnergyRoute.draw(route.coordinates,{distanceKm:route.distanceKm,
+       startSoc:start,kwh100:c,capacityKwh:capacity});
+ }catch(_){}
  var s=p.candidate;
  set('eya-trip-cost',s&&s.chargeMin!==null&&price!==null?
    fmt(s.chargeKwh*price,0)+' ₺ · manuel fiyat':'— · gerçek tarife yok');
  var timeline=el('eya-trip-timeline');timeline.textContent='';
  point('Kalkış',clock(0)+' · %'+(source||'SoC bilinmiyor'),pct(p.startSoc),'origin');
- if(s&&candidate){
+ if(charged&&charged.stops&&charged.stops.length&&!route.stopIncluded){
+   charged.stops.forEach(function(stop){
+    point('⚡ '+stop.title,fmt(stop.routeProgressKm,0)+'. km · '+
+     fmt(stop.chargeMin,0)+' dk · '+pct(stop.arrivalSoc)+' → '+pct(stop.departureSoc)+
+     ' · EPDK '+(stop.snapshotAt||'tarih yok'),pct(stop.arrivalSoc),'charge');
+   });
+ } else if(s&&candidate){
    point('EPDK CCS adayı · '+String(candidate.title||'Şarj istasyonu').slice(0,70),
      fmt(s.km,0)+'. km · '+(s.chargeMin===null?
        'Erişim/enerji uygunluğu doğrulanamadı':
@@ -241,7 +270,7 @@ function render() {
  }
  point('Varış',fmt(p.distanceKm,1)+' km · '+(route.stopIncluded?
    'seçili şarj molası süresi belirsiz':('sürüş ~'+clock(p.durationMin))),
-   p.hasSelectedStop?'—':pct(p.arrivalSoc),'destination');
+   p.hasSelectedStop?'—':(charged&&charged.complete?pct(charged.arrivalSoc):pct(p.arrivalSoc)),'destination');
  var station=el('eya-trip-station');
  if(route.stopIncluded){
    station.textContent='Rota üzerinde seçili şarj molası var. Kaç kWh alınacağı doğrulanmadığından varış SoC ve toplam süre hesaplanmadı.';
@@ -263,16 +292,17 @@ safe('molaRoute',function(p) {
     value(p.distanceKm,.05,5000)===null||value(p.durationMin,.01,10000)===null) {
    route=null;candidate=null;render();return;
  }
- route={distanceKm:Number(p.distanceKm),durationMin:Number(p.durationMin),
+ route={coordinates:p.coordinates,distanceKm:Number(p.distanceKm),durationMin:Number(p.durationMin),
     stopIncluded:p.stopIncluded===true,routeGeneration:p.routeGeneration,
     trafficAvailable:p.trafficAvailable===true};
- candidate=null;stationUpdated='';packetTime=0;render();
+ candidate=null;corridorCandidates=[];stationUpdated='';packetTime=0;render();
 });
 safe('molaStations',function(p) {
  if(!route||!p||p.kind!=='route'||!Array.isArray(p.items))return;
  if(Number.isInteger(route.routeGeneration)&&Number.isInteger(p.routeGeneration)&&
     route.routeGeneration!==p.routeGeneration)return;
  stationUpdated=String(p.updatedAt||'tarih verilmedi').slice(0,64);
+ corridorCandidates=root.EyaCorridorStations?root.EyaCorridorStations.select(p,route.distanceKm):[];
  packetTime=Date.now();
  var s=p.suggested,km=s&&value(s.routeProgressKm,0,route.distanceKm);
  candidate=p.chargeModel==='charge-likely'&&p.stopIncluded!==true&&
@@ -307,7 +337,8 @@ safe('molaWeather',function(w){
 });
 safe('molaStatus',function(s) {
  if(s&&/durduruldu|iptal edildi/i.test(String(s.detail||''))){
-   route=null;candidate=null;stationUpdated='';render();
+   route=null;candidate=null;corridorCandidates=[];stationUpdated='';
+   if(root.EyaEnergyRoute)root.EyaEnergyRoute.clear();render();
  }
 });
 render();
