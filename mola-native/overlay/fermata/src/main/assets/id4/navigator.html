@@ -2604,6 +2604,7 @@ function wipeRoute(){
  routeHasChargeStop=false;
  lastManeuverAt=0;
  currentRouteProgress=null;
+ setTimelineDistances(NaN,NaN);
  $('route-progress-fill').style.width='0%';
  $('co-trip-fill').style.width='0%';
  $('co-trip-track').classList.remove('gps-confirmed');
