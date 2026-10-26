@@ -428,3 +428,71 @@
  .ev-timeline-distances strong{font-size:12px}
  .ev-timeline-distances small{font-size:9px}
 }
+
+/* Elektrikli Yol Arkadaşım — reference image fidelity pass (26 Oct 2026).
+ * Pure presentation only: no invented OBD packets, altered GPS progress,
+ * disabled map hit targets, or newly created Leaflet layers. */
+@media (min-width:1180px) and (orientation:landscape) {
+ :root {--hud-top:clamp(64px,8.8vh,84px);--hud-dock:clamp(68px,10.1vh,96px);}
+ .top{background:linear-gradient(180deg,#020e1bf9,#051a2aec)!important;
+  box-shadow:0 3px 22px #0009!important;border-bottom:1px solid #16476b!important}
+ .top .brand{flex-basis:29%!important;max-width:29%!important}
+ .top .brand .brand-copy strong{font-size:clamp(16px,1.65vw,25px)!important;
+  font-weight:800!important;letter-spacing:-.022em!important}
+ .ev-premium-search{background:linear-gradient(125deg,#10263bf8,#102039f7)!important;
+  border-color:#305578!important;color:#b0cadf!important;
+  box-shadow:inset 0 1px #ffffff16!important}
+ .ev-header-quick button{background:#091e36f4!important;
+  border-color:#355c7c!important}
+ #map{background:#061226!important}
+ #vehicle-cockpit .id4-tesla-side{left:1.2%!important;width:18.5%!important;
+  top:clamp(8px,1.1vh,14px)!important;bottom:clamp(8px,1.1vh,14px)!important;
+  gap:clamp(4px,.65vh,9px)!important}
+ #vehicle-cockpit .id4-tesla-side .id4-tesla-card,
+ #vehicle-cockpit .id4-tesla-side .id4-mini-metric{
+  border:1px solid #285476c9!important;
+  background:linear-gradient(125deg,#071b32f5,#061427ee)!important;
+  box-shadow:0 4px 15px #0006,inset 0 1px #ffffff08!important}
+ .ev-speed-gauge .id4-drive-speed{color:#ffffff!important;
+  text-shadow:0 2px 18px #146efa36!important}
+ .id4-progress{background:#16354f!important;border:1px solid #165778!important}
+ #id4-side-bar-fill{background:linear-gradient(90deg,#06aa9b,#16f2cb)!important;
+  box-shadow:0 0 15px #10cfb47b!important}
+ .id4-mini-metric strong{color:#f4faff!important}
+ #vehicle-cockpit .cockpit-right{right:1.2%!important;width:18.7%!important;
+  max-height:70%!important}
+ #vehicle-cockpit .cockpit-right .cockpit-panel{
+  background:linear-gradient(155deg,#061a30f5,#071326f3)!important;
+  border:1px solid #2b5473!important;box-shadow:0 6px 24px #0009!important}
+ #vehicle-cockpit .cockpit-tripbar{left:21%!important;right:1.2%!important;
+  bottom:clamp(9px,1.35vh,16px)!important;
+  background:linear-gradient(125deg,#061b32f8,#041325f9)!important;
+  border:1px solid #215070!important;
+  box-shadow:0 10px 26px #000a!important}
+ #vehicle-cockpit .tripbar-track{background:#274e6a!important}
+ .drive-dock{background:linear-gradient(180deg,#06182beF,#020c19fb)!important;
+  border-top:1px solid #1f496e!important}
+ .drive-dock button{color:#dce9f6!important}
+ .drive-dock #dock-route{background:#061f3bd6!important;
+  outline:1px solid #136cd1!important;border-radius:24px!important}
+}
+/* Hide the old unneeded status rows for a single-glance landscape cockpit;
+   measurements remain populated and available in the existing detail screens. */
+@media (min-width:1180px) and (orientation:landscape) and (max-height:750px) {
+ #vehicle-cockpit .id4-tesla-side{grid-template-rows:
+  minmax(0,1.1fr) minmax(0,1fr) minmax(0,.75fr)
+  minmax(0,2.1fr) minmax(0,.27fr)!important}
+ #vehicle-cockpit .cockpit-right .co-nav-row.status-row{
+  display:none!important}
+ #vehicle-cockpit .cockpit-tripbar{min-height:clamp(96px,16.5vh,135px)!important;
+  max-height:21vh!important;padding:clamp(7px,1vh,12px)!important}
+}
+/* Compact units never lose tappable map area to fixed-width sidecards. */
+@media (min-width:640px) and (max-width:1179px) and (orientation:landscape){
+ #vehicle-cockpit .id4-tesla-side{width:34.5%!important}
+ #vehicle-cockpit .cockpit-tripbar{left:37%!important;right:2%!important}
+ #vehicle-cockpit .cockpit-right{width:20.5%!important}
+}
+@media (prefers-reduced-motion:reduce){
+ #vehicle-cockpit #co-trip-fill,#id4-side-bar-fill{transition:none!important}
+}
