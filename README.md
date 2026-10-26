@@ -1,29 +1,36 @@
-# ID.4 Yol Arkadaşım — Volkswagen ID.4 Pure
+# Elektrikli Yol Arkadaşım
 
-**Harita · Rota · Türkiye AC/DC şarj istasyonları · ELM327/OBD · Mola tabanlı Android önizlemesi**
+**Elektrikli araçlar için rota, şarj planlaması, canlı trafik katmanı, güvenilir telemetri ve medya.**
 
-[![Yeni ID.4 sürüm derlemesi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)
-[![Otomatik ekran görselleri](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml)
+Türkiye'deki elektrikli yolculuklar için geliştirilen bağımsız Android uygulaması. Koyu lacivert, turkuaz ve elektrik yeşili arayüzle tek ekranda güzergâh, batarya ölçümleri, şarj durakları ve yol üzeri hava durumunu bir araya getirir.
 
-> **Aktif proje ve en güncel kod:** [**feature/mola-native-id4 → Tüm özellikler, APK kurulum adımları, kaynaklar ve test durumları**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4). Varsayılan `main` dalındaki eski Media Hub kodu ile Mola-ID4 önizlemesi farklı geliştirme hatlarıdır.
+> **Geliştirme sürümüdür.** Aşağıdaki ekran görüntüleri yazılımın HTML/CSS tarayıcı önizlemeleridir; fiziksel araç testi veya doğrulanmış canlı trafik anlamına gelmez. Kullanıcıya gösterilen sayılar gerçek kaynaklardan gelmedikçe ölçüm gibi gösterilmez.
 
-![Gerçek kokpit HTML kodundan alınan çevrimdışı tarayıcı önizlemesi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-browser-preview.png)
+## Uygulama önizlemesi
 
-| Telefon rota önizlemesi | Kompakt yatay kokpit |
+![Elektrikli Yol Arkadaşım — Kokpit](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-browser-preview.png)
+
+| Telefon rota görünümü | Kompakt yatay kokpit |
 |---|---|
-| ![Telefon HTML görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/route-phone-browser-preview.png) | ![Kompakt kokpit HTML görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-compact-browser-preview.png) |
+| ![Telefon görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/route-phone-browser-preview.png) | ![Yatay görünüm](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-compact-browser-preview.png) |
 
-*Görseller uygulamanın gerçek HTML/CSS kodunun çevrimdışı tarayıcı renderlarıdır; Android cihaz/ID.4 araç ekranı fotoğrafı değildir. Sahte SoC, hız, rota, istasyon doluluğu gösterilmez.*
+## Özellikler
 
-## Hızlı başlangıç
+| Bölüm | İşlev |
+|---|---|
+| **Rota** | Açık yol geometrisine dayalı gerçek güzergâh, alternatif yollar ve tahmini süre |
+| **Şarj** | Türkiye istasyonları, AC/DC türü, güzergâh üzeri durak adayları ve model maliyeti |
+| **Canlı trafik** | Kullanıcının kendi servis anahtarıyla çalışan trafik çizgileri; başarısızsa açık hata durumu |
+| **Araç verileri** | Doğrulanmış, taze OBD verileri; ölçüm yoksa boş değer |
+| **Yolculuk** | Gerçek GPS ile rota ilerlemesi ve sürüş odaklı arayüz |
+| **Medya** | Açık kaynak medya çekirdeği ve resmî servis yönlendirmeleri; hareket/güvenlik kısıtları korunur |
 
-**[Son başarılı kurulabilir ID.4 APK derlemesini aç](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml?query=branch%3Afeature%2Fmola-native-id4)** → çalışmanın **Artifacts** bölümünden ZIP'i indir → içindeki `Mola-ID4-Preview.apk` dosyasını çıkar.
+## APK ve teknik belgeler
 
-**Önemli:** Bu sürüm orijinal Mola 3.2'nin üzerine kurulmaz; açık kaynak Mola 2.2.2 tabanından ayrı paket kimliğiyle derlenir. Android Auto'da telefon WebView'ı ve canlı araç ölçümleri fiziksel araçta doğrulanmadı. Canlı EPDK soket durumları, istasyona özel fiyat ve kampanyalar ancak izinli/güvenilir veri kaynağıyla görüntülenebilir. Detaylar için [aktif dalın README'sini](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/blob/feature/mola-native-id4/README.md) incele.
+**[En yeni APK derleme ve test sonucunu aç](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)** → başarılı çalışmanın **Artifacts** bölümünden `Elektrikli-Yol-Arkadasim-APK` ZIP dosyasını indirip içindeki APK'yı kur.
 
-## Repo dalları
+En güncel Android entegrasyon kodu ve testler [**aktif geliştirme dalında**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4) tutulur. [Harita, OBD ve gerçek GPS entegrasyon rehberi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/blob/feature/mola-native-id4/docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md) kaynak uygulamaya özelleştirilmiştir.
 
-- **[ID.4 Yol Arkadaşım — aktif dal](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4)**: Tesla-benzeri sade kokpit, OSRM, Open-Meteo, EPDK istasyonları, salt-okunur MEB/OBD deneyleri, Mola overlay kaynakları.
-- **`main` / eski Media Hub**: İlk Android medya uygulaması prototipi; orijinal açıklama [docs/legacy-media-hub.md](docs/legacy-media-hub.md) içinde saklandı.
+**Telif ve lisanslar:** Uygulamanın açık kaynak medya tabanı ve üçüncü taraf bileşenleri için [lisans](LICENSE), [attribution](NOTICE.md) ve [güvenlik notları](SECURITY_TOMTOM.md) geçerlidir. Telif ve kaynak proje bilgileri ürünün görünen marka adından ayrı olarak korunur.
 
-Bu bağımsız deney projesi Volkswagen, Mola veya Google tarafından onaylanmış değildir.
+**Dağıtım notu:** Kaynak kodun kamusal görünürlüğü, fiziksel araç kullanımı veya üçüncü taraf servislerin ticari şartları açısından ayrıca değerlendirilmelidir.
