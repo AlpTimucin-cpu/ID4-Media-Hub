@@ -5,6 +5,7 @@
 (function(global){
 'use strict';
 var active='osm',requested=0,leafletMap=null,tomtomTiles=[],
+    liveAt=0,trafficPane=null,refreshErrors=0,
     tomtomTimer=null,tomtomPending=null,lastCenter=[38.9,35.1],lastZoom=7;
 var config=global.ID4_TRAFFIC_CONFIG||{};
 function validKey(key){return typeof key==='string'&&/^[A-Za-z0-9_-]{15,200}$/.test(key)}
@@ -20,6 +21,23 @@ function reset(){
  });
  tomtomTiles=[];
  if(tomtomPending){var abort=tomtomPending;tomtomPending=null;abort(false)}
+ liveAt=0;refreshErrors=0;
+}
+function ensureTrafficPane(){
+ // Leaflet's default tilePane sits BEHIND the opaque MapLibre vector canvas.
+ // Raster traffic tiles therefore loaded successfully but remained invisible.
+ // A dedicated transparent pane must be ABOVE MapLibre's overlayPane (400),
+ // BELOW markerPane (600) and NOT intercept route / station taps.
+ if(!leafletMap||!leafletMap.createPane)return null;
+ try{
+  trafficPane=leafletMap.getPane&&leafletMap.getPane('id4-live-traffic');
+  if(!trafficPane)trafficPane=leafletMap.createPane('id4-live-traffic');
+  if(trafficPane&&trafficPane.style){
+   trafficPane.style.zIndex='425';
+   trafficPane.style.pointerEvents='none';
+  }
+  return trafficPane;
+ }catch(_){return null}
 }
 function openTomTom(seq){
  if(!leafletMap||!global.L||!global.L.tileLayer){
@@ -29,10 +47,19 @@ function openTomTom(seq){
  var key=keyFor('tomtom');
  var root='https://api.tomtom.com/maps/orbis/traffic/';
  var q='?apiVersion=2&style=dark&tileSize=256&key='+encodeURIComponent(key);
- var flow=global.L.tileLayer(root+'flow/raster/tile/{z}/{x}/{y}'+q,
-  {tileSize:256,opacity:.8,zIndex:340,maxZoom:19,noWrap:true,attribution:'© TomTom'});
+ var pane=ensureTrafficPane();
+ // If a vector basemap is attached, the pane is essential; do not silently
+ // report "live" for raster tiles that are hidden under a MapLibre canvas.
+ if(leafletMap.createPane&&!pane){
+  status('tomtom','Trafik harita katmanı oluşturulamadı.',false);
+  return Promise.resolve(false);
+ }
+ var options={tileSize:256,opacity:.86,maxZoom:19,noWrap:true,
+  attribution:'© TomTom',updateWhenIdle:false,keepBuffer:1};
+ if(pane)options.pane='id4-live-traffic';
+ var flow=global.L.tileLayer(root+'flow/raster/tile/{z}/{x}/{y}'+q,options);
  var incidents=global.L.tileLayer(root+'incidents/raster/tile/{z}/{x}/{y}'+q,
-  {tileSize:256,opacity:.95,zIndex:341,maxZoom:19,noWrap:true,attribution:'© TomTom'});
+  Object.assign({},options,{opacity:.95}));
  reset();active='tomtom';tomtomTiles=[flow,incidents];
  status('tomtom','TomTom trafik döşemeleri kontrol ediliyor…',false);
  return new Promise(function(resolve){
@@ -53,8 +80,8 @@ function openTomTom(seq){
   },12000);
   function loadedFlow(){
    if(seq!==requested||active!=='tomtom'||finished)return;
-   confirmed=true;clearTimeout(timeout);
-   status('tomtom','TomTom Orbis trafik yoğunluğu ve yol olayları katmanı yüklendi. OSRM ETA trafiksizdir.',true);
+   confirmed=true;liveAt=Date.now();refreshErrors=0;clearTimeout(timeout);
+   status('tomtom','TomTom trafik döşemesi yüklendi · '+new Date(liveAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+' · rota ETA ayrı doğrulanır.',true);
    finish(true);
   }
   function failedFlow(){
@@ -65,7 +92,20 @@ function openTomTom(seq){
     finish(false);
    }
   }
-  flow.on('tileload',loadedFlow).on('tileerror',failedFlow);
+  flow.on('tileload',function(){
+   if(confirmed&&seq===requested&&active==='tomtom'){
+    liveAt=Date.now();refreshErrors=0;
+   }else loadedFlow();
+  }).on('tileerror',function(){
+   if(!confirmed){failedFlow();return}
+   if(seq!==requested||active!=='tomtom')return;
+   if(++refreshErrors>=3){
+    // Stale data is not "live": remove the failed layer instead of
+    // showing a frozen green status forever.
+    reset();active='osm';
+    status('tomtom','TomTom trafik yenilenemedi (ağ/izin/kota).',false);
+   }
+  });
   try{
    flow.addTo(leafletMap);
    if(active!=='tomtom'||seq!==requested)return;
@@ -106,6 +146,7 @@ global.Id4TrafficProviders={
  activate:activate,
  getActive:function(){return active},
  configured:function(){return {tomtom:validKey(keyFor())}},
+ getHealth:function(){return {active:active,liveAt:liveAt,configured:validKey(keyFor())}},
  attachLeaflet:function(map){leafletMap=map},
  setTomTomKey:function(key){
   if(typeof key!=='string'||(key!==''&&!validKey(key)))return false;
