@@ -86,6 +86,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private TextToSpeech tts;
     private Location position;
     private boolean running, voice=true, gpsTrackingRequested, resumeRouteAfterPause;
+    private volatile boolean ttsReady;
+    private android.media.AudioManager speechAudio;
+    private android.media.AudioFocusRequest speechFocus;
     private volatile boolean destroyed;
     private volatile String activeRouteProvider="OSRM demo";
     private volatile int generation;
@@ -124,6 +127,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private static final class Step {
         final double lat, lon;
         final String instruction;
+        int spokenMask=0;
         Step(double lat,double lon,String instruction){this.lat=lat;this.lon=lon;this.instruction=instruction;}
     }
 
@@ -144,8 +148,27 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             latestObd=data;
             send("molaTelemetry",obdPacket(data));
         });
+        voice=getSharedPreferences("eya_voice_v1",MODE_PRIVATE)
+            .getBoolean("enabled",true);
+        speechAudio=(android.media.AudioManager)getSystemService(AUDIO_SERVICE);
         tts=new TextToSpeech(this,status->{
-            if(status==TextToSpeech.SUCCESS)tts.setLanguage(new Locale("tr","TR"));
+            if(status==TextToSpeech.SUCCESS && tts!=null){
+                int lang=tts.setLanguage(Locale.forLanguageTag("tr-TR"));
+                ttsReady=lang!=TextToSpeech.LANG_MISSING_DATA &&
+                    lang!=TextToSpeech.LANG_NOT_SUPPORTED;
+                tts.setOnUtteranceProgressListener(
+                  new android.speech.tts.UtteranceProgressListener(){
+                    @Override public void onStart(String id){}
+                    @Override public void onDone(String id){
+                        ui.post(()->releaseSpeechFocus());
+                    }
+                    @Override public void onError(String id){
+                        ui.post(()->releaseSpeechFocus());
+                    }
+                  });
+            }else ttsReady=false;
+            if(!ttsReady)send("molaStatus",record("voice",
+               "Türkçe ses paketi bulunamadı; anonslar sessiz."));
         });
         WebViewAssetLoader loader=new WebViewAssetLoader.Builder()
             .addPathHandler("/assets/",new WebViewAssetLoader.AssetsPathHandler(this)).build();
@@ -508,7 +531,15 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             ui.post(()->showObdSettings());
         }
         @JavascriptInterface public void voice(boolean on) {
-            voice=on;if(!on && tts!=null)tts.stop();
+            ui.post(()->{
+                voice=on;
+                getSharedPreferences("eya_voice_v1",MODE_PRIVATE).edit()
+                    .putBoolean("enabled",on).apply();
+                if(!on){if(tts!=null)tts.stop();releaseSpeechFocus();}
+                send("molaStatus",record("voice",!on?"Sesli yönlendirme kapalı.":
+                    ttsReady?"Sesli yönlendirme açık.":
+                    "Türkçe ses paketi eksik. Sesli yönlendirme kullanılamıyor."));
+            });
         }
         @JavascriptInterface public void stop() {
             ui.post(()->{
@@ -1107,8 +1138,24 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             maneuver.put("accuracy",location.getAccuracy());
             send("molaManeuver",maneuver);
         }catch(Exception ignored){}
-        if(meters[0]<90 && System.currentTimeMillis()-lastSpeech>6000){
-            announce(step.instruction);lastSpeech=System.currentTimeMillis();nextStep++;
+        // OSRM maneuver POINT proximity, not map-matched driving distance.
+        // Never speak without a recent, accurate fix and a selected GPS route.
+        if(!voice||!ttsReady||!gpsTrackingRequested||!location.hasAccuracy()||
+           location.getAccuracy()>35 || fixAge>10000)return;
+        final float remaining=meters[0];
+        int tier=remaining<=35?3:remaining<=110?2:remaining<=330?1:
+                 remaining<=1100?0:-1;
+        if(tier>=0){
+            int bit=1<<tier;
+            long now=System.currentTimeMillis();
+            if((step.spokenMask&bit)==0&&now-lastSpeech>1750){
+                String prefix=tier==0?"Yaklaşık bir kilometre sonra, ":
+                    tier==1?"Yaklaşık üç yüz metre sonra, ":
+                    tier==2?"Yaklaşık yüz metre sonra, ":"Şimdi, ";
+                announce(prefix+step.instruction);
+                step.spokenMask|=bit;lastSpeech=now;
+            }
+            if(tier==3)nextStep++;
         }
     }
 
@@ -1158,9 +1205,31 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             .setNegativeButton("Kapat",null).show();
     }
 
+    private void releaseSpeechFocus(){
+        if(speechAudio!=null && speechFocus!=null){
+            speechAudio.abandonAudioFocusRequest(speechFocus);
+            speechFocus=null;
+        }
+    }
     private void announce(String instruction){
-        if(voice && tts!=null && !instruction.isEmpty())
-            ui.post(()->tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"mola-direction"));
+        if(!voice||!ttsReady||tts==null||instruction==null||
+            instruction.trim().isEmpty()||instruction.length()>160)return;
+        ui.post(()->{
+            if(!voice||!ttsReady||destroyed)return;
+            releaseSpeechFocus();
+            try{
+                if(speechAudio!=null){
+                    speechFocus=new android.media.AudioFocusRequest.Builder(
+                        android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                        .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()).build();
+                    speechAudio.requestAudioFocus(speechFocus);
+                }
+                tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"eya-route-guidance");
+            }catch(Exception e){releaseSpeechFocus();}
+        });
     }
     private void maybeCheckTrafficIncidents(Location gps){
         if(destroyed||!weatherForeground||!gpsTrackingRequested ||
@@ -2041,7 +2110,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(tripJournal.recording())tripJournal.finish(this,System.currentTimeMillis());
         resumeRouteAfterPause=running;
         try{locationManager.removeUpdates(this);}catch(Exception ignored){}
-        running=false; if(tts!=null)tts.stop();
+        running=false; if(tts!=null)tts.stop();releaseSpeechFocus();
         if(telemetry!=null)telemetry.stop();super.onPause();
     }
     @Override protected void onDestroy(){
@@ -2053,7 +2122,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         stationJobs.shutdownNow();variantJobs.shutdownNow();
         currentWeatherJobs.shutdownNow();
         safetyJobs.shutdownNow();incidentJobs.shutdownNow();
-        if(tts!=null){tts.stop();tts.shutdown();}
+        if(tts!=null){tts.stop();tts.shutdown();}releaseSpeechFocus();
         if(telemetry!=null){telemetry.close();telemetry=null;}
         if(web!=null){web.removeJavascriptInterface("MolaNative");web.destroy();web=null;}
         super.onDestroy();
