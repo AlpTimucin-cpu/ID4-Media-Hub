@@ -2769,7 +2769,24 @@ window.molaManeuver=function(o){
  $('co-maneuver').textContent=o.instruction.slice(0,90)+' · yaklaşık '+
    Math.round(o.straightLineMeters)+' m (kuş uçuşu)';
 };
-var selectedScenarioSoc=80,scenarioMeasured=false;
+var selectedScenarioSoc=80,scenarioMeasured=false,scenarioReceived=false;
+function renderScenarioHud(){
+ // A planning assumption is not measured SoC. Never illuminate the BMS bar.
+ if(Number.isFinite(liveSoc))return;
+ var label=$('co-sensor-age'),battery=$('co-trip-battery');
+ if(scenarioReceived&&!scenarioMeasured){
+  $('co-soc').textContent=selectedScenarioSoc+' %';
+  label.textContent='PLANLAMA SENARYOSU · OBD ölçümü yok';
+  label.classList.remove('fresh');
+  battery.textContent='Çıkış senaryosu: %'+selectedScenarioSoc+' (ölçüm değil)';
+  $('co-soc-fill').style.width='0%';
+ }else if(label.textContent.includes('PLANLAMA SENARYOSU')){
+  $('co-soc').textContent='— %';
+  label.textContent='OBD SoC güncel değil';
+  battery.textContent='OBD SoC: —';
+  $('co-soc-fill').style.width='0%';
+ }
+}
 var newestStationTicket=-1;
 function applyRouteFilter(filter){
  routeFilter=filter;
@@ -3120,6 +3137,7 @@ $('dock-obd').classList[fresh?'remove':'add']('status-unavailable');
  $('co-voltage').textContent=fresh&&ready(d.voltage)?String(d.voltage):'— V';
  $('co-temp').textContent=fresh&&ready(d.temperature)?String(d.temperature):'— °C';
  $('co-mode').textContent=fresh&&ready(d.chargeMode)?String(d.chargeMode):'—';
+ renderScenarioHud();
 };
 setInterval(function(){
  if(lastCurrentWeatherAt && Date.now()-lastCurrentWeatherAt>35*60*1000){
@@ -3474,6 +3492,7 @@ function pickRouteScenario(pct){
  $('co-cost').textContent='%'+pct+' senaryosu hesaplanıyor…';
  if(!native('setScenarioSoc',pct))
   $('soc-scenario-note').textContent='OBD senaryosu ile bağlantı kurulamadı.';
+ else renderScenarioHud();
 }
 $('soc-choice-80').onclick=function(){pickRouteScenario(80)};
 $('soc-choice-100').onclick=function(){pickRouteScenario(100)};
@@ -3481,6 +3500,7 @@ window.molaSocScenario=function(packet){
  if(!packet)return;
  var measured=packet.measured===true,pct=Math.round(Number(packet.percent));
  scenarioMeasured=measured;
+ scenarioReceived=true;
  if(!measured&&(pct===80||pct===100))selectedScenarioSoc=pct;
  $('soc-scenario-choice').hidden=measured;
  $('soc-choice-80').classList.toggle('selected',!measured&&pct===80);
@@ -3489,6 +3509,7 @@ window.molaSocScenario=function(packet){
    'Gerçek ve güncel SoC bulundu; varsayılan şarj senaryosu devre dışı.':
    '%'+pct+(packet.userSelected?' kullanıcı seçimi':' varsayılan senaryo')+
    ' · araç ölçümü değildir; seçim şarj sayısı ve TL tahminini yeniler.';
+ renderScenarioHud();
 };
 $('dock-journal').onclick=function(){native('tripJournal')};
 $('co-connect').onclick=function(){native('obdSettings')};
