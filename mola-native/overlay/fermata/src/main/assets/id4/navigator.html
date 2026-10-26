@@ -1758,9 +1758,9 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa kullanıcı %80 veya %100 çıkış senaryosu seçebilir. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
 </div>
 <nav class="drive-dock" aria-label="ID.4 hızlı araç komutları">
- <button id="dock-home" type="button" title="Mola ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
- <button id="dock-apps" type="button" title="Mola uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
- <button id="dock-music" type="button" title="Mola müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
+ <button id="dock-home" type="button" title="ID.4 Yol Arkadaşım ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
+ <button id="dock-apps" type="button" title="ID.4 Yol Arkadaşım uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
+ <button id="dock-music" type="button" title="ID.4 Yol Arkadaşım müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
  
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
  <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
@@ -1779,14 +1779,14 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <div class="live-hud" aria-label="Canlı araç bilgileri"><span><small>SoC </small><b id="live-soc">—</b></span><span><small>HV </small><b id="live-voltage">—</b></span><span><small>Batarya </small><b id="live-temp">—</b></span><button id="connect-obd" type="button">OBD bağla</button></div>
  <div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
 </div><div class="cockpit-tabs" aria-label="Araç üst menüsü">
- <button id="co-media" type="button">‹ Mola</button>
+ <button id="co-media" type="button">‹ ID.4 Yol Arkadaşım</button>
  <button id="co-route-tab" class="current" type="button">🗺 Rota</button>
  <button id="co-station-tab" type="button">⚡ İstasyon</button>
  <button id="co-expand" type="button">▤ Dikey görünüm</button>
  <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div>
 <div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
-<button class="round" id="back" aria-label="Mola ana ekranına dön">⌂</button>
+<button class="round" id="back" aria-label="ID.4 Yol Arkadaşım ana ekranına dön">⌂</button>
 <button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
 <button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="open-layers" type="button" aria-label="Harita katmanlarını aç" title="Şarj, hava ve trafik katmanları">▧</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
@@ -2376,7 +2376,7 @@ function native(name){
  try{
   var a=Array.prototype.slice.call(arguments,1);
   if(!window.MolaNative){
-    msg('Canlı adres araması ve rota için Mola Android APK gerekli.');return false;
+    msg('Canlı adres araması ve rota için ID.4 Yol Arkadaşım APK gerekli.');return false;
   }
   var bridge=window.MolaNative;
   switch(name){
@@ -3280,7 +3280,7 @@ function launchMolaMediaSafely(){
       sent=transport.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK'})===true;
   }catch(e){console.warn('Mola media bridge failed',e)}
   if(!sent)sent=native('openMedia'); // Same safe phone Activity transition.
-  if(!sent)msg('Mola multimedya ekranına bağlantı kurulamadı.');
+  if(!sent)msg('ID.4 Yol Arkadaşım medya ekranına bağlantı kurulamadı.');
 }
 $('dock-home').onclick=$('dock-apps').onclick=$('dock-music').onclick=
  $('back').onclick=$('co-media').onclick=launchMolaMediaSafely;
