@@ -1,0 +1,52 @@
+/* Independent, in-place media launcher. Existing map and route remain mounted. */
+.id4-mola-drawer[hidden]{display:none!important}
+.id4-mola-drawer{position:fixed;inset:0;z-index:3100;display:flex;
+ align-items:center;justify-content:center;padding:clamp(8px,2vh,22px);
+ background:rgba(1,13,26,.91);color:#eefaff;
+ font-family:system-ui,-apple-system,Roboto,sans-serif}
+.id4-mola-panel{display:flex;flex-direction:column;gap:12px;
+ width:min(950px,100%);max-height:calc(100dvh - 16px);
+ padding:clamp(12px,2.2vh,20px);border:1px solid #4a7b91;border-radius:19px;
+ background:linear-gradient(145deg,#153448,#061b2a 65%);
+ box-shadow:0 18px 70px #000b}
+.id4-mola-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.id4-mola-title strong{display:block;font-size:clamp(17px,3.4vh,25px);line-height:1.2}
+.id4-mola-title small{display:block;color:#b2d5e3;font-size:11px;margin-top:5px}
+.id4-mola-close{border-radius:10px;padding:10px 14px;border:1px solid #658da2;
+ background:#244456;color:#fff;font-weight:700;font-size:12px}
+.id4-mola-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:9px;padding:3px 2px 6px;overflow-y:auto;overscroll-behavior:contain;
+ scrollbar-width:thin}
+.id4-mola-card{display:flex;flex-direction:column;align-items:flex-start;
+ justify-content:flex-end;text-align:left;min-height:86px;
+ border:1px solid #ffffff36;border-radius:14px;padding:10px 11px;
+ background:linear-gradient(135deg,#5c5546,#223c4b);color:white;
+ font:inherit;line-height:1.12;box-shadow:0 3px 12px #0004}
+.id4-mola-card strong{font-weight:850;font-size:clamp(14px,2.7vh,20px);
+ text-shadow:0 2px 7px #0006}
+.id4-mola-card small{font-size:10px;color:#e3f1f8;margin-top:6px;opacity:.95}
+.id4-mola-card:active{transform:scale(.97)}
+.id4-mola-card:focus-visible,.id4-mola-close:focus-visible{outline:3px solid #77e2d9}
+.id4-mola-netflix{background:linear-gradient(135deg,#161819,#391719)}
+.id4-mola-netflix strong{color:#f1484d;letter-spacing:1px}
+.id4-mola-disney{background:linear-gradient(135deg,#1b4a8e,#0b1d55)}
+.id4-mola-prime{background:linear-gradient(135deg,#1aa6d1,#0b4670)}
+.id4-mola-youtube{background:linear-gradient(135deg,#c2464c,#4a2336)}
+.id4-mola-tv{background:linear-gradient(135deg,#bd8541,#17354d)}
+.id4-mola-mirror{background:linear-gradient(135deg,#368b7f,#19354e)}
+.id4-mola-windasist{background:linear-gradient(135deg,#0a9d8a,#064c56)}
+.id4-mola-equalizer{background:linear-gradient(135deg,#b5832d,#4e3b27)}
+.id4-mola-disclaimer{font-size:10px;color:#bdd1da;line-height:1.4;margin:0}
+@media(max-width:700px){
+ .id4-mola-drawer{align-items:stretch;padding:8px}
+ .id4-mola-panel{max-height:calc(100dvh - 16px);width:100%;border-radius:14px}
+ .id4-mola-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .id4-mola-card{min-height:88px}
+}
+@media(orientation:landscape) and (max-height:450px){
+ .id4-mola-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .id4-mola-card{min-height:57px;padding:7px}
+ .id4-mola-card strong{font-size:14px}
+ .id4-mola-card small{font-size:9px;margin-top:4px}
+ .id4-mola-title strong{font-size:17px}
+}
