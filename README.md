@@ -1,11 +1,11 @@
-# ID.4 Yol Arkadaşım
+# Elektrikli Yol Arkadaşım
 
-**Volkswagen ID.4 Pure 2024 için sade bir EV kokpiti, Türkiye şarj istasyonları, rota planlama ve salt-okunur OBD tanılama önizlemesi.**
+**Elektrikli araçlar için rota, şarj, trafik, gerçek ölçümler ve medya deneyimi.**
 
 [![APK Build](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)
 [![UI Screenshots](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml/badge.svg?branch=feature%2Fmola-native-id4)](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/render-id4-readme.yml)
 
-> **Geliştirme sürümü.** Bu proje Volkswagen, Google veya Mola tarafından onaylanmış değildir. Android Auto araç ekranında ID.4 kokpiti henüz doğrulanmadı. Mevcut **Mola 3.2 üzerine kurulmaz**; açık kaynak Mola 2.2.2 tabanından **farklı paket kimliğiyle** derlenir.
+> **Geliştirme sürümü.** Bu proje Volkswagen, Google veya Mola tarafından onaylanmış değildir. Android Auto araç ekranında elektrikli araç kokpiti henüz doğrulanmadı. Mevcut **Mola 3.2 üzerine kurulmaz**; açık kaynak Mola 2.2.2 tabanından **farklı paket kimliğiyle** derlenir.
 
 ## Gerçek arayüz kodundan ekran önizlemeleri
 
@@ -29,13 +29,13 @@
 | **Hava** | Open-Meteo model tahminleri, güzergâh boyunca saatlik kontroller | Model verisidir, araç sensörü değildir |
 | **Trafik** | TomTom Orbis Flow raster tile katmanı (kullanıcıya özel anahtar), ayrı olay bildirimi sorguları | Gerçek TomTom tileload başarısı olmadan canlı ibaresi yok; OSRM ETA trafiksiz |
 | **OBD** | Eşleşmiş Bluetooth ELM327; salt-okunur MEB DID kontrolü, sensör yaşı, detay görünümü | Car Scanner/VIN üzerinde doğrulanmamış sayılar özellikle gizlenir |
-| **Mola medya** | Ayrı ID.4 Activity; ana oynatma kaynaklarına değişiklik yapılmıyor | Mola 3.2 kaynak eşdeğerliği ve tüm oynatıcı işlevleri cihazda doğrulanmalı |
+| **Medya** | Ayrı navigasyon ekranı; ana oynatma kaynaklarına değişiklik yapılmıyor | Mola 3.2 kaynak eşdeğerliği ve tüm oynatıcı işlevleri cihazda doğrulanmalı |
 
 ## APK yükleme
 
-1. [**ID.4 preview Actions sonuçlarını aç**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml?query=branch%3Afeature%2Fmola-native-id4). Yalnızca **son başarılı** derlemeyi seç.
-2. **Artifacts → `Mola-OpenSource-ID4-Preview-Not-3.2-APK`** ZIP dosyasını indir ve `Mola-ID4-Preview.apk` dosyasını çıkar.
-3. Android telefona yükle; uygulamanın **ID.4 Araç Merkezi** bölümünü aç.
+1. [**Elektrikli Yol Arkadaşım Actions sonuçlarını aç**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml?query=branch%3Afeature%2Fmola-native-id4). Yalnızca **son başarılı** derlemeyi seç.
+2. **Artifacts → `Elektrikli-Yol-Arkadasim-APK`** ZIP dosyasını indir ve `Elektrikli-Yol-Arkadasim.apk` dosyasını çıkar.
+3. Android telefona yükle; uygulamanın **Araç Merkezi** bölümünü aç.
 4. Konum ve Bluetooth izinlerini yalnız ilgili özellik gerektiğinde ver.
 
 **Yükseltme uyarısı:** Actions debug APK'ları farklı imzalar taşıyabilir. Önceki önizleme sürümünün üzerine kurulamazsa kullanıcı verilerini yedeklemeden kaldırma. Mevcut Mola 3.2 uygulaması ayrı kalır.
@@ -71,7 +71,7 @@
 Resmî yoğunluk ve yol olayları raster katmanı `Katmanlar → Trafik → TomTom Orbis Trafik` seçeneğiyle eklendi. Gerçek veri için `ID4_TOMTOM_API_KEY` Actions secret gerekir; bu anahtar olmadan canlı trafik etkin değildir. Mevcut OSRM ETA hâlâ trafiksizdir. [Kurulum ve sınırlar](mola-native/TRAFFIC_PROVIDERS.md).
 
 ## Yeni uygulama kimliği ve doğrudan kokpit açılışı
-Telefon launcher adı **ID.4 Yol Arkadaşım**. Özel koyu lacivert, ID.4/elektrikli araç temalı vektör simgesi vardır. Uygulamaya dokununca önce yatay araç kokpiti açılır. Ekrandaki **Mola** düğmesi medya ana ekranına döner; mevcut medya oynatma sınıfları değiştirilmedi. Bu ayrı `.id4preview` paketidir; yüklü Mola 3.2'yi güncellemez. Android Auto navigasyon ekranı yine doğrulanmış değildir.
+Telefon launcher adı **Elektrikli Yol Arkadaşım**. Özel koyu lacivert, elektrikli yolculuk temalı vektör simgesi vardır. Uygulamaya dokununca önce yatay araç kokpiti açılır. Ekrandaki **Mola** düğmesi medya ana ekranına döner; mevcut medya oynatma sınıfları değiştirilmedi. Bu ayrı `.id4preview` paketidir; yüklü Mola 3.2'yi güncellemez. Android Auto navigasyon ekranı yine doğrulanmış değildir.
 
 **OSRM alternatif arama stratejisi:** Resmî OSRM `alternatives=6` seçeneğiyle birincil yola ek olarak en fazla altı farklı güzergâh araştırılır. Gerçekten bulunan bütün yollar (koruyucu üst sınır 12) renkli çizgilerle aynı haritada gösterilir. OSRM daha az yol döndürürse uygulama bunu dürüstçe gösterir; her iki nokta arasında sınırsız sayıda rota garantisi verilemez. <https://project-osrm.org/docs/v26.6.1/http>
 
@@ -112,7 +112,7 @@ Kullanıcının paylaştığı **1536 × 864** kokpit görseline göre gerçek
 `assets/id4/navigator.html` görünümü yeniden düzenlendi. Önceki çoklu
 stil katmanları altında kaybolan araç ekranı artık doğru sırayla görünür:
 
-- Üstte **VOLKSWAGEN ID.4 PURE / ID.4 Yol Arkadaşım – Rota – İstasyon** menüsü,
+- Üstte **Elektrikli Yol Arkadaşım / Elektrikli Yol Arkadaşım – Rota – İstasyon** menüsü,
   cihazın gerçek yerel saati, doğrulanmış TomTom durum göstergesi ve
   yalnız Open-Meteo yanıtı olduğunda sıcaklık
 - Solda büyük batarya, menzil ve 2 × 3 araç veri kartı;
@@ -173,7 +173,7 @@ düğmeleri kokpit ana dock'undan kaldırıldı.
 
 ### TomTom anahtarının kalıcı ve şifreli saklanması
 
-ID.4 Yol Arkadaşım'a **kullanıcının kendi TomTom anahtarını bir kez kaydetmesi** yeterlidir. Anahtar, Android Keystore ile korunan **AES-256-GCM** şifrelemesiyle uygulamaya özel depoda tutulur; aynı uygulama imzasıyla yapılan normal güncellemede korunur. Kullanıcı anahtarı Ayarlar'dan değiştirebilir veya silebilir; uygulama kaldırıldığında ya da Keystore erişimi kaybolduğunda yeniden istenir.
+Elektrikli Yol Arkadaşım'a **kullanıcının kendi TomTom anahtarını bir kez kaydetmesi** yeterlidir. Anahtar, Android Keystore ile korunan **AES-256-GCM** şifrelemesiyle uygulamaya özel depoda tutulur; aynı uygulama imzasıyla yapılan normal güncellemede korunur. Kullanıcı anahtarı Ayarlar'dan değiştirebilir veya silebilir; uygulama kaldırıldığında ya da Keystore erişimi kaybolduğunda yeniden istenir.
 
 Daha önceki `id4_traffic_keys` düz metin kayıtları, bir sonraki anahtar kullanımında otomatik olarak şifrelenmiş depoya aktarılıp temizlenir. Şifreli kayıt başarısız olursa trafik anahtarı kullanılmaz. **APK'da sabit TomTom anahtarı bulunmaz.** Ücretsiz kota, kullanım koşulları ve olası maliyet kullanıcıya ait TomTom hesabında yönetilir.
 
@@ -181,10 +181,16 @@ JavaScript'e herkese açık anahtar okuma köprüsü eklenmedi; mevcut yerel And
 
 ## Lisans, atıf ve API anahtarı güvenliği
 
-Bu depodaki **Mola/Fermata 2.2.2 kaynak tabanından üretilen ID.4 Yol Arkadaşım önizleme APK'sı**, pinlenmiş açık kaynak projenin [GNU GPL-3.0](LICENSE) lisansına tabi türev çalışmadır. Dağıtılan sürümün karşılık gelen kaynak kodu ve değişiklikleri erişilebilir tutulmalıdır. Depodaki bağımsız önceki bileşenlerin ve üçüncü taraf kütüphanelerin kendi telif/lisans koşulları ayrıca geçerlidir.
+Bu depodaki **Mola/Fermata 2.2.2 kaynak tabanından üretilen Elektrikli Yol Arkadaşım önizleme APK'sı**, pinlenmiş açık kaynak projenin [GNU GPL-3.0](LICENSE) lisansına tabi türev çalışmadır. Dağıtılan sürümün karşılık gelen kaynak kodu ve değişiklikleri erişilebilir tutulmalıdır. Depodaki bağımsız önceki bileşenlerin ve üçüncü taraf kütüphanelerin kendi telif/lisans koşulları ayrıca geçerlidir.
 
 Harita, hava, medya, adres ve diğer üçüncü taraf bağımlılıkları için [NOTICE.md](NOTICE.md) ve [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyalarına bak.
 
-**TomTom anahtarı APK'ya gömülmez.** Her kullanıcı kendi anahtarını ID.4 Yol Arkadaşım uygulamasında **Harita servis anahtarı** bölümünden girer. Önceki derlemelerde anahtarın varlıklara yazılabilme riski, yapılacak yenileme adımları ve yeni APK doğrulama kapısı [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md) belgesinde açıklanmıştır.
+**TomTom anahtarı APK'ya gömülmez.** Her kullanıcı kendi anahtarını Elektrikli Yol Arkadaşım uygulamasında **Harita servis anahtarı** bölümünden girer. Önceki derlemelerde anahtarın varlıklara yazılabilme riski, yapılacak yenileme adımları ve yeni APK doğrulama kapısı [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md) belgesinde açıklanmıştır.
 
-Bu önizleme sürümünde GitHub derleme/test başarısı, POCO F5, Volkswagen ID.4, Android Auto veya canlı TomTom veri erişimi üzerinde fiziksel çalışmanın doğrulandığı anlamına gelmez.
+Bu önizleme sürümünde GitHub derleme/test başarısı, POCO F5, elektrikli araç, Android Auto veya canlı TomTom veri erişimi üzerinde fiziksel çalışmanın doğrulandığı anlamına gelmez.
+
+## Teknik entegrasyon rehberi
+
+[**Elektrikli Yol Arkadaşım – Harita, Gerçek Telemetri ve Rota Entegrasyonu**](docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md) belgesinde tek Leaflet haritası, OSRM yol geometrisi, EPDK istasyonları, güvenilir Android/OBD olayları ve GPS temelli ilerleme modelinin uygulamadaki gerçek bağlantıları açıklanır. Eğitim dokümanındaki sabit OBD örnek değerleri uygulamaya eklenmemiştir.
+
+**Görünür marka:** Elektrikli Yol Arkadaşım. Geçmişten kalan modül/klasör/Java paket kimlikleri sürüm yükseltme ve kaynak kod uyumluluğu amacıyla teknik seviyede tutulmaktadır; lisans atıfları [NOTICE.md](NOTICE.md) ve [LICENSE](LICENSE) üzerinden sağlanır. Uygulama henüz araç ekranında fiziksel olarak doğrulanmış bir üretim sürümü değildir.
