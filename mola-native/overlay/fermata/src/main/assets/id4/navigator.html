@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src https:; worker-src 'self' blob:; object-src 'none'; form-action 'none'">
-<title>ID.4 Yol Arkadaşım • Kokpit</title>
+<title>Elektrikli Yol Arkadaşım • Kokpit</title>
 <link rel="stylesheet" href="leaflet.css">
 <link rel="stylesheet" href="id4-live-addon.css">
 <style>
@@ -1775,9 +1775,9 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <div class="alts-caution">* Fiyatlar kaynaklı ağ tarifesi veya 16.10.2026 Türkiye pazar aralığı tahminidir. OBD yoksa kullanıcı %80 veya %100 çıkış senaryosu seçebilir. 15% rezerv, 80% DC hedef; gerçek şarj noktası, yol sapması, doluluk ve fatura doğrulanmadı.</div>
 </div>
 <nav class="drive-dock" aria-label="ID.4 hızlı araç komutları">
- <button id="dock-home" type="button" title="ID.4 Yol Arkadaşım ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
- <button id="dock-apps" type="button" title="ID.4 Yol Arkadaşım uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
- <button id="dock-music" type="button" title="ID.4 Yol Arkadaşım müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
+ <button id="dock-home" type="button" title="Elektrikli Yol Arkadaşım ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
+ <button id="dock-apps" type="button" title="Elektrikli Yol Arkadaşım uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
+ <button id="dock-music" type="button" title="Elektrikli Yol Arkadaşım müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
  
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
  <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
@@ -1788,22 +1788,24 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <button id="dock-layers" type="button" title="Harita katmanları"><span class="dock-icon">⚙</span><span class="dock-label">Ayarlar</span></button>
 </nav>
 <div class="top"><div class="brand">
- <svg class="vw-symbol" role="img" aria-label="Volkswagen" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="32" cy="32" r="29" stroke="#e5f6ff" stroke-width="2.7"/>
-  <path d="M16 13l11 22h10l11-22M18 32l9 18 5-10 5 10 9-18M19 21l9 16h8l9-16" stroke="#e5f6ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.3"/>
+ <svg class="vw-symbol" role="img" aria-label="Elektrikli Yol Arkadaşım" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="29" stroke="#25cbeb" stroke-width="2.7"/>
+  <path d="M10 39 C20 20 38 20 54 37" stroke="#35edc8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M35 8 L23 33 H33 L28 54 L46 27 H35 Z" fill="#65f5ba"/>
+  <circle cx="49" cy="47" r="4.2" fill="#13d6e7"/>
  </svg>
- <div class="brand-copy"><strong>VOLKSWAGEN ID.4 PURE</strong><small>2024 · 125 kW / 170 PS</small></div>
+ <div class="brand-copy"><strong>Elektrikli Yol Arkadaşım</strong><small>2024 · 125 kW / 170 PS</small></div>
  <div class="live-hud" aria-label="Canlı araç bilgileri"><span><small>SoC </small><b id="live-soc">—</b></span><span><small>HV </small><b id="live-voltage">—</b></span><span><small>Batarya </small><b id="live-temp">—</b></span><button id="connect-obd" type="button">OBD bağla</button></div>
  <div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
 </div><div class="cockpit-tabs" aria-label="Araç üst menüsü">
- <button id="co-media" type="button">‹ ID.4 Yol Arkadaşım</button>
+ <button id="co-media" type="button">‹ Elektrikli Yol Arkadaşım</button>
  <button id="co-route-tab" class="current" type="button">🗺 Rota</button>
  <button id="co-station-tab" type="button">⚡ İstasyon</button>
  <button id="co-expand" type="button">▤ Dikey görünüm</button>
  <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div>
-<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><button id="id4-traffic-toggle" type="button" aria-label="Canlı trafik katmanını aç veya kapat" aria-pressed="false" title="TomTom canlı trafik aç/kapat">🚦 <span class="traffic-toggle-label">Trafik</span></button><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
-<button class="round" id="back" aria-label="ID.4 Yol Arkadaşım ana ekranına dön">⌂</button>
+<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><button id="id4-traffic-toggle" type="button" aria-label="Canlı trafik katmanını aç veya kapat" aria-pressed="false" title="Canlı trafik aç/kapat">🚦 <span class="traffic-toggle-label">Trafik</span></button><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
+<button class="round" id="back" aria-label="Elektrikli Yol Arkadaşım ana ekranına dön">⌂</button>
 <button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
 <button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
 <div class="buttons"><button id="gps" title="Konumumu bul">◎</button><button id="follow-map" title="GPS ile haritayı takip et" aria-label="GPS harita takibi" aria-pressed="false">➤</button><button id="co-fit-route" title="Tüm rotayı haritada göster" aria-label="Rotayı haritaya sığdır">▢</button><button id="open-layers" type="button" aria-label="Harita katmanlarını aç" title="Şarj, hava ve trafik katmanları">▧</button><button id="plus" title="Yakınlaştır">＋</button><button id="minus" title="Uzaklaştır">−</button></div>
@@ -1875,7 +1877,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 <button id="charge-list" type="button">Tüm istasyonlar</button>
 </div><div class="station-map-note" id="station-note">EPDK konum listesi, canlı soket doluluğu içermez.</div>
 <div class="tools"><button id="charge"><span>⚡</span>Harita üzeri şarj</button><button id="sensors"><span>▣</span>Canlı veriler</button><button id="allSensors"><span>☷</span>Tüm sensörler</button></div>
-<div class="vehicle"><div class="flex"><div><strong>Volkswagen ID.4 Pure</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge" id="obd-status">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value" id="vehicle-soc">—</div></div><div><div class="label">Menzil</div><div class="value">Doğrulanmadı</div></div></div></div>
+<div class="vehicle"><div class="flex"><div><strong>Elektrikli araç profili</strong><br><small>2024 · 125 kW / 170 PS</small></div><span class="badge" id="obd-status">OBD bağlı değil</span></div><div class="row" style="border:0;padding-bottom:0"><div><div class="label">Batarya</div><div class="value" id="vehicle-soc">—</div></div><div><div class="label">Menzil</div><div class="value">Doğrulanmadı</div></div></div></div>
 <div><strong>Yol boyunca hava</strong>
 <div class="weather" id="weather-cards">
 <div class="weather-card"><strong>+1 dk</strong><small>Rota bekleniyor</small></div>
@@ -2060,7 +2062,7 @@ function applyRouteChargeAnalysis(packet){
  suggestedCharge=null;
  $('station-suggestion').style.display='none';
  $('co-trip-charge-button').style.display='none';
- $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-charge-km').textContent='Şarj molası: —';
  if( packet.suggested &&
     packet.chargeModel==='charge-likely' && !packet.stopIncluded){
   var station=packet.suggested;
@@ -2418,7 +2420,7 @@ function native(name){
  try{
   var a=Array.prototype.slice.call(arguments,1);
   if(!window.MolaNative){
-    msg('Canlı adres araması ve rota için ID.4 Yol Arkadaşım APK gerekli.');return false;
+    msg('Canlı adres araması ve rota için Elektrikli Yol Arkadaşım APK gerekli.');return false;
   }
   var bridge=window.MolaNative;
   switch(name){
@@ -2584,7 +2586,7 @@ function wipeRoute(){
  $('co-trip-target').textContent='—';
  $('co-trip-kilometers').textContent='Rota seçilmedi';
  $('co-trip-charge').textContent='⚡ Şarj molası henüz seçilmedi';
- $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-charge-km').textContent='Şarj molası: —';
  $('co-trip-arrival').textContent='—';
  $('co-trip-arrival-note').textContent='Güncel OBD gerekli';
  $('co-trip-charge-button').style.display='none';
@@ -3019,7 +3021,7 @@ window.molaRoute=function(o){
  $('co-trip-kilometers').textContent=String(o.distanceKm)+' km · '+String(o.durationMin)+' dk';
  $('co-trip-charge').textContent=o.stopIncluded?'⚡ 1 şarj molası seçildi':
   o.chargingNeededByModel?'⚡ Şarj gerekebilir':'⚡ Mola eklenmedi';
- $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-charge-km').textContent='Şarj molası: —';
  $('co-trip-charge-button').style.display='none';
  $('co-trip-arrival').textContent='—';
  $('co-trip-arrival-note').textContent=o.stopIncluded?
@@ -3088,7 +3090,7 @@ window.molaRoute=function(o){
  $('co-weather').textContent='Open-Meteo model verisi isteniyor';
  $('station-summary').textContent='⚡ Rota çevresindeki CCS istasyonları yükleniyor...';
  $('co-trip-charge-button').style.display='none';
- $('co-trip-charge-km').textContent='Mola km: —';
+ $('co-trip-charge-km').textContent='Şarj molası: —';
  suggestedCharge=null;$('station-suggestion').style.display='none';
  // A route automatically enables genuinely configured traffic layers.
  var traffic=window.Id4TrafficProviders;
@@ -3327,7 +3329,7 @@ function launchMolaMediaSafely(){
       sent=transport.receive('status',{command:'LAUNCH_MOLA_32_NO_PARK'})===true;
   }catch(e){console.warn('Mola media bridge failed',e)}
   if(!sent)sent=native('openMedia'); // Same safe phone Activity transition.
-  if(!sent)msg('ID.4 Yol Arkadaşım medya ekranına bağlantı kurulamadı.');
+  if(!sent)msg('Elektrikli Yol Arkadaşım medya ekranına bağlantı kurulamadı.');
 }
 $('dock-home').onclick=$('dock-apps').onclick=$('dock-music').onclick=
  $('back').onclick=$('co-media').onclick=launchMolaMediaSafely;
