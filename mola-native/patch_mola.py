@@ -373,6 +373,7 @@ auto_obd=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarObdScreen.java"
 auto_station=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarStationDetailsScreen.java"
 auto_weather=overlay/"fermata/src/auto/java/me/aap/fermata/ev/Id4CarRouteWeatherScreen.java"
 navigator=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java"
+api_key_store=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ApiKeyStore.java"
 media_destination=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MolaDestination.java"
 decoder=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4MebDecoder.java"
 nav_html=overlay/"fermata/src/main/assets/id4/navigator.html"
@@ -410,8 +411,8 @@ valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRou
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
 traffic_incidents=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TrafficIncidents.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
-for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
+assert all(f.is_file() for f in [java,html,obd,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
+for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -420,7 +421,7 @@ for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,me
 
 # Do NOT compile a shared GitHub Actions/API key into an APK. Build artifacts
 # from this public repository are downloadable and JS assets are extractable.
-# On-device Android settings (private SharedPreferences) supply user-specific
+# On-device Android Keystore AES-GCM storage supplies user-specific
 # TomTom credentials only at runtime; there is no embedded public key.
 # Fail closed even if a future workflow accidentally passes the old secret.
 if os.environ.get("ID4_TOMTOM_API_KEY"):
@@ -440,7 +441,7 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
 # Sanity gate: additions must not alter TV, dynamic addon or service classes.
 allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
-    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),str(media_destination.relative_to(overlay)),
+    str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),str(api_key_store.relative_to(overlay)),str(media_destination.relative_to(overlay)),
     str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(tesla_css.relative_to(overlay)),str(tesla_js.relative_to(overlay)),str(media_hub_js.relative_to(overlay)),str(media_hub_css.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
