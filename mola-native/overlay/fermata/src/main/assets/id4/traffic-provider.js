@@ -54,13 +54,26 @@ function openTomTom(seq){
   status('tomtom','Trafik harita katmanı oluşturulamadı.',false);
   return Promise.resolve(false);
  }
- var options={tileSize:256,opacity:.86,maxZoom:19,noWrap:true,
-  attribution:'© TomTom',updateWhenIdle:false,keepBuffer:1};
+ var options={tileSize:256,opacity:.92,maxZoom:19,noWrap:true,
+  attribution:'© TomTom',updateWhenIdle:true,keepBuffer:2};
  if(pane)options.pane='id4-live-traffic';
- var flow=global.L.tileLayer(root+'flow/raster/tile/{z}/{x}/{y}'+q,options);
- var incidents=global.L.tileLayer(root+'incidents/raster/tile/{z}/{x}/{y}'+q,
-  Object.assign({},options,{opacity:.95}));
- reset();active='tomtom';tomtomTiles=[flow,incidents];
+ // The companion ID4LiveMap module creates the single shared flow layer.
+ // Legacy/test pages still use the identical official TomTom endpoint.
+ var flow=null;
+ try{
+  var factory=global.ID4LiveMap&&global.ID4LiveMap.createTomTomFlowTileLayer;
+  if(typeof factory==='function')flow=factory(key,'id4-live-traffic');
+  if(!flow)flow=global.L.tileLayer(root+'flow/raster/tile/{z}/{x}/{y}'+q,options);
+ }catch(_){status('tomtom','Trafik akış katmanı başlatılamadı.',false);return Promise.resolve(false)}
+ var incidents=null;
+ try{
+  incidents=global.L.tileLayer(root+'incidents/raster/tile/{z}/{x}/{y}'+q,
+   Object.assign({},options,{opacity:.95}));
+ }catch(_){
+  // Incident icons are optional; verified congestion lines still work.
+  incidents=null;
+ }
+ reset();active='tomtom';tomtomTiles=incidents?[flow,incidents]:[flow];
  status('tomtom','TomTom trafik döşemeleri kontrol ediliyor…',false);
  return new Promise(function(resolve){
   var finished=false,errors=0,confirmed=false;
@@ -109,11 +122,11 @@ function openTomTom(seq){
   try{
    flow.addTo(leafletMap);
    if(active!=='tomtom'||seq!==requested)return;
-   incidents.addTo(leafletMap);
+   if(incidents)incidents.addTo(leafletMap);
    if(active==='tomtom')tomtomTimer=setInterval(function(){
      if(seq===requested&&active==='tomtom'){
       if(typeof flow.redraw==='function')flow.redraw();
-      if(typeof incidents.redraw==='function')incidents.redraw();
+      if(incidents&&typeof incidents.redraw==='function')incidents.redraw();
      }
    },300000);
   }catch(e){
