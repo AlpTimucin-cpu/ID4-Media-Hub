@@ -2272,7 +2272,18 @@ window.molaJourneyWeather=function(packet){
  var list=$('journey-points');list.replaceChildren();
  weatherMarkers.forEach(function(m){if(map)map.removeLayer(m)});
  weatherMarkers=[];
- packet.cards.forEach(function(w){
+ // Keep all route forecasts in the details list. Three non-overlapping map
+ // labels are enough: departure, a risk/central point, and destination.
+ var first=0,last=packet.cards.length-1,mid=Math.floor(last/2);
+ var danger=packet.cards.findIndex(function(w,i){
+  return i>0&&i<last&&w&&Array.isArray(w.risks)&&w.risks.length>0;
+ });
+ if(danger>0)mid=danger;
+ var pinPositions=[first,mid,last].filter(function(idx,pos,all){
+  return all.indexOf(idx)===pos;
+ });
+ var paintedPositions=[];
+ packet.cards.forEach(function(w,weatherIndex){
   if(!w || !Number.isFinite(w.percent))return;
   var cell=document.createElement('button');
   cell.type='button';cell.className='journey-point';
@@ -2302,8 +2313,22 @@ window.molaJourneyWeather=function(packet){
     if(map)map.panTo([w.latitude,w.longitude],{animate:false});
    };
    // Weather automatically appears as map pins after genuine API results.
-   if(map && currentRouteProgress && (w.available===true||w.nowAvailable===true)){
-    // One lightweight, source-backed information chip ON the road map.
+   if(map && currentRouteProgress && pinPositions.indexOf(weatherIndex)!==-1 &&
+      (w.available===true||w.nowAvailable===true)){
+    // Small-screen/zoomed-out collision detection, without any invented
+    // readings. Tests without projection use the three-chip cap.
+    var pixel=null;
+    if(typeof map.latLngToContainerPoint==='function'){
+     try{pixel=map.latLngToContainerPoint([w.latitude,w.longitude])}catch(_){}
+    }
+    if(pixel&&Number.isFinite(pixel.x)&&Number.isFinite(pixel.y)){
+     var overlap=paintedPositions.some(function(p){
+      return Math.hypot(p.x-pixel.x,p.y-pixel.y)<118;
+     });
+     if(overlap){list.appendChild(cell);return;}
+     paintedPositions.push({x:pixel.x,y:pixel.y});
+    }
+    // One source-backed info chip. All forecasts remain in details.
     // This is a model's current estimate, not a roadside observation.
     var nowReady=w.nowAvailable===true&&Number.isFinite(w.nowTemperature)&&
       Number.isFinite(w.nowWind)&&Number.isFinite(w.nowPrecipitation);
@@ -2446,8 +2471,12 @@ function drawRoutePreviews(items,selected){
  }).slice(0,12);
  if(routePreviewOptions.length<2)return;
  var colors=['#af8bf8','#ffb454','#70e6e2','#eab3da','#d6ef73','#f8a1a1','#71a2ff'];
- routePreviewOptions.forEach(function(route){
-  if(route.index===selected)return;
+ // All alternatives remain in the real route selector. Limit map preview
+ // polylines to two alternatives to prevent colored spaghetti on the road.
+ var shownPreviews=routePreviewOptions.filter(function(r){
+  return r.index!==selected;
+ }).slice(0,2);
+ shownPreviews.forEach(function(route){
   var coords=route.coordinates.filter(function(p){
    return Array.isArray(p)&&p.length===2&&valid(p[0],p[1]);
   });
@@ -2461,7 +2490,8 @@ function drawRoutePreviews(items,selected){
   shape.addTo(map);routePreviewLines.push(shape);
  });
  $('route-map-alts').style.display='block';
- $('route-map-alts').textContent='⇄ '+routePreviewOptions.length+' gerçek rota';
+ $('route-map-alts').textContent='⇄ '+routePreviewOptions.length+
+  ' rota · haritada '+(shownPreviews.length+1);
  if(line&&line.bringToFront)line.bringToFront();
 }
 
