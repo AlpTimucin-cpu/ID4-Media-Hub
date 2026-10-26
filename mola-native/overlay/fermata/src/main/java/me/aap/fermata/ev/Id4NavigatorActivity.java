@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.content.res.Configuration;
 import android.content.pm.PackageManager;
@@ -506,26 +507,44 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     /** The TomTom browser token stays in app-private storage (Android backup
      * is disabled). Browser keys are recoverable in principle: use a narrow
      * TomTom API restriction and spending cap; never log the token. */
+    /**
+     * Read user-owned key encrypted at rest. Move the previous private but
+     * unencrypted preference into Keystore storage once, then erase it.
+     * If encryption cannot be performed, fail closed and ask for a new key.
+     */
+    private String storedTomTomKey(){
+        String secure=Id4ApiKeyStore.get(this);
+        if(secure!=null)return secure;
+        SharedPreferences legacy=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE);
+        String previous=legacy.getString("tomtom",null);
+        if(previous==null)return null;
+        boolean moved=Id4ApiKeyStore.valid(previous)&&Id4ApiKeyStore.set(this,previous);
+        legacy.edit().remove("tomtom").commit();
+        return moved?previous:null;
+    }
+
     private void showTomTomKeyDialog(){
         if(destroyed||isFinishing())return;
         EditText field=new EditText(this);
         field.setSingleLine(true);
         field.setTextSize(15);
+        // Do not reveal a previously saved secret in an editable text field.
         field.setInputType(InputType.TYPE_CLASS_TEXT|
-            InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-        String current=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
-            .getString("tomtom","");
-        field.setText(current);field.selectAll();
+            InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        boolean alreadySaved=storedTomTomKey()!=null;
+        field.setHint(alreadySaved?"Yeni anahtar girerek değiştir":"TomTom API anahtarını gir");
         new AlertDialog.Builder(this)
             .setTitle("TomTom Orbis API anahtarı")
-            .setMessage("TomTom Developer hesabından Traffic API anahtarı al. "+
-                "Kota/harcama limitini ayarla. Anahtar yalnız uygulamanın özel "+
-                "ayarında tutulur, APK dosyasına yazılmaz.")
+            .setMessage((alreadySaved?"Anahtar bu cihazda şifreli kayıtlı. ":"")+
+                "Kendi TomTom API anahtarını gir. Ücretsiz kota ve yetkileri "+
+                "TomTom hesabından kontrol et. Anahtar APK'ya gömülmez; "+
+                "Android Keystore kullanılır. Silersen tekrar girmen gerekir.")
             .setView(field)
             .setNegativeButton("Vazgeç",null)
             .setNeutralButton("Sil",(dialog,which)->{
-                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
-                    .remove("tomtom").apply();
+                Id4ApiKeyStore.clear(this);
+                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+                    .edit().remove("tomtom").commit();
                 if(web!=null&&!destroyed)web.evaluateJavascript(
                     "window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey('');"+
                     "window.Id4BaseMap&&window.Id4BaseMap.setTomTomKey('');",null);
@@ -533,26 +552,35 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             })
             .setPositiveButton("Kaydet",(dialog,which)->{
                 String key=field.getText().toString().trim();
-                if(!key.matches("[A-Za-z0-9_-]{15,200}")){
-                    send("molaStatus",record("traffic","TomTom anahtarı geçersiz (15-200 karakter)."));
+                if(!Id4ApiKeyStore.valid(key)){
+                    send("molaStatus",record("traffic","TomTom anahtar biçimi geçersiz (15-200 karakter)."));
                     return;
                 }
-                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
-                    .putString("tomtom",key).apply();
+                if(!Id4ApiKeyStore.set(this,key)){
+                    send("molaStatus",record("traffic","Anahtar şifreli kaydedilemedi. Tekrar dene."));
+                    return;
+                }
+                // Do not leave the original plaintext copy behind after update.
+                getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
+                    .edit().remove("tomtom").commit();
                 applyLocalTomTomKey();
-                send("molaStatus",record("traffic","TomTom anahtarı kaydedildi. Canlı trafik bağlantısı deneniyor."));
+                send("molaStatus",record("traffic","TomTom anahtarı şifreli kaydedildi. Canlı trafik bağlantısı deneniyor."));
             }).show();
     }
+
     private void applyLocalTomTomKey(){
         if(web==null||destroyed)return;
-        String key=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
-            .getString("tomtom","");
-        if(key!=null&&!key.isEmpty()&&key.matches("[A-Za-z0-9_-]{15,200}"))
+        String key=storedTomTomKey();
+        if(Id4ApiKeyStore.valid(key)){
+            // The raster HTTP API requires a URL query parameter: this
+            // runtime handoff does not turn a browser-visible key into a
+            // nonextractable secret. There is deliberately no JS getter.
             web.evaluateJavascript("window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey("+
                 JSONObject.quote(key)+");"+
                 "window.Id4BaseMap&&window.Id4BaseMap.setTomTomKey("+
                 JSONObject.quote(key)+");"+
                 "window.Id4TrafficProviders&&window.Id4TrafficProviders.activate('tomtom');",null);
+        }
     }
     /** Only known, freshly read ECU measurements reach the map HUD. */
     private JSONObject obdPacket(Id4LiveTelemetry.Data d) {
@@ -1083,9 +1111,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
            gps.getAccuracy()>35)return;
         long now=System.currentTimeMillis(),age=now-gps.getTime();
         if(age<0||age>15000||now-lastIncidentPollAt<INCIDENT_REFRESH_MS)return;
-        String key=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
-            .getString("tomtom","");
-        if(key==null||!key.matches("[A-Za-z0-9_-]{15,200}"))return;
+        String key=storedTomTomKey();
+        if(!Id4ApiKeyStore.valid(key))return;
         lastIncidentPollAt=now;
         final int ticket=generation;
         final JSONArray road=activeIncidentRoute;
@@ -1227,9 +1254,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                     "?overview=full&geometries=geojson&steps=true&alternatives=3";
                 JSONObject out=null;
                 StringBuilder problems=new StringBuilder();
-                String trafficKey=getSharedPreferences("id4_traffic_keys",MODE_PRIVATE)
-                    .getString("tomtom","");
-                if(trafficKey!=null&&trafficKey.matches("[A-Za-z0-9_-]{15,200}")){
+                String trafficKey=storedTomTomKey();
+                if(Id4ApiKeyStore.valid(trafficKey)){
                     try{
                         out=Id4TomTomRouting.request(trafficKey,fromLat,fromLon,
                             toLat,toLon,stopLat,stopLon);
