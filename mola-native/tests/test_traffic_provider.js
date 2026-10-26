@@ -8,8 +8,8 @@ function create(key,fail){
  const states=[],tiles=[],removed=[],panes={};
  const window={ID4_TRAFFIC_CONFIG:{tomtomKey:key},
   molaTrafficStatus(o){states.push(o)},
-  L:{tileLayer(url){
-   return {url,callbacks:{},
+  L:{tileLayer(url,options){
+   return {url,options,callbacks:{},
     on(event,fn){this.callbacks[event]=fn;return this},
     addTo(){tiles.push(this);
      if(url.includes('/flow/')){
@@ -53,6 +53,9 @@ function create(key,fail){
  assert(ok.tiles[0].url.includes('/maps/orbis/traffic/flow/raster/tile/'));
  assert(ok.tiles[1].url.includes('/maps/orbis/traffic/incidents/raster/tile/'));
  assert(ok.tiles[0].url.includes('apiVersion=2'));
+ assert.equal(ok.tiles[0].options.updateWhenIdle,true);
+ assert.equal(ok.tiles[0].options.keepBuffer,2);
+ assert.equal(ok.tiles[0].options.pane,'id4-live-traffic');
  assert.strictEqual(ok.panes['id4-live-traffic'].style.zIndex,'425',
   'TomTom transparent tiles must be ABOVE the opaque MapLibre overlay');
  assert.strictEqual(ok.panes['id4-live-traffic'].style.pointerEvents,'none',
