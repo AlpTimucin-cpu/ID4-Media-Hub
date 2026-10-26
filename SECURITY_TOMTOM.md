@@ -16,7 +16,7 @@ Yüklenen `Id4KeyBridge.java` ve `id4-tomtom-key.js` bu sürüme **bilerek eklen
 
 ## Uygulamada kişisel anahtar
 
-1. Kullanıcı ID.4 Yol Arkadaşım içinde **Harita servis anahtarı** ekranını açar.
+1. Kullanıcı Elektrikli Yol Arkadaşım içinde **Harita servis anahtarı** ekranını açar.
 2. Kendisine ait TomTom API anahtarını girer.
 3. Anahtar Android'in uygulamaya özel `SharedPreferences` alanında tutulur; WebView'a gerektiğinde çalışma sırasında aktarılır. Tarayıcı kaynak isteklerinde anahtar görülebilir: bu, tam gizleme değildir.
 4. Anahtar asla GitHub deposuna, `BuildConfig` içine veya paylaşılan APK varlıklarına yazılmaz.
