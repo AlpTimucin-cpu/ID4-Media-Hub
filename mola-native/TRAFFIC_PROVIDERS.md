@@ -1,4 +1,4 @@
-# ID.4 Yol Arkadaşım — TomTom Orbis / Google / Yandex trafik sağlayıcıları
+# Elektrikli Yol Arkadaşım — TomTom Orbis / Google / Yandex trafik sağlayıcıları
 
 Bu dalda Mola'nın orijinal medya modüllerine dokunmadan **telefon kokpitinde**
 kullanılabilecek bir harita sağlayıcı seçicisi bulunur. `Katmanlar → Trafik`
