@@ -278,20 +278,26 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }
     }
 
-    private boolean movingWithRecentGps(){
+    /**
+     * Fail closed: unknown/stale/inaccurate GPS is NOT evidence of parking.
+     * A stationary fix only means motion is not currently observed, and cannot
+     * certify Park gear, braking, passenger identity or Android Auto safety.
+     */
+    private boolean videoLaunchBlockedByMotion(){
         Location p=position;
         if(p==null || !p.hasAccuracy() || p.getAccuracy()>35 ||
-           !p.hasSpeed() || !Float.isFinite(p.getSpeed()))return false;
+           !p.hasSpeed() || !Float.isFinite(p.getSpeed()))return true;
         long elapsed=System.currentTimeMillis()-p.getTime();
-        return elapsed>=0 && elapsed<=15000 && p.getSpeed()>1.4f;
+        return elapsed<0 || elapsed>15000 || p.getSpeed()>0.4f;
     }
 
     private void openOfficialVideo(String packageName,String site){
         // Navigation remains alive. Do not present third-party DRM playback
         // as if it were an embedded Mola media player.
-        if(movingWithRecentGps()){
+        if(videoLaunchBlockedByMotion()){
             send("molaStatus",record("media",
-                "Video uygulaması araç hareket ederken açılamaz. Güvenli şekilde park edin."));
+                "Video açılışı engellendi: güncel, doğru ve hareketsiz GPS gerekli. "+
+                "GPS hareketsizliği park vitesini doğrulamaz; araç parkta olmalıdır."));
             return;
         }
         try{
