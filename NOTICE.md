@@ -1,8 +1,8 @@
 # Üçüncü Taraf Bildirimleri (NOTICE)
 
-**ID.4 Yol Arkadaşım** bağımsız bir deney projesidir. Volkswagen, Mola, Google, TomTom, OpenStreetMap Foundation veya burada adı geçen diğer kuruluşlar tarafından onaylanmamıştır; markalar ilgili sahiplerine aittir.
+**Elektrikli Yol Arkadaşım** bağımsız bir deney projesidir. Volkswagen, Mola, Google, TomTom, OpenStreetMap Foundation veya burada adı geçen diğer kuruluşlar tarafından onaylanmamıştır; markalar ilgili sahiplerine aittir.
 
-Bu projenin Mola/Fermata 2.2.2 tabanından derlenen **ID.4 önizleme APK'sı**, pinlenmiş GPL-3.0 açık kaynak tabanından türetilir. Türev kaynak ve karşılık gelen değişiklikler GPL-3.0 yükümlülüklerine tabidir (bkz. [LICENSE](LICENSE)). Depodaki bağımsız medya geçmişi ve üçüncü taraf bağımlılıklar ayrı telif/lisans hükümleri içerebilir; mevcut telif sahipliği bu bildirimle değiştirilmez.
+Bu projenin Mola/Fermata 2.2.2 tabanından derlenen **Elektrikli Yol Arkadaşım önizleme APK'sı**, pinlenmiş GPL-3.0 açık kaynak tabanından türetilir. Türev kaynak ve karşılık gelen değişiklikler GPL-3.0 yükümlülüklerine tabidir (bkz. [LICENSE](LICENSE)). Depodaki bağımsız medya geçmişi ve üçüncü taraf bağımlılıklar ayrı telif/lisans hükümleri içerebilir; mevcut telif sahipliği bu bildirimle değiştirilmez.
 
 > Bu tablo bilgilendirme amaçlıdır, hukuki danışmanlık değildir. `[doğrula]` işaretli satırları kendi kaynağında/şartlarında kontrol et; sürümler ve şartlar zamanla değişir.
 
