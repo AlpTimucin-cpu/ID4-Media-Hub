@@ -386,3 +386,45 @@
  #vehicle-cockpit .cockpit-tripbar{min-height:98px!important;max-height:22vh!important}
  .id4-mini-metric{padding:3px 6px!important}
 }
+
+/* Premium reference: a measured, two-ended route timeline.
+   Text remains — until the existing GPS-to-OSRM projection confirms a fix. */
+.ev-timeline-distances{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:0 4px 5px;min-width:0}
+.ev-timeline-distances>div{display:flex;flex-direction:column;min-width:0}
+.ev-timeline-distances>div:last-child{text-align:right}
+.ev-timeline-distances strong{font-size:clamp(13px,1.55vw,21px);font-weight:810;
+  line-height:1.15;color:#f5fbff;white-space:nowrap}
+.ev-timeline-distances small{font-size:clamp(9px,1vw,13px);line-height:1.3;
+  color:#a7c7d9;white-space:nowrap}
+@media (min-width:1180px) and (orientation:landscape){
+ /* Keep the center journey bar between the map sidebar and turn panel, as in
+    the design reference. Do not obscure the real Leaflet map. */
+ .ev-timeline-distances{padding:0 5px 9px}
+ .ev-timeline-distances strong{font-size:clamp(15px,2.1vh,23px)}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track{position:relative}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track::before{
+  content:"";position:absolute;z-index:1;top:50%;left:-7px;
+  transform:translateY(-50%);width:12px;height:12px;
+  border-radius:50%;background:#24bdff;border:2px solid #d5f8ff;
+  box-shadow:0 0 0 3px #10a3e844;pointer-events:none}
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track::after{
+  border-radius:50%;box-shadow:0 0 12px #29d6ff;
+ }
+ #vehicle-cockpit .cockpit-tripbar .tripbar-track.gps-confirmed::after{
+  display:block!important}
+ /* Real turn details wrap inside the available panel instead of running into
+    the map/timeline when the destination name is long. */
+ .cockpit-right #co-maneuver,
+ .cockpit-right .co-nav-row small{overflow-wrap:anywhere;word-break:normal}
+}
+@media (min-width:640px) and (orientation:landscape) and (max-width:1179px){
+ .ev-timeline-distances{gap:6px}
+ .ev-timeline-distances strong{font-size:12px}
+ .ev-timeline-distances small{font-size:9px}
+}
+@media (max-width:639px), (orientation:portrait){
+ .ev-timeline-distances{gap:6px;padding:0 2px 4px}
+ .ev-timeline-distances strong{font-size:12px}
+ .ev-timeline-distances small{font-size:9px}
+}
