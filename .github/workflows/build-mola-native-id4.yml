@@ -32,9 +32,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "3f45ad3557a25822c2a3a9f152f32ef82f57e005"
           test -f LICENSE
       - name: Apply only additive ID.4 overlay
-        env:
-
-          ID4_TOMTOM_API_KEY: ${{ secrets.ID4_TOMTOM_API_KEY }}
+        # Never inject account API secrets into publicly downloadable APKs.
+        # Each user supplies their own TomTom key in the native settings.
         run: python3 integration/mola-native/patch_mola.py mola integration/mola-native/overlay
       - name: Verify Android Auto discovery manifest and preserved Mola media
         run: python3 integration/mola-native/tests/test_android_auto_manifest.py mola
