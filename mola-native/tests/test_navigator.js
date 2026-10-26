@@ -670,7 +670,7 @@ assert(get('compact-trip').textContent.includes('1 şarj molası'),
  'waypoint route must show charging stop label');
 assert(get('co-eta').textContent.includes('şarj hariç'),
  'ETA must not imply unknown charging dwell time is included');
-assert(get('trip-energy').textContent.includes('Mola şarj miktarı bilinmiyor'),
+assert(get('trip-energy').textContent.includes('Durakta şarj miktarı bilinmiyor'),
  'charging stop must never invent terminal SoC');
 // Same-map charging: request viewport only on user action; never show invented availability.
 get('charge-map').onclick();
@@ -799,7 +799,7 @@ win.molaTelemetry({fresh:true,soc:'70 %',voltage:'370 V',
  temperature:'23 °C',chargeMode:'Ready',status:'ELM327 bağlı'});
 assert.equal(get('co-trip-arrival').textContent,'—',
  'model cannot predict arrival SoC after a charger without charge amount');
-assert(get('co-trip-arrival-note').textContent.includes('Mola sonrası'),
+assert(get('co-trip-arrival-note').textContent.includes('Durak sonrası'),
  'missing post-charge amount must be explained');
 
 // Explicit, not automatic, user-approved reroute from a recent GPS fix.
