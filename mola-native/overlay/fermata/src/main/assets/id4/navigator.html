@@ -3402,7 +3402,7 @@ window.molaTrafficStatus=function(o){
  if(headStatus && o){
   var live=o.provider==='tomtom' && o.status==='active';
   var configured=window.Id4TrafficProviders&&window.Id4TrafficProviders.configured().tomtom;
-  headStatus.textContent=live?'Trafik canlı':(configured?'Trafik kapalı':'Trafik: anahtar yok');
+  headStatus.textContent=live?'Trafik canlı':(configured?'Trafik: bağlantı yok':'Trafik: anahtar gerekli');
   headStatus.classList[live?'add':'remove']('is-live');
  }
  if(!o)return;
@@ -3411,7 +3411,8 @@ window.molaTrafficStatus=function(o){
  $('traffic-map-provider').textContent=active?'TomTom Orbis Trafik':'OpenFreeMap';
  $('dock-traffic-label').textContent=active?'TomTom açık':'Trafik kapalı';
  $('dock-traffic').classList[active?'remove':'add']('status-unavailable');
- $('traffic-mini-label').textContent=active?'🚦 TomTom Orbis canlı katman':'🚦 Trafik verisi yok';
+ $('traffic-mini-label').textContent=active?'🚦 TomTom Orbis canlı katman':
+  '🚦 '+String(o.detail||'Canlı trafik bağlantısı yok').slice(0,75);
  $('traffic-mini-label').classList[active?'add':'remove']('live');
  $('layer-status').classList[active?'remove':'add']('warning');
  $('layer-status').textContent=String(o.detail||'Trafik verisi yok');
@@ -3459,6 +3460,21 @@ function switchTraffic(which){
  adapter.activate(which,center,zoom);
 }
 $('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
+ // Visible driver-facing status also opens recovery: no hidden traffic controls.
+ $('header-traffic-status').setAttribute('role','button');
+ $('header-traffic-status').setAttribute('tabindex','0');
+ $('header-traffic-status').setAttribute('title','Trafik bağlantısını yenile veya anahtar ayarla');
+ $('header-traffic-status').onclick=function(){
+  var t=window.Id4TrafficProviders;
+  if(t&&t.configured&&t.configured().tomtom)switchTraffic('tomtom');
+  else native('tomtomKey');
+ };
+ $('header-traffic-status').onkeydown=function(e){
+  if(e&&(e.key==='Enter'||e.key===' ')){
+   if(e.preventDefault)e.preventDefault();
+   $('header-traffic-status').onclick();
+  }
+ };
 $('traffic-tomtom-key').onclick=function(){native('tomtomKey')};
 $('traffic-osm').onclick=$('traffic-map-exit').onclick=function(){switchTraffic('osm')};
 // The old modal remains only as an inaccessible internal data holder;
@@ -3567,6 +3583,17 @@ $('allSensors').onclick=function(){native('sensors')};
 if(window.Id4TrafficProviders && map){
  window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
   detail:'Trafik verileri rota oluşturulduğunda otomatik kontrol edilir.'});
+}
+// Start real traffic at map startup when a restricted build key is configured.
+// Native user-key settings also activate immediately after saving.
+if(window.Id4TrafficProviders&&window.Id4TrafficProviders.configured().tomtom){
+ setTimeout(function(){
+  if(map&&window.Id4TrafficProviders&&window.Id4TrafficProviders.getActive()!=='tomtom')
+    switchTraffic('tomtom');
+ },1000);
+}else if(window.Id4TrafficProviders){
+ window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
+  detail:'TomTom API anahtarı yok · üstteki Trafik alanından ayarla.'});
 }
 window.onerror=function(message){msg('Ekran hatası: '+String(message).slice(0,110));return false};
 })();
