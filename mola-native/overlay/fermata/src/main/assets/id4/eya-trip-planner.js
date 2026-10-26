@@ -201,7 +201,7 @@ function render() {
      c=consumption(speed,temp);
  set('eya-trip-source',(route?'OSRM: gerçek rota':'OSRM: —')+
    ' · SoC: '+(source||'—')+' · '+freshness+
-   ' · Hava: '+(useWeather?'model güncel':'manuel varsayım'));
+   ' · Hava: '+(useWeather?'rota boyunca saatlik MODEL':'manuel varsayım'));
  if(!route){
    set('eya-trip-status','Önce gerçek rota oluştur. Örnek mesafe veya istasyon kullanılmaz.');
    ['eya-trip-km','eya-trip-time','eya-trip-arrival-time',
@@ -247,8 +247,9 @@ function render() {
  }
  try{
    if(root.EyaEnergyRoute && route.coordinates)
-     root.EyaEnergyRoute.draw(route.coordinates,{distanceKm:route.distanceKm,
-       startSoc:start,kwh100:c,capacityKwh:capacity});
+     (route.stopIncluded?root.EyaEnergyRoute.clear():
+       root.EyaEnergyRoute.draw(route.coordinates,{distanceKm:route.distanceKm,
+       startSoc:start,kwh100:c,capacityKwh:capacity}));
  }catch(_){}
  var s=p.candidate;
  if(!(charged&&charged.stops&&charged.stops.length))set('eya-trip-cost',s&&s.chargeMin!==null&&price!==null?
@@ -295,7 +296,8 @@ safe('molaRoute',function(p) {
  route={coordinates:p.coordinates,distanceKm:Number(p.distanceKm),durationMin:Number(p.durationMin),
     stopIncluded:p.stopIncluded===true,routeGeneration:p.routeGeneration,
     trafficAvailable:p.trafficAvailable===true};
- candidate=null;corridorCandidates=[];stationUpdated='';packetTime=0;render();
+ candidate=null;corridorCandidates=[];stationUpdated='';packetTime=0;
+ weather=null;weatherAt=0;if(root.EyaEnergyRoute)root.EyaEnergyRoute.clear();render();
 });
 safe('molaStations',function(p) {
  if(!route||!p||p.kind!=='route'||!Array.isArray(p.items))return;
@@ -315,7 +317,7 @@ safe('molaTelemetry',function(d) {
  measured=null;socAt=0;
  if(d&&d.fresh===true&&(Number.isFinite(d.measuredAtMs)&&
       now-d.measuredAtMs>=0&&now-d.measuredAtMs<=TTL)) {
-   measured=value(d.soc,0,100);
+   measured=value(String(d.soc).replace(',','.').trim().replace(/\s*%$/,''),0,100);
    if(measured!==null)socAt=now;
  }
  render();
@@ -326,13 +328,28 @@ safe('molaSocScenario',function(p){
    value(p.percent,0,100):null;
  render();
 });
+safe('molaJourneyWeather',function(packet){
+ var now=Date.now();
+ if(!route||!packet||packet.source!=='Open-Meteo'||!Array.isArray(packet.cards)||
+    packet.cards.length<5||!Number.isFinite(packet.updatedAt)||
+    now-packet.updatedAt<0||now-packet.updatedAt>WEATHER_TTL)return;
+ if(Number.isInteger(route.routeGeneration)&&packet.routeGeneration!==route.routeGeneration)return;
+ var found=packet.cards.filter(function(card){
+   return card&&card.available===true&&value(card.temperature,-35,55)!==null&&
+     Number.isFinite(card.forecastTime)&&Number.isFinite(card.etaMinutes)&&
+     Math.abs(card.forecastTime*1000-(now+card.etaMinutes*60000))<5400000;
+ });
+ if(found.length<5)return;
+ weather=found.reduce(function(total,card){return total+card.temperature},0)/found.length;
+ weatherAt=packet.updatedAt;render();
+});
 safe('molaWeather',function(w){
  var now=Date.now();
  if(w&&w.modelBased===true&&value(w.temperature,-35,55)!==null&&
     value(w.receivedAt,0,Number.MAX_SAFE_INTEGER)!==null&&
     now-w.receivedAt>=0&&now-w.receivedAt<WEATHER_TTL) {
    weather=Number(w.temperature);weatherAt=w.receivedAt;
- }else{weather=null;weatherAt=0}
+ }else if(weatherAt===0||Date.now()-weatherAt>WEATHER_TTL){weather=null;weatherAt=0}
  render();
 });
 safe('molaStatus',function(s) {

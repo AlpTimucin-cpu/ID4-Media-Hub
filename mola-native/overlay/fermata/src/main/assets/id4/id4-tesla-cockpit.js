@@ -6,7 +6,7 @@
  */
 (function(root){
 'use strict';
-var TTL=30000, WEATHER_TTL=5400000;
+var TTL=10000, WEATHER_TTL=5400000;
 var S={soc:null,socAt:0,speed:null,gpsAt:0,gear:null,
   voltage:null,batteryTemp:null,chargeMode:null,powerKw:null,consumption:null,
   temp:null,wind:null,weatherAt:0,routeActive:false,
