@@ -346,3 +346,65 @@
     transition:none!important
   }
 }
+
+/* EYA nav card overlap correction: legacy CSS makes each navigation row
+   flex:1 1 0 and, with an auto-height panel, those rows overlap at 920px.
+   Preserve actual route instructions; let the container scroll on small HU. */
+@media (min-width:640px) and (orientation:landscape){
+ #vehicle-cockpit .cockpit-right{
+   display:block!important;height:auto!important;
+   overflow-y:auto!important;overflow-x:hidden!important;
+   overscroll-behavior:contain;scrollbar-width:thin!important;
+ }
+ #vehicle-cockpit .cockpit-right .cockpit-panel{
+   display:block!important;height:auto!important;
+   min-height:0!important;max-height:none!important;
+   overflow:hidden!important;
+ }
+ #vehicle-cockpit .cockpit-right .co-turn{
+   display:grid!important;grid-template-columns:clamp(23px,2.6vw,39px) minmax(0,1fr)!important;
+   min-height:clamp(40px,8vh,76px)!important;
+   align-items:start!important;margin:0 0 6px!important;
+   padding:0 0 7px!important;gap:6px!important;
+ }
+ #vehicle-cockpit .cockpit-right .co-turn > div {min-width:0!important}
+ #vehicle-cockpit .cockpit-right .co-nav-row{
+   display:grid!important;
+   grid-template-columns:clamp(18px,2vw,28px) minmax(0,1fr)!important;
+   align-items:start!important;flex:0 0 auto!important;
+   position:static!important;min-height:clamp(43px,7vh,77px)!important;
+   height:auto!important;padding:clamp(4px,.75vh,10px) 0!important;
+   margin:0!important;gap:clamp(5px,.65vw,11px)!important;
+ }
+ #vehicle-cockpit .cockpit-right .co-nav-meta{
+   display:block!important;position:static!important;min-width:0!important;
+   line-height:1.22!important;height:auto!important;overflow:hidden!important
+ }
+ #vehicle-cockpit .cockpit-right .co-nav-meta .cockpit-value {
+   display:block!important;margin:2px 0 0!important;
+   line-height:1.15!important;overflow-wrap:anywhere!important;
+ }
+ #vehicle-cockpit .cockpit-right .ev-upcoming-maneuvers{
+   position:static!important;display:block!important;
+   margin:7px 0 0!important;padding:7px 0 0!important;
+   border-top:1px solid #22658771!important;
+   line-height:1.35!important;overflow-wrap:anywhere!important;
+   clear:both!important
+ }
+ /* No route: present the truthful prompt, not stacks of empty metric rows. */
+ #vehicle-cockpit:not(.has-route) .cockpit-right .co-nav-row{
+   display:none!important
+ }
+}
+@media (min-width:640px) and (orientation:landscape) and (max-height:460px){
+ #vehicle-cockpit .cockpit-right .co-turn {
+   min-height:35px!important;padding-bottom:3px!important;
+   margin-bottom:3px!important
+ }
+ #vehicle-cockpit .cockpit-right .co-nav-row{
+   min-height:37px!important;padding:3px 0!important
+ }
+ #vehicle-cockpit .cockpit-right .ev-upcoming-maneuvers{
+   margin-top:3px!important;padding-top:4px!important
+ }
+}

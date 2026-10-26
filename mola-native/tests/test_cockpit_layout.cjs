@@ -58,6 +58,24 @@ const fs = require('node:fs');
   assert.equal(await page.locator('#id4-side-soc').innerText(), '— %');
   assert.equal(await page.locator('#id4-side-range').innerText(), '— km');
   assert.equal(await page.locator('#id4-side-power').innerText(), '— kW');
+  // Real visual bounds guard: the right-side route card must not overlay
+  // text from adjacent rows at both full and compact in-car resolutions.
+  const navLayout = await page.evaluate(() => {
+    const cockpit=document.getElementById('vehicle-cockpit');
+    const rows=[...document.querySelectorAll('.cockpit-right .co-nav-row')];
+    const hiddenWithoutRoute=rows.every(x=>getComputedStyle(x).display==='none');
+    cockpit.classList.add('has-route'); // only CSS state, no fake telemetry
+    const visible=rows.filter(x=>getComputedStyle(x).display!=='none');
+    const overlaps=visible.some((x,i)=>i>0&&
+      x.getBoundingClientRect().top < visible[i-1].getBoundingClientRect().bottom-1);
+    const turn=document.querySelector('.cockpit-right .co-turn').getBoundingClientRect();
+    const afterTurn=visible.length===0||visible[0].getBoundingClientRect().top>=turn.bottom-1;
+    cockpit.classList.remove('has-route');
+    return {hiddenWithoutRoute,overlaps,afterTurn};
+  });
+  assert.equal(navLayout.hiddenWithoutRoute,true,'unplanned route card must be clean');
+  assert.equal(navLayout.overlaps,false,'maneuver rows must never overlap');
+  assert.equal(navLayout.afterTurn,true,'route rows must follow the turn instruction');
   // On the wide premium cockpit, the new always-visible search pill
   // forwards to the original tested route tab. Compact layouts keep it.
   const routeControl = width >= 1180 ? '#ev-premium-search' : '#co-route-tab';
