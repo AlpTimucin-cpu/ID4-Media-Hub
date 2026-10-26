@@ -280,7 +280,7 @@ jobs:
                   "traffic-provider.js","traffic-config.js",
                   "leaflet.js","leaflet.css","maplibre-gl.js","maplibre-gl.css",
                   "id4-tesla-cockpit.css","id4-tesla-cockpit.js",
-                  "eya-cockpit-3070.css",
+                  "eya-cockpit-3070.css","eya-trip-planner.js","eya-trip-planner.css",
                   "maplibre-gl-leaflet.js","MAPLIBRE_LICENSE.txt","MAPLIBRE_LEAFLET_LICENSE.txt",
               ]
               missing=["assets/id4/"+name for name in scripts
@@ -293,6 +293,8 @@ jobs:
               assert 'src="id4-tesla-cockpit.js"' in html
               assert 'href="id4-tesla-cockpit.css"' in html
               assert 'href="eya-cockpit-3070.css"' in html
+              assert 'href="eya-trip-planner.css"' in html
+              assert 'src="eya-trip-planner.js"' in html
               assert "Id4BaseMap.init(map" in html
               assert 'class="dock-climate"' not in html
               assert 'KLİMA</' not in html
