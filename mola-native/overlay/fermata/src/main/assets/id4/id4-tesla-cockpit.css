@@ -211,3 +211,13 @@
     overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important}
   .route-weather-map-pin{font-size:10px!important;max-width:74px!important}
 }
+
+/* GPS-only journey progress. The car marker is intentionally absent until
+ * a fresh (<=30 s), precise fix has snapped to the real route polyline.
+ * Do not animate from a hypothetical start or demo distance. */
+.cockpit-tripbar .tripbar-track:not(.gps-confirmed)::after{
+  display:none!important;
+}
+.cockpit-tripbar .tripbar-track.gps-confirmed::after{
+  display:block!important;
+}
