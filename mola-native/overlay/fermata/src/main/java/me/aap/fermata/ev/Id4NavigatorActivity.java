@@ -734,7 +734,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         String device=mac==null?"Henüz adaptör seçilmedi":"Kaydedilen adaptör: "+mac;
         String status=latestObd==null?"OBD bağlı değil":latestObd.status;
         new AlertDialog.Builder(this)
-            .setTitle("ID.4 · OBD bağlantı ayarları")
+            .setTitle("Elektrikli Yol Arkadaşım · OBD bağlantısı")
             .setMessage(device+"\n"+status+"\n\n"+
                 "Telefon Bluetooth ayarlarından ELM327'yi eşleştir. Car Scanner "
                 +"bağlıysa önce bağlantısını kes; iki uygulama aynı Bluetooth soketini "
@@ -1081,7 +1081,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         }
         if(past.length()==0)info.append("Henüz GPS yolculuğu kaydedilmedi.\\n");
         info.append("\\nKonum ve güzergâh saklanmaz. Enerji ve maliyet ölçülmediyse boş bırakılır.");
-        new AlertDialog.Builder(this).setTitle("ID.4 · Yolculuk Geçmişi")
+        new AlertDialog.Builder(this).setTitle("Elektrikli Yol Arkadaşım · Yolculuklar")
             .setMessage(info.toString())
             .setPositiveButton(tripJournal.recording()?"Kaydı durdur":"GPS kaydını başlat",
                 (dialog,which)->{
@@ -1452,7 +1452,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 if(energy!=null){
                     packet.put("energyLowKwh",energy.lowRouteKwh);
                     packet.put("energyHighKwh",energy.highRouteKwh);
-                    packet.put("energyProfile","ID.4 Pure profil tahmini: 16–24 kWh/100 km");
+                    packet.put("energyProfile","Enerji model varsayımı: 16–24 kWh/100 km (araç ölçümü değil)");
                     // On a route with a charger waypoint we do not know how
                     // many kWh will be added, so a terminal SoC would be fictitious.
                     if(energy.hasSoc && !hasStop){
