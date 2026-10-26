@@ -113,6 +113,28 @@ jobs:
             integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/traffic-provider.js
           node integration/mola-native/tests/test_traffic_provider.js
+          # One native owner of the API key. Uploaded JS getter bridge was
+          # intentionally not shipped: WebView JavaScript can be reached from
+          # subframes, so it must not expose unrestricted credential reads.
+          python3 - <<'PY'
+          from pathlib import Path
+          java=Path('integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev')
+          store=(java/'Id4ApiKeyStore.java').read_text()
+          nav=(java/'Id4NavigatorActivity.java').read_text()
+          build=Path('integration/mola-native/patch_mola.py').read_text()
+          assert 'AndroidKeyStore' in store and 'AES/GCM/NoPadding' in store
+          assert 'setKeySize(256)' in store
+          assert 'PREFIX_PLAIN' not in store
+          assert 'Base64.encodeToString(cipher.getIV()' in store
+          assert 'Id4ApiKeyStore.set(this,key)' in nav
+          assert 'Id4ApiKeyStore.clear(this)' in nav
+          assert 'Id4ApiKeyStore.get(this)' in nav
+          assert 'legacy.edit().remove("tomtom").commit()' in nav
+          assert 'addJavascriptInterface(new Id4KeyBridge' not in nav
+          assert not (java/'Id4KeyBridge.java').exists()
+          assert 'api_key_store' in build
+          print('PASS: Keystore encryption, legacy migration, no plaintext or extra JS secret bridge')
+          PY
       - name: Render and validate cockpit at phone and reference sizes
         run: |
           npm install --prefix "$RUNNER_TEMP/id4-browser" playwright
