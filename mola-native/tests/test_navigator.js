@@ -960,4 +960,25 @@ assert(get('traffic-event-map-status').textContent.includes('1 olay bildirimi'),
  'current incident coverage must display provider and count, not say no accidents');
 assert(drawnMarkers[drawnMarkers.length-1].popup.textContent.includes('yön eşleşmesi'),
  'incidents must not be portrayed as verified same-lane road closures');
+// OBD unavailable: scenario appears explicitly in the cockpit without
+// becoming a measured battery bar or taking over a true ECU reading.
+win.molaTelemetry({fresh:false,status:'OBD bağlı değil'});
+win.molaSocScenario({measured:false,percent:80,userSelected:false});
+assert.equal(get('co-soc').textContent,'80 %');
+assert(get('co-sensor-age').textContent.includes('SENARYOSU'));
+assert.equal(get('co-soc-fill').style.width,'0%',
+ 'a planning scenario must not fill the measured BMS progress bar');
+get('soc-choice-100').onclick();
+win.molaSocScenario({measured:false,percent:100,userSelected:true});
+assert.equal(get('co-soc').textContent,'100 %',
+ '100 percent scenario should be visible even without OBD');
+assert.equal(get('co-trip-battery').textContent,
+ 'Çıkış senaryosu: %100 (ölçüm değil)');
+win.molaTelemetry({fresh:true,soc:'62 %',status:'OBD bağlı'});
+assert.equal(get('co-soc').textContent,'62 %',
+ 'actual validated BMS measurement always takes priority');
+win.molaSocScenario({measured:true,percent:62,userSelected:true});
+win.molaTelemetry({fresh:false,status:'OBD kesildi'});
+assert.equal(get('co-soc').textContent,'— %',
+ 'do not show a stale measurement or earlier scenario as measured');
 console.log('PASS: automatically enabled, scoped cameras and no driver-facing toggles');
