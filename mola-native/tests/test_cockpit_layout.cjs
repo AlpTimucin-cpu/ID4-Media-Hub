@@ -25,7 +25,7 @@ const fs = require('node:fs');
     return r.bottom > dock.top + 1 || r.top < 0 || r.width <= 0 || e.scrollHeight > e.clientHeight + 3 ? [e.textContent.trim()] : [];
    });
   });
-  // Regression: the 30/70 split is geometry, not a screenshot of a map.
+  // Regression: the 25/75 split is geometry, not a screenshot of a map.
   // The original #map remains a single interactive Leaflet instance.
   const split = await page.evaluate(() => {
    const map = document.querySelector('#map').getBoundingClientRect();
@@ -38,10 +38,10 @@ const fs = require('node:fs');
      return style.display!=='none' && rect.width>0 && rect.height>0;
     })};
   });
-  assert(Math.abs(split.mapLeft-width*.30)<=2,
-   'Map must begin at 30% viewport width: '+width+'x'+height);
-  assert(Math.abs(split.mapWidth-width*.70)<=2,
-   'Map must retain 70% viewport width: '+width+'x'+height);
+  assert(Math.abs(split.mapLeft-width*.25)<=2,
+   'Map must begin at 25% viewport width: '+width+'x'+height);
+  assert(Math.abs(split.mapWidth-width*.75)<=2,
+   'Map must retain 75% viewport width: '+width+'x'+height);
   assert(split.railRight<=split.mapLeft+2,
    'Telemetry rail overlaps real map: '+width+'x'+height);
   assert.equal(split.dockVisible,true,'Five functional dock controls visible');
