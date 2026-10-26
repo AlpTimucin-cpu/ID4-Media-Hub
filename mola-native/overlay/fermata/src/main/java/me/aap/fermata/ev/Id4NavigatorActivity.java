@@ -230,10 +230,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             startActivity(media);
         }catch(android.content.ActivityNotFoundException e){
             send("molaStatus",record("media",
-                "Mola multimedya ekranı bu derlemede bulunamadı."));
+                "ID.4 Yol Arkadaşım medya ekranı bu sürümde bulunamadı."));
         }catch(SecurityException e){
             send("molaStatus",record("media",
-                "Mola medya ekranına erişim izni verilmedi."));
+                "ID.4 Yol Arkadaşım medya ekranına erişim izni verilmedi."));
         }
     }
 
@@ -1881,7 +1881,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private static String fetch(String address,int max)throws Exception{
         HttpURLConnection c=(HttpURLConnection)new URL(address).openConnection();
         c.setConnectTimeout(7500);c.setReadTimeout(10000);c.setInstanceFollowRedirects(false);
-        c.setRequestProperty("User-Agent","Mola-ID4-Navigation-Preview/0.2");
+        c.setRequestProperty("User-Agent","ID4-Yol-Arkadasim/0.3");
         c.setRequestProperty("Accept-Language","en");
         try{
             if(c.getResponseCode()!=200)throw new IllegalStateException("HTTP "+c.getResponseCode());
