@@ -62,7 +62,7 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
  const configured=m.createTomTomFlowTileLayer('TEST_TOMTOM_KEY_123456789',
      'id4-live-traffic');
  assert.equal(configured,madeFlow);
- assert.match(configured.url,/api\\.tomtom\\.com\\/maps\\/orbis\\/traffic\\/flow\\/raster\\/tile/);
+ assert(configured.url.includes('api.tomtom.com/maps/orbis/traffic/flow/raster/tile/'), 'official TomTom v2 flow endpoint');
  assert.match(configured.url,/apiVersion=2/);
  assert.equal(configured.options.pane,'id4-live-traffic');
  assert.equal(configured.options.updateWhenIdle,true);
