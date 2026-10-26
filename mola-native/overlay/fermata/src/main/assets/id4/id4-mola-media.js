@@ -1,9 +1,9 @@
-/* ID.4 in-place Mola 3.2 media catalogue.
+/* ID.4 in-place media catalogue.
  * Native Mola owns playback/effects. We do not embed DRM players,
  * replace Android Auto media services, or spoof parked state. */
 (function (root, doc) {
  'use strict';
- var cards = [["tv","📺 TV","Canlı TV ve IPTV","tv"],["youtube","▶ YouTube","Mola YouTube oynatıcısı","youtube"],["mirror","▣ Ekran Yansıtma","Mola ekran yansıtma","mirror"],["netflix","NETFLIX","Resmî uygulama","netflix"],["disney","Disney+","Resmî uygulama","disney"],["prime","prime video","Resmî uygulama","prime"],["media","▣ Medya","Yerel video ve müzik","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastlar","Podcast bölümleri","podcast"],["web","◎ Web","Tarayıcı ve medya","web"],["windasist","WindAsist","Mola kısayolu","windasist"],["mola","MOLA","Mola ana ekranı","mola"],["shortcuts","＋ Kısayol Ekle","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","Mola uygulama ayarları","settings"],["equalizer","▥ Ekolayzır","Mola ses efektleri","equalizer"]];
+ var cards = [["tv","📺 TV","Canlı TV ve IPTV","tv"],["youtube","▶ YouTube","ID.4 YouTube oynatıcısı","youtube"],["mirror","▣ Ekran Yansıtma","ID.4 ekran yansıtma","mirror"],["netflix","NETFLIX","Resmî uygulama","netflix"],["disney","Disney+","Resmî uygulama","disney"],["prime","prime video","Resmî uygulama","prime"],["media","▣ Medya","Yerel video ve müzik","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastlar","Podcast bölümleri","podcast"],["web","◎ Web","Tarayıcı ve medya","web"],["windasist","WindAsist","Mola kısayolu","windasist"],["mola","MOLA","ID.4 ana ekranı","mola"],["shortcuts","＋ Kısayol Ekle","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","Mola uygulama ayarları","settings"],["equalizer","▥ Ekolayzır","Mola ses efektleri","equalizer"]];
  var overlay = null, opened = false;
  function node(tag, cls, txt) {
   var el = doc.createElement(tag);
@@ -46,13 +46,13 @@
   overlay.id = 'id4-mola-drawer';
   overlay.hidden = true;
   overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-label', 'Mola 3.2 medya uygulamaları');
+  overlay.setAttribute('aria-label', 'ID.4 Yol Arkadaşım medya uygulamaları');
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-hidden', 'true');
   var panel = node('div', 'id4-mola-panel');
   var head = node('div', 'id4-mola-head');
   var title = node('div', 'id4-mola-title');
-  title.appendChild(node('strong', '', 'Mola 3.2 · Medya'));
+  title.appendChild(node('strong', '', 'ID.4 Yol Arkadaşım · Medya'));
   title.appendChild(node('small', '', 'ID.4 Yol Arkadaşım · mevcut oynatıcılar korunur'));
   var close = node('button', 'id4-mola-close', '✕ Kapat');
   close.id = 'id4-mola-close';
@@ -70,7 +70,7 @@
   panel.appendChild(head); panel.appendChild(grid);
   panel.appendChild(node('p', 'id4-mola-disclaimer',
    'Netflix, Disney+ ve Prime Video resmî uygulamada veya tarayıcıda açılır. ' +
-   'TV, YouTube, radyo, Ekolayzır ve diğer özellikler orijinal Mola ekranına geçer. ' +
+   'TV, YouTube, radyo, Ekolayzır ve diğer özellikler ID.4 medya bölümüne geçer. ' +
    'DRM ve araç hareketi kısıtları değiştirilmez.'));
   overlay.appendChild(panel);
   overlay.addEventListener('click',function(e) {
