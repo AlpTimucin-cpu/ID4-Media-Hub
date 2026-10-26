@@ -38,8 +38,12 @@ const fs = require('node:fs');
   assert.equal(await page.locator('#id4-side-soc').innerText(), '— %');
   assert.equal(await page.locator('#id4-side-range').innerText(), '— km');
   assert.equal(await page.locator('#id4-side-power').innerText(), '— kW');
-  // Open route search on the real page, not a mocked DOM.
-  await page.locator('#co-route-tab').click();
+  // On the wide premium cockpit, the new always-visible search pill
+  // forwards to the original tested route tab. Compact layouts keep it.
+  const routeControl = width >= 1180 ? '#ev-premium-search' : '#co-route-tab';
+  assert.equal(await page.locator(routeControl).isVisible(),true,
+    'real route entry must be visible at '+width+'x'+height);
+  await page.locator(routeControl).click();
   assert.equal(await page.locator('#to').isVisible(), true);
   await page.locator('#to').fill('Şırnak');
   await page.waitForTimeout(450);
