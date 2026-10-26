@@ -27,7 +27,7 @@ const fs = require('node:fs');
   });
   await page.screenshot({ path: path.join(out, width + 'x' + height + '.png') });
   assert.deepEqual(issues, [], 'Vehicle cards clipped at ' + width + 'x' + height);
-  assert.match(await page.locator('#header-traffic-status').innerText(), /anahtar yok/);
+  assert.match(await page.locator('#header-traffic-status').innerText(), /anahtar gerekli/);
   assert.equal(await page.locator('#co-soc').innerText(), '— %');
   // Avoid duplicating live telemetry as a third navigation card.
   // The existing addon still runs; only its redundant UI is hidden.
