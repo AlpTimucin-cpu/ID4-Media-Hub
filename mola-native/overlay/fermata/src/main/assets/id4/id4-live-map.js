@@ -10,6 +10,83 @@
 (function (window, document) {
   'use strict';
 
+  // An optional *user-supplied* key for standalone previews. A placeholder
+  // never triggers paid requests. In the Android APK, the existing per-user
+  // native Settings / ID4_TRAFFIC_CONFIG takes precedence.
+  // Browser tile URLs expose API keys: restrict traffic API usage and quota.
+  const TOMTOM_API_KEY = "YOUR_API_KEY";
+  const FLOW_URL =
+    'https://api.tomtom.com/maps/orbis/traffic/flow/raster/tile/' +
+    '{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=';
+
+  function isTomTomKey(key) {
+    return typeof key === 'string' && /^[A-Za-z0-9_-]{15,200}$/.test(key) &&
+      key !== 'YOUR_API_KEY' && key !== 'YOUR_TOMTOM_API_KEY';
+  }
+
+  // Exactly one shared Leaflet map. The traffic provider owns the lifecycle
+  // and never creates an extra map or a second flow tile subscription.
+  // MapLibre renders in Leaflet's overlayPane (z≈400). Raster flow must use
+  // a transparent higher pane (z=425), still below regular markers (z=600).
+  function createTomTomFlowTileLayer(key, paneName) {
+    try {
+      if (typeof L === 'undefined' || !L.tileLayer || !isTomTomKey(key))
+        return null;
+      return L.tileLayer(FLOW_URL + encodeURIComponent(key), {
+        pane: paneName || 'id4-live-traffic',
+        tileSize: 256,
+        opacity: 0.92,
+        maxZoom: 19,
+        noWrap: true,
+        updateWhenIdle: true,  // Avoid re-fetches during pan gestures.
+        keepBuffer: 2,         // Bounded tile cache; less churn on POCO F5.
+        attribution: '© TomTom'
+      });
+    } catch (error) {
+      // Missing Leaflet, unsupported WebView or invalid key may NOT crash map.
+      try { console.warn('ID.4 traffic tile unavailable', error); } catch (_) {}
+      return null;
+    }
+  }
+
+  function connectTrafficProvider() {
+    try {
+      var p = window.Id4TrafficProviders;
+      if (!p || !map || typeof p.attachLeaflet !== 'function') return;
+      p.attachLeaflet(map);
+      if (typeof p.configured === 'function' &&
+          typeof p.setTomTomKey === 'function' && !p.configured().tomtom) {
+        var key = window.ID4_TRAFFIC_CONFIG && window.ID4_TRAFFIC_CONFIG.tomtomKey;
+        if (!isTomTomKey(key)) key = TOMTOM_API_KEY;
+        if (isTomTomKey(key)) p.setTomTomKey(key);
+      }
+    } catch (error) {
+      try { console.warn('ID.4 traffic attach unavailable', error); } catch (_) {}
+    }
+  }
+
+  function toggleTraffic(enabled) {
+    try {
+      var p = window.Id4TrafficProviders;
+      if (!map || !p || typeof p.activate !== 'function') return Promise.resolve(false);
+      var turnOn = typeof enabled === 'boolean' ? enabled : p.getActive() !== 'tomtom';
+      if (!turnOn) return Promise.resolve(p.activate('osm')).catch(function(){return false});
+      if (!p.configured || !p.configured().tomtom) {
+        status('TomTom API anahtarı gerekli');
+        return Promise.resolve(false);
+      }
+      var center = map.getCenter && map.getCenter();
+      var position = center && Number.isFinite(center.lat) && Number.isFinite(center.lng)
+        ? [center.lat, center.lng] : undefined;
+      var zoom = map.getZoom && map.getZoom();
+      return Promise.resolve(p.activate('tomtom', position, zoom))
+        .catch(function(){status('Canlı trafik bağlantısı kurulamadı');return false});
+    } catch (error) {
+      status('Trafik katmanı kullanılamıyor');
+      return Promise.resolve(false);
+    }
+  }
+
   var CFG = Object.freeze({
     osrmUrl: 'https://router.project-osrm.org', // Demo servisi: üretimde özel OSRM kullanın.
     weatherUrl: 'https://api.open-meteo.com/v1/forecast',
@@ -826,6 +903,7 @@ function init(existingMap) {
       maxZoom: 18, updateWhenIdle: true, keepBuffer: 1
     }).addTo(map);
   }
+  connectTrafficProvider();
   layers.route = L.layerGroup().addTo(map);
   layers.stations = L.layerGroup().addTo(map);
   layers.incidents = L.layerGroup().addTo(map);
@@ -907,6 +985,8 @@ function init(existingMap) {
      showRoute: drawRoute,
      // Mola navigator.html kendi rotasını çiziyorsa ikinci çizgi ekleme.
      ingestNativeRoute: function (data) { return drawRoute(data, { draw: false }); },
+     createTomTomFlowTileLayer: createTomTomFlowTileLayer,
+     toggleTraffic: toggleTraffic,
      attachExistingMap: function (existingMap) {
        if (!existingMap || typeof existingMap.addLayer !== 'function') return false;
        init(existingMap);
