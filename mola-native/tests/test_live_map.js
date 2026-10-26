@@ -52,6 +52,22 @@ vm.runInNewContext(source,ctx,{timeout:2000,filename:'id4-live-map.js'});
 (async()=>{
  const m=win.ID4LiveMap;
  assert(m.attachExistingMap(map));
+ // Verify the actual packaged module creates a single transparent, bounded
+ // Orbis v2 tile layer — never a second Leaflet map or artificial line colors.
+ let madeFlow=null;
+ L.tileLayer=function(url,options){madeFlow={url,options};return madeFlow};
+ assert.equal(m.createTomTomFlowTileLayer('YOUR_API_KEY','id4-live-traffic'),null);
+ assert.equal(m.createTomTomFlowTileLayer('', 'id4-live-traffic'),null);
+ assert.equal(m.createTomTomFlowTileLayer('bad key', 'id4-live-traffic'),null);
+ const configured=m.createTomTomFlowTileLayer('TEST_TOMTOM_KEY_123456789',
+     'id4-live-traffic');
+ assert.equal(configured,madeFlow);
+ assert.match(configured.url,/api\\.tomtom\\.com\\/maps\\/orbis\\/traffic\\/flow\\/raster\\/tile/);
+ assert.match(configured.url,/apiVersion=2/);
+ assert.equal(configured.options.pane,'id4-live-traffic');
+ assert.equal(configured.options.updateWhenIdle,true);
+ assert.equal(configured.options.keepBuffer,2);
+ assert.equal(await m.toggleTraffic(),false,'missing provider must fail closed');
  assert(m.ingestNativeRoute({coordinates:[[35,39],[35.1,39.1]],distanceKm:15,durationMin:20}));
  // Native packet is a route subset; count may exceed the sent item count.
  assert.equal(m.setRouteStations({kind:'route',total:7,items:[
