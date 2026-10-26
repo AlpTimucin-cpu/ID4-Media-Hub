@@ -40,6 +40,28 @@ Bu ekran görüntüleri gerçek uygulama arayüzünden **çevrimdışı tarayıc
 | Sesli manevra | Gerçek Türkçe TTS altyapısı var, fiziksel cihaz ve otomobil testi yapılmadı |
 | Android Auto | Doğrulanmadı; araçta çalışıyor iddiası yok |
 
+## Orijinal medya APK 3.2 ile isteğe bağlı entegrasyon
+
+Kullanıcının verdiği `Mola-3.2(3).apk` dosyası değiştirilmeden incelendi:
+**sürüm 3.2 / kod 421**, paket kimliği
+`me.app.fermataX.auto.mola32.debug`, dışarıdan açılabilir başlatıcı
+`me.app.fermatax.auto.PhoneLauncherActivity`.
+**SHA-256:** `2cf92adf8df595c97e8ac9b5c9e0d73f64e2e3ce8601756426773f14e50f3f47`.
+
+Bu entegrasyon uygulamaları **birleştirip değiştirilmiş tek APK üretmez**.
+Özgün APK'ya kod, imza, kaynak, izin, medya modülü veya arayüz değişikliği
+uygulanmaz ve APK repo/CI içine gömülmez.
+
+- Her iki uygulama ayrıca kurulur ve farklı paket kimlikleri nedeniyle yan yana bulunabilir.
+- **Elektrikli Yol Arkadaşım → Medya → Orijinal medya uygulamasını aç** tek dokunuşuyla,
+  orijinal uygulamanın kendi başlatıcı ekranı açılır; mevcut 15 medya kısayolu aynen kalır.
+- Geri dönmek için Android geri tuşu veya son uygulamalar kullanılabilir.
+- Özgün uygulama kurulu değilse bilgilendirici hata gösterilir.
+- Orijinal uygulamanın tüm menülerine erişilir; iki uygulamanın ortak ekran,
+  oturum, çerez, oynatıcı veya dosya sistemine sahip olduğu **iddia edilmez**.
+- Gerçek Android telefonunda iki APK'nın birlikte başlatılması **henüz doğrulanmadı**.
+- Android Auto'da uygulamalar arası geçiş **doğrulanmadı**.
+
 ## APK
 
 GitHub **Actions** bölümünden **Elektrikli Yol Arkadaşım APK** adlı en son başarılı iş akışını aç, **Artifacts → Elektrikli-Yol-Arkadasim-APK** ZIP dosyasını indir ve içindeki APK'yı Android telefona kur.

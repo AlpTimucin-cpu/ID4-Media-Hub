@@ -27,17 +27,27 @@ const doc={readyState:'complete',body,createElement:el,getElementById(id){
 },addEventListener(){}};
 entries['dock-apps']=el('button');entries['dock-music']=el('button');
 const calls=[];
-const root={MolaNative:{openMolaCard(id){calls.push(id)}},console:{warn(){}}};
+const root={MolaNative:{openMolaCard(id){calls.push(id)},openOriginalMedia(){calls.push('external-original')}},console:{warn(){}}};
 vm.runInNewContext(source,{window:root,document:doc}, {filename:'id4-mola-media.js'});
 assert(root.ID4MolaMediaHub,'media hub API missing');
 assert.equal(root.ID4MolaMediaHub.isOpen(),false);
 assert.equal(root.ID4MolaMediaHub.items().length,15);
+assert(entries['id4-mola-external-original'],
+ 'external original 3.2 optional launcher must be visible');
+assert.equal(root.ID4MolaMediaHub.openOriginalMedia instanceof Function,true);
+
 for(const id of ['netflix','disney','prime','equalizer','radio','tv','mirror',
  'web','windasist','shortcuts','settings']){
  assert(root.ID4MolaMediaHub.items().includes(id),'missing module '+id);
 }
 entries['dock-apps'].onclick();
 assert.equal(root.ID4MolaMediaHub.isOpen(),true,'dock must open in-place panel');
+entries['id4-mola-external-original'].onclick();
+assert.equal(calls.at(-1),'external-original');
+assert.equal(root.ID4MolaMediaHub.isOpen(),false);
+entries['dock-apps'].onclick();
+assert.equal(root.ID4MolaMediaHub.isOpen(),true,'dock reopens after external launch');
+
 const layer=entries['id4-mola-drawer'];
 assert.equal(layer.hidden,false);
 assert.equal(layer.attrs['aria-hidden'],'false');

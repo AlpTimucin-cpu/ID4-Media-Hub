@@ -107,6 +107,7 @@ jobs:
           node integration/mola-native/tests/test_eya_corridor_stations.cjs
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
           node integration/mola-native/tests/test_mola_media.js
+          node integration/mola-native/tests/test_external_mola32.cjs
           node --check integration/mola-native/tests/test_id4_native_bridge.js
           node integration/mola-native/tests/test_id4_native_bridge.js
           python3 - <<'PY'

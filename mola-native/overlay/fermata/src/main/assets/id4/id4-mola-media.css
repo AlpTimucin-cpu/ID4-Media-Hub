@@ -69,3 +69,15 @@
  .id4-mola-card small{font-size:11px;line-height:1.32;margin-top:8px}
  .id4-mola-disclaimer{font-size:9px;line-height:1.28}
 }
+
+/* Explicit, opt-in launch of the separately installed original 3.2 binary.
+ * This does not replace any existing TV, music or navigation shortcut. */
+.id4-mola-external-original{display:flex;flex-direction:column;
+ justify-content:center;align-items:flex-start;gap:5px;
+ width:100%;min-height:54px;text-align:left;
+ padding:9px 14px;border-radius:12px;border:1px solid #369ca8;
+ background:linear-gradient(110deg,#105566,#0a364e);color:#eafffb;
+ font:inherit;cursor:pointer;touch-action:manipulation;flex-shrink:0}
+.id4-mola-external-original strong{font-size:clamp(13px,2.4vh,18px);font-weight:800}
+.id4-mola-external-original small{font-size:clamp(10px,1.6vh,12px);color:#a9d2d4}
+.id4-mola-external-original:focus-visible{outline:3px solid #70eed9;outline-offset:2px}

@@ -40,6 +40,22 @@
     detail:'Bu kısayol için yeni Elektrikli Yol Arkadaşım Android uygulama sürümü gerekli.'});
   return false;
  }
+ function openOriginalMedia() {
+  setOpen(false);
+  try {
+   var bridge = root.MolaNative;
+   if (bridge && typeof bridge.openOriginalMedia === 'function') {
+    bridge.openOriginalMedia();
+    return true;
+   }
+  } catch(e) {
+   try{root.console.warn('original media handoff unavailable',e)}catch(_){}
+  }
+  if(typeof root.molaStatus==='function')
+   root.molaStatus({status:'media',detail:
+     'Orijinal uygulama geçişi için güncel Elektrikli Yol Arkadaşım APK sürümü gerekli.'});
+  return false;
+ }
  function install() {
   if (overlay || !doc.body) return !!overlay;
   overlay = node('section', 'id4-mola-drawer');
@@ -67,7 +83,15 @@
    button.onclick = function () { launch(c[0]) };
    grid.appendChild(button);
   });
-  panel.appendChild(head); panel.appendChild(grid);
+  var originalButton=node('button','id4-mola-external-original');
+  originalButton.id='id4-mola-external-original';
+  originalButton.type='button';
+  originalButton.setAttribute('aria-label','Yüklü, değiştirilmemiş orijinal uygulamayı aç');
+  originalButton.appendChild(node('strong','','◉ Orijinal medya uygulamasını aç'));
+  originalButton.appendChild(node('small','',
+   'Sürüm 3.2 · bütün orijinal menüler kendi uygulamasında korunur'));
+  originalButton.onclick=openOriginalMedia;
+  panel.appendChild(head);panel.appendChild(originalButton);panel.appendChild(grid);
   panel.appendChild(node('p', 'id4-mola-disclaimer',
    'Film ve dizi servisleri resmî uygulamada veya tarayıcıda açılır. ' +
    'Canlı TV, video, radyo, ses ayarları ve diğer özellikler medya bölümüne geçer. ' +
@@ -89,6 +113,7 @@
  root.ID4MolaMediaHub = {start:install,open:function(){return install()&&setOpen(true)},
   close:function(){return setOpen(false)},
   isOpen:function(){return opened},
+  openOriginalMedia:openOriginalMedia,
   items:function(){return cards.map(function(c){return c[0]})}};
  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded',install);
  else install();

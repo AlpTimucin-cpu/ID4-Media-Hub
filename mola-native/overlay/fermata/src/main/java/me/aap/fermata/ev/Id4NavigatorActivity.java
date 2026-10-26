@@ -288,6 +288,36 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private void openMediaSafely(){
         openMolaDestination("mola");
     }
+    // This package/component pair was read directly from the *user-supplied*
+    // Mola 3.2 APK manifest (versionCode 421). Do not change or unpack its code.
+    private static final String ORIGINAL_MOLA_PACKAGE =
+        "me.app.fermataX.auto.mola32.debug";
+    private static final String ORIGINAL_MOLA_LAUNCHER =
+        "me.app.fermatax.auto.PhoneLauncherActivity";
+
+    /**
+     * Optional companion handoff into the original, separately installed APK.
+     * We do not modify/re-sign the user's APK or copy its libraries/services.
+     * Original app controls its own features, state, and playback.
+     */
+    private void openOriginalMediaUnmodified(){
+        if(destroyed || isFinishing() || isDestroyed())return;
+        try{
+            Intent other=new Intent(Intent.ACTION_MAIN);
+            other.addCategory(Intent.CATEGORY_LAUNCHER);
+            other.setClassName(ORIGINAL_MOLA_PACKAGE,ORIGINAL_MOLA_LAUNCHER);
+            other.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(other);
+        }catch(android.content.ActivityNotFoundException e){
+            send("molaStatus",record("media",
+                "Orijinal medya uygulaması 3.2 kurulu değil. Önce orijinal APK'yı ayrıca yükle."));
+        }catch(SecurityException e){
+            send("molaStatus",record("media",
+                "Orijinal uygulamanın başlatılmasına Android izin vermedi."));
+        }
+    }
+
 
     private void openMolaDestination(String destination){
         if(destroyed || isFinishing() || isDestroyed())return;
@@ -399,6 +429,10 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         /** Phone media Activity handoff only; never overrides driving locks. */
         @JavascriptInterface public void openMedia(){
             ui.post(()->openMediaSafely());
+        }
+        @JavascriptInterface public void openOriginalMedia(){
+            // Fixed user-initiated action; no caller-supplied component names.
+            ui.post(()->openOriginalMediaUnmodified());
         }
         @JavascriptInterface public void openMolaCard(String id){
             if(id==null || id.length()>24)return;
