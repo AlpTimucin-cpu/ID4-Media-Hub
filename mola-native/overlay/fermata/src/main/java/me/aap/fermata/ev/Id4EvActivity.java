@@ -72,7 +72,7 @@ public final class Id4EvActivity extends Activity {
             "feature/mola-32-migration/data/charging/operator_prices.json";
     private static final String MAP =
             "https://appassets.androidplatform.net/assets/id4/index.html";
-    private static final String IDENTIFIER="Mola-ID4-EV-Preview/0.1";
+    private static final String IDENTIFIER="ID4-Yol-Arkadasim/0.3";
     private static final int MAIN=0xff091e2a;
     private static final int AQUA=0xff66e1c9;
     private static final long THREE_DAYS=72L*60*60*1000;
@@ -141,7 +141,7 @@ public final class Id4EvActivity extends Activity {
         setContentView(root);
         LinearLayout tabs=new LinearLayout(this);
         root.addView(tabs);
-        addTab(tabs,"‹ Mola",()->finish());
+        addTab(tabs,"‹ ID.4 Yol Arkadaşım",()->finish());
         addTab(tabs,"🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         addTab(tabs,"⚡ Şarj",this::stationsScreen);
         addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)));
@@ -184,7 +184,7 @@ public final class Id4EvActivity extends Activity {
     private void mapScreen() {
         int g=++generation;
         LinearLayout body=content();
-        body.addView(text("Mola içinde Türkiye haritası · halka açık şarj istasyonları",14,true));
+        body.addView(text("ID.4 Yol Arkadaşım · Türkiye haritası ve şarj istasyonları",14,true));
         LinearLayout searchRow=new LinearLayout(this);
         address=new EditText(this);
         address.setTextColor(Color.WHITE);
