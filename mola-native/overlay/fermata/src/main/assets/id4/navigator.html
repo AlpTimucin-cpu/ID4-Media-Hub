@@ -838,7 +838,7 @@ body.provider-active .traffic-map-badge{display:flex}
  #co-cost{font-size:11px}
 }
 
-/* 23 Oct vNext: bounded, single-glance Tesla-style layout. Never let a
+/* 23 Oct vNext: bounded, single-glance modern electric cockpit layout. Never let a
    compact head unit become three side-by-side scroll panels. */
 @media (orientation:landscape) and (min-width:640px){
   .top{box-sizing:border-box;min-width:0;overflow:hidden}
@@ -1561,7 +1561,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  #route-weather-map-status{top:116px;left:24%;max-width:64%;font-size:9px}
  .route-weather-map-pin{font-size:10px;padding:2px 3px}
 }
-/* A single Tesla-style traffic toggle; no extra row or overlapping sheet.
+/* A single minimal traffic toggle; no extra row or overlapping sheet.
    Lit green ONLY after a real TomTom tileload callback (not on click). */
 #id4-traffic-toggle{
   display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:4px;
@@ -1640,7 +1640,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
    <small id="co-status">Car Scanner kapalıyken ELM327 bağla.</small>
   </div>
  </div>
- <!-- Visual-only Tesla sidebar: legacy cockpit DOM/callback IDs remain intact.
+ <!-- Visual-only vehicle data sidebar: legacy DOM/callback IDs remain intact.
       No sample speed, BMS charge or shift state: unverified data displays —. -->
  <aside id="id4-tesla-side" class="id4-tesla-side"
        aria-label="Gerçek araç telemetrisi ve model göstergeleri">
