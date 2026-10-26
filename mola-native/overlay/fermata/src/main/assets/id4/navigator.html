@@ -1561,6 +1561,23 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  #route-weather-map-status{top:116px;left:24%;max-width:64%;font-size:9px}
  .route-weather-map-pin{font-size:10px;padding:2px 3px}
 }
+/* A single Tesla-style traffic toggle; no extra row or overlapping sheet.
+   Lit green ONLY after a real TomTom tileload callback (not on click). */
+#id4-traffic-toggle{
+  display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:4px;
+  min-height:36px;min-width:42px;padding:6px 8px;
+  border:1px solid #476a7a;border-radius:11px;
+  background:rgba(8,31,46,.48);color:#acc6ce;
+  font:650 clamp(10px,1.15vh,13px)/1.1 system-ui,sans-serif;
+  white-space:nowrap;cursor:pointer;transition:background .16s,border-color .16s,color .16s;
+}
+#id4-traffic-toggle[aria-pressed="true"]{
+  background:rgba(11,116,81,.32);border-color:#46ffc2;color:#66fbd0;
+  box-shadow:0 0 13px rgba(40,243,164,.18)
+}
+#id4-traffic-toggle:focus-visible{outline:2px solid #72f4d1;outline-offset:2px}
+@media(max-width:1150px){#id4-traffic-toggle .traffic-toggle-label{display:none}}
+@media(max-width:700px){#id4-traffic-toggle{min-height:32px;min-width:32px;padding:3px}}
 </style>
 <link rel="stylesheet" href="id4-tesla-cockpit.css">
 <link rel="stylesheet" href="id4-mola-media.css">
@@ -1785,7 +1802,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <button id="co-expand" type="button">▤ Dikey görünüm</button>
  <button id="co-focus" type="button" aria-pressed="false">◉ Sürüş odağı</button>
 </div>
-<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
+<div class="header-live-info" aria-label="Saat ve bağlantı durumu"><span id="header-clock" class="header-clock">--:--</span><span id="header-traffic-status" class="header-badge">Trafik: —</span><button id="id4-traffic-toggle" type="button" aria-label="Canlı trafik katmanını aç veya kapat" aria-pressed="false" title="TomTom canlı trafik aç/kapat">🚦 <span class="traffic-toggle-label">Trafik</span></button><span id="header-temp" class="header-temp">—°C</span><span id="route-weather-shortcut" class="header-weather-button" role="status">☁ Hava: rota bekleniyor</span></div>
 <button class="round" id="back" aria-label="ID.4 Yol Arkadaşım ana ekranına dön">⌂</button>
 <button id="open-route" class="round" type="button" title="Rota ara veya değiştir">⌕</button>
 <button id="go-fullscreen" class="round" type="button" aria-label="Yatay tam ekran aç">⛶</button></div>
@@ -3407,6 +3424,15 @@ window.molaTrafficStatus=function(o){
  }
  if(!o)return;
  var active=o.provider==='tomtom'&&o.status==='active';
+ // Never turn green simply because a user clicked: 'active' must come
+ // from verified TomTom raster tileload; failures and offline stay muted.
+ var toggle=$('id4-traffic-toggle');
+ if(toggle){
+  toggle.setAttribute('aria-pressed',active?'true':'false');
+  toggle.classList[active?'add':'remove']('active');
+  toggle.setAttribute('title',active?'Canlı trafik kapat · TomTom':
+   String(o.detail||'Trafik bağlantısı kullanılamıyor').slice(0,110));
+ }
  $('traffic-help').textContent=String(o.detail||'Trafik verisi yok');
  $('traffic-map-provider').textContent=active?'TomTom Orbis Trafik':'OpenFreeMap';
  $('dock-traffic-label').textContent=active?'TomTom açık':'Trafik kapalı';
@@ -3460,6 +3486,21 @@ function switchTraffic(which){
  adapter.activate(which,center,zoom);
 }
 $('traffic-tomtom').onclick=function(){switchTraffic('tomtom')};
+$('id4-traffic-toggle').onclick=function(){
+ try{
+  var provider=window.Id4TrafficProviders;
+  if(!provider||!provider.configured||!provider.configured().tomtom){
+   window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
+    detail:'TomTom API anahtarı yok · harita korunuyor.'});
+   native('tomtomKey');return;
+  }
+  if(provider.getActive&&provider.getActive()==='tomtom')switchTraffic('osm');
+  else switchTraffic('tomtom');
+ }catch(_){
+  window.molaTrafficStatus({provider:'tomtom',status:'unavailable',
+   detail:'Trafik açılamadı · OpenFreeMap haritası korunuyor.'});
+ }
+};
  // Visible driver-facing status also opens recovery: no hidden traffic controls.
  $('header-traffic-status').setAttribute('role','button');
  $('header-traffic-status').setAttribute('tabindex','0');
