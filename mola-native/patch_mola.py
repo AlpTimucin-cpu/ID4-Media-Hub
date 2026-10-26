@@ -200,9 +200,14 @@ source=source.replace(anchor,anchor+"\n    private PreferenceSet id4EqualizerPre
 anchor="\t\tPlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfiles, audioEffectsDraft);"
 assert source.count(anchor)==1
 source=source.replace(anchor,"\t\tid4EqualizerPreferences = PlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfiles, audioEffectsDraft);",1)
-anchor="\t\t\tlistView.setAdapter(adapter);"
+# Apply deep-link selection after restoring a saved Preferences page so
+# an explicit ID.4 tap always wins over previously opened settings.
+anchor='\t\t\t\tif (p != null) adapter.setPreferenceSet(p);'
 assert source.count(anchor)==1
-source=source.replace(anchor,anchor+"\n            openId4EqualizerIfRequested();",1)
+source=source.replace(anchor,anchor,1)
+anchor='\t\t\t}\n\t\t});\n\t}'
+assert source.count(anchor)==1
+source=source.replace(anchor,'\t\t\t}\n            openId4EqualizerIfRequested();\n\t\t});\n\t}',1)
 anchor="\t@Override\n\tpublic void onSaveInstanceState(@NonNull Bundle outState) {"
 assert source.count(anchor)==1
 source=source.replace(anchor,'''    /**
