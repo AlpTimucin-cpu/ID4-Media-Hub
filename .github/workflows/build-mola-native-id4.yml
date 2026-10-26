@@ -249,7 +249,13 @@ jobs:
               assert 'class="dock-climate"' not in html
               assert 'KLİMA</' not in html
               assert "body.provider-active #map{visibility:hidden}" not in html
-              print("PASS: installed APK contains real map scripts and no climate widgets")
+              # Never distribute shared API credentials in public artifacts.
+              # Actual values live in app-private settings and are injected
+              # into WebView only when the user explicitly configures them.
+              cfg=apk.read("assets/id4/traffic-config.js").decode("utf-8")
+              assert cfg.strip()=='window.ID4_TRAFFIC_CONFIG={tomtomKey:""};', (
+                  "Refusing public APK containing build-time traffic credentials")
+              print("PASS: installed APK contains real map scripts, no climate widgets and no TomTom build key")
           PY
       - name: Verify ID4 preview is SEPARATE from user's Mola 3.2
         shell: bash
