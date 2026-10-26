@@ -47,7 +47,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Navigation-first, same-app route preview for ID.4.
+/** Navigation-first, same-app route preview for electric vehicles.
  * Beta routing via OSRM demo; NOT a validated live-traffic, offline or safety-grade navigator.
  * The map uses OSM tiles. Never launches ABRP/Maps/other apps.
  */
@@ -225,7 +225,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             media.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
                 Intent.FLAG_ACTIVITY_SINGLE_TOP);
             // Explicitly select the existing Mola destination without changing
-            // the ID.4 navigator's WebView, OBD session or cached route.
+            // the vehicle navigator's WebView, OBD session or cached route.
             media.putExtra(Id4MolaDestination.EXTRA,destination);
             if("equalizer".equals(destination))media.putExtra("id4_equalizer",true);
             startActivity(media);
