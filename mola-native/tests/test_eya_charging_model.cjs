@@ -3,7 +3,7 @@ const m=require('../overlay/fermata/src/main/assets/id4/eya-charging-model.js');
 const old=require('../overlay/fermata/src/main/assets/id4/eya-trip-planner.js');
 for(const v of [70,90,110,130])for(const t of [-10,0,15,35]){
 const a=m.consumptionKwhKm(v,t),b=old.consumption(v,t);
-assert.ok(Math.abs(a-b)<.00000001)}
+assert.ok(Math.abs(a*100-b)<.00000001)}
 for(const [a,b] of [[10,50],[50,80],[80,100],[10,80]]){
 const x=m.chargeMinutes(a,b,52,15),y=old.chargingMinutes(a,b,52,15);
 assert.ok(Math.abs(x-y)/y<.01,'charging curve within 1 percent')}
