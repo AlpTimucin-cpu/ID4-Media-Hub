@@ -214,10 +214,18 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
      * No CarSensors spoofing, parked restriction bypass or player overrides.
      */
     private void openMediaSafely(){
+        openMolaDestination("mola");
+    }
+
+    private void openMolaDestination(String destination){
         if(destroyed || isFinishing() || isDestroyed())return;
         try{
             Intent media=new Intent(this,me.aap.fermata.ui.activity.MainActivity.class);
-            media.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            media.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            // Explicitly select the existing Mola destination without changing
+            // the ID.4 navigator's WebView, OBD session or cached route.
+            media.putExtra(Id4MolaDestination.EXTRA,destination);
             startActivity(media);
         }catch(android.content.ActivityNotFoundException e){
             send("molaStatus",record("media",
@@ -259,10 +267,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             case "shortcuts":
             case "settings":
             case "equalizer":
-                // All these functions already belong to the pinned Mola
-                // dashboard. The original Equalizer controls an *actual*
-                // audio session; duplicating an equalizer here would not.
-                openMediaSafely();
+                // Preserve original Mola player and audio effects; route to
+                // an existing fragment, never start a duplicate player.
+                openMolaDestination(item);
                 return;
             default:
                 send("molaStatus",record("media","Bilinmeyen medya kısayolu."));
