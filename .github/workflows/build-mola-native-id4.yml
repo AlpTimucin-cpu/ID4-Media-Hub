@@ -1,4 +1,4 @@
-name: Mola Native ID4 Preview (preserve TV)
+name: Elektrikli Yol Arkadaşım APK (TV ve rota koruma)
 on:
   workflow_dispatch:
   pull_request:
@@ -340,8 +340,8 @@ jobs:
           from pathlib import Path
           s=Path('/tmp/id4-compiled-manifest.txt').read_text()
           assert 'Id4Launcher' in s
-          assert 'ID.4 Yol Arkadaşım' in s
-          print('PASS: ID.4 label and launcher alias in binary manifest')
+          assert 'Elektrikli Yol Arkadaşım' in s
+          print('PASS: Elektrikli Yol Arkadaşım label and launcher alias in binary manifest')
           PY
           if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mola-preview-package.txt; then
             echo "::error::Refusing APK that could overwrite Mola 3.2"
@@ -349,14 +349,14 @@ jobs:
           fi
           test "$(stat -c %s "$APK")" -gt 10000000
           mkdir -p output
-          cp "$APK" output/Mola-ID4-Preview.apk
-          sha256sum output/Mola-ID4-Preview.apk | tee output/SHA256.txt
+          cp "$APK" output/Elektrikli-Yol-Arkadasim.apk
+          sha256sum output/Elektrikli-Yol-Arkadasim.apk | tee output/SHA256.txt
       - name: Upload testable standalone Mola fork APK
         uses: actions/upload-artifact@v4
         with:
-          name: Mola-OpenSource-ID4-Preview-Not-3.2-APK
+          name: Elektrikli-Yol-Arkadasim-APK
           path: |
-            output/Mola-ID4-Preview.apk
+            output/Elektrikli-Yol-Arkadasim.apk
             output/SHA256.txt
           retention-days: 7
           if-no-files-found: error
