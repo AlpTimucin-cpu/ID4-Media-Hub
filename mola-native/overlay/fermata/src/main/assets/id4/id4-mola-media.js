@@ -55,6 +55,7 @@
   title.appendChild(node('strong', '', 'Mola 3.2 · Medya'));
   title.appendChild(node('small', '', 'ID.4 Yol Arkadaşım · mevcut oynatıcılar korunur'));
   var close = node('button', 'id4-mola-close', '✕ Kapat');
+  close.id = 'id4-mola-close';
   close.type = 'button';close.onclick = function(){setOpen(false)};
   head.appendChild(title);head.appendChild(close);
   var grid = node('div', 'id4-mola-grid');
