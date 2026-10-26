@@ -1740,6 +1740,11 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
   <div>
    <div class="tripbar-mid"><span id="co-trip-progress-label">Rota ilerlemesi yok</span>
      <span id="co-trip-charge">⚡ Şarj planlanmadı</span></div>
+   <!-- Source-backed road distances. Neither value is invented without GPS. -->
+   <div class="ev-timeline-distances" aria-label="GPS güzergâh ilerlemesi">
+     <div><strong id="ev-km-travelled">— km</strong><small>Gidilen · GPS</small></div>
+     <div><strong id="ev-km-remaining">— km</strong><small>Kalan · GPS</small></div>
+   </div>
    <div class="tripbar-track" id="co-trip-track" aria-label="Gerçek GPS konumuna göre ilerleme"><div id="co-trip-fill"></div>
       <!-- Only actual route-corridor Mola charge stop proposals produce marker nodes. -->
       <div id="id4-route-stop-markers" class="id4-route-stop-markers" aria-hidden="true"></div>
@@ -1983,11 +1988,19 @@ function refreshTripArrivalModel(remainingKm){
  note.textContent=low<15?'⚠️ Model rezerv %15 altına düşebilir':
    'Tahmin: 52 kWh, 16–24 kWh/100 km · trafiksiz';
 }
+function setTimelineDistances(travelled,remaining){
+ var done=$('ev-km-travelled'),left=$('ev-km-remaining');
+ if(!done||!left)return;
+ // Important: do not imply measured progress without a verified GPS fix.
+ done.textContent=Number.isFinite(travelled)?travelled.toFixed(1)+' km':'— km';
+ left.textContent=Number.isFinite(remaining)?remaining.toFixed(1)+' km':'— km';
+}
 function showRouteGpsProgress(x){
  if(!currentRouteProgress||!x||!valid(x.lat,x.lon)||!Number.isFinite(x.accuracy)||
     x.accuracy>60||!Number.isFinite(x.timeMs)||
     Date.now()-x.timeMs>30000||x.timeMs>Date.now()+3000){
   $('route-progress-fill').style.width='0%';
+  setTimelineDistances(NaN,NaN);
   $('route-progress-text').textContent='GPS rota ilerlemesi yok';
   $('co-trip-fill').style.width='0%';
   $('co-trip-progress-label').textContent='GPS ilerlemesi yok';
@@ -2011,6 +2024,7 @@ function showRouteGpsProgress(x){
  // Do not claim progress if GPS is too far from the actual route.
  if(closest>Math.min(.8,Math.max(.25,x.accuracy/1000*3))){
   $('route-progress-fill').style.width='0%';
+  setTimelineDistances(NaN,NaN);
   $('route-progress-text').textContent='GPS rota dışında / belirsiz';
   $('co-trip-progress-label').textContent='Konum rota dışında';
   $('co-reroute').style.display=goodGps(x)&&!!points.to?'inline-block':'none';
@@ -2023,6 +2037,7 @@ function showRouteGpsProgress(x){
  $('co-reroute').style.display='none';
  var pct=Math.max(0,Math.min(100,position*100));
  var remaining=Math.max(0,data.roadKm*(1-position));
+ setTimelineDistances(Math.max(0,data.roadKm-remaining),remaining);
  $('route-progress-fill').style.width=pct.toFixed(1)+'%';
  $('co-trip-fill').style.width=pct.toFixed(1)+'%';
  $('co-trip-track').classList.add('gps-confirmed');
