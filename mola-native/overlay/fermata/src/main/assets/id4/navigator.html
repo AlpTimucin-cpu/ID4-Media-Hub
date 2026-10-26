@@ -3360,6 +3360,17 @@ $('route-edit').onclick=function(){
  msg('Başlangıç ve varışı değiştirebilirsin.');
 };
 $('stop').onclick=function(){wipeRoute();msg('Rota durduruldu.')};
+window.molaVoiceState=function(p){
+ if(!p)return;
+ voice=p.enabled===true;
+ $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı')+
+   (p.available===false?' (ses paketi yok)':'');
+ $('tts').textContent=voice?'Kapat':'Aç';
+ var quick=$('eya-voice-toggle');
+ if(quick)quick.textContent=voice?'🔊 Sesi kapat':'🔇 Sesi aç';
+ var volume=$('eya-voice-volume');
+ if(volume&&typeof p.volume==='number')volume.value=Math.round(p.volume*100);
+};
 $('tts').onclick=function(){
  voice=!voice;native('voice',voice);
  $('ttslabel').textContent='Türkçe · '+(voice?'Açık':'Kapalı');

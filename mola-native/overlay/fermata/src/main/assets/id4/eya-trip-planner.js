@@ -119,6 +119,8 @@ panel.innerHTML='<div class="eya-trip-heading"><div><strong>Rota ve şarj planı
     makeInput('eya-maxcharge','number',50,100,5,80,'Maks. şarj hedefi · %')+
     makeInput('eya-price','number',0,100,0.1,'','₺/kWh · yalnızca manuel')+
   '</div><small>Model değerleri araç ölçümü değildir. Boş fiyat = bilinmiyor.</small></details>'+
+  '<label class="eya-voice-volume">Sesli yönlendirme düzeyi'+
+  '<input id="eya-voice-volume" type="range" min="0" max="100" step="5" value="85" aria-label="Sesli yönlendirme düzeyi"></label>'+
   '<h3>Yolculuk zaman çizelgesi</h3><div id="eya-trip-timeline" class="eya-trip-timeline"></div>'+
   '<h3>Batarya yüzdesi / gerçek yol mesafesi</h3>'+
   '<svg id="eya-trip-chart" viewBox="0 0 640 140" role="img" aria-label="Model batarya yüzdesi grafiği"></svg>'+
@@ -133,8 +135,17 @@ if(right){
  openBtn.id='eya-trip-open';openBtn.type='button';
  right.appendChild(openBtn);
  openBtn.onclick=function(){panel.hidden=false;isOpen=true;render()};
+ var vbtn=node('button','eya-voice-toggle','🔊 Sesi kapat');
+ vbtn.id='eya-voice-toggle';vbtn.type='button';
+ vbtn.onclick=function(){var legacy=el('tts');if(legacy)legacy.click()};
+ right.appendChild(vbtn);
 }
 el('eya-trip-close').onclick=function(){isOpen=false;panel.hidden=true};
+el('eya-voice-volume').addEventListener('change',function(){
+ var bridge=root.MolaNative;
+ if(bridge&&typeof bridge.voiceVolume==='function')
+   bridge.voiceVolume(Number(this.value)/100);
+});
 el('eya-trip-use-stop').onclick=function(){
  var real=el('station-suggestion-choose');
  if(real&&candidate&&real.onclick){panel.hidden=true;isOpen=false;real.click()}

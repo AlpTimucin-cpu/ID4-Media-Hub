@@ -87,6 +87,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private Location position;
     private boolean running, voice=true, gpsTrackingRequested, resumeRouteAfterPause;
     private volatile boolean ttsReady;
+    private volatile float speechVolume=0.85f;
     private android.media.AudioManager speechAudio;
     private android.media.AudioFocusRequest speechFocus;
     private volatile boolean destroyed;
@@ -150,6 +151,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         });
         voice=getSharedPreferences("eya_voice_v1",MODE_PRIVATE)
             .getBoolean("enabled",true);
+        speechVolume=Math.max(0f,Math.min(1f,
+            getSharedPreferences("eya_voice_v1",MODE_PRIVATE).getFloat("volume",0.85f)));
         speechAudio=(android.media.AudioManager)getSystemService(AUDIO_SERVICE);
         tts=new TextToSpeech(this,status->{
             if(status==TextToSpeech.SUCCESS && tts!=null){
@@ -203,6 +206,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 if(!PAGE.equals(url) || destroyed)return;
                 send("molaTelemetry",obdPacket(latestObd));
                 sendScenarioStatus();
+                sendVoiceState();
                 applyLocalTomTomKey();
                 Intent source=getIntent();
                 if(source!=null && source.getBooleanExtra("openObdSettings",false)){
@@ -536,9 +540,19 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 getSharedPreferences("eya_voice_v1",MODE_PRIVATE).edit()
                     .putBoolean("enabled",on).apply();
                 if(!on){if(tts!=null)tts.stop();releaseSpeechFocus();}
+                sendVoiceState();
                 send("molaStatus",record("voice",!on?"Sesli yönlendirme kapalı.":
                     ttsReady?"Sesli yönlendirme açık.":
                     "Türkçe ses paketi eksik. Sesli yönlendirme kullanılamıyor."));
+            });
+        }
+        @JavascriptInterface public void voiceVolume(float volume){
+            if(!Float.isFinite(volume)||volume<0f||volume>1f)return;
+            ui.post(()->{
+                speechVolume=volume;
+                getSharedPreferences("eya_voice_v1",MODE_PRIVATE).edit()
+                    .putFloat("volume",volume).apply();
+                sendVoiceState();
             });
         }
         @JavascriptInterface public void stop() {
@@ -684,6 +698,12 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             p.put("ts",System.currentTimeMillis());
         }catch(Exception ignored){}
         return p;
+    }
+    private void sendVoiceState(){
+        try{send("molaVoiceState",new JSONObject().put("enabled",voice)
+            .put("available",ttsReady).put("volume",speechVolume)
+            .put("ts",System.currentTimeMillis()));
+        }catch(Exception ignored){}
     }
     private int scenarioSoc(){
         int stored=getSharedPreferences("id4_soc_scenario_v1",MODE_PRIVATE)
@@ -1227,7 +1247,9 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                             .build()).build();
                     speechAudio.requestAudioFocus(speechFocus);
                 }
-                tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,null,"eya-route-guidance");
+                android.os.Bundle params=new android.os.Bundle();
+                params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,speechVolume);
+                tts.speak(instruction,TextToSpeech.QUEUE_FLUSH,params,"eya-route-guidance");
             }catch(Exception e){releaseSpeechFocus();}
         });
     }
