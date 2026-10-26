@@ -70,7 +70,7 @@
   panel.appendChild(head); panel.appendChild(grid);
   panel.appendChild(node('p', 'id4-mola-disclaimer',
    'Film ve dizi servisleri resmî uygulamada veya tarayıcıda açılır. ' +
-   'TV, YouTube, radyo, Ekolayzır ve diğer özellikler ID.4 medya bölümüne geçer. ' +
+   'Canlı TV, video, radyo, ses ayarları ve diğer özellikler medya bölümüne geçer. ' +
    'DRM ve araç hareketi kısıtları değiştirilmez.'));
   overlay.appendChild(panel);
   overlay.addEventListener('click',function(e) {
