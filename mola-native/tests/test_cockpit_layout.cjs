@@ -25,6 +25,26 @@ const fs = require('node:fs');
     return r.bottom > dock.top + 1 || r.top < 0 || r.width <= 0 || e.scrollHeight > e.clientHeight + 3 ? [e.textContent.trim()] : [];
    });
   });
+  // Regression: the 30/70 split is geometry, not a screenshot of a map.
+  // The original #map remains a single interactive Leaflet instance.
+  const split = await page.evaluate(() => {
+   const map = document.querySelector('#map').getBoundingClientRect();
+   const rail = document.querySelector('#id4-tesla-side').getBoundingClientRect();
+   const dockButtons = ['dock-route','dock-stations','dock-apps',
+      'dock-journal','dock-layers'].map(id => document.getElementById(id));
+   return {mapLeft:map.left, mapWidth:map.width, railRight:rail.right,
+    dockVisible:dockButtons.every(button => {
+     const style=getComputedStyle(button),rect=button.getBoundingClientRect();
+     return style.display!=='none' && rect.width>0 && rect.height>0;
+    })};
+  });
+  assert(Math.abs(split.mapLeft-width*.30)<=2,
+   'Map must begin at 30% viewport width: '+width+'x'+height);
+  assert(Math.abs(split.mapWidth-width*.70)<=2,
+   'Map must retain 70% viewport width: '+width+'x'+height);
+  assert(split.railRight<=split.mapLeft+2,
+   'Telemetry rail overlaps real map: '+width+'x'+height);
+  assert.equal(split.dockVisible,true,'Five functional dock controls visible');
   await page.screenshot({ path: path.join(out, width + 'x' + height + '.png') });
   assert.deepEqual(issues, [], 'Vehicle cards clipped at ' + width + 'x' + height);
   assert.match(await page.locator('#header-traffic-status').innerText(), /anahtar gerekli/);
