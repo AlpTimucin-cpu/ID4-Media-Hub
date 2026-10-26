@@ -63,8 +63,8 @@ for lang in ("values","values-tr"):
         name=m.group(1)
         original=m.group(0)
         if name=="about_html":
-            return original.replace(">Mola</H1>",">ID.4 Yol Arkadaşım</H1>")
-        return original.replace("Mola","ID.4 Yol Arkadaşım")
+            return original.replace(">Mola</H1>",">Elektrikli Yol Arkadaşım</H1>")
+        return original.replace("Mola","Elektrikli Yol Arkadaşım")
     branded,n=re.subn(r'<string\b[^>]*\bname="([^"]+)"[^>]*>.*?</string>',
                        replace_visible_string,branded,flags=re.S)
     assert n>50,"Unexpected source resource structure"
@@ -299,7 +299,7 @@ source=source.replace(anchor,
             android:exported="true"
             android:targetActivity="me.aap.fermata.ev.Id4NavigatorActivity"
             android:icon="@drawable/id4_launcher"
-            android:label="ID.4 Yol Arkadaşım">
+            android:label="Elektrikli Yol Arkadaşım">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -335,7 +335,7 @@ app_icon='android:icon="@drawable/launcher"'
 assert auto_source.count(app_icon)==1
 auto_source=auto_source.replace(app_icon,
     'android:icon="@drawable/id4_launcher"\n'
-    '        android:label="ID.4 Yol Arkadaşım"\n'
+    '        android:label="Elektrikli Yol Arkadaşım"\n'
     '        tools:replace="android:icon,android:label"',1)
 # Host-discoverable Android Auto POI service. This is a safe native template
 # entry for read-only EPDK stations, NOT full map/navigation projection.
@@ -343,7 +343,7 @@ auto_service='''        <service
             android:name="me.aap.fermata.ev.Id4CarPoiService"
             android:enabled="true"
             android:exported="true"
-            android:label="ID.4 Yol Arkadaşım"
+            android:label="Elektrikli Yol Arkadaşım"
             android:icon="@drawable/id4_launcher">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
@@ -466,7 +466,7 @@ for line in changes.splitlines():
     if relative not in allowed and not relative.startswith(
         "fermata/src/main/assets/id4/"):
         raise SystemExit("Unexpected modification: "+relative)
-print("ID.4 Yol Arkadaşım overlay applied. Original media source untouched.")
+print("Elektrikli Yol Arkadaşım overlay applied. Original media source untouched.")
 print("Original source commit:",subprocess.check_output(
     ["git","-C",str(root),"rev-parse","HEAD"],text=True).strip())
 print(changes)
