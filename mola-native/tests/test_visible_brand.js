@@ -19,4 +19,11 @@ assert(/<title>Elektrikli Yol Arkadaşım/.test(legacy));
 assert(cards.includes("'Elektrikli Yol Arkadaşım'")||
        cards.includes('"Elektrikli Yol Arkadaşım"'));
 assert(!/"NETFLIX"|"Disney\+"|"prime video"/.test(cards));
+// A later documentation refresh must not reintroduce the former product
+// name on GitHub. Historical GPL project names remain in legal attribution.
+for (const p of ['NOTICE.md','SECURITY_TOMTOM.md','mola-native/TRAFFIC_PROVIDERS.md']) {
+ const content=fs.readFileSync(path.join(root,p),'utf8');
+ assert(!/ID\\.4 Yol Arkadaşım|ID\\.4 önizleme APK/i.test(content),
+   p+': obsolete public product name returned');
+}
 console.log('PASS: public app brand consistent; license and technical identifiers untouched');
