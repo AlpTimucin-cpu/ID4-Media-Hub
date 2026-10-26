@@ -9,7 +9,7 @@ function plan(p){p=p||{};var km=val(p.distanceKm,.01,5000),cap=val(p.capacityKwh
 if(cons===null&&speed!==null&&temp!==null)cons=consumption(speed,temp)*100;
 var out={valid:false,stops:[],arrivalSoc:null,complete:false,status:'Model verisi eksik'};
 if(km===null||cap===null||cons===null||min===null||max===null||max<=min+5)return out;
-out.valid=true;out.energyKwh=km*cons/100;out.consumptionKwh100=cons;out.startSoc=soc;
+out.valid=true;out.status='';out.energyKwh=km*cons/100;out.consumptionKwh100=cons;out.startSoc=soc;
 if(soc===null){out.status='Güncel OBD veya açık seçilmiş başlangıç senaryosu gerekli';return out}
 if(soc-km*cons/cap>=min){out.complete=true;out.arrivalSoc=soc-km*cons/cap;out.status='Şarjsız varış · model';return out}
 var list=Array.isArray(p.stations)?p.stations:[],seen=new Set();

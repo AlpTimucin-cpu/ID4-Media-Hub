@@ -10,7 +10,7 @@ assert.ok(Math.abs(x-y)/y<.01,'charging curve within 1 percent')}
 const b={distanceKm:400,capacityKwh:52,speedKmh:110,tempC:15,minArrivalPct:10,maxChargePct:80};
 assert.equal(m.plan({...b,startSoc:null}).arrivalSoc,null);
 assert.equal(m.plan({...b,startSoc:80}).complete,false);
-const st={id:'real',ccs:true,title:'EPDK CCS',corridorKm:3,routeProgressKm:170};
+const st={id:'real',ccs:true,title:'EPDK CCS',corridorKm:3,routeProgressKm:150};
 const p=m.plan({...b,startSoc:80,stations:[st]});assert.equal(p.stops.length,1);
 assert.equal(p.stops[0].source,'EPDK');assert.equal(p.stops[0].costTl,null);
 assert.equal(m.plan({...b,startSoc:80,stations:[{...st,ccs:false}]}).stops.length,0);

@@ -174,6 +174,9 @@ final class Id4StationCatalog {
             JSONObject item=pin(c.station,c.rank);
             if("route".equals(kind)){
                 item.put("routeProgressKm",Math.round(c.progressKm*10.0)/10.0);
+                item.put("corridorKm",Math.round(c.rank*10.0)/10.0);
+                item.put("snapshotAt",verifiedAt);
+                item.put("detourMinutes",JSONObject.NULL); // no road detour API evidence
                 if(c.assessment!=null && c.assessment.hasSoc){
                     item.put("modelCandidate",c.assessment.modelCandidate);
                     if(c.assessment.modelCandidate){
@@ -280,8 +283,8 @@ final class Id4StationCatalog {
             south=Math.min(south,p.lat);north=Math.max(north,p.lat);
             west=Math.min(west,p.lon);east=Math.max(east,p.lon);
         }
-        // Wide 20-km geographic prefilter; actual physical route access is not checked.
-        south-=0.20;north+=0.20;west-=0.25;east+=0.25;
+        // Bounding-box prefilter for 5 km straight-line corridor; road access not inferred.
+        south-=0.07;north+=0.07;west-=0.10;east+=0.10;
         List<Candidate> candidates=new ArrayList<>();
         int total=0;
         for(int i=0;i<stations.length();i++){
@@ -294,7 +297,7 @@ final class Id4StationCatalog {
                 double d=distanceToSegmentKm(lat,lon,selected.get(j-1),selected.get(j));
                 if(d<nearest){nearest=d;closestSegment=j;}
             }
-            if(nearest>20.0)continue; // straight-line proximity only, not detour time
+            if(nearest>5.0)continue; // 5 km lateral corridor: not a road-access or detour-time claim
             total++;
             double frac=projectionFraction(lat,lon,
                 selected.get(closestSegment-1),selected.get(closestSegment));
@@ -312,7 +315,7 @@ final class Id4StationCatalog {
             Id4ChargeAdvisor.assess(roadKm,observedSoc,0,0).chargeLikely;
         packet.put("chargeModel",!socKnown?"no-soc":chargeLikely?"charge-likely":"no-stop-model");
         packet.put("modelReserveSoc",Id4ChargeAdvisor.RESERVE_SOC);
-        packet.put("ccsCorridorRadiusKm",20.0);
+        packet.put("ccsCorridorRadiusKm",5.0);
         packet.put("modelNote","52 kWh, 16–24 kWh/100 km ve %15 rezerv varsayımı. "
             +"Gerçek sapma, yol erişimi ve soket doluluğu doğrulanmadı.");
         Candidate recommended=null;
@@ -324,6 +327,8 @@ final class Id4StationCatalog {
         if(recommended!=null){
             JSONObject p=pin(recommended.station,recommended.rank);
             p.put("routeProgressKm",Math.round(recommended.progressKm*10)/10.0);
+            p.put("corridorKm",Math.round(recommended.rank*10)/10.0);
+            p.put("snapshotAt",verifiedAt);
             p.put("arrivalSocLower",
                 Math.max(0,recommended.assessment.projectedArrivalSocLower));
             p.put("arrivalSocUpper",
