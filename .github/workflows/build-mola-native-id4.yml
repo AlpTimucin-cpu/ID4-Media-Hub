@@ -94,7 +94,7 @@ jobs:
           node integration/mola-native/tests/test_live_map.js
           node integration/mola-native/tests/test_journey_guide_integration.js
           node integration/mola-native/tests/test_visible_brand.js
-          # Tesla skin is separate from the tested route/OBD bridge.
+          # Premium cockpit skin is separate from the tested route/OBD bridge.
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-tesla-cockpit.js
           node integration/mola-native/tests/test_tesla_cockpit.js
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
@@ -309,7 +309,7 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           "$AAPT" dump badging "$APK" > /tmp/mola-preview-package.txt
-          # Final binary gate: uploaded Mola 3.2 is NOT the build input.
+          # Final binary gate: an external proprietary APK is NOT the build input.
           # Do not accidentally inherit its mic/file/video permissions.
           "$AAPT" dump permissions "$APK" > /tmp/id4-preview-permissions.txt
           python3 - <<'PY'
@@ -351,7 +351,7 @@ jobs:
           print('PASS: Elektrikli Yol Arkadaşım label and launcher alias in binary manifest')
           PY
           if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mola-preview-package.txt; then
-            echo "::error::Refusing APK that could overwrite Mola 3.2"
+            echo "::error::Refusing APK that could overwrite the original media player"
             exit 1
           fi
           test "$(stat -c %s "$APK")" -gt 10000000
