@@ -17,6 +17,7 @@
     weatherRefreshMs: 10 * 60 * 1000,
     telemetryStaleMs: 30 * 1000,
     localIncidentKey: 'id4-incidents-v1',
+    localIncidentTtlMs: 24 * 60 * 60 * 1000, // Personal traffic notes are never live/verified.
     nearestRefreshMs: 15 * 1000
   });
 
@@ -70,15 +71,25 @@
 32], iconAnchor: [16, 16] });
   }
   function kilometers(a, b) { return L.latLng(a).distanceTo(L.latLng(b)) / 1000; }
+  function validLocalIncident(s) {
+    if (!s || !validLL(s.lat, s.lng) || !['accident', 'closed'].includes(s.type)) return false;
+    var at = Date.parse(s.timestamp), now = Date.now();
+    // Do not revive future-dated entries after a clock change, or show an
+    // old personal report as if it were verified real-time road intelligence.
+    return Number.isFinite(at) && at <= now && now - at <= CFG.localIncidentTtlMs;
+  }
+  function normalizeLocalIncident(s) {
+    if (!validLocalIncident(s)) return null;
+    var id = String(s.id || [s.lat, s.lng, s.type, s.timestamp].join(':'));
+    if (!id || id.length > 160) return null;
+    return {id: id, lat: Number(s.lat), lng: Number(s.lng),
+      type: s.type, timestamp: new Date(Date.parse(s.timestamp)).toISOString()};
+  }
   function safeStorageLoad() {
     try {
-      var a = JSON.parse(window.localStorage.getItem(CFG.localIncidentKey) || '[]');
-      return Array.isArray(a) ? a.filter(function (x) {
-        return x && validLL(x.lat, x.lng) &&
-          (x.type === 'accident' || x.type === 'closed') &&
-          Number.isFinite(Date.parse(x.timestamp));
-      }).slice(-250) : [];
-    } catch (_) { return []; } // WebView DOM storage kapalı olabilir.
+      var rows = JSON.parse(window.localStorage.getItem(CFG.localIncidentKey) || '[]');
+      return Array.isArray(rows) ? rows.map(normalizeLocalIncident).filter(Boolean).slice(-250) : [];
+    } catch (_) { return []; } // WebView DOM storage may be disabled.
   }
   function safeStorageSave() {
     try { window.localStorage.setItem(CFG.localIncidentKey, JSON.stringify(incidents.slice(-250))); }
@@ -319,22 +330,41 @@ function highlightNearestDC(force) {
 
 // Sosyal ihbarlar, Firebase bağlanana kadar yalnızca bu cihazın yerel verisidir.
 function renderIncidents() {
+  var before = incidents.length;
+  incidents = incidents.filter(validLocalIncident);
+  if (before !== incidents.length) safeStorageSave();
   if (!map) return;
   layers.incidents.clearLayers();
   incidents.forEach(function (it) {
-    var label = it.type === 'accident' ? '  💥 Kaza' : ' ⛔ Yol kapalı';
+    var label = it.type === 'accident' ? '💥 Kaza' : '⛔ Yol kapalı';
     var mark = L.marker([it.lat, it.lng], {
       icon: icon(it.type === 'accident' ? '💥' : '⛔', 'id4-incident')
     });
     var popup = document.createElement('div');
     var txt = document.createElement('strong'); txt.textContent = label;
+    var note = document.createElement('div');
+    note.textContent = 'Yalnız bu cihazdaki kişisel not · doğrulanmadı';
     var timestamp = document.createElement('div');
     timestamp.textContent = new Date(it.timestamp).toLocaleString('tr-TR');
-    popup.append(txt, timestamp);
+    var remove = document.createElement('button');
+    remove.type = 'button'; remove.textContent = 'Bu notu sil';
+    remove.addEventListener('click', function () {
+      removeLocalIncident(it.id);
+      if (map && typeof map.closePopup === 'function') map.closePopup();
+    });
+    popup.append(txt, note, timestamp, remove);
     mark.bindPopup(popup);
     layers.incidents.addLayer(mark);
   });
-  setText('id4-incident-count', incidents.length + ' yerel ihbar');
+  setText('id4-incident-count', incidents.length + ' yerel ihbar (doğrulanmadı)');
+}
+function removeLocalIncident(id) {
+  var before = incidents.length;
+  incidents = incidents.filter(function (item) { return item.id !== id; });
+  if (incidents.length === before) return false;
+  safeStorageSave(); renderIncidents();
+  status('Yerel ihbar bu cihazdan silindi.');
+  return true;
 }
 // Firebase için takılabilir boş veri gönderme mimarisi.
 function sendIncidentToDB(lat, lng, type) {
@@ -347,6 +377,7 @@ function sendIncidentToDB(lat, lng, type) {
   }
 }
 function reportIncident(lat, lng, type) {
+  if (!validLL(lat, lng) || !['accident', 'closed'].includes(type)) return null;
   var obj = { id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2),
               lat: lat, lng: lng, type: type, timestamp: new Date().toISOString() };
   incidents.push(obj);
@@ -761,12 +792,9 @@ function setRouteStations(packet) {
 function importIncidents(entries) {
   if (!Array.isArray(entries)) return 0;
   var byId = new Map();
-  incidents.concat(entries).forEach(function (s) {
-    if (!s || !validLL(s.lat, s.lng) ||
-        !['accident', 'closed'].includes(s.type) ||
-        !Number.isFinite(Date.parse(s.timestamp))) return;
-    var id = String(s.id || [s.lat, s.lng, s.type, s.timestamp].join(':'));
-    byId.set(id, { id: id, lat: s.lat, lng: s.lng, type: s.type, timestamp: s.timestamp });
+  incidents.concat(entries).forEach(function (raw) {
+    var item = normalizeLocalIncident(raw);
+    if (item) byId.set(item.id, item);
   });
   incidents = Array.from(byId.values()).slice(-250);
   safeStorageSave(); renderIncidents();
@@ -819,6 +847,7 @@ function init(existingMap) {
         if (route) refreshWeather();
       }, CFG.weatherRefreshMs);
       healthTimer = window.setInterval(function () {
+        if (incidents.some(function (item) { return !validLocalIncident(item); })) renderIncidents();
         if (isTelemetryStale()) {
           renderTelemetry(); updateEnergy(); highlightNearestDC(false);
         }
@@ -898,6 +927,7 @@ function init(existingMap) {
      updateLocation: updateLocation,
      setIncidentSender: function (fn) { onIncidentToDB = typeof fn === 'function' ? fn : null; },
      importIncidents: importIncidents,
+     removeLocalIncident: removeLocalIncident,
      sendIncidentToDB: sendIncidentToDB,
      getState: function () {
        return { routeKm: route ? route.distanceKm : null, weather: weather,
