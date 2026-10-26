@@ -384,6 +384,10 @@ tesla_css=overlay/"fermata/src/main/assets/id4/id4-tesla-cockpit.css"
 eya_layout_css=overlay/"fermata/src/main/assets/id4/eya-cockpit-3070.css"
 trip_planner_js=overlay/"fermata/src/main/assets/id4/eya-trip-planner.js"
 trip_planner_css=overlay/"fermata/src/main/assets/id4/eya-trip-planner.css"
+charging_model_js=overlay/"fermata/src/main/assets/id4/eya-charging-model.js"
+corridor_stations_js=overlay/"fermata/src/main/assets/id4/eya-corridor-stations.js"
+energy_route_js=overlay/"fermata/src/main/assets/id4/eya-energy-route.js"
+tesla_abrp_css=overlay/"fermata/src/main/assets/id4/eya-tesla-abrp.css"
 tesla_js=overlay/"fermata/src/main/assets/id4/id4-tesla-cockpit.js"
 media_hub_js=overlay/"fermata/src/main/assets/id4/id4-mola-media.js"
 media_hub_css=overlay/"fermata/src/main/assets/id4/id4-mola-media.css"
@@ -414,8 +418,8 @@ valhalla_routing=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4ValhallaRou
 trip_journal=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TripJournal.java"
 road_safety=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4RoadSafety.java"
 traffic_incidents=overlay/"fermata/src/main/java/me/aap/fermata/ev/Id4TrafficIncidents.java"
-assert all(f.is_file() for f in [java,html,obd,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,eya_layout_css,trip_planner_js,trip_planner_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
-for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,eya_layout_css,trip_planner_js,trip_planner_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
+assert all(f.is_file() for f in [java,html,obd,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,eya_layout_css,trip_planner_js,trip_planner_css,charging_model_js,corridor_stations_js,energy_route_js,tesla_abrp_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents,auto_poi,auto_obd,auto_station,auto_weather])
+for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,api_key_store,media_destination,decoder,nav_html,word_core,word_adapter,tesla_css,eya_layout_css,trip_planner_js,trip_planner_css,charging_model_js,corridor_stations_js,energy_route_js,tesla_abrp_css,tesla_js,media_hub_js,media_hub_css,word_addon_css,city_license,leaflet_js,leaflet_css,leaflet_license,basemap_controller,basemap_geography,traffic_provider,traffic_config,charge,charge_store,energy_facts,energy_model,live_monitor,overview,station_catalog,station_types,charge_advisor,charge_cost,trip_charge,launcher_icon,journey_banner,tomtom_routing,valhalla_routing,trip_journal,road_safety,traffic_incidents]:
     target=root/f.relative_to(overlay)
     if target.exists():
         raise SystemExit("Would overwrite upstream Mola file: "+str(target))
@@ -445,7 +449,7 @@ for name in ["maplibre-gl.js", "maplibre-gl.css", "maplibre-gl-leaflet.js",
 allowed=set(SOURCE_SHA) | {"fermata/src/auto/res/xml/automotive_app_desc.xml",
     str(java.relative_to(overlay)),str(html.relative_to(overlay)),
     str(obd.relative_to(overlay)),str(auto_poi.relative_to(overlay)),str(auto_obd.relative_to(overlay)),str(auto_station.relative_to(overlay)),str(auto_weather.relative_to(overlay)),str(navigator.relative_to(overlay)),str(api_key_store.relative_to(overlay)),str(media_destination.relative_to(overlay)),
-    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(tesla_css.relative_to(overlay)),str(eya_layout_css.relative_to(overlay)),str(trip_planner_js.relative_to(overlay)),str(trip_planner_css.relative_to(overlay)),str(tesla_js.relative_to(overlay)),str(media_hub_js.relative_to(overlay)),str(media_hub_css.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
+    str(decoder.relative_to(overlay)),str(nav_html.relative_to(overlay)),str(word_core.relative_to(overlay)),str(word_adapter.relative_to(overlay)),str(tesla_css.relative_to(overlay)),str(eya_layout_css.relative_to(overlay)),str(trip_planner_js.relative_to(overlay)),str(trip_planner_css.relative_to(overlay)),str(charging_model_js.relative_to(overlay)),str(corridor_stations_js.relative_to(overlay)),str(energy_route_js.relative_to(overlay)),str(tesla_abrp_css.relative_to(overlay)),str(tesla_js.relative_to(overlay)),str(media_hub_js.relative_to(overlay)),str(media_hub_css.relative_to(overlay)),str(word_addon_css.relative_to(overlay)),
     str(city_license.relative_to(overlay)),
     str(leaflet_js.relative_to(overlay)),str(leaflet_css.relative_to(overlay)),
     str(leaflet_license.relative_to(overlay)),

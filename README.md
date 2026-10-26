@@ -19,12 +19,26 @@ Bu ekran görüntüleri gerçek uygulama arayüzünden **çevrimdışı tarayıc
 | Modül | Var olan altyapı | Önemli sınır |
 |---|---|---|
 | **Rota ve harita** | Tek Leaflet haritası, OSRM yol geometrisi ve gerçek alternatif rotalar | Genel OSRM tahmini sürüş süresi canlı trafik süresi değildir |
+| **ABRP tarzı rota planı** | Gerçek OSRM rotası + tarihli EPDK CCS koridoru (en fazla 5 km) + model şarj süresi | Gerçek DC sapma süresi, fiyat, doluluk ve varış SoC araçta doğrulanmadı |
+| **Sesli yol tarifi** | Android yerel tr-TR TTS, GPS doğruluğu ve yaklaşık eşik kontrollü anons | Cihaz/araç ses odağı ve gerçek yol üzerindeki manevra zamanlaması doğrulanmadı |
 | **Canlı trafik** | Kullanıcının kendi anahtarıyla renkli trafik katmanı ve olay sorguları | Servis çağrısı/gerçek karo yüklemesi başarıyla doğrulanmadan “canlı” gösterilmez |
 | **Şarj** | EPDK tabanlı istasyon listesi, soket tipi, güzergâh yakınlığı | Anlık soket doluluğu veya tüm operatörlerin güncel ücretleri garanti edilmez |
 | **Enerji** | Batarya durumundan türetilen açık etiketli menzil ve tüketim modeli | Model değeri gerçek araç ölçümü gibi sunulmaz |
 | **OBD** | İzinli Bluetooth ELM327, salt okunur doğrulanmış veri, veri tazeliği | PID doğrulanmamışsa ekranda `—` gösterilir |
 | **Yol ilerlemesi** | Doğrulanmış GPS konumu rota geometrisine izdüşürülür | GPS eski veya rota dışında ise ilerleme ölçülmüş gibi gösterilmez |
 | **Medya** | TV, video, müzik, radyo ve diğer mevcut medya motorlarına bağlantı | Üçüncü taraf servislerin üyeliği veya oynatma garantisi verilmez |
+
+### OBD ve sürüş doğruluk sınırları
+
+| Bilgi | Durum |
+|---|---|
+| BMS SoC, HV voltaj, batarya sıcaklığı | MEB DID araç özelinde henüz doğrulanmadı; `—` |
+| Kalan menzil / varış SoC | Sadece belirgin biçimde etiketli model, güncel SoC veya açık kullanıcı senaryosu gerekir |
+| Gerçek güç (kW) / ortalama tüketim | Doğrulanmış PID yoksa `—`; model tüketimi ölçüm değildir |
+| Veri eskimesi | OBD alan başına 10 saniye; GPS doğruluğu ve yaş kontrolleri ayrıca uygulanır |
+| EPDK CCS | 5 km düz-çizgi rota koridoru; yol erişimi/sapma süresi/müsaitlik garantisi yok |
+| Sesli manevra | Gerçek Türkçe TTS altyapısı var, fiziksel cihaz ve otomobil testi yapılmadı |
+| Android Auto | Doğrulanmadı; araçta çalışıyor iddiası yok |
 
 ## APK
 
