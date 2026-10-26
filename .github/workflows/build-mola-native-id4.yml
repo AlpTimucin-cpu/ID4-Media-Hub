@@ -85,6 +85,8 @@ jobs:
           # Tesla skin is separate from the tested route/OBD bridge.
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-tesla-cockpit.js
           node integration/mola-native/tests/test_tesla_cockpit.js
+          node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
+          node integration/mola-native/tests/test_mola_media.js
           node --check integration/mola-native/tests/test_id4_native_bridge.js
           node integration/mola-native/tests/test_id4_native_bridge.js
           python3 - <<'PY'
