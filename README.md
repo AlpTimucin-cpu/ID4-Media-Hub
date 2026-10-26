@@ -171,6 +171,14 @@ etiketlenir. Eski trafik görünümü CSS'sinin gerçek Leaflet haritasını
 gizlemesi de engellendi. Desteklenmeyen klima, ısıtma ve telefon
 düğmeleri kokpit ana dock'undan kaldırıldı.
 
+### TomTom anahtarının kalıcı ve şifreli saklanması
+
+ID.4 Yol Arkadaşım'a **kullanıcının kendi TomTom anahtarını bir kez kaydetmesi** yeterlidir. Anahtar, Android Keystore ile korunan **AES-256-GCM** şifrelemesiyle uygulamaya özel depoda tutulur; aynı uygulama imzasıyla yapılan normal güncellemede korunur. Kullanıcı anahtarı Ayarlar'dan değiştirebilir veya silebilir; uygulama kaldırıldığında ya da Keystore erişimi kaybolduğunda yeniden istenir.
+
+Daha önceki `id4_traffic_keys` düz metin kayıtları, bir sonraki anahtar kullanımında otomatik olarak şifrelenmiş depoya aktarılıp temizlenir. Şifreli kayıt başarısız olursa trafik anahtarı kullanılmaz. **APK'da sabit TomTom anahtarı bulunmaz.** Ücretsiz kota, kullanım koşulları ve olası maliyet kullanıcıya ait TomTom hesabında yönetilir.
+
+JavaScript'e herkese açık anahtar okuma köprüsü eklenmedi; mevcut yerel Android anahtar penceresi kullanılır. TomTom'un raster trafik karoları için URL parametresinde anahtar taşınması gereği, çalışan sayfada/ağ isteklerinde anahtarın görünür olabileceği anlamına gelir. Anahtarı herkese açık log veya ekran görüntülerinde paylaşmayın.
+
 ## Lisans, atıf ve API anahtarı güvenliği
 
 Bu depodaki **Mola/Fermata 2.2.2 kaynak tabanından üretilen ID.4 Yol Arkadaşım önizleme APK'sı**, pinlenmiş açık kaynak projenin [GNU GPL-3.0](LICENSE) lisansına tabi türev çalışmadır. Dağıtılan sürümün karşılık gelen kaynak kodu ve değişiklikleri erişilebilir tutulmalıdır. Depodaki bağımsız önceki bileşenlerin ve üçüncü taraf kütüphanelerin kendi telif/lisans koşulları ayrıca geçerlidir.
