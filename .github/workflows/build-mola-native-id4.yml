@@ -55,6 +55,8 @@ jobs:
           fermata/src/main/java/me/aap/fermata/ui/fragment/PlaybackPrefsBuilder.java
           fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java
           fermata/src/main/res/layout/dashboard_fragment.xml
+          fermata/src/main/res/values-tr/strings.xml
+          fermata/src/main/res/values/strings.xml
           EOF
           diff -u /tmp/expected.txt /tmp/mola-modified.txt
           test -s fermata/src/main/java/me/aap/fermata/ev/Id4EvActivity.java
