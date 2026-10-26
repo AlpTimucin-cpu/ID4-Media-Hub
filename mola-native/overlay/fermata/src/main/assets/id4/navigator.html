@@ -1644,7 +1644,13 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
       No sample speed, BMS charge or shift state: unverified data displays —. -->
  <aside id="id4-tesla-side" class="id4-tesla-side"
        aria-label="Gerçek araç telemetrisi ve model göstergeleri">
-   <!-- Display-only overlay. Existing co-* DOM and Mola callback IDs remain intact. -->
+   <!-- Source-verified telemetry values, no illustrative fake measurements. -->
+   <section class="id4-tesla-card ev-premium-speed-card" aria-label="Gerçek GPS hızı">
+     <div class="ev-speed-gauge" role="status" aria-label="GPS hız göstergesi">
+       <strong id="id4-drive-speed" class="id4-drive-speed">—</strong>
+       <span>km/sa · GPS</span>
+     </div>
+   </section>
    <section class="id4-tesla-card id4-battery-card">
      <div class="id4-hero-row">
        <span class="id4-battery-glyph" aria-hidden="true">▣</span>
@@ -1683,8 +1689,6 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
        <strong id="id4-side-energy" class="id4-small">— kWh</strong></div>
    </div>
    <div class="id4-status-strip" role="status" aria-label="Canlı veri durumu">
-      <span class="id4-drive-row"><strong id="id4-drive-speed" class="id4-drive-speed">—</strong>
-        <small class="id4-drive-unit">km/sa · GPS</small></span>
       <span id="id4-drive-gear" class="id4-drive-gear">Vites: —</span>
       <span>☀ <b id="id4-side-temp">— °C</b></span>
       <span>☁ <b id="id4-side-wind">— km/sa</b></span>
@@ -1710,6 +1714,10 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
     <div class="co-nav-row status-row"><span class="co-nav-icon" aria-hidden="true">⚡</span><div class="co-nav-meta">
        <div class="cockpit-title">ÖNERİLEN ŞARJ DURAKLARI</div><div id="co-stops" class="cockpit-value">—</div></div></div>
     <div id="co-weather" class="cockpit-weather" style="display:none">Hava tahmini bekleniyor</div>
+    <div id="ev-upcoming-maneuvers" class="ev-upcoming-maneuvers" role="status"
+      aria-label="Gerçek rota üzerindeki sonraki manevralar">
+      <span>Sonraki manevralar rota oluşturulduğunda gösterilir.</span>
+    </div>
   </div>
  </div>
  <div class="cockpit-bottom">
@@ -1776,11 +1784,11 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 </div>
 <nav class="drive-dock" aria-label="Elektrikli Yol Arkadaşım hızlı komutları">
  <button id="dock-home" type="button" title="Elektrikli Yol Arkadaşım ana ekranı"><span class="dock-icon">⌂</span><span class="dock-label">Ana ekran</span></button>
- <button id="dock-apps" type="button" title="Elektrikli Yol Arkadaşım uygulamaları"><span class="dock-icon">▦</span><span class="dock-label">Uygulamalar</span></button>
+ <button id="dock-apps" type="button" title="Elektrikli Yol Arkadaşım uygulamaları"><span class="dock-icon">▶</span><span class="dock-label">Medya</span></button>
  <button id="dock-music" type="button" title="Elektrikli Yol Arkadaşım müzik oynatıcı"><span class="dock-icon">♫</span><span class="dock-label">Müzik</span></button>
  
  <button id="dock-route" type="button" title="Rota oluştur"><span class="dock-icon">➤</span><span class="dock-label">Rota</span></button>
- <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">Şarj</span></button>
+ <button id="dock-stations" type="button" title="Şarj istasyonları"><span class="dock-icon">⚡</span><span class="dock-label">İstasyon</span></button>
  <button id="dock-traffic" hidden tabindex="-1" aria-hidden="true" class="status-unavailable" type="button" title="TomTom trafik"><span class="dock-icon">🚦</span><span class="dock-label" id="dock-traffic-label">Trafik kapalı</span></button>
  <button id="dock-obd" class="status-unavailable" type="button" title="OBD araç bağlantısı"><span class="dock-icon">🚙</span><span class="dock-label" id="dock-obd-label">OBD yok</span></button>
  <button id="dock-safety" hidden tabindex="-1" aria-hidden="true" type="button" title="OSM sabit kamera katmanı"><span class="dock-icon">📷</span><span class="dock-label" id="dock-safety-label">Radar</span></button>
@@ -1797,6 +1805,15 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <div class="brand-copy"><strong>Elektrikli Yol Arkadaşım</strong><small>2024 · 125 kW / 170 PS</small></div>
  <div class="live-hud" aria-label="Canlı araç bilgileri"><span><small>SoC </small><b id="live-soc">—</b></span><span><small>HV </small><b id="live-voltage">—</b></span><span><small>Batarya </small><b id="live-temp">—</b></span><button id="connect-obd" type="button">OBD bağla</button></div>
  <div id="live-status">OBD bağlı değil · Gerçek ölçüm bekleniyor</div>
+</div>
+<button id="ev-premium-search" type="button" class="ev-premium-search"
+ aria-label="Adres, şehir veya şarj istasyonu ara">
+ <span aria-hidden="true">⌕</span><span>Hedef Ara... (Şarj istasyonu, adres, şehir)</span>
+</button>
+<div class="ev-header-quick" aria-label="Hızlı komutlar">
+ <button id="ev-quick-charge" type="button" aria-label="Şarj istasyonları">⚡</button>
+ <button id="ev-quick-obd" type="button" aria-label="Araç bağlantısı">▣</button>
+ <button id="ev-quick-settings" type="button" aria-label="Ayarlar">⚙</button>
 </div><div class="cockpit-tabs" aria-label="Araç üst menüsü">
  <button id="co-media" type="button">‹ Elektrikli Yol Arkadaşım</button>
  <button id="co-route-tab" class="current" type="button">🗺 Rota</button>
