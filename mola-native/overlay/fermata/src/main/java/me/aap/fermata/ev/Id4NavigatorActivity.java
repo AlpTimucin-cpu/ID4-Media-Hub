@@ -226,6 +226,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             // Explicitly select the existing Mola destination without changing
             // the ID.4 navigator's WebView, OBD session or cached route.
             media.putExtra(Id4MolaDestination.EXTRA,destination);
+            if("equalizer".equals(destination))media.putExtra("id4_equalizer",true);
             startActivity(media);
         }catch(android.content.ActivityNotFoundException e){
             send("molaStatus",record("media",
