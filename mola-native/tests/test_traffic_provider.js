@@ -5,7 +5,7 @@ const source=fs.readFileSync(path.join(__dirname,
  '../overlay/fermata/src/main/assets/id4/traffic-provider.js'),'utf8');
 assert(!/google\.maps|global\.ymaps|api-maps\.yandex|maps\.googleapis/.test(source));
 function create(key,fail){
- const states=[],tiles=[],removed=[];
+ const states=[],tiles=[],removed=[],panes={};
  const window={ID4_TRAFFIC_CONFIG:{tomtomKey:key},
   molaTrafficStatus(o){states.push(o)},
   L:{tileLayer(url){
@@ -24,8 +24,12 @@ function create(key,fail){
   setTimeout(){return 1},clearTimeout(){},
   setInterval(){return 1},clearInterval(){}};
  vm.runInNewContext(source,sandbox,{filename:'traffic-provider.js'});
- window.Id4TrafficProviders.attachLeaflet({removeLayer(v){removed.push(v)}});
- return {api:window.Id4TrafficProviders,states,tiles,removed};
+ window.Id4TrafficProviders.attachLeaflet({
+  removeLayer(v){removed.push(v)},
+  createPane(name){const p={style:{}};panes[name]=p;return p},
+  getPane(name){return panes[name]||null}
+ });
+ return {api:window.Id4TrafficProviders,states,tiles,removed,panes};
 }
 (async()=>{
  const none=create('',false);
@@ -49,6 +53,10 @@ function create(key,fail){
  assert(ok.tiles[0].url.includes('/maps/orbis/traffic/flow/raster/tile/'));
  assert(ok.tiles[1].url.includes('/maps/orbis/traffic/incidents/raster/tile/'));
  assert(ok.tiles[0].url.includes('apiVersion=2'));
+ assert.strictEqual(ok.panes['id4-live-traffic'].style.zIndex,'425',
+  'TomTom transparent tiles must be ABOVE the opaque MapLibre overlay');
+ assert.strictEqual(ok.panes['id4-live-traffic'].style.pointerEvents,'none',
+  'TomTom visual layer must not block route/station taps');
  assert.strictEqual(await ok.api.close(),true);
  assert(ok.removed.length>=2);
  const bad=create('TEST_TOMTOM_KEY_123456789',true);
