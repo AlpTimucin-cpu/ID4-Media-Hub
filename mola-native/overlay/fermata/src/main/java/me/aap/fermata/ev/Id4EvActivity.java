@@ -154,7 +154,7 @@ public final class Id4EvActivity extends Activity {
                 tab.setEllipsize(TextUtils.TruncateAt.END);
             }
         }
-        status=text("ID.4 PURE · EPDK istasyonları · OBD için Araç sekmesi",10,false);
+        status=text("Elektrikli Yol Arkadaşım · Şarj istasyonları · OBD: Araç",10,false);
         root.addView(status);
         // Enter the station list, never the deprecated long-press map flow.
         stationsScreen();
@@ -715,7 +715,7 @@ public final class Id4EvActivity extends Activity {
         panel.setPadding(dp(12),dp(10),dp(12),dp(38));
         sc.addView(panel);
         container.addView(sc,new LinearLayout.LayoutParams(-1,0,1f));
-        panel.addView(text("ID.4 • OTOMATİK ENERJİ & MALİYET",18,true));
+        panel.addView(text("ELEKTRİKLİ YOL ARKADAŞIM · ENERJİ & MALİYET",18,true));
         panel.addView(text("Manuel giriş yok. Seçilen rota, son doğrulanmış OBD "+
             "batarya ölçümü ve seçilen operatörün kaynaklı tarifesi kullanılır.",13,false));
         final TextView data=text("",15,false);
@@ -723,7 +723,7 @@ public final class Id4EvActivity extends Activity {
         final TextView tariff=text("Fiyat kaynağı kontrol ediliyor…",14,false);
         panel.addView(data);panel.addView(model);panel.addView(tariff);
         autoEnergyFacts=data;autoEnergyModel=model;autoEnergyPrice=tariff;
-        panel.addView(text("Model varsayımı: ID.4 Pure kullanılabilir batarya "+
+        panel.addView(text("Model varsayımı: referans batarya "+
             "52 kWh, tüketim 16–24 kWh/100 km, varış rezervi %15. "+
             "Bunlar araçtan ölçülmemiştir; gerçek SoH, tüketim, "+
             "şarj kayıpları ve soket ücreti doğrulanmış değildir.",12,false));
