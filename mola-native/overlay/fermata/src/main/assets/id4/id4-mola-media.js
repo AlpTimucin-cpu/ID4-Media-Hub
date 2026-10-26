@@ -1,4 +1,4 @@
-/* ID.4 in-place media catalogue.
+/* Elektrikli Yol Arkadaşım medya kataloğu.
  * Native Mola owns playback/effects. We do not embed DRM players,
  * replace Android Auto media services, or spoof parked state. */
 (function (root, doc) {
