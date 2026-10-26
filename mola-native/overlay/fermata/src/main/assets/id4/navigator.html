@@ -1594,7 +1594,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
  <small id="traffic-station-meta">Canlı doluluk ve fiyat doğrulanmadı</small>
  <div class="traffic-station-actions">
   <button id="traffic-station-destination" type="button">Varış yap</button>
-  <button id="traffic-station-stop" type="button">⚡ Mola ekle</button>
+  <button id="traffic-station-stop" type="button">⚡ Şarj durağı ekle</button>
   <button id="traffic-station-close" type="button">Kapat</button>
  </div>
 </div>
@@ -1743,7 +1743,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
    <div class="tripbar-label">VARIŞ · MODEL</div>
    <div id="co-trip-arrival" class="tripbar-number">—</div>
    <div id="co-trip-arrival-note" class="tripbar-sub">Güncel OBD gerekli</div>
-   <button id="co-trip-charge-button" class="tripbar-smallbutton" type="button">⚡ Mola ekle</button>
+   <button id="co-trip-charge-button" class="tripbar-smallbutton" type="button">⚡ Şarj durağı ekle</button>
    <button id="co-reroute" class="tripbar-smallbutton" type="button" style="display:none">↻ Konumdan rota</button>
    <button id="co-alt-toggle" class="tripbar-smallbutton" type="button">⇄ Rotalar / ₺</button>
    <div id="co-cost">Maliyet: rota bekleniyor</div>
@@ -1850,7 +1850,7 @@ button#layer-safety-voice,button#traffic-tomtom,button#traffic-osm{display:none!
 <div class="route-progress" id="route-progress"><span id="route-progress-text">GPS rota ilerlemesi yok</span>
 <div class="route-progress-bar"><div id="route-progress-fill"></div></div></div>
 <div class="station-summary" id="station-summary">⚡ EPDK şarj istasyonları: rota bekleniyor</div>
-<div class="station-suggestion" id="station-suggestion"><span id="station-suggestion-label">Rota bekleniyor</span><button id="station-suggestion-choose" type="button">Mola ekle</button></div>
+<div class="station-suggestion" id="station-suggestion"><span id="station-suggestion-label">Rota bekleniyor</span><button id="station-suggestion-choose" type="button">Şarj durağı ekle</button></div>
 <div class="mini-weather" id="compact-weather"><span>+1 dk · hava bekleniyor</span><span>+5 dk · hava bekleniyor</span><span>+10 dk · hava bekleniyor</span><span>+15 dk · hava bekleniyor</span></div>
 <div class="compact-actions"><button id="route-details" type="button">Rota ayrıntıları</button><button id="route-edit" type="button">Yeni rota</button></div></div>
 <div id="route-form">
@@ -1947,7 +1947,7 @@ function refreshTripArrivalModel(remainingKm){
  label.classList.remove('reserve-warning');
  if(!currentRouteProgress){label.textContent='—';note.textContent='Rota gerekli';return}
  if(routeHasChargeStop){
-  label.textContent='—';note.textContent='Mola sonrası şarj miktarı bilinmiyor';return;
+  label.textContent='—';note.textContent='Durak sonrası şarj miktarı bilinmiyor';return;
  }
  if(!Number.isFinite(liveSoc) || !Number.isFinite(remainingKm) || remainingKm<0){
   label.textContent='—';note.textContent='Güncel OBD SoC ve rota üzeri GPS gerekli';return;
@@ -2077,7 +2077,7 @@ function applyRouteChargeAnalysis(packet){
   if(valid(station.lat,station.lon) && points.from && points.to){
    suggestedCharge=station;
    $('co-trip-charge-button').style.display='inline-block';
-   $('co-trip-charge-km').textContent='Mola önerisi: '+(Number.isFinite(Number(station.routeProgressKm))?
+   $('co-trip-charge-km').textContent='Şarj durağı önerisi: '+(Number.isFinite(Number(station.routeProgressKm))?
      Math.round(Number(station.routeProgressKm))+' km':'mesafe bilinmiyor');
    $('co-trip-charge').textContent='⚡ CCS mola önerisi · müsaitlik doğrulanmadı';
    var label=String(station.title||'CCS istasyonu');
@@ -3030,7 +3030,7 @@ window.molaRoute=function(o){
  $('co-trip-target').textContent=points.to?points.to.label.split(' · ')[0].slice(0,27):'Hedef';
  $('co-trip-kilometers').textContent=String(o.distanceKm)+' km · '+String(o.durationMin)+' dk';
  $('co-trip-charge').textContent=o.stopIncluded?'⚡ 1 şarj molası seçildi':
-  o.chargingNeededByModel?'⚡ Şarj gerekebilir':'⚡ Mola eklenmedi';
+  o.chargingNeededByModel?'⚡ Şarj gerekebilir':'⚡ Şarj durağı eklenmedi';
  $('co-trip-charge-km').textContent='Şarj molası: —';
  $('co-trip-charge-button').style.display='none';
  $('co-trip-arrival').textContent='—';
@@ -3038,7 +3038,7 @@ window.molaRoute=function(o){
   'Şarj miktarı bilinmiyor':'Güncel OBD gerekli';
  $('co-route-km').textContent=String(o.distanceKm)+' km';
  $('co-drive-time').textContent=Math.round(Number(o.durationMin))+' dk';
- $('co-stops').textContent=o.stopIncluded?'1 mola seçildi':
+ $('co-stops').textContent=o.stopIncluded?'1 durak seçildi':
    o.chargingNeededByModel?'Şarj gerekebilir':'Henüz planlanmadı';
  $('co-eta').textContent=Number.isFinite(o.durationMin)&&o.durationMin>=0?
     new Date(Date.now()+o.durationMin*60000).toLocaleTimeString('tr-TR',
@@ -3056,7 +3056,7 @@ window.molaRoute=function(o){
    '–'+o.energyHighKwh.toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kWh';
   var energyText='Enerji '+o.energyLowKwh.toFixed(1)+'–'+o.energyHighKwh.toFixed(1)+' kWh (profil tahmini)';
   if(o.stopIncluded){
-   energyText+=' · Mola şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
+   energyText+=' · Durakta şarj miktarı bilinmiyor; varış SoC hesaplanmaz';
   }else if(Number.isFinite(o.arrivalSocLower) && Number.isFinite(o.arrivalSocUpper)){
    energyText+=' · Varış SoC için güncel GPS ve OBD gerekir';
   }else if(o.chargingNeededByModel){
