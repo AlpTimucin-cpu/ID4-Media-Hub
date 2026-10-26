@@ -27,7 +27,7 @@
 | **Canlı doluluk** | Resmî [Şarj@TR](https://play.google.com/store/apps/details?id=tr.gov.epdk.sarjetTR) uygulamasını açma | Yol Arkadaşım canlı doluluğu doğrudan okumuyor |
 | **Fiyatlar** | Tarihli genel Trugo/ZES ağ tarifeleri ve resmî bağlantıları | İstasyona özgü fiyat, tüm ağlar ve indirimler henüz yok; eski değer işaretlenir |
 | **Hava** | Open-Meteo model tahminleri, güzergâh boyunca saatlik kontroller | Model verisidir, araç sensörü değildir |
-| **Trafik** | Resmî Google/Yandex SDK'larına hazırlık, anahtarsız durumda OSM | Geçerli anahtar/lisans olmadan canlı trafik yok, ETA'ya eklenmez |
+| **Trafik** | TomTom Orbis Flow raster tile katmanı (kullanıcıya özel anahtar), ayrı olay bildirimi sorguları | Gerçek TomTom tileload başarısı olmadan canlı ibaresi yok; OSRM ETA trafiksiz |
 | **OBD** | Eşleşmiş Bluetooth ELM327; salt-okunur MEB DID kontrolü, sensör yaşı, detay görünümü | Car Scanner/VIN üzerinde doğrulanmamış sayılar özellikle gizlenir |
 | **Mola medya** | Ayrı ID.4 Activity; ana oynatma kaynaklarına değişiklik yapılmıyor | Mola 3.2 kaynak eşdeğerliği ve tüm oynatıcı işlevleri cihazda doğrulanmalı |
 
@@ -98,28 +98,13 @@ gereklidir. Son 30 özet telefona özel depoda tutulur; tümünü temizleyebilir
 Ölçülmemiş gerçek enerji veya maliyet uydurulmaz. Android Auto deneyimi bu
 modülden ayrı olup halen doğrulanmamıştır.
 
-### Radarbot APK'sından esinlenen, bağımsız OSM yol güvenliği
+### OSM tabanlı yol güvenliği katmanı
 
-Yüklenen Radarbot v9.35.26 Premium APK'sı çalıştırılmadan statik olarak
-incelendi: HERE harita SDK'sı, SQLCipher ve ülke bazlı hız yapılandırmaları
-bulundu. Premium hakları, Radarbot radar veritabanı, gizli sunucu erişimi,
-marka öğeleri veya özel uygulama kodları aktarılmadı. Paket güvenilirliği
-de doğrulanmadı.
+Kokpitteki **📷 Yol güvenliği** düğmesi ve harita katmanı, kullanıcı istediğinde açık OSM `highway=speed_camera` noktalarını gösterir. Yalnız yakınlaştırılmış alan, en fazla 120 düğüm ve 90 sn istek aralığı desteklenir. GPS hız göstergesi yalnız yeni ve doğruluğu iyi bir `Location.hasSpeed` ölçümünde görünür. En yakın OSM kamerasına 450 m'de olasılıksal görsel uyarı, ayrıca etkinleştirilirse 350 m'de TTS uyarısı verilir.
 
-ID.4 kokpitindeki yeni **📷 Yol güvenliği** düğmesi ve harita katmanı
-kullanıcı istediğinde açık OSM highway=speed_camera noktalarını görüntüler.
-Yalnız yakınlaştırılmış alan, 120 düğüm ve 90sn istek aralığı desteklenir.
-GPS hız göstergesi yalnız yeni ve doğruluğu iyi bir Location.hasSpeed
-ölçümünde görünür. En yakın OSM kamerasına 450m'de olasılıksal görsel
-uyarı, ayrıca etkinleştirilirse 350m'de güvenli TTS uyarısı bulunur.
+Kaynak: https://wiki.openstreetmap.org/wiki/Tag:highway=speed_camera — Atıf: © OpenStreetMap contributors (ODbL).
 
-Kaynak: https://wiki.openstreetmap.org/wiki/Tag:highway=speed_camera
-Atıf: © OpenStreetMap contributors (ODbL).
-Kamera verisi eksik/eski olabilir. Mobil radar, kırmızı ışık ve ortalama
-hız uyarıları, geçerli yasal yol hız limiti, Radarbot premium akışı ve
-Android Auto navigasyon uyarıları mevcut değildir. OSM kamera etiketindeki
-maxspeed alanı yol üzerinde geçerli sınır olarak yorumlanmaz.
-
+**Sınırlar:** Kamera verisi eksik veya eski olabilir. Mobil radar, kırmızı ışık ve ortalama hız uyarıları ile geçerli yasal hız limiti yoktur; OSM kamera etiketindeki `maxspeed` yol üzerindeki geçerli sınır olarak yorumlanmaz. Bu özelliğin kullanımına ilişkin yerel mevzuatı kontrol etmek kullanıcının sorumluluğundadır. Sürüş sırasında ekrana dokunma önerilmez.
 
 ### Referans kokpit v3 — 24 Ekim 2026
 
@@ -127,7 +112,7 @@ Kullanıcının paylaştığı **1536 × 864** kokpit görseline göre gerçek
 `assets/id4/navigator.html` görünümü yeniden düzenlendi. Önceki çoklu
 stil katmanları altında kaybolan araç ekranı artık doğru sırayla görünür:
 
-- Üstte **VOLKSWAGEN ID.4 PURE / Mola – Rota – İstasyon** menüsü,
+- Üstte **VOLKSWAGEN ID.4 PURE / ID.4 Yol Arkadaşım – Rota – İstasyon** menüsü,
   cihazın gerçek yerel saati, doğrulanmış TomTom durum göstergesi ve
   yalnız Open-Meteo yanıtı olduğunda sıcaklık
 - Solda büyük batarya, menzil ve 2 × 3 araç veri kartı;
@@ -185,3 +170,13 @@ değildir. Gerçek TomTom/OSM karo yükleme başarısı yalnız olay geldiğinde
 etiketlenir. Eski trafik görünümü CSS'sinin gerçek Leaflet haritasını
 gizlemesi de engellendi. Desteklenmeyen klima, ısıtma ve telefon
 düğmeleri kokpit ana dock'undan kaldırıldı.
+
+## Lisans, atıf ve API anahtarı güvenliği
+
+Bu depodaki **Mola/Fermata 2.2.2 kaynak tabanından üretilen ID.4 Yol Arkadaşım önizleme APK'sı**, pinlenmiş açık kaynak projenin [GNU GPL-3.0](LICENSE) lisansına tabi türev çalışmadır. Dağıtılan sürümün karşılık gelen kaynak kodu ve değişiklikleri erişilebilir tutulmalıdır. Depodaki bağımsız önceki bileşenlerin ve üçüncü taraf kütüphanelerin kendi telif/lisans koşulları ayrıca geçerlidir.
+
+Harita, hava, medya, adres ve diğer üçüncü taraf bağımlılıkları için [NOTICE.md](NOTICE.md) ve [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyalarına bak.
+
+**TomTom anahtarı APK'ya gömülmez.** Her kullanıcı kendi anahtarını ID.4 Yol Arkadaşım uygulamasında **Harita servis anahtarı** bölümünden girer. Önceki derlemelerde anahtarın varlıklara yazılabilme riski, yapılacak yenileme adımları ve yeni APK doğrulama kapısı [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md) belgesinde açıklanmıştır.
+
+Bu önizleme sürümünde GitHub derleme/test başarısı, POCO F5, Volkswagen ID.4, Android Auto veya canlı TomTom veri erişimi üzerinde fiziksel çalışmanın doğrulandığı anlamına gelmez.
