@@ -58,9 +58,39 @@ function validGps(x){
    range(x.speedKmh,0,252)!==null;
  }catch(_){return false}
 }
+// Only render instructions supplied by the actual route engine; do not invent
+// distances, road references or turns to make the screenshot look complete.
+function renderUpcomingManeuvers(steps) {
+ try {
+  var container=el('ev-upcoming-maneuvers');
+  if(!container)return;
+  container.textContent='';
+  var list=Array.isArray(steps)?steps.slice(1,4):[];
+  var found=0;
+  list.forEach(function(step){
+   var instruction=typeof step==='string'?step:
+     step&&typeof step.instruction==='string'?step.instruction:'';
+   instruction=safeStr(instruction,120);
+   if(!instruction)return;
+   var row=root.document.createElement('div');
+   row.className='ev-upcoming-row';
+   var symbol=root.document.createElement('span');
+   symbol.className='ev-upcoming-icon';
+   symbol.setAttribute('aria-hidden','true');
+   symbol.textContent='↱';
+   var text=root.document.createElement('span');
+   text.className='ev-upcoming-text';
+   text.textContent=instruction;
+   row.appendChild(symbol);row.appendChild(text);
+   container.appendChild(row);found++;
+  });
+  if(!found)container.textContent='Sonraki manevra bilgisi henüz bulunmuyor.';
+ } catch(_) {}
+}
 function clearRoute(){
  S.routeActive=false;S.routeKm=null;S.routeCoords=null;S.suggested=null;
  S.energyLow=null;S.energyHigh=null;S.maneuverAt=0;
+ renderUpcomingManeuvers([]);
  try{var n=el('id4-route-stop-markers');if(n)n.textContent=''}catch(_){}
  hidden('id4-road-badge',true);
 }
@@ -221,6 +251,7 @@ function onRoute(p){
   }
   // One route only: the Mola original has already drawn the polyline.
   S.routeActive=true;S.routeKm=p.distanceKm;S.routeCoords=p.coordinates;
+  renderUpcomingManeuvers(p.steps);
   S.suggested=null;stopSignature='';
   try{var oldPin=el('id4-route-stop-markers');if(oldPin)oldPin.textContent=''}catch(_){}
   S.energyLow=range(p.energyLowKwh,0,2000);
@@ -329,6 +360,25 @@ function start(){
         }catch(_){}
       });
     });
+  }catch(_){}
+  // The top search and three circular shortcuts forward to the existing
+  // tested handlers: no additional map, station client or JS/Android bridge.
+  try{
+   var actions=[
+    ['ev-premium-search','co-route-tab'],
+    ['ev-quick-charge','co-station-tab'],
+    ['ev-quick-obd','connect-obd'],
+    ['ev-quick-settings','dock-layers']
+   ];
+   actions.forEach(function(pair){
+    var trigger=el(pair[0]),existing=el(pair[1]);
+    if(!trigger||!existing||!trigger.addEventListener)return;
+    trigger.addEventListener('click',function(){
+     try{if(typeof existing.click==='function')existing.click();
+       else if(typeof existing.onclick==='function')existing.onclick();}
+     catch(err){try{root.console.warn('Quick action failed',err)}catch(_){}}
+    });
+   });
   }catch(_){}
   tick();
   try{root.setInterval(tick,1000)}catch(_){}
