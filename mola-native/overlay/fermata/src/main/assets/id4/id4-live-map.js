@@ -1,5 +1,5 @@
 /*
- * ID.4 Yol Arkadaşım — Leaflet canlı veri mimarisi
+ * Elektrikli Yol Arkadaşım — Leaflet canlı veri mimarisi
  * Gerçek veriler: OSRM, Open-Meteo, Android Native ve verilen istasyon JSON'u.
  * Sahte SoC, hız, konum veya şarj istasyonu ÜRETMEZ.
  * Uyumlu global fonksiyonlar: id4ShowRoute, id4ShowStations,
@@ -44,7 +44,7 @@
       });
     } catch (error) {
       // Missing Leaflet, unsupported WebView or invalid key may NOT crash map.
-      try { console.warn('ID.4 traffic tile unavailable', error); } catch (_) {}
+      try { console.warn('Trafik katmanı kullanılamıyor', error); } catch (_) {}
       return null;
     }
   }
@@ -61,7 +61,7 @@
         if (isTomTomKey(key)) p.setTomTomKey(key);
       }
     } catch (error) {
-      try { console.warn('ID.4 traffic attach unavailable', error); } catch (_) {}
+      try { console.warn('Trafik bağlantısı kurulamadı', error); } catch (_) {}
     }
   }
 
