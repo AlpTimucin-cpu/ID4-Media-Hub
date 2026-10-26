@@ -224,7 +224,7 @@ anchor="\t\tPlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfil
 assert source.count(anchor)==1
 source=source.replace(anchor,"\t\tid4EqualizerPreferences = PlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfiles, audioEffectsDraft);",1)
 # Apply deep-link selection after restoring a saved Preferences page so
-# an explicit ID.4 tap always wins over previously opened settings.
+# an explicit Electric Journey app tap overrides previously opened settings.
 anchor='\t\t\t\tif (p != null) adapter.setPreferenceSet(p);'
 assert source.count(anchor)==1
 source=source.replace(anchor,anchor,1)
@@ -280,11 +280,11 @@ source=source.replace(permission_anchor,
 
 anchor='        <activity\n            android:name="me.aap.fermata.ui.activity.MainActivity"'
 assert source.count(anchor)==1
-# Launch straight into ID.4 cockpit on phone; keep legacy media dashboard
+# Launch straight into the electric vehicle cockpit; keep legacy media dashboard
 # reachable from the Mola button, and leave existing media services untouched.
 launcher_category='<category android:name="android.intent.category.LAUNCHER" />'
 assert source.count(launcher_category)==1
-source=source.replace(launcher_category,'<!-- ID.4 launcher alias below -->',1)
+source=source.replace(launcher_category,'<!-- Electric journey launcher alias below -->',1)
 source=source.replace(anchor,
     '''        <activity android:name="me.aap.fermata.ev.Id4EvActivity"
             android:exported="false" />
@@ -307,12 +307,12 @@ source=source.replace(anchor,
         </activity-alias>
 ''' + anchor)
 # Leave Mola's application / media service icon untouched.
-# The exported, phone-only launcher alias has the ID.4 icon and label.
+# The exported phone launcher alias uses the new icon and app label.
 ET.fromstring(source)
 manifest.write_text(source,encoding="utf-8")
 
 # The auto flavor exposes its OWN old Mola launcher PhoneLauncherActivity.
-# Preserve its code but remove the launcher filter, leaving the ID.4 alias as
+# Preserve its code but remove the launcher filter, leaving the new alias as
 # the only MAIN/LAUNCHER entry for this standalone preview build.
 import re
 auto_manifest=root/"fermata/src/auto/AndroidManifest.xml"
@@ -328,7 +328,7 @@ new_block,n=re.subn(
     r'\s*<category android:name="android.intent.category.LAUNCHER" />'
     r'\s*<category android:name="android.intent.category.LEANBACK_LAUNCHER" />'
     r'\s*</intent-filter>',
-    '<!-- ID.4 alias replaces the old phone launcher entry -->',block,count=1)
+    '<!-- New app alias replaces the old phone launcher entry -->',block,count=1)
 assert n==1
 auto_source=auto_source[:start]+new_block+auto_source[finish:]
 app_icon='android:icon="@drawable/launcher"'
