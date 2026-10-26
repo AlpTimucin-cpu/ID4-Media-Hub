@@ -141,7 +141,7 @@ public final class Id4EvActivity extends Activity {
         setContentView(root);
         LinearLayout tabs=new LinearLayout(this);
         root.addView(tabs);
-        addTab(tabs,"‹ ID.4 Yol Arkadaşım",()->finish());
+        addTab(tabs,"‹ Elektrikli Yol Arkadaşım",()->finish());
         addTab(tabs,"🗺 Rota",()->startActivity(new Intent(this,Id4NavigatorActivity.class)));
         addTab(tabs,"⚡ Şarj",this::stationsScreen);
         addTab(tabs,"🚘 Araç",()->startActivity(new Intent(this,Id4OverviewActivity.class)));
@@ -184,7 +184,7 @@ public final class Id4EvActivity extends Activity {
     private void mapScreen() {
         int g=++generation;
         LinearLayout body=content();
-        body.addView(text("ID.4 Yol Arkadaşım · Türkiye haritası ve şarj istasyonları",14,true));
+        body.addView(text("Elektrikli Yol Arkadaşım · Türkiye haritası ve şarj istasyonları",14,true));
         LinearLayout searchRow=new LinearLayout(this);
         address=new EditText(this);
         address.setTextColor(Color.WHITE);
