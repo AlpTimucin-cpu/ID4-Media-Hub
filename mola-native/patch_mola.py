@@ -34,7 +34,13 @@ SOURCE_SHA = {
     "fermata/src/auto/AndroidManifest.xml":
         "a500a7129c99ff42f42270897c22f40c2615a4b4",
     "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java":
-        "29f69b94434a19ee71ad3a4ba9cf8b9b184a0182"
+        "29f69b94434a19ee71ad3a4ba9cf8b9b184a0182",
+    "fermata/src/main/java/me/aap/fermata/ui/fragment/AudioEffectsPrefsBuilder.java":
+        "43a3a9491a43c92883d381cb62926323b554b439",
+    "fermata/src/main/java/me/aap/fermata/ui/fragment/PlaybackPrefsBuilder.java":
+        "3b63cc3e5ae64a91c47b3dc70efd3e06e46e58ee",
+    "fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java":
+        "04f59c6fedeb2dcd611437f8f09fa72bb65a8d01"
 }
 for relative, expected in SOURCE_SHA.items():
     actual=subprocess.check_output(
@@ -156,6 +162,74 @@ anchor="\t\tactiveInstance = this;"
 assert source.count(anchor)==1
 source=source.replace(anchor,anchor+"\n        openId4RequestedMolaModule();",1)
 main_activity.write_text(source,encoding="utf-8")
+
+# Keep the ORIGINAL Mola equalizer screen and MediaSession callback.
+# Capture the existing preference page identity rather than duplicating its
+# DSP sliders in an independent WebView (which cannot control Mola playback).
+effects_file=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/AudioEffectsPrefsBuilder.java"
+source=effects_file.read_text(encoding="utf-8")
+anchor="static void add(Context context, PreferenceSet parent,"
+assert source.count(anchor)==1
+source=source.replace(anchor,"static PreferenceSet add(Context context, PreferenceSet parent,",1)
+anchor="\t\t\t\tcontext, draft, callback));"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n        return effects;",1)
+effects_file.write_text(source,encoding="utf-8")
+
+playback_file=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/PlaybackPrefsBuilder.java"
+source=playback_file.read_text(encoding="utf-8")
+anchor="static void add(MainActivityDelegate activity, PreferenceSet parent,"
+assert source.count(anchor)==1
+source=source.replace(anchor,"static PreferenceSet add(MainActivityDelegate activity, PreferenceSet parent,",1)
+anchor="\t\tAudioEffectsPrefsBuilder.add(activity.getContext(), parent, profiles, draft,"
+assert source.count(anchor)==1
+source=source.replace(anchor,"\t\tPreferenceSet equalizer = AudioEffectsPrefsBuilder.add(activity.getContext(), parent, profiles, draft,",1)
+anchor="\t\tif (BuildConfig.AUTO) {"
+assert source.count(anchor)==1
+# The end of the first add(...) method, just before addSeekControls.
+end="\n\t}\n\n\tprivate static void addSeekControls("
+assert source.count(end)==1
+source=source.replace(end,"\n        return equalizer;\n\t}\n\n\tprivate static void addSeekControls(",1)
+playback_file.write_text(source,encoding="utf-8")
+
+settings_file=root/"fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java"
+source=settings_file.read_text(encoding="utf-8")
+anchor="\tprivate AudioEffectsDraft audioEffectsDraft;"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n    private PreferenceSet id4EqualizerPreferences;",1)
+anchor="\t\tPlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfiles, audioEffectsDraft);"
+assert source.count(anchor)==1
+source=source.replace(anchor,"\t\tid4EqualizerPreferences = PlaybackPrefsBuilder.add(a, playback, mediaPrefs, audioEffectsProfiles, audioEffectsDraft);",1)
+anchor="\t\t\tlistView.setAdapter(adapter);"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n            openId4EqualizerIfRequested();",1)
+anchor="\t@Override\n\tpublic void onSaveInstanceState(@NonNull Bundle outState) {"
+assert source.count(anchor)==1
+source=source.replace(anchor,'''    /**
+     * Navigate directly to the existing Mola audio-effects PreferenceSet.
+     * The native Mola MediaSession owns all equalizer/boost/loudness changes.
+     * Invoked after Preferences adapter setup and on fragment re-entry.
+     */
+    public void openId4EqualizerIfRequested() {
+        if (!viewActive || adapter == null || id4EqualizerPreferences == null ||
+                getActivity() == null) return;
+        android.content.Intent intent = getActivity().getIntent();
+        if (intent == null || !intent.getBooleanExtra("id4_equalizer", false)) return;
+        intent.removeExtra("id4_equalizer");
+        adapter.setPreferenceSet(id4EqualizerPreferences);
+    }
+
+'''+anchor,1)
+anchor="\t\tif (readinessPrefsBuilder != null) readinessPrefsBuilder.refresh();"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n        openId4EqualizerIfRequested();",1)
+anchor="\t\tif (!hidden && (readinessPrefsBuilder != null)) readinessPrefsBuilder.refresh();"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n        if (!hidden) openId4EqualizerIfRequested();",1)
+anchor="\t\taudioEffectsDraft = null;"
+assert source.count(anchor)==1
+source=source.replace(anchor,anchor+"\n        id4EqualizerPreferences = null;",1)
+settings_file.write_text(source,encoding="utf-8")
 
 # Register a non-exported Activity. Existing media service is unchanged.
 manifest=root/"fermata/src/main/AndroidManifest.xml"
