@@ -65,7 +65,7 @@ for lang in ("values","values-tr"):
         if name=="about_html":
             return original.replace(">Mola</H1>",">ID.4 Yol Arkadaşım</H1>")
         return original.replace("Mola","ID.4 Yol Arkadaşım")
-    branded,n=re.subn(r'<string\\b[^>]*\\bname="([^"]+)"[^>]*>.*?</string>',
+    branded,n=re.subn(r'<string\b[^>]*\bname="([^"]+)"[^>]*>.*?</string>',
                        replace_visible_string,branded,flags=re.S)
     assert n>50,"Unexpected source resource structure"
     # Preserve the original fork and Fermata authorship/licensing in About.
