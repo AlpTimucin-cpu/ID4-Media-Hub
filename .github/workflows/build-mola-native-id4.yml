@@ -113,6 +113,20 @@ jobs:
             integration/mola-native/overlay/fermata/src/main/assets/id4/navigator.html
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/traffic-provider.js
           node integration/mola-native/tests/test_traffic_provider.js
+          # A missing/uncertain GPS fix must never grant video permission.
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java').read_text()
+          start=src.index('private boolean videoLaunchBlockedByMotion()')
+          end=src.index('private void openOfficialVideo(',start)
+          gate=src[start:end]
+          assert 'p==null' in gate and 'p.getAccuracy()>35' in gate
+          assert '!p.hasSpeed()' in gate and 'return true;' in gate
+          assert 'elapsed>15000' in gate and 'p.getSpeed()>0.4f' in gate
+          assert 'if(videoLaunchBlockedByMotion())' in src
+          assert 'if(movingWithRecentGps())' not in src
+          print('PASS: video launch fails closed on missing, stale and moving GPS')
+          PY
           # One native owner of the API key. Uploaded JS getter bridge was
           # intentionally not shipped: WebView JavaScript can be reached from
           # subframes, so it must not expose unrestricted credential reads.
