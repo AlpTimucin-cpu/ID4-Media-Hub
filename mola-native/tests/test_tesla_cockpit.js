@@ -44,7 +44,9 @@ const win={
  ...original,
  document:{
    getElementById:element,
-   createElement(tag){return {tag,className:'',style:{},title:'',children:[]}},
+   createElement(tag){return {tag,className:'',style:{},title:'',children:[],
+     attrs:{},setAttribute(k,v){this.attrs[k]=v},
+     appendChild(n){this.children.push(n)}}},
    body:{classList:{toggle(name,on){on?classes.add(name):classes.delete(name)}}}
  },
  id4LiveLeafletMap:{invalidateSize(){win.mapResizes=(win.mapResizes||0)+1}},
@@ -130,7 +132,13 @@ assert.equal(element('id4-side-power').textContent,'28.0 kW');
 assert.equal(element('id4-side-consumption').textContent,'18.1 kWh/100 km');
 // Native route is in lon/lat order. New HUD must NOT draw a second L.map.
 win.molaRoute({coordinates:[[35,38],[35.5,38]],distanceKm:55,durationMin:52,
-  energyLowKwh:14.5,energyHighKwh:20.3});
+  energyLowKwh:14.5,energyHighKwh:20.3,
+  steps:['Gerçek ilk manevra','200 m sonra sağa dön','İleride sola dön']});
+assert.equal(element('ev-upcoming-maneuvers').children.length,2,
+ 'only subsequent OSRM instructions should be displayed');
+assert.equal(element('ev-upcoming-maneuvers').children[0].children[1].textContent,
+ '200 m sonra sağa dön');
+
 assert.equal(routeCalls,1);
 assert.equal(element('id4-side-energy').textContent,'14.5–20.3 kWh');
 win.molaStations({kind:'route',items:[],chargeModel:'charge-likely',
@@ -155,5 +163,7 @@ assert.equal(element('id4-road-badge').hidden,true,
 win.molaStatus({detail:'Rota durduruldu'});
 assert.equal(element('id4-route-stop-markers').children.length,0);
 assert.equal(element('id4-side-energy').textContent,'— kWh');
+assert.equal(element('ev-upcoming-maneuvers').children.length,0,
+ 'no stale turn instructions after route cancellation');
 assert.equal(routeCalls,1);
 console.log('PASS Tesla cockpit: real telemetry, 30s TTL, 5 km corridor, model/route reset, callbacks');
