@@ -418,20 +418,15 @@ for f in [java,html,obd,auto_poi,auto_obd,auto_station,auto_weather,navigator,me
     target.parent.mkdir(parents=True,exist_ok=True)
     target.write_bytes(f.read_bytes())
 
-# Optional Maps JavaScript API credentials are build inputs and never committed.
-# Browser keys are visible in distributed APKs; restrict API and allowed HTTPS
-# origin in the provider consoles and set billing caps. Keep blank if unavailable.
-public_keys={
-
-    "tomtomKey":os.environ.get("ID4_TOMTOM_API_KEY",""),
-}
-for provider,key in public_keys.items():
-    if key and (not key.isascii() or len(key)>200 or
-        not all(c.isalnum() or c in "_-" for c in key)):
-        raise SystemExit("Invalid "+provider+" public SDK key")
+# Do NOT compile a shared GitHub Actions/API key into an APK. Build artifacts
+# from this public repository are downloadable and JS assets are extractable.
+# On-device Android settings (private SharedPreferences) supply user-specific
+# TomTom credentials only at runtime; there is no embedded public key.
+# Fail closed even if a future workflow accidentally passes the old secret.
+if os.environ.get("ID4_TOMTOM_API_KEY"):
+    raise SystemExit("Refusing APK build with embedded TomTom credential")
 config_target=root/traffic_config.relative_to(overlay)
-config_target.write_text("window.ID4_TRAFFIC_CONFIG="+
-    json.dumps(public_keys,ensure_ascii=True,separators=(",",":"))+";\n",
+config_target.write_text('window.ID4_TRAFFIC_CONFIG={tomtomKey:""};\n',
     encoding="utf-8")
 
 # Pinned open-source vector renderer, Leaflet adapter and license notices.
