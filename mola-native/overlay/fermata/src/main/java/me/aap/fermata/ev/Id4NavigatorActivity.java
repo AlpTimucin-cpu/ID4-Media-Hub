@@ -540,7 +540,7 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
                 getSharedPreferences("id4_traffic_keys",MODE_PRIVATE).edit()
                     .putString("tomtom",key).apply();
                 applyLocalTomTomKey();
-                send("molaStatus",record("traffic","TomTom anahtarı kaydedildi. Trafik katmanını seç."));
+                send("molaStatus",record("traffic","TomTom anahtarı kaydedildi. Canlı trafik bağlantısı deneniyor."));
             }).show();
     }
     private void applyLocalTomTomKey(){
@@ -551,7 +551,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
             web.evaluateJavascript("window.Id4TrafficProviders&&window.Id4TrafficProviders.setTomTomKey("+
                 JSONObject.quote(key)+");"+
                 "window.Id4BaseMap&&window.Id4BaseMap.setTomTomKey("+
-                JSONObject.quote(key)+");",null);
+                JSONObject.quote(key)+");"+
+                "window.Id4TrafficProviders&&window.Id4TrafficProviders.activate('tomtom');",null);
     }
     /** Only known, freshly read ECU measurements reach the map HUD. */
     private JSONObject obdPacket(Id4LiveTelemetry.Data d) {
