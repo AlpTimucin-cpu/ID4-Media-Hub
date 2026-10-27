@@ -168,6 +168,7 @@ fun CockpitScreen(
         )
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val wide = maxWidth >= 600.dp && maxWidth > maxHeight * 1.1f
+            val compactLandscape = maxHeight < 420.dp
             MapLibreCockpit(
                 gpsFix = state.gpsFix,
                 routePoints = state.route?.routePoints ?: emptyList(),
@@ -196,7 +197,7 @@ fun CockpitScreen(
                         .width(maxWidth * .285f)
                         .heightIn(max = maxHeight - 24.dp)
                         .verticalScroll(rememberScrollState())
-                ) { VehiclePanel(state, compact = maxHeight < 420.dp) }
+                ) { VehiclePanel(state, compact = compactLandscape) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.TopEnd)
