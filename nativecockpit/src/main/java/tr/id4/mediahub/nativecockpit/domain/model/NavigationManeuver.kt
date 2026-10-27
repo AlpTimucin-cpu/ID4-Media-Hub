@@ -1,10 +1,12 @@
 package tr.id4.mediahub.nativecockpit.domain.model
 
 /** A turn instruction and coordinate MUST originate in a real routing engine.
- * The id must stay stable between subsequent GPS updates of the same step.
+ * Original OSRM fields allow the car host to receive a semantically correct icon.
  */
 data class NavigationManeuver(
     val id: String,
     val instructionTr: String,
-    val location: GeoCoordinate
+    val location: GeoCoordinate,
+    val osrmType: String? = null,
+    val osrmModifier: String? = null
 )

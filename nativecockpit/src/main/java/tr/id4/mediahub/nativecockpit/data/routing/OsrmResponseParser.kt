@@ -45,7 +45,8 @@ object OsrmResponseParser {
                         val instruction=OsrmTurkishInstructions.speak(
                             m.string("type"),m.string("modifier"),step.string("name"))
                             ?:return@forEachIndexed
-                        maneuvers.add(NavigationManeuver("$id:$legIndex:$stepIndex", instruction,coordinate))
+                        maneuvers.add(NavigationManeuver("$id:$legIndex:$stepIndex", instruction,coordinate,
+                            m.string("type"), m.string("modifier")))
                     }
                 }
                 val snap=RouteSnapshot(

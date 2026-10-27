@@ -23,6 +23,7 @@ import tr.id4.mediahub.nativecockpit.presentation.cockpit.EyaTheme
 import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
 import tr.id4.mediahub.nativecockpit.presentation.voice.VoicePreference
 import tr.id4.mediahub.nativecockpit.domain.usecase.ManeuverGuidancePolicy
+import tr.id4.mediahub.nativecockpit.car.CarNavigationOwnership
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -35,23 +36,26 @@ class MainActivity : ComponentActivity() {
     private var foreground by mutableStateOf(false)
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        val allowed=grants[Manifest.permission.ACCESS_FINE_LOCATION]==true ||
-            grants[Manifest.permission.ACCESS_COARSE_LOCATION]==true
-        if(allowed) {
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             viewModel.startGps()
-            if(locationForRoute) routePlannerViewModel.useCurrentGps()
-        } else if(locationForRoute) routePlannerViewModel.permissionDenied()
-        locationForRoute=false
+            if (locationForRoute) routePlannerViewModel.useCurrentGps()
+        } else if (locationForRoute) routePlannerViewModel.permissionDenied()
+        locationForRoute = false
     }
-    private var locationForRoute=false
+    private var locationForRoute = false
 
     private fun hasGpsPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED
-    private fun requestGpsPermission(forRoute:Boolean){
-        locationForRoute=forRoute
-        locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION))
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private fun askForGpsPermission(forRoute: Boolean) {
+        locationForRoute = forRoute
+        locationPermission.launch(arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,12 +68,14 @@ class MainActivity : ComponentActivity() {
             var voiceEnabled by remember { mutableStateOf(preferences.enabled) }
             var voiceVolume by remember { mutableStateOf(preferences.volume) }
             val voiceStatus=guide.status
-            LaunchedEffect(state.route,state.gpsFix,voiceEnabled,voiceStatus,foreground) {
-                if (foreground && voiceEnabled && voiceStatus==NativeVoiceGuide.Status.READY) {
+            val carNavigating by CarNavigationOwnership.navigating.collectAsStateWithLifecycle()
+            LaunchedEffect(state.route,state.gpsFix,voiceEnabled,voiceStatus,foreground,carNavigating) {
+                if (foreground && !carNavigating && voiceEnabled &&
+                    voiceStatus==NativeVoiceGuide.Status.READY) {
                     val message=voicePolicy.nextAnnouncement(
                         state.route,state.gpsFix,System.currentTimeMillis())
                     if (message!=null) guide.speak(message,voiceVolume)
-                } else if (!foreground || !voiceEnabled) guide.stop()
+                } else if (!foreground || !voiceEnabled || carNavigating) guide.stop()
             }
             EyaTheme {
                 CockpitScreen(state,
@@ -79,17 +85,17 @@ class MainActivity : ComponentActivity() {
                 onRouteOriginSelected=routePlannerViewModel::chooseOrigin,
                 onRouteDestinationSelected=routePlannerViewModel::chooseDestination,
                 onRouteFromGps={
-                    if(hasGpsPermission()){
+                    if (hasGpsPermission()) {
                         viewModel.startGps()
                         routePlannerViewModel.useCurrentGps()
-                    }else requestGpsPermission(forRoute=true)
+                    } else askForGpsPermission(forRoute = true)
                 },
                 onRoutePlan=routePlannerViewModel::plan,
                 onRouteAlternative=routePlannerViewModel::chooseAlternative,
                 onRouteClear=routePlannerViewModel::clear,
                 onGpsClick = {
                     if (hasGpsPermission()) viewModel.startGps()
-                    else requestGpsPermission(forRoute=false)
+                    else askForGpsPermission(forRoute = false)
                 },chargingUi=charging,
                   onStationFilter=chargingViewModel::changeFilter,
                   onMapViewport=chargingViewModel::viewportChanged,

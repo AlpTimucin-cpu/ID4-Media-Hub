@@ -14,8 +14,8 @@ android {
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.9.0-android-auto-navigation"
+        versionCode = 10
+        versionName = "0.10.0-car-guidance"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
