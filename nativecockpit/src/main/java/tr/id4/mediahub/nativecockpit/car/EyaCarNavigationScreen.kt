@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Header
-import androidx.car.app.model.MapWithContentTemplate
+import androidx.car.app.navigation.model.MapWithContentTemplate
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
 import androidx.car.app.model.Row
