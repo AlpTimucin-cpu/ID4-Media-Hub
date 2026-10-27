@@ -5,9 +5,11 @@ import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 
 interface ObdConnectionController {
     val connection: StateFlow<ObdConnectionState>
-    /** Lists bonded adapters only; never automatically scans or connects. */
     fun refreshPaired()
     fun connect(address: String)
     fun disconnect()
     fun permissionDenied()
+    /** Only three allowlisted, single-shot UDS ReadDataByIdentifier requests. */
+    fun requestMebDiagnostic(command: String)
+    fun clearMebDiagnostic()
 }

@@ -57,6 +57,8 @@ fun CockpitScreen(
     onObdRefresh: () -> Unit,
     onObdConnect: (String) -> Unit,
     onObdDisconnect: () -> Unit,
+    onObdMebDiagnostic: (String) -> Unit,
+    onObdClearDiagnostic: () -> Unit,
     routePlannerUi: RoutePlannerUiState,
     onRouteOriginChange:(String)->Unit,
     onRouteDestinationChange:(String)->Unit,
@@ -85,6 +87,8 @@ fun CockpitScreen(
         onRefresh = onObdRefresh,
         onConnect = onObdConnect,
         onDisconnect = onObdDisconnect,
+        onMebDiagnostic = onObdMebDiagnostic,
+        onClearDiagnostic = onObdClearDiagnostic,
         onDismiss = {showObdSettings = false}
     )
     var showRoutePlanner by remember { mutableStateOf(false) }

@@ -20,7 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import tr.id4.mediahub.nativecockpit.data.obd.ElmSpeedParser
+import tr.id4.mediahub.nativecockpit.data.obd.MebUdsParser
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.domain.model.ObdPhase
 import tr.id4.mediahub.nativecockpit.domain.model.PairedObdDevice
@@ -38,9 +39,11 @@ import tr.id4.mediahub.nativecockpit.domain.repository.ObdConnectionController
 import tr.id4.mediahub.nativecockpit.domain.repository.VehicleRepository
 
 /**
- * Bluetooth Classic ELM327 SPP, read-only OBD-II Mode 01 PID 0D.
- * No ECU writes, no UDS guesses, and no fabricated HV battery SoC.
- * Driver starts/stops the connection explicitly from the PHONE interface.
+ * Bluetooth Classic ELM327 SPP. All traffic is serialized in one worker:
+ * - standard 010D speed polling when the ECU supports it;
+ * - explicit, one-shot, read-only UDS 22 queries from a strict allowlist.
+ * ELM adapter settings are restored after diagnostics; no VIN, no writes,
+ * no unverified battery values flowing into cockpit telemetry.
  */
 @Singleton
 class Elm327VehicleRepository @Inject constructor(
@@ -53,6 +56,7 @@ class Elm327VehicleRepository @Inject constructor(
     override val telemetry: StateFlow<VehicleTelemetry> = _telemetry.asStateFlow()
     private val _connection = MutableStateFlow(ObdConnectionState())
     override val connection: StateFlow<ObdConnectionState> = _connection.asStateFlow()
+    private val diagnosticRequests = Channel<String>(capacity=1)
     private var task: Job? = null
     @Volatile private var socket: BluetoothSocket? = null
     private val spp = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
@@ -61,7 +65,7 @@ class Elm327VehicleRepository @Inject constructor(
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
         PackageManager.PERMISSION_GRANTED
 
-    @SuppressLint("MissingPermission") // Android 12+ checked above
+    @SuppressLint("MissingPermission")
     override fun refreshPaired() {
         if (!hasPermission()) { permissionDenied(); return }
         try {
@@ -70,103 +74,150 @@ class Elm327VehicleRepository @Inject constructor(
                 if (!BluetoothAdapter.checkBluetoothAddress(address)) return@mapNotNull null
                 PairedObdDevice(device.name?.take(60) ?: "Eşleştirilmiş Bluetooth aygıtı", address)
             }.sortedBy { it.name.lowercase() }
-            _connection.value = _connection.value.copy(devices = found,
-                error = if (adapter == null) "Bluetooth donanımı bulunamadı" else null)
+            _connection.value = _connection.value.copy(devices=found,
+                error=if (adapter == null) "Bluetooth donanımı bulunamadı" else null)
         } catch (_: SecurityException) { permissionDenied() }
     }
 
     override fun permissionDenied() {
-        _connection.value = _connection.value.copy(
-            error = "Bluetooth bağlantı izni gerekli (Android ayarları).")
+        _connection.value = _connection.value.copy(error="Bluetooth bağlantı izni gerekli")
     }
 
-    @SuppressLint("MissingPermission") // explicit runtime permission + bonded validation
+    @SuppressLint("MissingPermission")
     override fun connect(address: String) {
         if (_connection.value.phase == ObdPhase.CONNECTING ||
             _connection.value.phase == ObdPhase.CONNECTED) return
         if (!hasPermission()) { permissionDenied(); return }
         refreshPaired()
-        val device = try {
-            adapter?.bondedDevices?.firstOrNull { it.address == address }
-        } catch (_: SecurityException) { null }
+        val device = try { adapter?.bondedDevices?.firstOrNull { it.address == address } }
+            catch (_: SecurityException) { null }
         if (device == null) {
-            _connection.value = _connection.value.copy(error = "Önce ELM327 adaptörünü telefon ayarlarında eşleştirin")
+            _connection.value = _connection.value.copy(error="Önce adaptörü Android Bluetooth ayarlarında eşleştirin")
             return
         }
         task?.cancel()
         task = scope.launch {
-            _connection.value = _connection.value.copy(phase = ObdPhase.CONNECTING,
-                selectedDevice = address, error = null, lastSpeedAtMs = null,
-                lastPollSucceeded = false)
+            _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTING,
+                selectedDevice=address,error=null,lastSpeedAtMs=null,
+                lastPollSucceeded=false,diagnosticBusy=false,diagnosticResult=null)
             _telemetry.value = VehicleTelemetry()
             try {
                 withContext(Dispatchers.IO) { runSession(device) }
             } catch (_: CancellationException) {
-                // The socket close in disconnect() interrupts blocking Bluetooth operations.
+                // disconnect() closes socket to unblock Bluetooth reads.
             } catch (e: Exception) {
-                _connection.value = _connection.value.copy(phase = ObdPhase.ERROR,
-                    error = when (e) {
+                _connection.value = _connection.value.copy(phase=ObdPhase.ERROR,
+                    diagnosticBusy=false,
+                    error=when(e) {
                         is SecurityException -> "Bluetooth izni reddedildi"
-                        is IOException -> "ELM327 bağlantısı veya yanıtı başarısız. Adaptörü kontrol edin."
+                        is IOException -> "ELM327 bağlantısı/yanıtı başarısız; adaptörü kontrol edin"
                         else -> "ELM327 bağlantısı kurulamadı"
                     })
             } finally {
-                socket?.closeSilently(); socket = null
-                _telemetry.value = VehicleTelemetry() // stale speed never survives disconnect
+                socket?.closeSilently();socket=null
+                _telemetry.value=VehicleTelemetry()
                 if (_connection.value.phase != ObdPhase.ERROR)
-                    _connection.value = _connection.value.copy(phase = ObdPhase.DISCONNECTED)
+                    _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
+                        diagnosticBusy=false,diagnosticResult=null)
             }
         }
     }
 
+    override fun requestMebDiagnostic(command: String) {
+        if (command !in MebUdsParser.ALLOWED_REQUESTS) return
+        if (_connection.value.phase != ObdPhase.CONNECTED || _connection.value.diagnosticBusy) return
+        _connection.value=_connection.value.copy(diagnosticBusy=true,diagnosticResult=null,error=null)
+        if (diagnosticRequests.trySend(command).isFailure) {
+            _connection.value=_connection.value.copy(diagnosticBusy=false,
+                error="OBD teşhis kuyruğu şu an meşgul")
+        }
+    }
+
+    override fun clearMebDiagnostic() {
+        _connection.value=_connection.value.copy(diagnosticResult=null)
+    }
+
+    @SuppressLint("MissingPermission")
     private suspend fun runSession(device: BluetoothDevice) {
-        val conn = device.createRfcommSocketToServiceRecord(spp)
-        socket = conn
-        // BluetoothSocket.connect() is blocking, and cannot be interrupted by coroutine
-        // cancellation alone. A separate watchdog closes the socket after 12 seconds.
-        val watchdog = scope.launch {
+        val conn=device.createRfcommSocketToServiceRecord(spp)
+        socket=conn
+        val watchdog=scope.launch {
             delay(12_000L)
             if (!conn.isConnected) conn.closeSilently()
         }
         try { conn.connect() } finally { watchdog.cancel() }
         if (!conn.isConnected) throw IOException("SPP connection unavailable")
-        for (command in listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0")) {
-            sendAndRead(conn, command)
-        }
-        _connection.value = _connection.value.copy(phase = ObdPhase.CONNECTED, error = null)
+        for (command in listOf("ATZ","ATE0","ATL0","ATS0","ATH0","ATSP0"))
+            sendAndRead(conn,command)
+        _connection.value=_connection.value.copy(phase=ObdPhase.CONNECTED,error=null)
         while (kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]?.isActive == true) {
-            val response = sendAndRead(conn, "010D")
-            val speed = ElmSpeedParser.decode(response)
+            val query=diagnosticRequests.tryReceive().getOrNull()
+            if (query != null) {
+                try {
+                    val response=runMebReadOnlyQuery(conn,query)
+                    val parsed=MebUdsParser.parse(query,response,System.currentTimeMillis())
+                    _connection.value=_connection.value.copy(diagnosticBusy=false,
+                        diagnosticResult=parsed,error=null)
+                } catch (e:CancellationException) { throw e }
+                catch (_:Exception) {
+                    _connection.value=_connection.value.copy(diagnosticBusy=false,
+                        error="MEB ECU yanıtı alınamadı; adaptör 29-bit CAN desteklemiyor olabilir")
+                    // Uncertain adapter state: end session rather than misinterpret speed.
+                    throw IOException("MEB diagnostic session failed")
+                }
+            }
+            val response=sendAndRead(conn,"010D")
+            val speed=ElmSpeedParser.decode(response)
             if (speed != null) {
-                val now = System.currentTimeMillis()
-                _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
-                _connection.value = _connection.value.copy(lastPollSucceeded = true,
-                    lastSpeedAtMs = now, error = null)
+                val now=System.currentTimeMillis()
+                _telemetry.value=VehicleTelemetry(speedKmh=TimedValue(speed,now))
+                _connection.value=_connection.value.copy(lastPollSucceeded=true,
+                    lastSpeedAtMs=now,error=null)
             } else {
-                _telemetry.value = VehicleTelemetry()
-                _connection.value = _connection.value.copy(lastPollSucceeded = false,
-                    error = "Araç 010D hız sorgusuna geçerli yanıt vermedi. SoC okunmuyor.")
+                _telemetry.value=VehicleTelemetry()
+                _connection.value=_connection.value.copy(lastPollSucceeded=false,
+                    error="Araç 010D hız sorgusuna geçerli yanıt vermedi")
             }
             delay(2_500L)
         }
     }
 
-    private suspend fun sendAndRead(conn: BluetoothSocket, command: String): String {
-        val output = conn.outputStream
-        output.write((command + "\r").toByteArray(Charsets.US_ASCII))
-        output.flush()
-        // Avoid uninterruptible blocking reads: poll available bytes until '>' prompt.
+    private suspend fun runMebReadOnlyQuery(conn:BluetoothSocket,command:String):String {
+        // ELM CAN 29-bit 500 kbps / battery ECU request 17FC007B.
+        // Only send requests explicitly chosen by the driver.
+        var initiated=false
+        try {
+            for (adapterCommand in listOf("ATH1","ATSP7","ATCAF1","ATCFC1",
+                "ATSH${MebUdsParser.REQUEST_ECU}")) {
+                val reply=sendAndRead(conn,adapterCommand)
+                if (reply.contains('?') || reply.uppercase().contains("ERROR"))
+                    throw IOException("ELM protocol setting unsupported")
+            }
+            initiated=true
+            return sendAndRead(conn,command)
+        } finally {
+            if (initiated || conn.isConnected) {
+                // Restore original 010D automatic protocol and hidden headers.
+                sendAndRead(conn,"ATSP0")
+                sendAndRead(conn,"ATH0")
+            }
+        }
+    }
+
+    private suspend fun sendAndRead(conn:BluetoothSocket,command:String):String {
+        conn.outputStream.write((command+"\r").toByteArray(Charsets.US_ASCII))
+        conn.outputStream.flush()
         return withTimeout(6_000L) {
-            val input = conn.inputStream
-            val builder = StringBuilder()
-            val chunk = ByteArray(256)
+            val input=conn.inputStream
+            val builder=StringBuilder()
+            val chunk=ByteArray(256)
             while (!builder.contains('>')) {
-                val ready = input.available()
-                if (ready > 0) {
-                    val count = input.read(chunk, 0, minOf(chunk.size, ready))
-                    if (count < 0) throw IOException("ELM327 closed connection")
-                    builder.append(String(chunk, 0, count, Charsets.US_ASCII))
-                    if (builder.length > 4096) throw IOException("ELM327 reply oversized")
+                val ready=input.available()
+                if (ready>0) {
+                    val count=input.read(chunk,0,minOf(chunk.size,ready))
+                    if (count<0) throw IOException("ELM327 connection closed")
+                    builder.append(String(chunk,0,count,Charsets.US_ASCII))
+                    if (builder.length>4096) throw IOException("ELM327 reply oversized")
                 } else delay(35)
             }
             builder.toString()
@@ -174,15 +225,14 @@ class Elm327VehicleRepository @Inject constructor(
     }
 
     override fun disconnect() {
-        task?.cancel();task = null
-        socket?.closeSilently();socket = null
-        _telemetry.value = VehicleTelemetry()
-        _connection.value = _connection.value.copy(phase = ObdPhase.DISCONNECTED,
-            selectedDevice = null, lastPollSucceeded = false,
-            lastSpeedAtMs = null, error = null)
+        task?.cancel();task=null
+        socket?.closeSilently();socket=null
+        while (diagnosticRequests.tryReceive().isSuccess) { /* discard pending reads */ }
+        _telemetry.value=VehicleTelemetry()
+        _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
+            selectedDevice=null,lastPollSucceeded=false,lastSpeedAtMs=null,
+            diagnosticBusy=false,diagnosticResult=null,error=null)
     }
 
-    private fun BluetoothSocket.closeSilently() {
-        try { close() } catch (_: Exception) { }
-    }
+    private fun BluetoothSocket.closeSilently() { try { close() } catch (_:Exception) { } }
 }

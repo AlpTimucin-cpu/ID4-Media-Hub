@@ -11,5 +11,7 @@ data class ObdConnectionState(
     val selectedDevice: String? = null,
     val error: String? = null,
     val lastSpeedAtMs: Long? = null,
-    val lastPollSucceeded: Boolean = false
+    val lastPollSucceeded: Boolean = false,
+    val diagnosticBusy: Boolean = false,
+    val diagnosticResult: MebDiagnosticReport? = null
 )

@@ -14,8 +14,8 @@ android {
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.11.0-dhu-obd-readonly"
+        versionCode = 12
+        versionName = "0.12.0-meb-diagnostics"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

@@ -99,6 +99,8 @@ class MainActivity : ComponentActivity() {
                 onObdRefresh={refreshObdDevices()},
                 onObdConnect=obd::connect,
                 onObdDisconnect=obd::disconnect,
+                onObdMebDiagnostic=obd::requestMebDiagnostic,
+                onObdClearDiagnostic=obd::clearMebDiagnostic,
                 routePlannerUi=routePlanner,
                 onRouteOriginChange=routePlannerViewModel::editOrigin,
                 onRouteDestinationChange=routePlannerViewModel::editDestination,
