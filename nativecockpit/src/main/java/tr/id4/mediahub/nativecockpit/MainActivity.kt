@@ -3,6 +3,7 @@ package tr.id4.mediahub.nativecockpit
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import tr.id4.mediahub.nativecockpit.domain.repository.ObdConnectionController
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitScreen
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitViewModel
 import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingViewModel
@@ -27,6 +30,18 @@ import tr.id4.mediahub.nativecockpit.car.CarNavigationOwnership
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var obd: ObdConnectionController
+    private val bluetoothPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) obd.refreshPaired() else obd.permissionDenied() }
+    private fun refreshObdDevices() {
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
+            PackageManager.PERMISSION_GRANTED) {
+            bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        } else obd.refreshPaired()
+    }
+
     private val viewModel: CockpitViewModel by viewModels()
     private val chargingViewModel: ChargingViewModel by viewModels()
     private val routePlannerViewModel: RoutePlannerViewModel by viewModels()
@@ -64,6 +79,7 @@ class MainActivity : ComponentActivity() {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val charging by chargingViewModel.uiState.collectAsStateWithLifecycle()
             val routePlanner by routePlannerViewModel.uiState.collectAsStateWithLifecycle()
+            val obdConnection by obd.connection.collectAsStateWithLifecycle()
             // Compose state reflects persisted user preference; the engine is Activity-owned.
             var voiceEnabled by remember { mutableStateOf(preferences.enabled) }
             var voiceVolume by remember { mutableStateOf(preferences.volume) }
@@ -79,6 +95,10 @@ class MainActivity : ComponentActivity() {
             }
             EyaTheme {
                 CockpitScreen(state,
+                obdConnection=obdConnection,
+                onObdRefresh={refreshObdDevices()},
+                onObdConnect=obd::connect,
+                onObdDisconnect=obd::disconnect,
                 routePlannerUi=routePlanner,
                 onRouteOriginChange=routePlannerViewModel::editOrigin,
                 onRouteDestinationChange=routePlannerViewModel::editDestination,
@@ -128,6 +148,7 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         foreground = false
         guide.stop() // Do not speak or track in background without a foreground service.
+        obd.disconnect() // Explicit foreground-only OBD; no hidden background connection.
         viewModel.stopGps()
         super.onPause()
     }

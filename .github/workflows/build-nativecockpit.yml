@@ -52,6 +52,18 @@ jobs:
           test -s "$apk"
           sha256sum "$apk" > nativecockpit-debug.sha256
           ls -lh "$apk"
+      - name: Verify Android Auto navigation service and OBD permissions in APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk"
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          test -x "$aapt"
+          "$aapt" dump xmltree "$apk" AndroidManifest.xml > manifest-tree.txt
+          grep -q 'androidx.car.app.CarAppService' manifest-tree.txt
+          grep -q 'androidx.car.app.category.NAVIGATION' manifest-tree.txt
+          grep -q 'android.permission.BLUETOOTH_CONNECT' manifest-tree.txt
+          echo "APK includes Android Auto navigation service and paired Bluetooth permission"
       - name: Publish test APK and checksum
         uses: actions/upload-artifact@v4
         with:

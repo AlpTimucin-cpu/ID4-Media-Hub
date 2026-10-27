@@ -14,8 +14,8 @@ android {
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.10.0-car-guidance"
+        versionCode = 11
+        versionName = "0.11.0-dhu-obd-readonly"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

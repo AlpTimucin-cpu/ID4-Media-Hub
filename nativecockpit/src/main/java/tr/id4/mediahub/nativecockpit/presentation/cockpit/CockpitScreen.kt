@@ -44,6 +44,8 @@ import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerUiState
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerDialog
 import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
+import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
+import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
 
 private val CardShape = RoundedCornerShape(22.dp)
 
@@ -51,6 +53,10 @@ private val CardShape = RoundedCornerShape(22.dp)
 @Composable
 fun CockpitScreen(
     state: CockpitUiState,
+    obdConnection: ObdConnectionState,
+    onObdRefresh: () -> Unit,
+    onObdConnect: (String) -> Unit,
+    onObdDisconnect: () -> Unit,
     routePlannerUi: RoutePlannerUiState,
     onRouteOriginChange:(String)->Unit,
     onRouteDestinationChange:(String)->Unit,
@@ -73,6 +79,14 @@ fun CockpitScreen(
     onVoiceTest: () -> Unit
 ) {
     var selectedDock by remember { mutableStateOf<DockTab?>(null) }
+    var showObdSettings by remember { mutableStateOf(false) }
+    if (showObdSettings) ObdSettingsDialog(
+        state = obdConnection,
+        onRefresh = onObdRefresh,
+        onConnect = onObdConnect,
+        onDisconnect = onObdDisconnect,
+        onDismiss = {showObdSettings = false}
+    )
     var showRoutePlanner by remember { mutableStateOf(false) }
     if(showRoutePlanner) RoutePlannerDialog(
         state=routePlannerUi,onDismiss={showRoutePlanner=false},
@@ -234,7 +248,7 @@ fun CockpitScreen(
         }
         Dock(onTap = { tab ->
             if (tab == DockTab.ROUTE) showRoutePlanner = true
-            else if (tab == DockTab.SETTINGS) showVoiceSettings = true
+            else if (tab == DockTab.SETTINGS) {showObdSettings = true;onObdRefresh()}
             else selectedDock = tab
         })
     }
