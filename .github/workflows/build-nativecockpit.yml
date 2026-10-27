@@ -31,8 +31,10 @@ jobs:
         run: |
           set -euo pipefail
           echo "SDK: ${ANDROID_HOME:-unset}"
-          command -v sdkmanager
-          sdkmanager --version
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' -print -quit)"
+          test -x "$sdkmanager_bin"
+          echo "$(dirname "$sdkmanager_bin")" >> "$GITHUB_PATH"
+          "$sdkmanager_bin" --version
       - name: Install Android API 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Gradle 8.14.3
