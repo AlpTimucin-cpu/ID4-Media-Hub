@@ -14,8 +14,8 @@ android {
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.7.0-real-osrm-route"
+        versionCode = 8
+        versionName = "0.8.1-route-gps-photon-fix"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -46,6 +46,7 @@ dependencies {
 
     // Steps 3–5: native MapLibre + real GPS; ValueAnimator is Android SDK.
     implementation("org.maplibre.gl:android-sdk:13.7.1")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

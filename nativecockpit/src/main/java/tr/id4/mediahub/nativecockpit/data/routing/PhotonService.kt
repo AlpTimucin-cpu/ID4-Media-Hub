@@ -9,7 +9,7 @@ interface PhotonService {
     @GET("api/")
     suspend fun search(
         @Query("q") query: String,
-        @Query("lang") language: String = "tr",
+        @Query("lang") language: String? = null,
         @Query("limit") limit: Int = 5
     ): ResponseBody
 }

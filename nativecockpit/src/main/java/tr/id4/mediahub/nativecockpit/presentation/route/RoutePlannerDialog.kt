@@ -30,18 +30,20 @@ fun RoutePlannerDialog(
     onClear:()->Unit
 ){
     Dialog(onDismissRequest=onDismiss,
-        properties=DialogProperties(usePlatformDefaultWidth=false)){
-        BoxWithConstraints(Modifier.fillMaxWidth(.94f).fillMaxHeight(.92f)){
+        properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)){
+        Box(Modifier.fillMaxSize().imePadding(),contentAlignment=Alignment.Center){
             Surface(
                 color=Color(0xF40A1728),
                 shape=RoundedCornerShape(20.dp),
-                modifier=Modifier.fillMaxWidth().heightIn(max=maxHeight)
+                modifier=Modifier.fillMaxWidth(.94f).fillMaxHeight(.94f)
             ) {
                 Column(
-                    modifier=Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+                    modifier=Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement=Arrangement.spacedBy(10.dp)
                 ) {
                     Text("ROTA OLUŞTUR",style=MaterialTheme.typography.titleMedium,color=Color.White)
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                        verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Text("Photon / OSM adresleri · OSRM gerçek rota · canlı trafik değil",
                         style=MaterialTheme.typography.bodySmall,color=Color(0xFFABC5D5))
                     OutlinedTextField(
@@ -49,9 +51,11 @@ fun RoutePlannerDialog(
                         label={Text("Nereden")},singleLine=true,
                         modifier=Modifier.fillMaxWidth()
                     )
-                    TextButton(onClick=onGps,modifier=Modifier.heightIn(min=48.dp)){
-                        Text("Güncel GPS konumumdan başlat")
+                    TextButton(onClick=onGps,enabled=!state.locatingGps,modifier=Modifier.heightIn(min=48.dp)){
+                        Text(if(state.locatingGps) "GPS konumu alınıyor…" else "Güncel GPS konumumdan başlat")
                     }
+                    if(state.locatingGps)LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if(state.startLocation!=null) Text("Başlangıç konumu seçildi",color=Color(0xFF74F2BD))
                     if(state.searchingOrigin)LinearProgressIndicator(Modifier.fillMaxWidth())
                     Suggestions(state.originMatches,onOriginSelected)
                     OutlinedTextField(
@@ -59,19 +63,12 @@ fun RoutePlannerDialog(
                         label={Text("Nereye")},singleLine=true,
                         modifier=Modifier.fillMaxWidth()
                     )
+                    if(state.destinationLocation!=null) Text("Varış konumu seçildi",color=Color(0xFF74F2BD))
                     if(state.searchingDestination)LinearProgressIndicator(Modifier.fillMaxWidth())
                     Suggestions(state.destinationMatches,onDestinationSelected)
                     state.error?.let{
                         Text(it,color=Color(0xFFFFB17C),style=MaterialTheme.typography.bodySmall)
                     }
-                    if(state.planning)LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Button(
-                        onClick=onPlan,
-                        enabled=!state.planning &&
-                            (state.originFromGps || state.originSelected!=null) &&
-                            state.destinationSelected!=null,
-                        modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)
-                    ){ Text("Gerçek yol rotasını hesapla") }
                     if(state.options.isNotEmpty()){
                         HorizontalDivider()
                         Text("OSRM alternatifleri (${state.options.size} doğrulanmış)",color=Color.White)
@@ -85,6 +82,13 @@ fun RoutePlannerDialog(
                         }
                         Text("Tahminler trafiksizdir. GPS ilerlemesi olmadan varış SoC hesaplanmaz.",
                             style=MaterialTheme.typography.bodySmall,color=Color(0xFFABC5D5))
+                    }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if(state.planning)LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Button(onClick=onPlan,enabled=state.canCalculate,
+                        modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){
+                        Text("Gerçek yol rotasını hesapla")
                     }
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
                         verticalAlignment=Alignment.CenterVertically) {

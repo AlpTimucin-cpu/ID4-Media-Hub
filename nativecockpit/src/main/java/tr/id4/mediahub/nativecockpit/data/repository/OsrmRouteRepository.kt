@@ -12,6 +12,7 @@ import retrofit2.Retrofit
 import tr.id4.mediahub.nativecockpit.domain.model.*
 import tr.id4.mediahub.nativecockpit.domain.repository.RouteRepository
 import tr.id4.mediahub.nativecockpit.data.routing.*
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -36,7 +37,8 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
 
     override suspend fun search(query:String):List<RoutePlace> = withContext(Dispatchers.IO){
         require(query.trim().length in 3..100){"En az 3 harf gerekli"}
-        photon.search(query.trim()).use { PhotonResponseParser.parse(it.string()) }
+        val response = photon.search(query.trim())
+        response.use { PhotonResponseParser.parse(it.string()) }
     }
     override suspend fun calculate(origin:GeoCoordinate,destination:RoutePlace) =
         withContext(Dispatchers.IO){
