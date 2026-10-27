@@ -5,6 +5,7 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.util.Log
+import android.view.Surface
 import android.widget.FrameLayout
 import androidx.car.app.CarContext
 import androidx.car.app.SurfaceCallback
@@ -34,6 +35,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.validRouteGeometry
  * No MapView is created if Android Auto has not supplied a valid Surface.
  */
 internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallback {
+    private var activeSurface: Surface? = null
     private var display: VirtualDisplay? = null
     private var presentation: Presentation? = null
     private var mapView: MapView? = null
@@ -46,16 +48,23 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
     private var centeredOnGps = false
 
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
-        release()
-        if (!surfaceContainer.surface.isValid ||
+        val hostSurface = surfaceContainer.surface ?: return
+        if (!hostSurface.isValid ||
             surfaceContainer.width <= 0 || surfaceContainer.height <= 0) return
+        if (activeSurface === hostSurface && display != null) {
+            display?.resize(surfaceContainer.width, surfaceContainer.height,
+                surfaceContainer.dpi.coerceAtLeast(120))
+            return
+        }
+        release()
+        activeSurface = hostSurface
         try {
             val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val virtual = dm.createVirtualDisplay(
                 "Elektrikli Yol Arkadaşım – Navigasyon",
                 surfaceContainer.width, surfaceContainer.height,
                 surfaceContainer.dpi.coerceAtLeast(120),
-                surfaceContainer.surface,
+                hostSurface,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY
             ) ?: return
             display = virtual
@@ -165,5 +174,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
         presentation = null
         try { display?.release() } catch (_: Exception) { }
         display = null
+        activeSurface?.release()
+        activeSurface = null
     }
 }
