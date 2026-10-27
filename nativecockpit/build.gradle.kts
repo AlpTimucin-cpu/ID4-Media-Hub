@@ -14,10 +14,10 @@ android {
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.8.1-route-gps-photon-fix"
+        versionCode = 9
+        versionName = "0.9.0-android-auto-navigation"
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -50,6 +50,10 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Official Android Auto template host. Stable release; no video/UI bypasses.
+    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app-projected:1.7.0")
 
     testImplementation("junit:junit:4.13.2")
     // Android org.json stubs throw in local JVM tests; provide a real JSON implementation.
