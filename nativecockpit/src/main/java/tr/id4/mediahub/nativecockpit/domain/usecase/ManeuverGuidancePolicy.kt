@@ -16,12 +16,14 @@ class ManeuverGuidancePolicy {
     private data class Projection(val metersAlong: Double, val offRoute: Double)
     private var routeAndStep: String? = null
     private var lastLevel = -1
+    private var proposedLevel: Int? = null
     private var lastFixTime = 0L
     private var lastSpeechTime = 0L
 
     fun reset() {
         routeAndStep = null
         lastLevel = -1
+        proposedLevel = null
         lastFixTime = 0L
         lastSpeechTime = 0L
     }
@@ -43,6 +45,7 @@ class ManeuverGuidancePolicy {
         if (key != routeAndStep) {
             routeAndStep = key
             lastLevel = -1
+            proposedLevel = null
             lastFixTime = 0L
             lastSpeechTime = 0L
         }
@@ -56,24 +59,30 @@ class ManeuverGuidancePolicy {
         if (vehicle.offRoute > 35.0 || maneuver.offRoute > 25.0) return null
         val ahead = maneuver.metersAlong - vehicle.metersAlong
         if (ahead < -10.0 || ahead > 1_100.0) return null
-        // Four non-repeating stages. Do not speak 1 km when GPS first arrives at 100 m.
+        // Only two stages: announce at 200 m, then again at 50 m.
+        // A driver joining close to a junction hears the 50 m stage only.
         val level = when {
-            ahead <= 35.0 -> 3
-            ahead <= 110.0 -> 2
-            ahead <= 330.0 -> 1
-            else -> 0
+            ahead <= 50.0 -> 1
+            ahead <= 200.0 -> 0
+            else -> return null
         }
-        if (level <= lastLevel || (lastSpeechTime > 0 && nowMs-lastSpeechTime < 4_000L))
+        if (level <= lastLevel || (lastSpeechTime > 0 && nowMs - lastSpeechTime < 4_000L)) {
+            proposedLevel = null
             return null
-        lastLevel = level
-        lastSpeechTime = nowMs
-        val prefix = when (level) {
-            0 -> "Yaklaşık bir kilometre sonra, "
-            1 -> "Yaklaşık üç yüz metre sonra, "
-            2 -> "Yaklaşık yüz metre sonra, "
-            else -> "Şimdi, "
         }
-        return prefix + instruction
+        // IMPORTANT: do not mark as spoken until TextToSpeech accepted the request.
+        proposedLevel = level
+        return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
+            instruction
+    }
+
+    /** Called only when the Android TTS engine successfully queues an utterance. */
+    fun confirmSpoken(nowMs: Long) {
+        proposedLevel?.let { level ->
+            lastLevel = maxOf(lastLevel, level)
+            lastSpeechTime = nowMs
+        }
+        proposedLevel = null
     }
 
     private fun nearest(route: List<GeoCoordinate>, p: GeoCoordinate): Projection? {
