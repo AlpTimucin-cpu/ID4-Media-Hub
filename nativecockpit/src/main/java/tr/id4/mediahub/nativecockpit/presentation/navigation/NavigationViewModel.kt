@@ -187,7 +187,10 @@ class NavigationViewModel @Inject constructor(
     /** Last known Fused fix, delivered only after the user grants runtime permission. */
     @Suppress("DEPRECATION")
     fun acceptLastLocation(location: android.location.Location?) {
-        if (location == null || location.isFromMockProvider || !location.hasAccuracy()) return
+        if (location == null || location.isFromMockProvider || !location.hasAccuracy()) {
+            reportGpsError("Konum okunamadı. GPS'i ve hassas konumu kontrol et.")
+            return
+        }
         val fix = GpsFix(
             coordinate = GeoCoordinate(location.latitude, location.longitude),
             accuracyMeters = location.accuracy,
@@ -201,7 +204,10 @@ class NavigationViewModel @Inject constructor(
         } else _gpsError.value = "Konum yeterince güncel veya hassas değil."
 
     }
-    fun reportGpsError(message: String) { _gpsError.value = message }
+    fun reportGpsError(message: String) {
+        _gpsError.value = message
+        _planner.update { it.copy(locatingGps = false, error = message) }
+    }
 
     fun setVoiceEnabled(enabled: Boolean) {
         prefs.enabled = enabled
