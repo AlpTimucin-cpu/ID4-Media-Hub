@@ -49,16 +49,20 @@ class ChargingViewModel @Inject constructor(
         Triple(catalog,selected,actualRoute?.routePoints.orEmpty())
     }.mapLatest { (catalog,selected,routePoints) ->
         withContext(Dispatchers.Default) {
-            // Bound displayed feature count to avoid unresponsive map on low-end devices.
+            // Exact corridor checks use indexed local route segments, not
+            // a scan of every OSRM vertex for every one of 13k+ stations.
+            val index=if(routePoints.size>=2) StationCorridor.index(routePoints) else null
+            val alongIds=if(index!=null)
+                catalog.stations.asSequence().filter(index::isAlongRoute).map { it.id }.toSet()
+            else emptySet()
             val visible=catalog.stations.asSequence()
                 .filter { when(selected){
                     StationFilter.ALL -> true
                     StationFilter.DC -> it.hasDc
-                    StationFilter.ROUTE_CCS -> routePoints.size>=2 &&
-                        StationCorridor.isAlongRoute(it,routePoints)
+                    StationFilter.ROUTE_CCS -> it.id in alongIds
                 }}.toList()
             ChargingUiState(visible,selected,catalog.stations.size,
-                if(routePoints.size>=2) visible.count { StationCorridor.isAlongRoute(it,routePoints) }
+                if(index!=null) visible.count { it.id in alongIds }
                 else null,routePoints.size>=2,catalog.verifiedAtUtc,
                 catalog.loading,catalog.staleCache,catalog.error)
         }
