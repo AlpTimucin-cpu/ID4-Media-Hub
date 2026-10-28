@@ -2,6 +2,8 @@ package tr.id4.mediahub.nativecockpit
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Context
+import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,6 +13,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,21 +55,56 @@ class MainActivity : ComponentActivity() {
                 LocationServices.getFusedLocationProviderClient(context.applicationContext)
             }
             var pendingRouteRequest by remember { mutableStateOf(false) }
+            val locationManager = remember(context) {
+                context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            }
+            var fusedToken by remember { mutableStateOf<CancellationTokenSource?>(null) }
+            DisposableEffect(fused) {
+                onDispose { fusedToken?.cancel() }
+            }
+            // Route selection already has its own validated Fused request in ViewModel.
+            // Map refresh uses an independent one-shot request, not stale lastLocation.
             @Suppress("MissingPermission")
             fun granted(forRoute: Boolean) {
+                if (!locationManager.isLocationEnabled) {
+                    navigation.reportGpsError("Konum hizmeti kapalı. Telefonun konum ayarını aç.")
+                    return
+                }
                 navigation.startGps()
-                // Ingest a real, fresh lastLocation before selecting the GPS origin.
+                if (forRoute) {
+                    navigation.useCurrentGps()
+                    return
+                }
+                val fine = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                val request = CurrentLocationRequest.Builder()
+                    .setPriority(if (fine) Priority.PRIORITY_HIGH_ACCURACY
+                                 else Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setMaxUpdateAgeMillis(3_000L)
+                    .setDurationMillis(15_000L)
+                    .build()
+                fusedToken?.cancel()
+                val token = CancellationTokenSource()
+                fusedToken = token
                 try {
-                    fused.lastLocation
-                        .addOnSuccessListener {
-                            navigation.acceptLastLocation(it)
-                            if (forRoute) navigation.useCurrentGps()
+                    fused.getCurrentLocation(request, token.token)
+                        .addOnSuccessListener { location ->
+                            if (location == null) {
+                                navigation.reportGpsError(
+                                    "Güncel konum bulunamadı. Açık alanda yeniden dene."
+                                )
+                            } else {
+                                navigation.acceptLastLocation(location)
+                            }
                         }
-                        .addOnFailureListener {
-                            if (forRoute) navigation.useCurrentGps()
+                        .addOnFailureListener { error ->
+                            navigation.reportGpsError(
+                                "Konum alınamadı: " + (error.message ?: "GPS hatası")
+                            )
                         }
                 } catch (_: SecurityException) {
-                    if (forRoute) navigation.locationPermissionDenied()
+                    navigation.reportGpsError("Konum izni geçersiz. İzni yeniden ver.")
                 }
             }
             val permissionLauncher = rememberLauncherForActivityResult(
@@ -73,7 +113,12 @@ class MainActivity : ComponentActivity() {
                 val accepted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                     grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
                 if (accepted) granted(pendingRouteRequest)
-                else if (pendingRouteRequest) navigation.locationPermissionDenied()
+                else {
+                    if (pendingRouteRequest) navigation.locationPermissionDenied()
+                    else navigation.reportGpsError(
+                        "Konum izni verilmedi. Ayarlardan konum iznini aç."
+                    )
+                }
                 pendingRouteRequest = false
             }
             val requestGps: (Boolean) -> Unit = { fromRoute ->
