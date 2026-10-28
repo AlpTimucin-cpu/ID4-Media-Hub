@@ -12,6 +12,9 @@
 
     <queries>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+        <package android:name="com.netflix.mediaclient" />
+        <package android:name="com.disney.disneyplus" />
+        <package android:name="com.amazon.avod.thirdpartyclient" />
     </queries>
 
     <application
