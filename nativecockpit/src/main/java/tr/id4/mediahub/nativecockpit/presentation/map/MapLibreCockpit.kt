@@ -280,11 +280,12 @@ private fun updateRoute(style: Style, points: List<GeoCoordinate>) {
 private fun buildStationGeoJson(
     stations: List<ChargingStation>, route: List<GeoCoordinate>
 ): FeatureCollection {
+    val routeIndex=if(route.size>=2) StationCorridor.index(route) else null
     val features=stations.map { station ->
         val props=JsonObject().apply {
             addProperty("stationId",station.id)
             addProperty("dc",station.hasDc)
-            addProperty("corridor",route.size>=2 && StationCorridor.isAlongRoute(station,route))
+            addProperty("corridor",routeIndex?.isAlongRoute(station)==true)
         }
         Feature.fromGeometry(Point.fromLngLat(station.coordinate.longitude,
             station.coordinate.latitude),props)
