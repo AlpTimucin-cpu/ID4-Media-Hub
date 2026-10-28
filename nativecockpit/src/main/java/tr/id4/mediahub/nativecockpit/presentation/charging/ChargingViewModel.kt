@@ -44,26 +44,23 @@ class ChargingViewModel @Inject constructor(
     fun viewportChanged(bounds: GeoViewport) { if(bounds.valid())viewport.value=bounds }
 
     val uiState: StateFlow<ChargingUiState> = combine(
-        chargingRepository.catalog,viewport,filter,route
-    ) { catalog,bounds,selected,actualRoute ->
-        Quad(catalog,bounds,selected,actualRoute?.routePoints.orEmpty())
-    }.mapLatest { (catalog,bounds,selected,routePoints) ->
+        chargingRepository.catalog,filter,route
+    ) { catalog,selected,actualRoute ->
+        Triple(catalog,selected,actualRoute?.routePoints.orEmpty())
+    }.mapLatest { (catalog,selected,routePoints) ->
         withContext(Dispatchers.Default) {
             // Bound displayed feature count to avoid unresponsive map on low-end devices.
             val visible=catalog.stations.asSequence()
-                .filter { bounds?.contains(it.coordinate) == true }
                 .filter { when(selected){
                     StationFilter.ALL -> true
                     StationFilter.DC -> it.hasDc
                     StationFilter.ROUTE_CCS -> routePoints.size>=2 &&
                         StationCorridor.isAlongRoute(it,routePoints)
-                }}.take(600).toList()
+                }}.toList()
             ChargingUiState(visible,selected,catalog.stations.size,
                 if(routePoints.size>=2) visible.count { StationCorridor.isAlongRoute(it,routePoints) }
                 else null,routePoints.size>=2,catalog.verifiedAtUtc,
                 catalog.loading,catalog.staleCache,catalog.error)
         }
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ChargingUiState())
-    private data class Quad(val catalog: ChargingCatalog,val bounds: GeoViewport?,
-        val filter: StationFilter,val route: List<GeoCoordinate>)
 }
