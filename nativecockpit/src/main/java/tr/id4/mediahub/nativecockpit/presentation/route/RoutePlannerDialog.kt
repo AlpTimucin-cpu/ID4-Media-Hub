@@ -19,7 +19,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 
-/** Scrollable route planner. Existing state and callbacks are unchanged. */
+/** Route and charging planner: one IME inset, one scroll container, fixed close button.
+ * State and callback contracts remain unchanged.
+ */
 @Composable
 fun RoutePlannerDialog(
     state: RoutePlannerUiState,
@@ -35,14 +37,16 @@ fun RoutePlannerDialog(
 ) {
     val scrollState = rememberScrollState()
     val muted = Color(0xFFABC5D5)
+    val accent = Color(0xFF62E7EE)
+    val success = Color(0xFF74F2BD)
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
         unfocusedTextColor = Color.White,
-        focusedLabelColor = Color(0xFF62E7EE),
-        unfocusedLabelColor = muted,
-        focusedBorderColor = Color(0xFF62E7EE),
+        focusedPlaceholderColor = muted,
+        unfocusedPlaceholderColor = muted,
+        focusedBorderColor = accent,
         unfocusedBorderColor = Color(0xFF658194),
-        cursorColor = Color(0xFF62E7EE)
+        cursorColor = accent
     )
 
     Dialog(
@@ -52,32 +56,24 @@ fun RoutePlannerDialog(
             decorFitsSystemWindows = false
         )
     ) {
-        // Full-window scrim; inset handling happens on the content layer.
+        // Full-window scrim; no IME inset on this outer container.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.80f))
+                .statusBarsPadding(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .imePadding(),
-                contentAlignment = Alignment.Center
-            ) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth(0.90f)
-                        .fillMaxHeight(0.90f),
+                        .fillMaxHeight(0.85f),
                     shape = RoundedCornerShape(22.dp),
                     color = Color(0xFF0A1728),
                     tonalElevation = 4.dp,
                     shadowElevation = 18.dp
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .imePadding()
-                    ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                         // This header is outside the scroll area, so X never moves.
                         Row(
                             modifier = Modifier
@@ -110,6 +106,7 @@ fun RoutePlannerDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
+                                .imePadding()
                                 .verticalScroll(scrollState)
                                 .padding(horizontal = 18.dp, vertical = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -120,11 +117,17 @@ fun RoutePlannerDialog(
                                 color = muted
                             )
 
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Manual heading replaces the TextField's floating label.
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    text = "NEREDEN",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White
+                                )
                                 OutlinedTextField(
                                     value = state.originText,
                                     onValueChange = onOriginChange,
-                                    label = { Text("Nereden") },
+                                    placeholder = { Text("Başlangıç adresi veya şehir") },
                                     singleLine = true,
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
@@ -143,7 +146,7 @@ fun RoutePlannerDialog(
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 }
                                 if (state.startLocation != null) {
-                                    Text("Başlangıç konumu seçildi", color = Color(0xFF74F2BD))
+                                    Text("Başlangıç konumu seçildi", color = success)
                                 }
                                 if (state.searchingOrigin) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -151,17 +154,22 @@ fun RoutePlannerDialog(
                                 Suggestions(state.originMatches, onOriginSelected)
                             }
 
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    text = "NEREYE",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White
+                                )
                                 OutlinedTextField(
                                     value = state.destinationText,
                                     onValueChange = onDestinationChange,
-                                    label = { Text("Nereye") },
+                                    placeholder = { Text("Varış adresi veya şehir") },
                                     singleLine = true,
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 if (state.destinationLocation != null) {
-                                    Text("Varış konumu seçildi", color = Color(0xFF74F2BD))
+                                    Text("Varış konumu seçildi", color = success)
                                 }
                                 if (state.searchingDestination) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -179,7 +187,7 @@ fun RoutePlannerDialog(
 
                             if (state.options.isNotEmpty()) {
                                 HorizontalDivider(color = Color(0xFF27465B))
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(
                                         text = "OSRM alternatifleri (" +
                                             state.options.size + " doğrulanmış)",
@@ -215,8 +223,8 @@ fun RoutePlannerDialog(
 
                             HorizontalDivider(color = Color(0xFF27465B))
 
-                            // Keep actions scrollable on phones with a small IME viewport.
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Keep all actions reachable with an open keyboard.
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (state.planning) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 }
@@ -248,18 +256,17 @@ fun RoutePlannerDialog(
                                     ) { Text("Haritaya dön") }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
-            }
         }
     }
 }
 
 @Composable
 private fun Suggestions(items: List<RoutePlace>, onSelect: (RoutePlace) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEach { place ->
             Surface(
                 color = Color(0xFF19374B),
