@@ -135,6 +135,7 @@ class MainActivity : ComponentActivity() {
                     ))
                 }
             }
+            val gpsError by navigation.gpsError.collectAsStateWithLifecycle()
             val routeState by navigation.routeState.collectAsStateWithLifecycle()
             val ui by navigation.uiState.collectAsStateWithLifecycle()
             val stations by charging.uiState.collectAsStateWithLifecycle()
@@ -153,6 +154,7 @@ class MainActivity : ComponentActivity() {
                     onRouteAlternative = navigation::selectAlternative,
                     onRouteClear = navigation::clearRoute,
                     onGpsClick = { requestGps(false) },
+                    gpsError = gpsError,
                     chargingUi = stations,
                     onStationFilter = charging::changeFilter,
                     onMapViewport = charging::viewportChanged,
