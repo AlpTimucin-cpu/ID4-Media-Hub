@@ -179,7 +179,9 @@ class EyaCarNavigationScreen(
             voice.status == NativeVoiceGuide.Status.READY) {
             val enriched = progress.enrich(currentRoute, currentFix, now)
             val announcement = speechPolicy.nextAnnouncement(enriched, currentFix, now)
-            if (announcement != null) voice.speak(announcement, voicePrefs.volume)
+            if (announcement != null && voice.speak(announcement, voicePrefs.volume)) {
+                speechPolicy.confirmSpoken(now)
+            }
         } else if (!voicePrefs.enabled) voice.stop()
     }
 
