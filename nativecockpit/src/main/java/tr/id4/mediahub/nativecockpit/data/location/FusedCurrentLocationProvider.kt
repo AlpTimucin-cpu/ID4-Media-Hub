@@ -18,6 +18,7 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import tr.id4.mediahub.nativecockpit.domain.model.GeoCoordinate
+import tr.id4.mediahub.nativecockpit.domain.model.GpsFix
 
 /** Foreground-only, one-shot real location after explicit runtime permission. */
 class FusedCurrentLocationProvider @Inject constructor(
@@ -25,7 +26,7 @@ class FusedCurrentLocationProvider @Inject constructor(
 ) {
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(context) }
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentCoordinate():Result<GeoCoordinate> {
+    suspend fun getCurrentMeasurement():Result<Pair<GeoCoordinate,GpsFix?>> {
         val fine=ContextCompat.checkSelfPermission(context,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED
         val coarse=ContextCompat.checkSelfPermission(context,Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED
         if(!fine&&!coarse) return Result.failure(SecurityException("Konum izni verilmedi."))
@@ -54,9 +55,24 @@ class FusedCurrentLocationProvider @Inject constructor(
                 return Result.failure(IllegalStateException("GPS doğruluğu yetersiz. Tekrar dene."))
             val point=GeoCoordinate(location.latitude,location.longitude)
             if(!point.valid()) Result.failure(IllegalStateException("GPS geçersiz koordinat döndürdü."))
-            else Result.success(point)
+            else {
+                // Preserve approximate origins, but only publish a genuine, usable fix
+                // to the shared map/vehicle telemetry state.
+                val fix=GpsFix(
+                    coordinate=point,
+                    accuracyMeters=location.accuracy,
+                    recordedAtMillis=location.time,
+                    bearingDegrees=location.bearing.takeIf { location.hasBearing() && it.isFinite() && it>=0f && it<360f },
+                    speedMetersPerSecond=location.speed.takeIf { location.hasSpeed() && it.isFinite() && it>=0f && it<=90f }
+                ).takeIf { it.usable(System.currentTimeMillis()) }
+                Result.success(point to fix)
+            }
         }catch(c:kotlinx.coroutines.CancellationException){throw c}
         catch(e:SecurityException){Result.failure(SecurityException("Konum izni verilmedi."))}
         catch(e:Exception){Result.failure(IllegalStateException("Konum alınamadı: ${e.message?:"GPS hatası"}"))}
     }
+
+    /** Existing location API remains compatible with all previous callers. */
+    suspend fun getCurrentCoordinate():Result<GeoCoordinate> =
+        getCurrentMeasurement().map { it.first }
 }
