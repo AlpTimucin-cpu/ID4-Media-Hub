@@ -56,7 +56,7 @@ class NativeVoiceGuide(context: Context) {
                     status = Status.INIT_FAILED
                     return@post
                 }
-                val locale = Locale.forLanguageTag("tr-TR")
+                val locale = Locale("tr", "TR")
                 val supported = engine.isLanguageAvailable(locale)
                 val selected = if (supported >= TextToSpeech.LANG_AVAILABLE)
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
