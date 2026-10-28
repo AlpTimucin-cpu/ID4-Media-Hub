@@ -159,7 +159,9 @@ class NavigationViewModel @Inject constructor(
                     val now = System.currentTimeMillis()
                     val route = ttsProgress.enrich(current.route, current.fix, now)
                     policy.nextAnnouncement(route, current.fix, now)?.let { message ->
-                        guide.speak(message, current.voice.volume)
+                        if (guide.speak(message, current.voice.volume)) {
+                            policy.confirmSpoken(now)
+                        }
                     }
                 }
             }
