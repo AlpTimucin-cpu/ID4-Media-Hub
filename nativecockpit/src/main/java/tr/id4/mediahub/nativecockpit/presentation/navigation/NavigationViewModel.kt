@@ -292,13 +292,19 @@ class NavigationViewModel @Inject constructor(
                 val cached = locationRepository.gpsFix.value
                     ?.takeIf { it.usable(System.currentTimeMillis()) && it.accuracyMeters <= 35f }
                     ?.coordinate
-                val result = if (cached != null) Result.success(cached)
-                    else currentLocation.getCurrentCoordinate()
+                val result = if (cached != null)
+                    Result.success(cached to locationRepository.gpsFix.value)
+                else currentLocation.getCurrentMeasurement()
+
+                // A single fresh Fused measurement updates the planner origin
+                // and the same GPS StateFlow observed by MapLibre and the cockpit.
+                result.getOrNull()?.second?.let(locationRepository::acceptFix)
                 _gpsError.value = result.exceptionOrNull()?.message
                 _planner.update { state ->
                     if (result.isSuccess) state.copy(
                         locatingGps = false, originFromGps = true,
-                        gpsOrigin = result.getOrNull(), originText = "Güncel GPS konumum", error = null
+                        gpsOrigin = result.getOrNull()?.first,
+                        originText = "Güncel GPS konumum", error = null
                     ) else state.copy(locatingGps = false, originFromGps = false,
                         error = result.exceptionOrNull()?.message ?: "GPS konumu alınamadı")
                 }
