@@ -73,6 +73,8 @@ class NavigationViewModel @Inject constructor(
     private val progress = RouteProgressTracker()
     private val ttsProgress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
+    private val _gpsError = MutableStateFlow<String?>(null)
+    val gpsError: StateFlow<String?> = _gpsError.asStateFlow()
     private val _planner = MutableStateFlow(RoutePlannerUiState())
     private val _voice = MutableStateFlow(
         VoiceUiState(prefs.enabled, prefs.volume, guide.status)
@@ -176,7 +178,10 @@ class NavigationViewModel @Inject constructor(
             locationRepository.stop()
         }
     }
-    fun startGps() = locationRepository.start()
+    fun startGps() {
+        _gpsError.value = null
+        locationRepository.start()
+    }
     fun stopGps() = locationRepository.stop()
 
     /** Last known Fused fix, delivered only after the user grants runtime permission. */
@@ -190,8 +195,14 @@ class NavigationViewModel @Inject constructor(
             bearingDegrees = location.bearing.takeIf { location.hasBearing() && it.isFinite() },
             speedMetersPerSecond = location.speed.takeIf { location.hasSpeed() && it.isFinite() }
         )
-        if (fix.usable(System.currentTimeMillis())) locationRepository.acceptFix(fix)
+        if (fix.usable(System.currentTimeMillis())) {
+            locationRepository.acceptFix(fix)
+            _gpsError.value = null
+        } else _gpsError.value = "Konum yeterince güncel veya hassas değil."
+
     }
+    fun reportGpsError(message: String) { _gpsError.value = message }
+
     fun setVoiceEnabled(enabled: Boolean) {
         prefs.enabled = enabled
         _voice.update { it.copy(enabled = enabled) }
@@ -277,6 +288,7 @@ class NavigationViewModel @Inject constructor(
                     ?.coordinate
                 val result = if (cached != null) Result.success(cached)
                     else currentLocation.getCurrentCoordinate()
+                _gpsError.value = result.exceptionOrNull()?.message
                 _planner.update { state ->
                     if (result.isSuccess) state.copy(
                         locatingGps = false, originFromGps = true,
@@ -288,6 +300,7 @@ class NavigationViewModel @Inject constructor(
         }
     }
     fun locationPermissionDenied() {
+        _gpsError.value = "Konum izni verilmedi."
         gpsJob?.cancel()
         _planner.update { it.copy(locatingGps = false, originFromGps = false,
             gpsOrigin = null, error = "Konum izni verilmedi; başlangıç adresini elle seçebilirsin") }
