@@ -5,11 +5,15 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
-import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Bundle
+import android.os.Build
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,67 +24,95 @@ import tr.id4.mediahub.nativecockpit.domain.model.GeoCoordinate
 import tr.id4.mediahub.nativecockpit.domain.model.GpsFix
 import tr.id4.mediahub.nativecockpit.domain.repository.LocationRepository
 
-/** No mock GPS and no background tracking; stopped from Activity.onPause(). */
+/**
+ * Foreground-only Fused GPS stream; one repository is shared by
+ * MapLibre, route progress and navigation speech.
+ */
 @Singleton
 class AndroidLocationRepository @Inject constructor(
     @ApplicationContext private val context: Context
-) : LocationRepository, LocationListener {
-    private val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+) : LocationRepository {
+    private val fused = LocationServices.getFusedLocationProviderClient(context)
+    private val locationManager by lazy {
+        context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    }
     private val _gpsFix = MutableStateFlow<GpsFix?>(null)
     override val gpsFix: StateFlow<GpsFix?> = _gpsFix.asStateFlow()
     private var running = false
 
-    @SuppressLint("MissingPermission") // checked before location request
-    @Synchronized override fun start() {
-        if (running) return
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!fine && !coarse) return
-        try {
-            // GPS_PROVIDER first. Never replace it with a simulated location.
-            val provider = when {
-                fine && manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-                manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-                else -> return
-            }
-            manager.requestLocationUpdates(provider, 1_000L, 2f, this, Looper.getMainLooper())
-            running = true
-        } catch (_: SecurityException) {
-            _gpsFix.value = null
-        } catch (_: IllegalArgumentException) {
-            _gpsFix.value = null
+    private val callback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            result.locations.forEach(::ingest)
         }
     }
 
-    @Synchronized override fun stop() {
-        if (running) manager.removeUpdates(this)
-        running = false
-        _gpsFix.value = null // never keep a moving-vehicle pin after lifecycle stop
-    }
-
-    @Suppress("DEPRECATION") // Android 9–11 location.isFromMockProvider API
-    override fun onLocationChanged(location: Location) {
-        // Reject developer-injected/mock coordinates in the real navigation path.
-        if (location.isFromMockProvider ||
-            location.provider == LocationManager.PASSIVE_PROVIDER ||
-            !location.hasAccuracy()) {
+    @SuppressLint("MissingPermission") // Both permissions checked below.
+    @Synchronized
+    override fun start() {
+        if (running) return
+        val fine = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if ((!fine && !coarse) || !locationManager.isLocationEnabled) {
             _gpsFix.value = null
             return
         }
+
+        val request = LocationRequest.Builder(
+            if (fine) Priority.PRIORITY_HIGH_ACCURACY
+            else Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+            1_000L
+        )
+            .setMinUpdateIntervalMillis(500L)
+            .setMinUpdateDistanceMeters(2f)
+            .build()
+
+        try {
+            running = true
+            fused.requestLocationUpdates(request, callback, Looper.getMainLooper())
+                .addOnFailureListener {
+                    synchronized(this) {
+                        running = false
+                        _gpsFix.value = null
+                    }
+                }
+        } catch (_: SecurityException) {
+            running = false
+            _gpsFix.value = null
+        }
+    }
+
+    @Synchronized
+    override fun stop() {
+        if (running) fused.removeLocationUpdates(callback)
+        running = false
+        _gpsFix.value = null
+    }
+
+    private fun ingest(location: Location) {
+        @Suppress("DEPRECATION")
+        val mock = if (Build.VERSION.SDK_INT >= 31) {
+            location.isMock
+        } else {
+            location.isFromMockProvider
+        }
+        if (mock || !location.hasAccuracy()) return
+
         val fix = GpsFix(
             coordinate = GeoCoordinate(location.latitude, location.longitude),
             accuracyMeters = location.accuracy,
             recordedAtMillis = location.time,
-            bearingDegrees = location.bearing.takeIf { location.hasBearing() &&
-                it.isFinite() && it >= 0f && it < 360f },
-            speedMetersPerSecond = location.speed.takeIf { location.hasSpeed() &&
-                it.isFinite() && it >= 0f && it <= 90f }
-        ).takeIf { it.usable(System.currentTimeMillis()) }
-        // Out-of-order sensor deliveries must not animate backwards.
-        if (fix != null && (_gpsFix.value?.recordedAtMillis ?: 0L) >= fix.recordedAtMillis) return
-        _gpsFix.value = fix
+            bearingDegrees = location.bearing.takeIf {
+                location.hasBearing() && it.isFinite() && it >= 0f && it < 360f
+            },
+            speedMetersPerSecond = location.speed.takeIf {
+                location.hasSpeed() && it.isFinite() && it >= 0f && it <= 90f
+            }
+        )
+        acceptFix(fix)
     }
 
     override fun acceptFix(fix: GpsFix) {
@@ -88,7 +120,4 @@ class AndroidLocationRepository @Inject constructor(
         val previous = _gpsFix.value?.recordedAtMillis ?: 0L
         if (fix.recordedAtMillis > previous) _gpsFix.value = fix
     }
-
-    override fun onProviderDisabled(provider: String) { _gpsFix.value = null }
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
 }
