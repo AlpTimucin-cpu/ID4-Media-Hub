@@ -47,6 +47,7 @@ import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationRouteStat
 import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
+import tr.id4.mediahub.nativecockpit.presentation.media.ParkedStreamingDialog
 
 private val CardShape = RoundedCornerShape(22.dp)
 
@@ -159,8 +160,16 @@ fun CockpitScreen(
             },confirmButton={ TextButton(onClick={selectedStation=null}){Text("Kapat")} })
     }
 
+    // External streaming launches are off until a trusted Park signal exists.
+    // GPS speed zero does not prove Park (traffic lights, poor GPS, etc.).
+    if (selectedDock == DockTab.MEDIA) {
+        ParkedStreamingDialog(
+            verifiedParked = false,
+            onDismiss = { selectedDock = null }
+        )
+    }
     // No fabricated control wiring: the currently absent modules say so.
-    selectedDock?.let { tab ->
+    selectedDock?.takeUnless { it == DockTab.MEDIA }?.let { tab ->
         AlertDialog(
             onDismissRequest = { selectedDock = null },
             title = { Text(tab.title) },
