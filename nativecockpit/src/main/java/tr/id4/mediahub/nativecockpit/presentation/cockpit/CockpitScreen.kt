@@ -71,6 +71,7 @@ fun CockpitScreen(
     onRouteAlternative:(Int)->Unit,
     onRouteClear:()->Unit,
     onGpsClick: () -> Unit,
+    gpsError: String? = null,
     chargingUi: ChargingUiState,
     onStationFilter: (StationFilter) -> Unit,
     onMapViewport: (GeoViewport) -> Unit,
@@ -199,7 +200,8 @@ fun CockpitScreen(
                 modifier = Modifier.fillMaxSize()
             )
             Text(
-                if (state.gpsFix == null) "GPS ölçümü bekleniyor · konum izni için dokun" else "GPS güncel · araç işareti gerçek ölçüm",
+                if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
+                else gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
                 color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .padding(top = 8.dp)
