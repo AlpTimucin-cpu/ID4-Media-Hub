@@ -8,4 +8,5 @@ interface LocationRepository {
     /** Foreground-only GPS after explicit Android permission. */
     fun start()
     fun stop()
+    fun acceptFix(fix: GpsFix)
 }

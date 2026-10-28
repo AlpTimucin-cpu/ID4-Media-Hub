@@ -43,6 +43,7 @@ import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingUiState
 import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerUiState
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerDialog
+import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationRouteState
 import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
@@ -53,6 +54,7 @@ private val CardShape = RoundedCornerShape(22.dp)
 @Composable
 fun CockpitScreen(
     state: CockpitUiState,
+    routeState: NavigationRouteState,
     obdConnection: ObdConnectionState,
     onObdRefresh: () -> Unit,
     onObdConnect: (String) -> Unit,
@@ -167,7 +169,7 @@ fun CockpitScreen(
                     DockTab.CHARGING -> "Kaynak EPDK · ${chargingUi.total} halka açık kayıt. " +
                         (chargingUi.verifiedAtUtc?.let { "Snapshot: $it. " } ?: "Veri bekleniyor. ") +
                         "Canlı doluluk ve fiyat yok. Rota filtresi yalnız gerçek OSRM rotasıyla çalışır."
-                    DockTab.MEDIA -> "Medya bağlantısı henüz bu Kotlin modülüne taşınmadı."
+                    DockTab.MEDIA -> "Medya bu sürümde devre dışı. Rota ve harita çalışmaya devam ediyor."
                     DockTab.SETTINGS -> "GPS ve OBD bağlantı ayarları henüz bu Kotlin uygulamasına bağlanmadı."
                 })
             },
@@ -177,6 +179,7 @@ fun CockpitScreen(
         )
     }
 
+    val visibleRoute = state.route ?: routeState.routeResult
     Column(Modifier.fillMaxSize().background(Ink)) {
         Header(
             voiceEnabled=voiceEnabled,
@@ -189,14 +192,14 @@ fun CockpitScreen(
             val compactLandscape = maxHeight < 420.dp
             MapLibreCockpit(
                 gpsFix = state.gpsFix,
-                routePoints = state.route?.routePoints ?: emptyList(),
+                routePoints = visibleRoute?.routePoints ?: emptyList(),
                 stations = chargingUi.visible,
                 onViewportChanged = onMapViewport,
                 onStationTapped = { selectedStation=it },
                 modifier = Modifier.fillMaxSize()
             )
             Text(
-                if (state.gpsFix == null) "GPS konumu yok · izin için dokun" else "GPS güncel · araç işareti gerçek ölçüm",
+                if (state.gpsFix == null) "GPS ölçümü bekleniyor · konum izni için dokun" else "GPS güncel · araç işareti gerçek ölçüm",
                 color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .padding(top = 8.dp)
@@ -223,13 +226,13 @@ fun CockpitScreen(
                         .width(maxWidth * .31f)
                         .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
                         .verticalScroll(rememberScrollState())
-                ) { RoutePanel(state.route) }
+                ) { RoutePanel(visibleRoute, routeState) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
                         .padding(end = 13.dp, bottom = 12.dp)
                         .width(maxWidth * .65f)
-                ) { RouteProgress(state.route) }
+                ) { RouteProgress(visibleRoute) }
             } else {
                 // Portrait/small-screen: cards scroll; dock remains reachable.
                 Column(
@@ -238,8 +241,8 @@ fun CockpitScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(state.route) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(state.route) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute) }
                 }
             }
             ChargingFilters(
@@ -404,13 +407,16 @@ private fun MetricLine(title: String, value: String) {
 }
 
 @Composable
-private fun RoutePanel(route: RouteSnapshot?) {
+private fun RoutePanel(route: RouteSnapshot?, selection: NavigationRouteState) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
     if (route == null) {
-        Text("Rota bekleniyor", fontSize = 19.sp, color = Color.White,
-            fontWeight = FontWeight.SemiBold)
-        Text("Başlangıç ve varış henüz seçilmedi", color = SoftText, fontSize = 11.sp)
+        Text(if (selection.calculating) "Rota hesaplanıyor…" else "Rota bekleniyor",
+            fontSize = 19.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+        val selected = selection.startLocation != null || selection.destination != null
+        Text(if (selected) "Seçimler hazır; gerçek OSRM rotasını hesapla"
+            else "Başlangıç ve varış henüz seçilmedi", color = SoftText, fontSize = 11.sp)
+        selection.error?.let { Text(it.take(120), color = Color(0xFFFFB17C), fontSize = 11.sp) }
     } else {
         Text(route.nextTurnInstruction?.takeIf { it.isNotBlank() } ?: "Manevra bekleniyor",
             color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
@@ -419,7 +425,9 @@ private fun RoutePanel(route: RouteSnapshot?) {
         Text(m?.let { "%.0f m sonra".format(it) } ?: "—", color = Turquoise, fontSize = 12.sp)
     }
     HorizontalDivider(color = GlassLine, modifier = Modifier.padding(vertical = 11.dp))
-    MetricLine("Hedef", route?.destination?.takeIf { it.isNotBlank() }?.take(30) ?: "—")
+    MetricLine("Başlangıç", selection.startLabel?.take(30) ?: "—")
+    MetricLine("Hedef", route?.destination?.takeIf { it.isNotBlank() }?.take(30)
+        ?: selection.destination?.label?.take(30) ?: "—")
     MetricLine("Rota toplamı · OSRM", CockpitFormat.distance(route?.totalKm))
     MetricLine("Kalan · GPS", CockpitFormat.distance(route?.remainingKm))
     MetricLine("Tahmini sürüş", CockpitFormat.minutes(route?.estimatedDriveMinutes))

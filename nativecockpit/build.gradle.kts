@@ -10,12 +10,11 @@ android {
     namespace = "tr.id4.mediahub.nativecockpit"
     compileSdk = 36
     defaultConfig {
-        // Separate ID: never overwrites the existing media APK.
         applicationId = "tr.id4.mediahub.nativecockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.12.0-meb-diagnostics"
+        versionCode = 14
+        versionName = "0.13.1-five-bugfix"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
@@ -23,6 +22,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    testOptions { unitTests.isIncludeAndroidResources = false }
 }
 
 dependencies {
@@ -43,19 +43,15 @@ dependencies {
 
     implementation("com.google.dagger:hilt-android:2.58")
     ksp("com.google.dagger:hilt-compiler:2.58")
-
-    // Steps 3–5: native MapLibre + real GPS; ValueAnimator is Android SDK.
     implementation("org.maplibre.gl:android-sdk:13.7.1")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
-    // Official Android Auto template host. Stable release; no video/UI bypasses.
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
 
     testImplementation("junit:junit:4.13.2")
-    // Android org.json stubs throw in local JVM tests; provide a real JSON implementation.
     testImplementation("org.json:json:20250517")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

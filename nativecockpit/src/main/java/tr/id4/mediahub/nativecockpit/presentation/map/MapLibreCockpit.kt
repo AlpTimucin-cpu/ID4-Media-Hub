@@ -37,6 +37,7 @@ import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory.*
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.style.sources.GeoJsonOptions
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
@@ -57,6 +58,8 @@ private const val STATION_ALL_LAYER = "eya-station-all"
 private const val STATION_RING_LAYER = "eya-station-route-outline"
 private const val STATION_DC_LAYER = "eya-station-dc-icons"
 private const val STATION_ICON = "eya-station-bolt"
+private const val STATION_CLUSTER_LAYER = "eya-station-cluster-circles"
+private const val STATION_CLUSTER_COUNT_LAYER = "eya-station-cluster-count"
 
 /** One MapView for this composition; Compose owns transparent cockpit overlays. */
 @Composable
@@ -158,6 +161,13 @@ fun MapLibreCockpit(
             idleListener = MapLibreMap.OnCameraIdleListener { publishViewport() }
             map.addOnCameraIdleListener(idleListener!!)
             clickListener = MapLibreMap.OnMapClickListener { point ->
+                val clusters = map.queryRenderedFeatures(map.projection.toScreenLocation(point),
+                    STATION_CLUSTER_LAYER)
+                if (clusters.any { it.hasProperty("point_count") }) {
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(point,
+                        (map.cameraPosition.zoom + 2.0).coerceAtMost(16.0)))
+                    return@OnMapClickListener true
+                }
                 val hits=map.queryRenderedFeatures(map.projection.toScreenLocation(point),
                     STATION_DC_LAYER,STATION_RING_LAYER,STATION_ALL_LAYER)
                 val id=hits.firstOrNull()?.let { f ->
@@ -263,19 +273,56 @@ private fun updateStations(style: Style, stations: List<ChargingStation>, route:
     val geo=FeatureCollection.fromFeatures(features)
     val existing=style.getSourceAs<GeoJsonSource>(STATION_SRC)
     if(existing!=null){existing.setGeoJson(geo);return}
-    style.addSource(GeoJsonSource(STATION_SRC,geo))
-    style.addImage(STATION_ICON,lightningBitmap())
-    style.addLayer(CircleLayer(STATION_ALL_LAYER,STATION_SRC).withProperties(
-        circleColor(android.graphics.Color.rgb(35,164,205)),circleRadius(5f),
-        circleOpacity(.72f),circleStrokeWidth(1f),circleStrokeColor(android.graphics.Color.WHITE)))
-    // The outline means <=2 km straight-line route corridor, NOT driving detour.
-    style.addLayer(CircleLayer(STATION_RING_LAYER,STATION_SRC)
-        .withFilter(Expression.eq(Expression.get("corridor"),Expression.literal(true)))
-        .withProperties(circleRadius(15f),circleColor(android.graphics.Color.TRANSPARENT),
-            circleStrokeWidth(3f),circleStrokeColor(android.graphics.Color.rgb(0,230,118))))
-    style.addLayer(SymbolLayer(STATION_DC_LAYER,STATION_SRC)
-        .withFilter(Expression.eq(Expression.get("dc"),Expression.literal(true)))
-        .withProperties(iconImage(STATION_ICON),iconSize(.50f),iconAllowOverlap(false)))
+    // Clustering belongs to the data source: thousands of points do not become
+    // thousands of on-screen circles at low zoom levels.
+    val options = GeoJsonOptions()
+        .withCluster(true)
+        .withClusterRadius(60)
+        .withClusterMaxZoom(13)
+    style.addSource(GeoJsonSource(STATION_SRC, geo, options))
+    style.addImage(STATION_ICON, lightningBitmap())
+    val isCluster = Expression.has("point_count")
+    val isSingle = Expression.not(isCluster)
+    style.addLayer(CircleLayer(STATION_CLUSTER_LAYER, STATION_SRC)
+        .withFilter(isCluster)
+        .withProperties(
+            circleColor(android.graphics.Color.rgb(16, 115, 155)),
+            circleRadius(21f),
+            circleStrokeWidth(2f),
+            circleStrokeColor(android.graphics.Color.WHITE)
+        ))
+    style.addLayer(SymbolLayer(STATION_CLUSTER_COUNT_LAYER, STATION_SRC)
+        .withFilter(isCluster)
+        .withProperties(
+            textField(Expression.get("point_count_abbreviated")),
+            textColor(android.graphics.Color.WHITE),
+            textSize(13f),
+            textAllowOverlap(true)
+        ))
+    style.addLayer(CircleLayer(STATION_ALL_LAYER, STATION_SRC)
+        .withFilter(isSingle)
+        .withProperties(
+            circleColor(android.graphics.Color.rgb(35, 164, 205)),
+            circleRadius(5f),
+            circleOpacity(.72f),
+            circleStrokeWidth(1f),
+            circleStrokeColor(android.graphics.Color.WHITE)
+        ))
+    style.addLayer(CircleLayer(STATION_RING_LAYER, STATION_SRC)
+        .withFilter(Expression.all(isSingle,
+            Expression.eq(Expression.get("corridor"), Expression.literal(true))))
+        .withProperties(
+            circleRadius(15f),
+            circleColor(android.graphics.Color.TRANSPARENT),
+            circleStrokeWidth(3f),
+            circleStrokeColor(android.graphics.Color.rgb(0, 230, 118))
+        ))
+    style.addLayer(SymbolLayer(STATION_DC_LAYER, STATION_SRC)
+        .withFilter(Expression.all(isSingle,
+            Expression.eq(Expression.get("dc"), Expression.literal(true))))
+        .withProperties(
+            iconImage(STATION_ICON), iconSize(.50f), iconAllowOverlap(false)
+        ))
 }
 
 /** Generate a vector-like bolt locally; no external icon/font/license dependency. */

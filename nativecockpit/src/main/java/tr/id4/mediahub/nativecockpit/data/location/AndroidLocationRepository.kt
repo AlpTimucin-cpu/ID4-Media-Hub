@@ -33,12 +33,15 @@ class AndroidLocationRepository @Inject constructor(
     @SuppressLint("MissingPermission") // checked before location request
     @Synchronized override fun start() {
         if (running) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED) return
+        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) return
         try {
             // GPS_PROVIDER first. Never replace it with a simulated location.
             val provider = when {
-                manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+                fine && manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
                 manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
                 else -> return
             }
@@ -78,6 +81,12 @@ class AndroidLocationRepository @Inject constructor(
         // Out-of-order sensor deliveries must not animate backwards.
         if (fix != null && (_gpsFix.value?.recordedAtMillis ?: 0L) >= fix.recordedAtMillis) return
         _gpsFix.value = fix
+    }
+
+    override fun acceptFix(fix: GpsFix) {
+        if (!fix.usable(System.currentTimeMillis())) return
+        val previous = _gpsFix.value?.recordedAtMillis ?: 0L
+        if (fix.recordedAtMillis > previous) _gpsFix.value = fix
     }
 
     override fun onProviderDisabled(provider: String) { _gpsFix.value = null }

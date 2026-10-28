@@ -2,160 +2,144 @@ package tr.id4.mediahub.nativecockpit
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.location.LocationServices
 import androidx.activity.viewModels
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import tr.id4.mediahub.nativecockpit.domain.repository.ObdConnectionController
-import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitScreen
-import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitViewModel
+import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationViewModel
 import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingViewModel
-import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerViewModel
+import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitScreen
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.EyaTheme
-import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
-import tr.id4.mediahub.nativecockpit.presentation.voice.VoicePreference
-import tr.id4.mediahub.nativecockpit.domain.usecase.ManeuverGuidancePolicy
-import tr.id4.mediahub.nativecockpit.car.CarNavigationOwnership
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val navigation: NavigationViewModel by viewModels()
+    private val charging: ChargingViewModel by viewModels()
     @Inject lateinit var obd: ObdConnectionController
+
     private val bluetoothPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) obd.refreshPaired() else obd.permissionDenied() }
+    ) { granted ->
+        if (granted) obd.refreshPaired() else obd.permissionDenied()
+    }
+
     private fun refreshObdDevices() {
-        if (Build.VERSION.SDK_INT >= 31 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
-            PackageManager.PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(
+            this, Manifest.permission.BLUETOOTH_CONNECT
+        ) != PackageManager.PERMISSION_GRANTED) {
             bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
         } else obd.refreshPaired()
-    }
-
-    private val viewModel: CockpitViewModel by viewModels()
-    private val chargingViewModel: ChargingViewModel by viewModels()
-    private val routePlannerViewModel: RoutePlannerViewModel by viewModels()
-    private val guide by lazy { NativeVoiceGuide(applicationContext) }
-    private val preferences by lazy { VoicePreference(applicationContext) }
-    private val voicePolicy = ManeuverGuidancePolicy()
-    private var foreground by mutableStateOf(false)
-    private val locationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            viewModel.startGps()
-            if (locationForRoute) routePlannerViewModel.useCurrentGps()
-        } else if (locationForRoute) routePlannerViewModel.permissionDenied()
-        locationForRoute = false
-    }
-    private var locationForRoute = false
-
-    private fun hasGpsPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-    private fun askForGpsPermission(forRoute: Boolean) {
-        locationForRoute = forRoute
-        locationPermission.launch(arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val state by viewModel.uiState.collectAsStateWithLifecycle()
-            val charging by chargingViewModel.uiState.collectAsStateWithLifecycle()
-            val routePlanner by routePlannerViewModel.uiState.collectAsStateWithLifecycle()
-            val obdConnection by obd.connection.collectAsStateWithLifecycle()
-            // Compose state reflects persisted user preference; the engine is Activity-owned.
-            var voiceEnabled by remember { mutableStateOf(preferences.enabled) }
-            var voiceVolume by remember { mutableStateOf(preferences.volume) }
-            val voiceStatus=guide.status
-            val carNavigating by CarNavigationOwnership.navigating.collectAsStateWithLifecycle()
-            LaunchedEffect(state.route,state.gpsFix,voiceEnabled,voiceStatus,foreground,carNavigating) {
-                if (foreground && !carNavigating && voiceEnabled &&
-                    voiceStatus==NativeVoiceGuide.Status.READY) {
-                    val message=voicePolicy.nextAnnouncement(
-                        state.route,state.gpsFix,System.currentTimeMillis())
-                    if (message!=null) guide.speak(message,voiceVolume)
-                } else if (!foreground || !voiceEnabled || carNavigating) guide.stop()
+            val context = LocalContext.current
+            val fused = remember(context) {
+                LocationServices.getFusedLocationProviderClient(context.applicationContext)
             }
+            var pendingRouteRequest by remember { mutableStateOf(false) }
+            @Suppress("MissingPermission")
+            fun granted(forRoute: Boolean) {
+                navigation.startGps()
+                // Ingest a real, fresh lastLocation before selecting the GPS origin.
+                try {
+                    fused.lastLocation
+                        .addOnSuccessListener {
+                            navigation.acceptLastLocation(it)
+                            if (forRoute) navigation.useCurrentGps()
+                        }
+                        .addOnFailureListener {
+                            if (forRoute) navigation.useCurrentGps()
+                        }
+                } catch (_: SecurityException) {
+                    if (forRoute) navigation.locationPermissionDenied()
+                }
+            }
+            val permissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { grants ->
+                val accepted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                if (accepted) granted(pendingRouteRequest)
+                else if (pendingRouteRequest) navigation.locationPermissionDenied()
+                pendingRouteRequest = false
+            }
+            val requestGps: (Boolean) -> Unit = { fromRoute ->
+                val allowed = listOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ).any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+                if (allowed) granted(fromRoute)
+                else {
+                    pendingRouteRequest = fromRoute
+                    permissionLauncher.launch(arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ))
+                }
+            }
+            val routeState by navigation.routeState.collectAsStateWithLifecycle()
+            val ui by navigation.uiState.collectAsStateWithLifecycle()
+            val stations by charging.uiState.collectAsStateWithLifecycle()
+            val obdConnection by obd.connection.collectAsStateWithLifecycle()
             EyaTheme {
-                CockpitScreen(state,
-                obdConnection=obdConnection,
-                onObdRefresh={refreshObdDevices()},
-                onObdConnect=obd::connect,
-                onObdDisconnect=obd::disconnect,
-                onObdMebDiagnostic=obd::requestMebDiagnostic,
-                onObdClearDiagnostic=obd::clearMebDiagnostic,
-                routePlannerUi=routePlanner,
-                onRouteOriginChange=routePlannerViewModel::editOrigin,
-                onRouteDestinationChange=routePlannerViewModel::editDestination,
-                onRouteOriginSelected=routePlannerViewModel::chooseOrigin,
-                onRouteDestinationSelected=routePlannerViewModel::chooseDestination,
-                onRouteFromGps={
-                    if (hasGpsPermission()) {
-                        viewModel.startGps()
-                        routePlannerViewModel.useCurrentGps()
-                    } else askForGpsPermission(forRoute = true)
-                },
-                onRoutePlan=routePlannerViewModel::plan,
-                onRouteAlternative=routePlannerViewModel::chooseAlternative,
-                onRouteClear=routePlannerViewModel::clear,
-                onGpsClick = {
-                    if (hasGpsPermission()) viewModel.startGps()
-                    else askForGpsPermission(forRoute = false)
-                },chargingUi=charging,
-                  onStationFilter=chargingViewModel::changeFilter,
-                  onMapViewport=chargingViewModel::viewportChanged,
-                  onRefreshStations=chargingViewModel::refresh,
-                  voiceEnabled=voiceEnabled,
-                  onVoiceToggle={
-                      voiceEnabled=!voiceEnabled
-                      preferences.enabled=voiceEnabled
-                      if(!voiceEnabled) guide.stop()
-                  },
-                  voiceVolume=voiceVolume,
-                  onVoiceVolumeChange={ newVolume ->
-                      voiceVolume=newVolume.coerceIn(.15f,1f)
-                      preferences.volume=voiceVolume
-                  },
-                  voiceStatus=voiceStatus,
-                  onVoiceTest={
-                      // Manually requested test sentence; never a simulated turn.
-                      if(voiceEnabled) guide.speak(
-                          "Elektrikli Yol Arkadaşım. Türkçe ses testi.",voiceVolume)
-                  })
+                CockpitScreen(
+                    state = ui.cockpit,
+                    routeState = routeState,
+                    routePlannerUi = ui.planner,
+                    onRouteOriginChange = navigation::editOrigin,
+                    onRouteDestinationChange = navigation::editDestination,
+                    onRouteOriginSelected = navigation::selectOrigin,
+                    onRouteDestinationSelected = navigation::selectDestination,
+                    onRouteFromGps = { requestGps(true) },
+                    onRoutePlan = navigation::plan,
+                    onRouteAlternative = navigation::selectAlternative,
+                    onRouteClear = navigation::clearRoute,
+                    onGpsClick = { requestGps(false) },
+                    chargingUi = stations,
+                    onStationFilter = charging::changeFilter,
+                    onMapViewport = charging::viewportChanged,
+                    onRefreshStations = charging::refresh,
+                    obdConnection = obdConnection,
+                    onObdRefresh = ::refreshObdDevices,
+                    onObdConnect = obd::connect,
+                    onObdDisconnect = obd::disconnect,
+                    onObdMebDiagnostic = obd::requestMebDiagnostic,
+                    onObdClearDiagnostic = obd::clearMebDiagnostic,
+                    voiceEnabled = ui.voice.enabled,
+                    onVoiceToggle = { navigation.setVoiceEnabled(!ui.voice.enabled) },
+                    voiceVolume = ui.voice.volume,
+                    onVoiceVolumeChange = navigation::setVoiceVolume,
+                    voiceStatus = ui.voice.status,
+                    onVoiceTest = navigation::testVoice
+                )
             }
         }
     }
     override fun onResume() {
         super.onResume()
-        foreground = true
-        if (hasGpsPermission()) viewModel.startGps()
+        navigation.setForeground(true)
+        val allowed = listOf(Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION).any {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allowed) navigation.startGps()
     }
     override fun onPause() {
-        foreground = false
-        guide.stop() // Do not speak or track in background without a foreground service.
-        obd.disconnect() // Explicit foreground-only OBD; no hidden background connection.
-        viewModel.stopGps()
+        navigation.setForeground(false)
+        obd.disconnect() // paired Bluetooth diagnostics are foreground-only
         super.onPause()
-    }
-    override fun onDestroy() {
-        guide.close()
-        super.onDestroy()
     }
 }

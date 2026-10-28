@@ -1,20 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Android 12+ paired Bluetooth Classic device access. No scanning or pairing. -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Android for Cars host owns the navigation UI and the map Surface. -->
+    <!-- Android 13+: only request at runtime when posting a notification. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
     <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
 
-    <!-- Android 11+: let TextToSpeech locate installed speech engines. -->
     <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
     </queries>
 
     <application
@@ -24,8 +21,7 @@
         android:icon="@drawable/ic_eya_car"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.NoActionBar">
-        <activity
-            android:name=".MainActivity"
+        <activity android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -33,15 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Android Auto projection, not Android Automotive OS installation. -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
+        <meta-data android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
-        <meta-data
-            android:name="androidx.car.app.minCarApiLevel"
-            android:value="1" />
-        <service
-            android:name=".car.EyaCarAppService"
+        <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="1" />
+        <service android:name=".car.EyaCarAppService"
             android:label="Elektrikli Yol Arkadaşım"
             android:icon="@drawable/ic_eya_car"
             android:exported="true">
@@ -50,5 +41,9 @@
                 <category android:name="androidx.car.app.category.NAVIGATION" />
             </intent-filter>
         </service>
+        <!-- No foreground service registered: GPS/TTS/OBD are foreground-only.
+             A location FGS requires a real Service + notification, explicit user
+             start, FOREGROUND_SERVICE[_LOCATION] permissions and lifecycle tests.
+             Declaring a service without implementing it would be misleading. -->
     </application>
 </manifest>
