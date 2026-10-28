@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -74,7 +76,8 @@ fun MapLibreCockpit(
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     // Map callback must never capture stale Compose lists/lambdas.
-    val latestStations by rememberUpdatedState(stations)
+    val stationIndex = remember(stations) { stations.associateBy { it.id } }
+    val latestStationIndex by rememberUpdatedState(stationIndex)
     val latestViewport by rememberUpdatedState(onViewportChanged)
     val latestTap by rememberUpdatedState(onStationTapped)
     var mapStatus by remember { mutableStateOf("Harita yükleniyor…") }
@@ -163,9 +166,18 @@ fun MapLibreCockpit(
             clickListener = MapLibreMap.OnMapClickListener { point ->
                 val clusters = map.queryRenderedFeatures(map.projection.toScreenLocation(point),
                     STATION_CLUSTER_LAYER)
-                if (clusters.any { it.hasProperty("point_count") }) {
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(point,
-                        (map.cameraPosition.zoom + 2.0).coerceAtMost(16.0)))
+                val cluster = clusters.firstOrNull { it.hasProperty("cluster_id") }
+                if (cluster != null) {
+                    val source = map.style?.getSourceAs<GeoJsonSource>(STATION_SRC)
+                    val expansion = try { source?.getClusterExpansionZoom(cluster)?.toDouble() }
+                        catch (_: Exception) { null }
+                    val center = (cluster.geometry() as? Point)?.let {
+                        LatLng(it.latitude(), it.longitude())
+                    } ?: point
+                    val zoom = (expansion ?: map.cameraPosition.zoom + 2.0)
+                        .coerceAtLeast(map.cameraPosition.zoom + 1.0)
+                        .coerceAtMost(17.0)
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(center, zoom))
                     return@OnMapClickListener true
                 }
                 val hits=map.queryRenderedFeatures(map.projection.toScreenLocation(point),
@@ -173,7 +185,7 @@ fun MapLibreCockpit(
                 val id=hits.firstOrNull()?.let { f ->
                     if(f.hasProperty("stationId")) f.getStringProperty("stationId") else null
                 }
-                val station=latestStations.firstOrNull { it.id==id }
+                val station=latestStationIndex[id]
                 if(station!=null) { latestTap(station); true } else false
             }
             map.addOnMapClickListener(clickListener!!)
@@ -211,7 +223,12 @@ fun MapLibreCockpit(
         if(routePoints.isEmpty())fittedRouteKey=null
     }
     LaunchedEffect(activeStyle, stations, routePoints) {
-        activeStyle?.let { updateStations(it,stations,routePoints) }
+        val style = activeStyle ?: return@LaunchedEffect
+        // Serialize the 13k+ stations off the UI thread; the source clusters them.
+        val geo = withContext(Dispatchers.Default) {
+            buildStationGeoJson(stations, routePoints)
+        }
+        updateStations(style, geo)
     }
     LaunchedEffect(activeStyle, gpsFix, routePoints) {
         activeStyle?.let { carAnimator.update(it, gpsFix, routePoints, System.currentTimeMillis()) }
@@ -260,7 +277,9 @@ private fun updateRoute(style: Style, points: List<GeoCoordinate>) {
 }
 
 /** Feature properties carry only station IDs; details come from verified repository. */
-private fun updateStations(style: Style, stations: List<ChargingStation>, route: List<GeoCoordinate>) {
+private fun buildStationGeoJson(
+    stations: List<ChargingStation>, route: List<GeoCoordinate>
+): FeatureCollection {
     val features=stations.map { station ->
         val props=JsonObject().apply {
             addProperty("stationId",station.id)
@@ -270,7 +289,10 @@ private fun updateStations(style: Style, stations: List<ChargingStation>, route:
         Feature.fromGeometry(Point.fromLngLat(station.coordinate.longitude,
             station.coordinate.latitude),props)
     }
-    val geo=FeatureCollection.fromFeatures(features)
+    return FeatureCollection.fromFeatures(features)
+}
+
+private fun updateStations(style: Style, geo: FeatureCollection) {
     val existing=style.getSourceAs<GeoJsonSource>(STATION_SRC)
     if(existing!=null){existing.setGeoJson(geo);return}
     // Clustering belongs to the data source: thousands of points do not become
