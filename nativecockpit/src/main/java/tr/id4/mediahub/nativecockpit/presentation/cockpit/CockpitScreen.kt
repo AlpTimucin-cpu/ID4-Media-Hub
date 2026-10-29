@@ -135,7 +135,7 @@ fun CockpitScreen(
                     }
                 }
                 if (chargingUi.corridorStations.isEmpty()) {
-                    Text("Rota çizgisine 2 km içinde doğrulanmış DC kaydı yok.")
+                    Text("Rota çizgisine 5 km içinde doğrulanmış DC kaydı yok.")
                 }
             }
         }
@@ -234,6 +234,19 @@ fun CockpitScreen(
     }
 
     val visibleRoute = state.route ?: routeState.routeResult
+    val snackbarHost = remember { SnackbarHostState() }
+    val connectionError = (loadStatus as? RouteLoadStatus.Error)?.message
+        ?: chargingUi.error
+        ?: weatherUi.error?.takeIf { weatherUi.routeId == visibleRoute?.routeId }
+    LaunchedEffect(connectionError) {
+        if (!connectionError.isNullOrBlank()) {
+            // Show a non-blocking error without replacing existing glass panels.
+            snackbarHost.showSnackbar(
+                message = "Bağlantı Hatası: " + connectionError.take(130),
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
     Column(Modifier.fillMaxSize().background(Ink)) {
         Header(
             voiceEnabled=voiceEnabled,
@@ -313,6 +326,8 @@ fun CockpitScreen(
                     GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute, state.simulationEnabled) }
                 }
             }
+            SnackbarHost(hostState = snackbarHost,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom=68.dp))
             ChargingFilters(
                 ui=chargingUi,
                 onFilter=onStationFilter,
@@ -366,7 +381,7 @@ private fun ChargingFilters(ui: ChargingUiState,
             Text("Önce gerçek rota oluştur",color=Color.White,fontSize=10.sp)
         Text(ui.verifiedAtUtc?.let { "Kaynak doğrulama: $it" } ?: "Kaynak tarihi bilinmiyor",
             color=SoftText,fontSize=9.sp)
-        Text("Turkuaz halka: rotaya <2 km DC (sürüş sapması değil)",color=SoftText,fontSize=9.sp)
+        Text("Turkuaz halka: rotaya <5 km DC (sürüş sapması değil)",color=SoftText,fontSize=9.sp)
     }
 }
 
