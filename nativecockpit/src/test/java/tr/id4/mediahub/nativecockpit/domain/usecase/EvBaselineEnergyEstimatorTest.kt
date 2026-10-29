@@ -56,6 +56,38 @@ class EvBaselineEnergyEstimatorTest {
         assertTrue(result.requiredChargingEnergyKwh > 0.0)
     }
 
+    @Test fun speedAboveReferenceRaisesConsumptionAndLeavesBaselineCompatible() {
+        val original = EvBaselineEnergyEstimator.estimate(inputs())
+            as BaselineEnergyResult.Estimate
+        val fast = EvBaselineEnergyEstimator.estimate(
+            inputs().copy(speedKmh = 140.0)
+        ) as BaselineEnergyResult.Estimate
+        assertEquals(1.0, original.speedMultiplier, 0.000001)
+        assertTrue(fast.speedMultiplier > 1.0)
+        assertTrue(fast.driveEnergyKwh > original.driveEnergyKwh)
+        assertTrue(fast.arrivalSocPercent < original.arrivalSocPercent)
+        assertTrue(fast.isScenarioProjection)
+    }
+
+    @Test fun coldClimateAddsExplicitScenarioCost() {
+        val warm = EvBaselineEnergyEstimator.estimate(
+            inputs().copy(outsideTemperatureC = 20.0, climateActive = true)
+        ) as BaselineEnergyResult.Estimate
+        val cold = EvBaselineEnergyEstimator.estimate(
+            inputs().copy(outsideTemperatureC = -10.0, climateActive = true)
+        ) as BaselineEnergyResult.Estimate
+        assertEquals(1.0, warm.climateMultiplier, 0.00001)
+        assertTrue(cold.climateMultiplier > 1.0)
+        assertTrue(cold.driveEnergyKwh > warm.driveEnergyKwh)
+    }
+
+    @Test fun unknownTemperatureDoesNotInventClimatePenalty() {
+        val estimate = EvBaselineEnergyEstimator.estimate(
+            inputs().copy(climateActive = true)
+        ) as BaselineEnergyResult.Estimate
+        assertEquals(1.0, estimate.climateMultiplier, 0.00001)
+    }
+
     @Test fun invalidOrMissingRouteAndBatteryFailClosed() {
         assertTrue(EvBaselineEnergyEstimator.estimate(
             inputs(route = route.copy(routeId = null))
