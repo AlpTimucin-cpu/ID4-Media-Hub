@@ -273,6 +273,7 @@ fun CockpitScreen(
                 weatherPoints = weatherUi.points.takeIf {
                     weatherUi.routeId == visibleRoute?.routeId
                 }.orEmpty(),
+                speedProfile = visibleRoute?.profileSpeeds.orEmpty(),
                 onViewportChanged = onMapViewport,
                 onStationTapped = { selectedStation=it },
                 modifier = Modifier.fillMaxSize()
@@ -567,6 +568,10 @@ private fun RoutePanel(
     }
     if (weather.error != null && route?.routeId == weather.routeId) {
         Text(weather.error, color = SoftText, fontSize = 10.sp)
+    }
+    if (!route?.profileSpeeds.isNullOrEmpty()) {
+        Text("Kırmızı/yeşil çizgiler: OSRM hız profili · CANLI TRAFİK DEĞİL",
+            color = SoftText, fontSize = 10.sp)
     }
     Text("OSRM ETA trafiksiz MODEL; şarj süresi ayrıca hesaplanır.",
         color = SoftText, fontSize = 10.sp,
