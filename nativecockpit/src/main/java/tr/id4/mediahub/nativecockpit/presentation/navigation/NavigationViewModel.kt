@@ -31,6 +31,11 @@ import tr.id4.mediahub.nativecockpit.domain.repository.RouteRepository
 import tr.id4.mediahub.nativecockpit.domain.repository.VehicleRepository
 import tr.id4.mediahub.nativecockpit.domain.usecase.ManeuverGuidancePolicy
 import tr.id4.mediahub.nativecockpit.domain.usecase.RouteProgressTracker
+import tr.id4.mediahub.nativecockpit.domain.usecase.EvBaselineEnergyEstimator
+import tr.id4.mediahub.nativecockpit.domain.usecase.BaselineEnergyInputs
+import tr.id4.mediahub.nativecockpit.domain.usecase.BaselineEnergyResult
+import tr.id4.mediahub.nativecockpit.domain.usecase.DepartureSoc
+import tr.id4.mediahub.nativecockpit.domain.usecase.ConsumptionBasis
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitUiState
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerUiState
 import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
@@ -77,6 +82,11 @@ class NavigationViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
+    // Read only explicitly provisioned, independently verified calibration inputs.
+    // No hard-coded battery capacity, consumption or assumed SoC.
+    private val modelPrefs = context.applicationContext.getSharedPreferences(
+        "eya_energy_calibration", Context.MODE_PRIVATE
+    )
     private val guide = NativeVoiceGuide(context)
     private val policy = ManeuverGuidancePolicy()
     private val progress = RouteProgressTracker()
@@ -107,16 +117,69 @@ class NavigationViewModel @Inject constructor(
         ticker
     ) { telemetry, route, gps, now ->
         val usableGps = gps?.takeIf { it.usable(now) }
+        val energy = estimateEnergy(route, telemetry, now)
+        val baseRoute = progress.enrich(route, usableGps, now)
+        val visualRoute = if (energy is BaselineEnergyResult.Estimate) {
+            baseRoute?.copy(estimatedArrivalSocPercent = energy.arrivalSocPercent)
+        } else baseRoute
         CockpitUiState(
             socPercent = telemetry.socPercent.current(now),
             speedKmh = telemetry.speedKmh.current(now),
             voltageV = telemetry.voltageV.current(now),
             batteryTemperatureC = telemetry.batteryTemperatureC.current(now),
             powerKw = telemetry.powerKw.current(now),
-            route = progress.enrich(route, usableGps, now),
+            chargingNeededEstimate = (energy as? BaselineEnergyResult.Estimate)?.chargingStopNeeded,
+            energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
+            route = visualRoute,
             gpsFix = usableGps
         )
     }
+    /**
+     * Fail-closed bridge to the tested energy estimator.
+     * Calibration keys must be set from a separately validated configuration.
+     * Unverified SoC/usable capacity never become made-up vehicle measurements.
+     */
+    private fun estimateEnergy(
+        route: RouteSnapshot?,
+        telemetry: VehicleTelemetry,
+        now: Long
+    ): BaselineEnergyResult? {
+        if (route?.routeId == null) return null
+        val capacity = if (modelPrefs.contains("usableBatteryKwh"))
+            modelPrefs.getFloat("usableBatteryKwh", Float.NaN).toDouble() else Double.NaN
+        val consumption = if (modelPrefs.contains("referenceWhPerKm"))
+            modelPrefs.getFloat("referenceWhPerKm", Float.NaN).toDouble() else Double.NaN
+        val reserve = if (modelPrefs.contains("arrivalReservePct"))
+            modelPrefs.getFloat("arrivalReservePct", Float.NaN).toDouble() else Double.NaN
+        if (!capacity.isFinite() || capacity <= 0.0 ||
+            !consumption.isFinite() || consumption <= 0.0 ||
+            !reserve.isFinite() || reserve !in 0.0..100.0
+        ) return BaselineEnergyResult.Unavailable("Kalibre edilmiş kapasite/tüketim/rezerv verisi yok")
+
+        val fresh = telemetry.socPercent.current(now)
+        val timed = telemetry.socPercent.measuredAtMillis
+        val soc = if (fresh != null && timed != null) {
+            DepartureSoc.FreshObd(fresh, timed)
+        } else if (modelPrefs.contains("explicitAssumedSocPct")) {
+            // Never silently fall back to 80%/100% without a prior user selection.
+            DepartureSoc.ExplicitAssumption(
+                modelPrefs.getFloat("explicitAssumedSocPct", Float.NaN).toDouble()
+            )
+        } else return BaselineEnergyResult.Unavailable("Güncel OBD SoC veya seçilmiş başlangıç SoC yok")
+
+        return EvBaselineEnergyEstimator.estimate(
+            BaselineEnergyInputs(
+                route = route, departureSoc = soc,
+                usableBatteryKwh = capacity,
+                consumptionWhPerKm = consumption,
+                consumptionBasis = ConsumptionBasis.REFERENCE_MODEL,
+                requiredArrivalSocPercent = reserve,
+                nowMs = now,
+                speedKmh = telemetry.speedKmh.current(now)
+            )
+        )
+    }
+
     private val plannerState = combine(
         _planner, routes.options, routes.selectedIndex
     ) { state, options, index ->
