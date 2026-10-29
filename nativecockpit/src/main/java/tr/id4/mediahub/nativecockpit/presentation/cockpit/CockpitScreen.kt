@@ -44,6 +44,7 @@ import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerUiState
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerDialog
 import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationRouteState
+import tr.id4.mediahub.nativecockpit.presentation.navigation.RouteLoadStatus
 import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
@@ -56,6 +57,7 @@ private val CardShape = RoundedCornerShape(22.dp)
 fun CockpitScreen(
     state: CockpitUiState,
     routeState: NavigationRouteState,
+    loadStatus: RouteLoadStatus,
     obdConnection: ObdConnectionState,
     onObdRefresh: () -> Unit,
     onObdConnect: (String) -> Unit,
@@ -237,7 +239,7 @@ fun CockpitScreen(
                         .width(maxWidth * .31f)
                         .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
                         .verticalScroll(rememberScrollState())
-                ) { RoutePanel(visibleRoute, routeState, state) }
+                ) { RoutePanel(visibleRoute, routeState, state, loadStatus) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
@@ -252,7 +254,7 @@ fun CockpitScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus) }
                     GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute) }
                 }
             }
@@ -418,16 +420,24 @@ private fun MetricLine(title: String, value: String) {
 }
 
 @Composable
-private fun RoutePanel(route: RouteSnapshot?, selection: NavigationRouteState, model: CockpitUiState) {
+private fun RoutePanel(
+    route: RouteSnapshot?,
+    selection: NavigationRouteState,
+    model: CockpitUiState,
+    loadStatus: RouteLoadStatus
+) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
-    if (route == null) {
-        Text(if (selection.calculating) "Rota hesaplanıyor…" else "Rota bekleniyor",
+    if (route == null || loadStatus is RouteLoadStatus.Loading ||
+        loadStatus is RouteLoadStatus.Error) {
+        Text(if (loadStatus is RouteLoadStatus.Loading) "Rota hesaplanıyor…" else "Rota bekleniyor",
             fontSize = 19.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
         val selected = selection.startLocation != null || selection.destination != null
         Text(if (selected) "Seçimler hazır; gerçek OSRM rotasını hesapla"
             else "Başlangıç ve varış henüz seçilmedi", color = SoftText, fontSize = 11.sp)
-        selection.error?.let { Text(it.take(120), color = Color(0xFFFFB17C), fontSize = 11.sp) }
+        (loadStatus as? RouteLoadStatus.Error)?.message?.let {
+            Text(it.take(120), color = Color(0xFFFFB17C), fontSize = 11.sp)
+        }
     } else {
         Text(route.nextTurnInstruction?.takeIf { it.isNotBlank() } ?: "Manevra bekleniyor",
             color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
