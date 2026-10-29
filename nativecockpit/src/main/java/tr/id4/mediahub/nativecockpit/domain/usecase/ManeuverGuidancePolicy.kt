@@ -20,6 +20,7 @@ class ManeuverGuidancePolicy {
     private val spokenStagesByStep = LinkedHashMap<String, Int>()
     private var lastLevel = -1
     private var proposedLevel: Int? = null
+    private var proposedAtMs = 0L
     private var lastFixTime = 0L
     private var lastSpeechTime = 0L
 
@@ -29,6 +30,7 @@ class ManeuverGuidancePolicy {
         spokenStagesByStep.clear()
         lastLevel = -1
         proposedLevel = null
+        proposedAtMs = 0L
         lastFixTime = 0L
         lastSpeechTime = 0L
     }
@@ -57,6 +59,7 @@ class ManeuverGuidancePolicy {
             routeAndStep = key
             lastLevel = spokenStagesByStep[key] ?: -1
             proposedLevel = null
+            proposedAtMs = 0L
             lastFixTime = 0L
         }
         // The Compose UI can update every second with the same GPS fix.
@@ -76,17 +79,21 @@ class ManeuverGuidancePolicy {
             ahead <= 200.0 -> 0
             else -> return null
         }
+        // A queued utterance remains pending until the Android engine emits
+        // onStart. A 5s deadline avoids deadlock on broken TTS callbacks.
+        if (proposedLevel != null && nowMs - proposedAtMs in 0L..4_999L) return null
         if (level <= lastLevel || (lastSpeechTime > 0 && nowMs - lastSpeechTime < 4_000L)) {
             proposedLevel = null
             return null
         }
         // IMPORTANT: do not mark as spoken until TextToSpeech accepted the request.
         proposedLevel = level
+        proposedAtMs = nowMs
         return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
             instruction
     }
 
-    /** Called only when the Android TTS engine successfully queues an utterance. */
+    /** Called on the TTS engine's onStart callback, not on speak() enqueue. */
     fun confirmSpoken(nowMs: Long) {
         proposedLevel?.let { level ->
             lastLevel = maxOf(lastLevel, level)
@@ -100,6 +107,13 @@ class ManeuverGuidancePolicy {
             lastSpeechTime = nowMs
         }
         proposedLevel = null
+        proposedAtMs = 0L
+    }
+
+    /** A failed/interrupted utterance may be tried at the next fresh fix. */
+    fun cancelPending() {
+        proposedLevel = null
+        proposedAtMs = 0L
     }
 
     private fun nearest(route: List<GeoCoordinate>, p: GeoCoordinate): Projection? {
