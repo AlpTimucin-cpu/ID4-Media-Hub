@@ -1,5 +1,12 @@
 package tr.id4.mediahub.nativecockpit.domain.model
 
+/** OSRM routing-profile speeds, NEVER live measured traffic. */
+data class ProfileSpeedSegment(
+    val from: GeoCoordinate,
+    val to: GeoCoordinate,
+    val speedKmh: Double
+)
+
 /** Only data from a real route engine and GPS may populate this model.
  * All estimates are distinctly named and nullable.
  */
@@ -23,7 +30,8 @@ data class RouteSnapshot(
     /** Actual route-service steps, not voice text fixtures. */
     val maneuvers: List<NavigationManeuver> = emptyList(),
     /** OSRM duration is not live-traffic aware. */
-    val osrmDurationSeconds: Double? = null
+    val osrmDurationSeconds: Double? = null,
+    val profileSpeeds: List<ProfileSpeedSegment> = emptyList()
 ) {
     // Never transform an absent or out-of-range GPS progress into 0%.
     fun validProgress(): Float? = gpsProgressFraction?.takeIf {
