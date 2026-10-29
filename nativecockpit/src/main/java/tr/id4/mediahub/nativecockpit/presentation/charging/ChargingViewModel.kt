@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.net.UnknownHostException
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,17 +41,42 @@ class ChargingViewModel @Inject constructor(
     private val viewport=MutableStateFlow<GeoViewport?>(null)
     private val filter=MutableStateFlow(StationFilter.ALL)
     private val route=routeRepository.currentRoute
+    private val refreshError = MutableStateFlow<String?>(null)
+
+    private data class Inputs(
+        val catalog: ChargingCatalog,
+        val selected: StationFilter,
+        val points: List<GeoCoordinate>,
+        val fetchError: String?
+    )
+
     init { refresh() }
-    fun refresh() { viewModelScope.launch { chargingRepository.refresh() } }
+
+    fun refresh() {
+        viewModelScope.launch {
+            refreshError.value = null
+            // A transient EPDK/network exception must not cancel the ViewModel.
+            chargingRepository.refreshResult().onFailure { error ->
+                refreshError.value = when (error) {
+                    is UnknownHostException -> "Bağlantı Hatası: İnternet bağlantısı yok"
+                    is SocketTimeoutException -> "Bağlantı Hatası: EPDK yanıt vermiyor"
+                    else -> "Bağlantı Hatası: Şarj istasyonları güncellenemedi"
+                }
+            }
+        }
+    }
     fun changeFilter(value: StationFilter) { filter.value=value }
     fun viewportChanged(bounds: GeoViewport) { if(bounds.valid())viewport.value=bounds }
 
     val uiState: StateFlow<ChargingUiState> = combine(
-        chargingRepository.catalog,filter,route
-    ) { catalog,selected,actualRoute ->
-        Triple(catalog,selected,actualRoute?.routePoints.orEmpty())
-    }.mapLatest { (catalog,selected,routePoints) ->
+        chargingRepository.catalog, filter, route, refreshError
+    ) { catalog, selected, actualRoute, error ->
+        Inputs(catalog, selected, actualRoute?.routePoints.orEmpty(), error)
+    }.mapLatest { input ->
         withContext(Dispatchers.Default) {
+            val catalog = input.catalog
+            val selected = input.selected
+            val routePoints = input.points
             // Exact corridor checks use indexed local route segments, not
             // a scan of every OSRM vertex for every one of 13k+ stations.
             val index=if(routePoints.size>=2) StationCorridor.index(routePoints) else null
@@ -74,7 +101,7 @@ class ChargingViewModel @Inject constructor(
                 verifiedAtUtc = catalog.verifiedAtUtc,
                 loading = catalog.loading,
                 fromCache = catalog.staleCache,
-                error = catalog.error
+                error = input.fetchError ?: catalog.error
             )
         }
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ChargingUiState())
