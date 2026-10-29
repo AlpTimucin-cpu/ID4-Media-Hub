@@ -24,6 +24,7 @@ import javax.inject.Inject
 import tr.id4.mediahub.nativecockpit.domain.repository.ObdConnectionController
 import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationViewModel
 import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingViewModel
+import tr.id4.mediahub.nativecockpit.presentation.charging.RouteChargePlanViewModel
 import tr.id4.mediahub.nativecockpit.presentation.weather.RouteWeatherViewModel
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitScreen
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.EyaTheme
@@ -33,6 +34,7 @@ import tr.id4.mediahub.nativecockpit.presentation.media.enterOwnVideoPipWhenPark
 class MainActivity : ComponentActivity() {
     private val navigation: NavigationViewModel by viewModels()
     private val charging: ChargingViewModel by viewModels()
+    private val chargePlan: RouteChargePlanViewModel by viewModels()
     private val weather: RouteWeatherViewModel by viewModels()
     @Inject lateinit var obd: ObdConnectionController
 
@@ -151,6 +153,7 @@ class MainActivity : ComponentActivity() {
             val gpsError by navigation.gpsError.collectAsStateWithLifecycle()
             val ui by navigation.uiState.collectAsStateWithLifecycle()
             val stations by charging.uiState.collectAsStateWithLifecycle()
+            val automaticChargePlan by chargePlan.uiState.collectAsStateWithLifecycle()
             val routeWeather by weather.uiState.collectAsStateWithLifecycle()
             val obdConnection by obd.connection.collectAsStateWithLifecycle()
             EyaTheme {
@@ -170,6 +173,7 @@ class MainActivity : ComponentActivity() {
                     onGpsClick = { if (!ui.simulationEnabled) requestGps(false) },
                     gpsError = gpsError,
                     chargingUi = stations,
+                    automaticChargePlan = automaticChargePlan,
                     weatherUi = routeWeather,
                     onStationFilter = charging::changeFilter,
                     onMapViewport = charging::viewportChanged,
