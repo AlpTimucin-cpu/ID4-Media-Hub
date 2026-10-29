@@ -18,6 +18,9 @@ import androidx.compose.material3.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,6 +86,22 @@ fun MediaWebViewScreen(
 ) {
     var view by remember(service) { mutableStateOf<WebView?>(null) }
     val page by model.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(view, lifecycleOwner, verifiedParked) {
+        val target = view
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> target?.onPause()
+                Lifecycle.Event.ON_RESUME -> if (verifiedParked) target?.onResume()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            target?.onPause() // Never retain background video playback.
+        }
+    }
     BackHandler(enabled = verifiedParked) {
         val current = view
         if (current?.canGoBack() == true) current.goBack() else onClose()
