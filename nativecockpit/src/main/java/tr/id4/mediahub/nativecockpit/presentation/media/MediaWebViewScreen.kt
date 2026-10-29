@@ -54,11 +54,18 @@ class MediaWebViewViewModel : ViewModel() {
 private fun safePage(url: String?, site: MediaSite): Boolean = runCatching {
     val uri = Uri.parse(url)
     val host = uri.host?.lowercase().orEmpty()
-    val root = Uri.parse(site.url).host.orEmpty()
-        .removePrefix("www.").removePrefix("m.")
-    // Service login/CDN subdomains remain allowed; unrelated hosts do not.
+    // Explicit first-party login hosts; never allow external intent schemes.
+    val permitted = when (site) {
+        MediaSite.NETFLIX -> setOf("netflix.com")
+        MediaSite.DISNEY -> setOf("disneyplus.com", "disney.com")
+        MediaSite.PRIME -> setOf(
+            "primevideo.com", "amazon.com", "amazon.de",
+            "amazon.co.uk", "amazon.com.tr", "amazonvideo.com"
+        )
+        MediaSite.YOUTUBE -> setOf("youtube.com", "google.com")
+    }
     uri.scheme.equals("https", ignoreCase = true) &&
-        (host == root || host.endsWith(".$root"))
+        permitted.any { host == it || host.endsWith(".$it") }
 }.getOrDefault(false)
 
 /**
