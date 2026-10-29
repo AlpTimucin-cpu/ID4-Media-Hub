@@ -27,7 +27,7 @@ data class ChargingStation(
     val hasDcCcs: Boolean get() = sockets.any { it.isDc && it.isCcs }
 }
 
-enum class StationFilter { ALL, DC, ROUTE_CCS }
+enum class StationFilter { ALL, DC, ROUTE_CCS, ROUTE_DC }
 
 /** State is explicit. A network error is not an empty set of stations. */
 data class ChargingCatalog(
