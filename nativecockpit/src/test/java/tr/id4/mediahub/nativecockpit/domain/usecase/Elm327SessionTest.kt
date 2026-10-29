@@ -1,6 +1,8 @@
 package tr.id4.mediahub.nativecockpit.domain.usecase
 
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -15,12 +17,18 @@ class Elm327SessionTest {
         var alwaysDropOnRead = false
         var connections = 0
         var disconnections = 0
+        var blockRead: CompletableDeferred<Unit>? = null
+        val readEntered = CompletableDeferred<Unit>()
         override suspend fun connect(timeoutMillis: Long) {
             connections++
             connected = true
         }
         override suspend fun exchange(command: String, timeoutMillis: Long): String {
             commands.add(command)
+            if (command == "221E0E" && blockRead != null) {
+                if (!readEntered.isCompleted) readEntered.complete(Unit)
+                blockRead?.await()
+            }
             if (alwaysDropOnRead && command == "221E0E") {
                 connected = false
                 throw IOException("Bluetooth out of range / ignition off")
@@ -89,6 +97,27 @@ class Elm327SessionTest {
         assertEquals(2, adapter.connections)
         assertEquals(ElmSessionPhase.READY, session.state.value.phase)
         assertEquals(2, adapter.commands.count { it == "ATZ" })
+        session.close()
+    }
+
+    @Test fun closeDuringReadCannotPublishStaleResultIntoNewSession() = runBlocking {
+        val adapter = FakeTransport().apply {
+            blockRead = CompletableDeferred()
+        }
+        val session = Elm327Session(adapter)
+        session.initialize()
+        val pending = async {
+            runCatching { session.readOnly("221E0E") }
+        }
+        adapter.readEntered.await()
+        session.close() // Must not wait on the command mutex.
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
+        adapter.blockRead?.complete(Unit) // A late old response arrives.
+        assertTrue(pending.await().isFailure)
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
+        adapter.blockRead = null
+        session.initialize()
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
         session.close()
     }
 
