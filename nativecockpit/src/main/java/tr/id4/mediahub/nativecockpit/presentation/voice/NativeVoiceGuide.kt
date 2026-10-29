@@ -21,6 +21,8 @@ class NativeVoiceGuide(context: Context) {
 
     var status: Status by mutableStateOf(Status.LOADING)
         private set
+    var lastError: String? by mutableStateOf(null)
+        private set
 
     private val main = Handler(Looper.getMainLooper())
     private val ducking = AudioDuckingManager(context) { stop() }
@@ -37,6 +39,7 @@ class NativeVoiceGuide(context: Context) {
                 val engine = tts
                 if (result != TextToSpeech.SUCCESS || engine == null) {
                     status = Status.INIT_FAILED
+                    lastError = "TTS motoru başlatılamadı"
                     return@post
                 }
                 val locale = Locale("tr", "TR")
@@ -45,13 +48,19 @@ class NativeVoiceGuide(context: Context) {
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
                 if (selected < TextToSpeech.LANG_AVAILABLE) {
                     status = Status.TURKISH_VOICE_MISSING
+                    lastError = "Türkçe TTS ses paketi yüklü değil"
                 } else {
                     engine.setAudioAttributes(attrs)
                     engine.setSpeechRate(1.0f)
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String) = Unit
                         override fun onDone(utteranceId: String) { finish(utteranceId) }
-                        override fun onError(utteranceId: String) { finish(utteranceId) }
+                        override fun onError(utteranceId: String) {
+                            synthesisError(utteranceId, "TTS seslendirme başarısız")
+                        }
+                        override fun onError(utteranceId: String, errorCode: Int) {
+                            synthesisError(utteranceId, "TTS ses hatası: $errorCode")
+                        }
                         override fun onStop(utteranceId: String, interrupted: Boolean) {
                             finish(utteranceId)
                         }
@@ -71,15 +80,23 @@ class NativeVoiceGuide(context: Context) {
         stop() // Flush any previous announcement and release its audio focus.
         if (!ducking.acquire()) {
             status = Status.AUDIO_FOCUS_DENIED
+            lastError = "Ses odağı alınamadı"
             return false
         }
         status = Status.READY
+        lastError = null
         val id = "eya-voice-${++sequence}"
         activeUtterance = id
         val params = Bundle().apply {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,volume.coerceIn(.15f,1f))
         }
-        if (engine.speak(text,TextToSpeech.QUEUE_FLUSH,params,id) != TextToSpeech.SUCCESS) {
+        val accepted = try {
+            engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, id) == TextToSpeech.SUCCESS
+        } catch (_: RuntimeException) {
+            false
+        }
+        if (!accepted) {
+            lastError = "TTS anonsu kuyruğa alınamadı"
             stop()
             return false
         }
@@ -90,6 +107,17 @@ class NativeVoiceGuide(context: Context) {
         tts?.stop()
         activeUtterance = null
         releaseFocus()
+    }
+
+    // The engine can accept speak() and fail later. Surface that failure.
+    private fun synthesisError(id: String, reason: String) {
+        main.post {
+            if (!closed && activeUtterance == id) {
+                lastError = reason
+                activeUtterance = null
+                releaseFocus()
+            }
+        }
     }
 
     private fun finish(id: String) {
