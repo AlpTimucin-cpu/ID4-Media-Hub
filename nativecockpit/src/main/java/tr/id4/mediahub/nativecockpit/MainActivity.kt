@@ -154,6 +154,7 @@ class MainActivity : ComponentActivity() {
                 CockpitScreen(
                     state = ui.cockpit,
                     routeState = ui.routeState,
+                    loadStatus = ui.loadStatus,
                     routePlannerUi = ui.planner,
                     onRouteOriginChange = navigation::editOrigin,
                     onRouteDestinationChange = navigation::editDestination,
