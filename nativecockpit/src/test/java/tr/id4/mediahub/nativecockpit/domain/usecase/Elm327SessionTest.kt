@@ -51,7 +51,7 @@ class Elm327SessionTest {
         session.close()
     }
 
-    @Test fun dangerousNonReadCommandsAreRejected() = runBlocking {
+    @Test fun dangerousNonReadCommandsAreRejected(): Unit = runBlocking {
         val session = Elm327Session(FakeTransport())
         assertThrows(IllegalArgumentException::class.java) {
             runBlocking { session.readOnly("2F1234") }
