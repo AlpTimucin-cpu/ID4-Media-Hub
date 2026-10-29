@@ -74,6 +74,23 @@ class ManeuverGuidancePolicyTest {
         assertNull(p.nextAnnouncement(route.copy(routeId = null), fix(35.027), now))
     }
 
+    @Test fun stepJitterNeverRepeatsAcknowledgedCue() {
+        val policy = ManeuverGuidancePolicy()
+        assertNotNull(policy.nextAnnouncement(route, fix(35.027, now), now))
+        policy.confirmSpoken(now)
+        val stepTwo = route.copy(
+            nextManeuver = turn.copy(id = "step-2", instructionTr = "düz devam edin")
+        )
+        assertNotNull(policy.nextAnnouncement(
+            stepTwo, fix(35.0271, now + 5_000), now + 5_000
+        ))
+        policy.confirmSpoken(now + 5_000)
+        // Map-matching GPS jitter temporarily reselects the previous maneuver.
+        assertNull(policy.nextAnnouncement(
+            route, fix(35.0272, now + 10_000), now + 10_000
+        ))
+    }
+
     @Test fun routeChangeResetsAcknowledgedStages() {
         val p = ManeuverGuidancePolicy()
         assertNotNull(p.nextAnnouncement(route, fix(35.027), now))
