@@ -2,8 +2,6 @@ package tr.id4.mediahub.nativecockpit.presentation.voice
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,26 +23,11 @@ class NativeVoiceGuide(context: Context) {
         private set
 
     private val main = Handler(Looper.getMainLooper())
-    private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private val attrs = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-        .build()
+    private val ducking = AudioDuckingManager(context) { stop() }
+    private val attrs: AudioAttributes = ducking.attributes
     private var activeUtterance: String? = null
     private var sequence = 0L
     private var closed = false
-    private var holdingFocus = false
-    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        if (change == AudioManager.AUDIOFOCUS_LOSS ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-            main.post { stop() }
-        }
-    }
-    private val request = AudioFocusRequest.Builder(
-        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-    ).setAudioAttributes(attrs)
-        .setOnAudioFocusChangeListener(focusListener,main)
-        .build()
 
     private var tts: TextToSpeech? = null
     init {
@@ -86,11 +69,10 @@ class NativeVoiceGuide(context: Context) {
             return false
         val engine = tts ?: return false
         stop() // Flush any previous announcement and release its audio focus.
-        if (audio.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+        if (!ducking.acquire()) {
             status = Status.AUDIO_FOCUS_DENIED
             return false
         }
-        holdingFocus = true
         status = Status.READY
         val id = "eya-voice-${++sequence}"
         activeUtterance = id
@@ -120,10 +102,7 @@ class NativeVoiceGuide(context: Context) {
     }
 
     private fun releaseFocus() {
-        if (holdingFocus) {
-            audio.abandonAudioFocusRequest(request)
-            holdingFocus = false
-        }
+        ducking.release()
     }
 
     fun close() {
@@ -132,5 +111,6 @@ class NativeVoiceGuide(context: Context) {
         stop()
         tts?.shutdown()
         tts = null
+        ducking.close()
     }
 }
