@@ -300,8 +300,8 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
     // thousands of on-screen circles at low zoom levels.
     val options = GeoJsonOptions()
         .withCluster(true)
-        .withClusterRadius(60)
-        .withClusterMaxZoom(13)
+        .withClusterRadius(50)
+        .withClusterMaxZoom(14)
     style.addSource(GeoJsonSource(STATION_SRC, geo, options))
     style.addImage(STATION_ICON, lightningBitmap())
     val isCluster = Expression.has("point_count")
