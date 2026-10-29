@@ -19,7 +19,9 @@ data class ProposedDcStop(
     val station: ChargingStation,
     val distanceFromStartKm: Double,
     val suggestedEnergyKwh: Double,
-    val estimatedArrivalSocPercent: Double
+    val estimatedArrivalSocPercent: Double,
+    /** Only if EPDK powerRaw has an EXPLICIT kW unit. Never guess from a bare number. */
+    val verifiedPowerKw: Double? = null
 )
 
 data class DCCorridorCandidate(
@@ -109,13 +111,27 @@ object AutomaticDcChargingPlanner {
                 reachable.station,
                 reachable.distanceFromStartKm,
                 chargeKwh,
-                100.0 * arrivalKwh / usableBatteryKwh
+                100.0 * arrivalKwh / usableBatteryKwh,
+                reachable.station.sockets.asSequence()
+                    .filter { it.isDc }
+                    .mapNotNull { verifiedDcKw(it.powerRaw) }
+                    .maxOrNull()
             )
             used += reachable.station.id
             energyKwh = targetKwh
             lastKm = reachable.distanceFromStartKm
         }
         return AutomaticChargePlan.Unavailable("Rota çok fazla şarj durağı gerektiriyor")
+    }
+
+    /** '150' is ambiguous; '150 kW' is usable metadata, not a charging-time guarantee. */
+    private fun verifiedDcKw(raw: String): Double? {
+        val match = Regex(
+            "^\\s*(\\d+(?:[.,]\\d+)?)\\s*kW\\s*$",
+            RegexOption.IGNORE_CASE
+        ).matchEntire(raw) ?: return null
+        return match.groupValues[1].replace(',', '.').toDoubleOrNull()
+            ?.takeIf { it.isFinite() && it in 1.0..700.0 }
     }
 
     private fun Double?.isValidPositive() = this != null && isFinite() && this > 0.0
