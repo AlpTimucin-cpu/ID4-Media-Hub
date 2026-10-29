@@ -369,3 +369,30 @@ private fun lightningBitmap(): Bitmap {
     canvas.drawPath(path,paint)
     return bmp
 }
+
+private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
+    val features = samples.filter { it.coordinate.valid() }.map { item ->
+        val props = JsonObject().apply {
+            addProperty("weatherIcon", item.iconKey)
+            addProperty("tempText", item.temperatureC.toInt().toString() + "°C")
+        }
+        Feature.fromGeometry(
+            Point.fromLngLat(item.coordinate.longitude, item.coordinate.latitude), props
+        )
+    }
+    val data = FeatureCollection.fromFeatures(features)
+    val source = style.getSourceAs<GeoJsonSource>(WEATHER_SRC)
+    if (source != null) {
+        source.setGeoJson(data)
+    } else {
+        style.addSource(GeoJsonSource(WEATHER_SRC, data))
+        style.addLayer(SymbolLayer(WEATHER_LAYER, WEATHER_SRC).withProperties(
+            textField(Expression.get("tempText")),
+            textSize(12f),
+            textColor(android.graphics.Color.WHITE),
+            textHaloColor(android.graphics.Color.rgb(4, 28, 45)),
+            textHaloWidth(2f),
+            textAllowOverlap(true)
+        ))
+    }
+}
