@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.getValue
@@ -17,6 +18,7 @@ import java.util.Locale
  * another app's volume. An unavailable tr-TR voice fails closed.
  */
 class NativeVoiceGuide(context: Context) {
+    private val logTag = "EYA-Voice"
     enum class Status { LOADING, READY, TURKISH_VOICE_MISSING, INIT_FAILED, AUDIO_FOCUS_DENIED }
 
     var status: Status by mutableStateOf(Status.LOADING)
@@ -40,6 +42,7 @@ class NativeVoiceGuide(context: Context) {
                 if (result != TextToSpeech.SUCCESS || engine == null) {
                     status = Status.INIT_FAILED
                     lastError = "TTS motoru başlatılamadı"
+                    Log.e(logTag, "TextToSpeech initialization failed: result=$result")
                     return@post
                 }
                 val locale = Locale("tr", "TR")
@@ -48,12 +51,15 @@ class NativeVoiceGuide(context: Context) {
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
                 if (selected < TextToSpeech.LANG_AVAILABLE) {
                     status = Status.TURKISH_VOICE_MISSING
-                    lastError = "Türkçe TTS ses paketi yüklü değil"
+                    lastError = "Türkçe TTS Paketi Eksik"
+                    Log.e(logTag, "tr-TR voice unavailable: supported=$supported selected=$selected")
                 } else {
                     engine.setAudioAttributes(attrs)
                     engine.setSpeechRate(1.0f)
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onStart(utteranceId: String) = Unit
+                        override fun onStart(utteranceId: String) {
+                            Log.d(logTag, "Utterance started id=$utteranceId")
+                        }
                         override fun onDone(utteranceId: String) { finish(utteranceId) }
                         override fun onError(utteranceId: String) {
                             synthesisError(utteranceId, "TTS seslendirme başarısız")
@@ -81,6 +87,7 @@ class NativeVoiceGuide(context: Context) {
         if (!ducking.acquire()) {
             status = Status.AUDIO_FOCUS_DENIED
             lastError = "Ses odağı alınamadı"
+            Log.w(logTag, "Navigation audio focus was not granted")
             return false
         }
         status = Status.READY
@@ -97,6 +104,7 @@ class NativeVoiceGuide(context: Context) {
         }
         if (!accepted) {
             lastError = "TTS anonsu kuyruğa alınamadı"
+            Log.e(logTag, "TextToSpeech.speak() rejected the utterance")
             stop()
             return false
         }
@@ -114,6 +122,7 @@ class NativeVoiceGuide(context: Context) {
         main.post {
             if (!closed && activeUtterance == id) {
                 lastError = reason
+                Log.e(logTag, "Utterance synthesis failed id=$id: $reason")
                 activeUtterance = null
                 releaseFocus()
             }
@@ -123,6 +132,7 @@ class NativeVoiceGuide(context: Context) {
     private fun finish(id: String) {
         main.post {
             if (id == activeUtterance) {
+                Log.d(logTag, "Utterance finished id=$id")
                 activeUtterance = null
                 releaseFocus()
             }
