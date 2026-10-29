@@ -543,6 +543,10 @@ private fun RoutePanel(
     MetricLine("Varış bölgesi · Rüzgâr", destinationWeather?.let {
         "${it.windSpeedKmh.toInt()} km/sa"
     } ?: "—")
+    if (weather.points.isNotEmpty() && weather.routeId == route?.routeId) {
+        Text("Hava: Open-Meteo · güncel model tahmini, varış saatine göre değil",
+            color = SoftText, fontSize = 10.sp)
+    }
     if (weather.error != null && route?.routeId == weather.routeId) {
         Text(weather.error, color = SoftText, fontSize = 10.sp)
     }
