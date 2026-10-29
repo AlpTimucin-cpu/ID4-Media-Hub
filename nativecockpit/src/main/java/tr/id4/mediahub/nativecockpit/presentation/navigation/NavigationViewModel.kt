@@ -46,7 +46,8 @@ import tr.id4.mediahub.nativecockpit.presentation.voice.VoicePreference
 data class VoiceUiState(
     val enabled: Boolean = true,
     val volume: Float = 0.8f,
-    val status: NativeVoiceGuide.Status = NativeVoiceGuide.Status.LOADING
+    val status: NativeVoiceGuide.Status = NativeVoiceGuide.Status.LOADING,
+    val error: String? = null
 )
 
 sealed interface RouteLoadStatus {
@@ -272,8 +273,8 @@ class NavigationViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            snapshotFlow { guide.status }.collect { status ->
-                _voice.update { it.copy(status = status) }
+            snapshotFlow { guide.status to guide.lastError }.collect { (status, error) ->
+                _voice.update { it.copy(status = status, error = error) }
             }
         }
         // TTS only with real OSRM route + fresh GPS + foreground Activity.
