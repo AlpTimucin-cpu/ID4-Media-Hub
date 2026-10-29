@@ -88,6 +88,57 @@ class EvBaselineEnergyEstimatorTest {
         assertEquals(1.0, estimate.climateMultiplier, 0.00001)
     }
 
+    // QA-01: Low-speed city driving + high ambient temperature.
+    @Test fun lowSpeedAndHotClimateExpectedMultipliers() {
+        val input = inputs().copy(
+            speedKmh = 65.0, outsideTemperatureC = 40.0, climateActive = true
+        )
+        val result = EvBaselineEnergyEstimator.estimate(input)
+            as BaselineEnergyResult.Estimate
+        assertEquals(1.0, result.speedMultiplier, 0.000001)
+        assertEquals(1.08, result.climateMultiplier, 0.000001)
+        assertEquals(19.44, result.driveEnergyKwh, 0.000001)
+        assertEquals(47.6, result.arrivalSocPercent, 0.000001)
+        assertTrue(result.isScenarioProjection)
+    }
+
+    // QA-02: Highway speed, subzero outside temperature and climate on.
+    @Test fun highSpeedAndColdClimateLogarithmicMultiplier() {
+        val input = inputs().copy(
+            speedKmh = 150.0, outsideTemperatureC = -5.0, climateActive = true
+        )
+        val result = EvBaselineEnergyEstimator.estimate(input)
+            as BaselineEnergyResult.Estimate
+        val speedExpected = 1.0 + 0.12 * kotlin.math.ln(3.0)
+        val climateExpected = 1.24
+        assertEquals(speedExpected, result.speedMultiplier, 0.000001)
+        assertEquals(climateExpected, result.climateMultiplier, 0.000001)
+        assertEquals(
+            180.0 * speedExpected * climateExpected,
+            result.effectiveWhPerKm, 0.000001
+        )
+        assertTrue(result.arrivalSocPercent < 50.0)
+        assertTrue(result.isScenarioProjection)
+    }
+
+    // QA-03: Missing speed/weather must preserve the historical baseline;
+    // invalid numbers are rejected instead of being treated as measurements.
+    @Test fun neutralDefaultAndInvalidInputsFailSafely() {
+        val original = EvBaselineEnergyEstimator.estimate(inputs())
+            as BaselineEnergyResult.Estimate
+        assertEquals(1.0, original.speedMultiplier, 0.0)
+        assertEquals(1.0, original.climateMultiplier, 0.0)
+        assertEquals(18.0, original.driveEnergyKwh, 0.000001)
+        assertFalse(original.isScenarioProjection)
+
+        assertTrue(EvBaselineEnergyEstimator.estimate(
+            inputs().copy(speedKmh = Double.POSITIVE_INFINITY)
+        ) is BaselineEnergyResult.Unavailable)
+        assertTrue(EvBaselineEnergyEstimator.estimate(
+            inputs().copy(outsideTemperatureC = Double.NaN, climateActive = true)
+        ) is BaselineEnergyResult.Unavailable)
+    }
+
     @Test fun invalidOrMissingRouteAndBatteryFailClosed() {
         assertTrue(EvBaselineEnergyEstimator.estimate(
             inputs(route = route.copy(routeId = null))
