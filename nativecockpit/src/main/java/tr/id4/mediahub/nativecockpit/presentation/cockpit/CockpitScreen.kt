@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -143,7 +144,7 @@ fun CockpitScreen(
     }
     var showVoiceSettings by remember { mutableStateOf(false) }
     if (showVoiceSettings) {
-        AlertDialog(
+        DarkGlassDialog(
             onDismissRequest = { showVoiceSettings = false },
             title = { Text("Sesli yol tarifi") },
             text = {
@@ -215,7 +216,7 @@ fun CockpitScreen(
     }
     // No fabricated control wiring: the currently absent modules say so.
     selectedDock?.takeUnless { it == DockTab.MEDIA }?.let { tab ->
-        AlertDialog(
+        DarkGlassDialog(
             onDismissRequest = { selectedDock = null },
             title = { Text(tab.title) },
             text = {
@@ -636,6 +637,38 @@ private fun Dock(onTap: (DockTab) -> Unit) {
                     modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(tab.title, color = Color.White, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+/** Keep the existing dialog contents; change only the white Material container. */
+@Composable
+private fun DarkGlassDialog(
+    onDismissRequest: () -> Unit,
+    title: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+    confirmButton: @Composable () -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            color = Color(0xFF0A0F1A),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(22.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp, Color(0xFF40576E)
+            ),
+            shadowElevation = 15.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    title()
+                    text()
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End) { confirmButton() }
+                }
             }
         }
     }
