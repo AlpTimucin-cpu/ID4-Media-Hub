@@ -54,11 +54,11 @@ class MediaWebViewViewModel : ViewModel() {
 private fun safePage(url: String?, site: MediaSite): Boolean = runCatching {
     val uri = Uri.parse(url)
     val host = uri.host?.lowercase().orEmpty()
-    val base = Uri.parse(site.url).host.orEmpty()
-    // Permit only HTTPS at the chosen streaming site's own origin family.
+    val root = Uri.parse(site.url).host.orEmpty()
+        .removePrefix("www.").removePrefix("m.")
+    // Service login/CDN subdomains remain allowed; unrelated hosts do not.
     uri.scheme.equals("https", ignoreCase = true) &&
-        (host == base || host.endsWith(".$base") ||
-         (site == MediaSite.YOUTUBE && host.endsWith(".youtube.com")))
+        (host == root || host.endsWith(".$root"))
 }.getOrDefault(false)
 
 /**
