@@ -558,8 +558,9 @@ private fun RoutePanel(
                 plan.stops.take(4).forEach { stop ->
                     MetricLine(
                         "DC aday · ${"%.0f".format(stop.distanceFromStartKm)} km",
-                        stop.station.name.take(32) + " · +" +
-                            "%.1f".format(stop.suggestedEnergyKwh) + " kWh"
+                        stop.station.name.take(26) + " · +" +
+                            "%.1f".format(stop.suggestedEnergyKwh) + " kWh" +
+                            (stop.verifiedPowerKw?.let { " · " + "%.0f".format(it) + " kW" } ?: "")
                     )
                 }
                 Text(plan.source, color = SoftText, fontSize = 10.sp)
