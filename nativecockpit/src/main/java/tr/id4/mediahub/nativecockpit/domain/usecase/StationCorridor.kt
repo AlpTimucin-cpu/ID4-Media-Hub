@@ -6,11 +6,11 @@ import tr.id4.mediahub.nativecockpit.domain.model.GeoCoordinate
 
 /** Exact projected distance to the real OSRM line; never a driving detour. */
 object StationCorridor {
-    const val MAX_DISTANCE_METERS = 2_000.0
+    const val MAX_DISTANCE_METERS = 5_000.0
     private const val EARTH_METERS = 6_371_008.8
     private const val CELL_DEGREES = 0.05
-    private const val LAT_PAD = 0.035
-    private const val LON_PAD = 0.045
+    private const val LAT_PAD = 0.065
+    private const val LON_PAD = 0.11
 
     private fun segmentDistanceMeters(
         station: GeoCoordinate,
