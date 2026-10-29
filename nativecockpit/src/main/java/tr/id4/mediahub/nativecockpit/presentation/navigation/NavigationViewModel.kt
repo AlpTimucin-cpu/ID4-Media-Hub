@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
@@ -30,10 +32,12 @@ import tr.id4.mediahub.nativecockpit.data.location.FusedCurrentLocationProvider
 import tr.id4.mediahub.nativecockpit.domain.model.*
 import tr.id4.mediahub.nativecockpit.domain.repository.LocationRepository
 import tr.id4.mediahub.nativecockpit.domain.repository.RouteRepository
+import tr.id4.mediahub.nativecockpit.domain.repository.ChargingRepository
 import tr.id4.mediahub.nativecockpit.domain.repository.VehicleRepository
 import tr.id4.mediahub.nativecockpit.domain.usecase.ManeuverGuidancePolicy
 import tr.id4.mediahub.nativecockpit.domain.usecase.RouteProgressTracker
 import tr.id4.mediahub.nativecockpit.domain.usecase.EvBaselineEnergyEstimator
+import tr.id4.mediahub.nativecockpit.domain.usecase.AutoChargePlanner
 import tr.id4.mediahub.nativecockpit.domain.usecase.BaselineEnergyInputs
 import tr.id4.mediahub.nativecockpit.domain.usecase.BaselineEnergyResult
 import tr.id4.mediahub.nativecockpit.domain.usecase.DepartureSoc
@@ -85,7 +89,8 @@ class NavigationViewModel @Inject constructor(
     private val routes: RouteRepository,
     private val locationRepository: LocationRepository,
     private val currentLocation: FusedCurrentLocationProvider,
-    private val vehicleRepository: VehicleRepository
+    private val vehicleRepository: VehicleRepository,
+    private val chargingRepository: ChargingRepository
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
     // Read only explicitly provisioned, independently verified calibration inputs.
@@ -138,14 +143,37 @@ class NavigationViewModel @Inject constructor(
             delay(1_000L)
         }
     }
+    // Index the EPDK corridor on route/catalog changes, never on every GPS tick.
+    private val routeDcCatalog = combine(
+        routes.currentRoute, chargingRepository.catalog
+    ) { route, catalog ->
+        val index = route?.routePoints?.takeIf { validRouteGeometry(it) }
+            ?.let { tr.id4.mediahub.nativecockpit.domain.usecase.StationCorridor.index(it) }
+        val matches = if (index == null) emptyList()
+            else catalog.stations.filter(index::isDcAlongRoute)
+        route?.routeId to matches
+    }.flowOn(Dispatchers.Default)
+
     private val cockpit = combine(
-        sources, routes.currentRoute, ticker
-    ) { source, route, now ->
+        sources, routes.currentRoute, ticker, routeDcCatalog
+    ) { source, route, now, corridor ->
         val usableGps = source.gps?.takeIf { it.usable(now) }
         val lastGpsAt = source.gps?.recordedAtMillis
             ?.takeIf { it <= now && it >= gpsWaitSinceMs } ?: gpsWaitSinceMs
         val telemetry = source.telemetry
         val energy = estimateEnergy(route, telemetry, now, source.simulated)
+        fun calibration(key: String): Double? = runCatching {
+            if (modelPrefs.contains(key)) modelPrefs.getFloat(key, Float.NaN)
+                .toDouble().takeIf { it.isFinite() } else null
+        }.getOrNull()
+        val plan = AutoChargePlanner.plan(
+            route,
+            energy,
+            if (route?.routeId != null && corridor.first == route.routeId)
+                corridor.second else emptyList(),
+            if (source.simulated) 60.0 else calibration("usableBatteryKwh") ?: Double.NaN,
+            if (source.simulated) 15.0 else calibration("arrivalReservePct") ?: Double.NaN
+        )
         val baseRoute = progress.enrich(route, usableGps, now)
         val visualRoute = if (energy is BaselineEnergyResult.Estimate) {
             baseRoute?.copy(estimatedArrivalSocPercent = energy.arrivalSocPercent)
@@ -158,6 +186,7 @@ class NavigationViewModel @Inject constructor(
             powerKw = telemetry.powerKw.current(now),
             chargingNeededEstimate = (energy as? BaselineEnergyResult.Estimate)?.chargingStopNeeded,
             chargingEnergyKwh = (energy as? BaselineEnergyResult.Estimate)?.requiredChargingEnergyKwh,
+            autoChargePlan = plan,
             energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
             socSourceLabel = when {
                 source.simulated -> "SİMÜLASYON · TEST VERİSİ"
