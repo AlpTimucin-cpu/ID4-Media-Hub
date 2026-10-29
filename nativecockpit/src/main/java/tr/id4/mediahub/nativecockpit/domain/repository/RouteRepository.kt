@@ -1,5 +1,6 @@
 package tr.id4.mediahub.nativecockpit.domain.repository
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import tr.id4.mediahub.nativecockpit.domain.model.*
 
@@ -10,6 +11,26 @@ interface RouteRepository {
     val selectedIndex: StateFlow<Int?>
     suspend fun search(query: String): List<RoutePlace>
     suspend fun calculate(origin: GeoCoordinate, destination: RoutePlace): RouteCalculationResult
+
+    // Preserve existing callers while supplying one safe Result boundary to
+    // the ViewModel; coroutine cancellation must never turn into UI errors.
+    suspend fun searchResult(query: String): Result<List<RoutePlace>> = try {
+        Result.success(search(query))
+    } catch (cancel: CancellationException) {
+        throw cancel
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+
+    suspend fun calculateResult(
+        origin: GeoCoordinate, destination: RoutePlace
+    ): Result<RouteCalculationResult> = try {
+        Result.success(calculate(origin, destination))
+    } catch (cancel: CancellationException) {
+        throw cancel
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
     fun choose(index: Int)
     fun clear()
 }
