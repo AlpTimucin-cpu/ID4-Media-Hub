@@ -24,9 +24,14 @@ class AudioDuckingManager(
     private val main = Handler(Looper.getMainLooper())
     private val listener = AudioManager.OnAudioFocusChangeListener { change ->
         if (change == AudioManager.AUDIOFOCUS_LOSS ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
         ) {
-            main.post { onFocusLost() }
+            // Ignore stale queued callbacks after release()/close().
+            // Guidance speech must not overlap another app taking focus.
+            main.post {
+                if (isHeldAndOpen()) onFocusLost()
+            }
         }
     }
     private val focusRequest = AudioFocusRequest.Builder(
@@ -38,6 +43,9 @@ class AudioDuckingManager(
 
     private var held = false
     private var closed = false
+
+    @Synchronized
+    private fun isHeldAndOpen(): Boolean = held && !closed
 
     @Synchronized
     fun acquire(): Boolean {
@@ -56,7 +64,8 @@ class AudioDuckingManager(
 
     @Synchronized
     override fun close() {
+        if (closed) return
+        closed = true // Guard callbacks before relinquishing focus.
         release()
-        closed = true
     }
 }
