@@ -42,10 +42,19 @@ data class VoiceUiState(
     val status: NativeVoiceGuide.Status = NativeVoiceGuide.Status.LOADING
 )
 
+sealed interface RouteLoadStatus {
+    data object Idle : RouteLoadStatus
+    data object Loading : RouteLoadStatus
+    data class Success(val routeId: String) : RouteLoadStatus
+    data class Error(val message: String) : RouteLoadStatus
+}
+
 data class NavigationUiState(
     val cockpit: CockpitUiState = CockpitUiState(),
     val planner: RoutePlannerUiState = RoutePlannerUiState(),
-    val voice: VoiceUiState = VoiceUiState()
+    val voice: VoiceUiState = VoiceUiState(),
+    val routeState: NavigationRouteState = NavigationRouteState(),
+    val loadStatus: RouteLoadStatus = RouteLoadStatus.Idle
 )
 
 /** Single source of truth for the route editor AND the main navigation panel. */
@@ -113,25 +122,30 @@ class NavigationViewModel @Inject constructor(
     ) { state, options, index ->
         state.copy(options = options, selectedIndex = index)
     }
+    // One projection: MapLibre, route dialog and progress panel observe the same
+    // emission. No second independently collected routeState StateFlow.
     val uiState: StateFlow<NavigationUiState> = combine(
         cockpit, plannerState, _voice
     ) { cockpit, planner, voice ->
-        NavigationUiState(cockpit, planner, voice)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationUiState())
-
-    val routeState: StateFlow<NavigationRouteState> = combine(
-        _planner, routes.currentRoute
-    ) { selection, active ->
-        NavigationRouteState(
-            startLocation = selection.startLocation,
-            startLabel = if (selection.startLocation == null) null
-                else selection.originText.takeIf(String::isNotBlank),
-            destination = selection.destinationSelected,
-            routeResult = active,
-            calculating = selection.planning,
-            error = selection.error
+        val route = cockpit.route
+        val routeState = NavigationRouteState(
+            startLocation = planner.startLocation,
+            startLabel = planner.originText.takeIf {
+                planner.startLocation != null && it.isNotBlank()
+            },
+            destination = planner.destinationSelected,
+            routeResult = route,
+            calculating = planner.planning,
+            error = planner.error
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationRouteState())
+        val phase = when {
+            planner.planning -> RouteLoadStatus.Loading
+            planner.error != null -> RouteLoadStatus.Error(planner.error)
+            route?.routeId != null -> RouteLoadStatus.Success(route.routeId)
+            else -> RouteLoadStatus.Idle
+        }
+        NavigationUiState(cockpit, planner, voice, routeState, phase)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationUiState())
 
     init {
         viewModelScope.launch {
