@@ -53,6 +53,7 @@ sealed interface RouteLoadStatus {
     data object Idle : RouteLoadStatus
     data object Empty : RouteLoadStatus
     data object Loading : RouteLoadStatus
+    data object GpsLost : RouteLoadStatus
     data class Success(val routeId: String) : RouteLoadStatus
     data class Error(val message: String) : RouteLoadStatus
 }
@@ -96,7 +97,9 @@ class NavigationViewModel @Inject constructor(
     private val progress = RouteProgressTracker()
     private val ttsProgress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
-    private val _simulationEnabled = MutableStateFlow(false)
+    // Debug builds start in TEST mode; release builds can never enable it.
+    private val _simulationEnabled = MutableStateFlow(BuildConfig.DEBUG)
+    val isSimulationMode: StateFlow<Boolean> = _simulationEnabled.asStateFlow()
     private val _simulationFrame = MutableStateFlow<SimulationFrame?>(null)
     private var gpsWaitSinceMs = System.currentTimeMillis()
 
@@ -138,7 +141,8 @@ class NavigationViewModel @Inject constructor(
         sources, routes.currentRoute, ticker
     ) { source, route, now ->
         val usableGps = source.gps?.takeIf { it.usable(now) }
-        if (!source.simulated && usableGps != null) gpsWaitSinceMs = now
+        val lastGpsAt = source.gps?.recordedAtMillis
+            ?.takeIf { it <= now && it >= gpsWaitSinceMs } ?: gpsWaitSinceMs
         val telemetry = source.telemetry
         val energy = estimateEnergy(route, telemetry, now, source.simulated)
         val baseRoute = progress.enrich(route, usableGps, now)
@@ -152,16 +156,22 @@ class NavigationViewModel @Inject constructor(
             batteryTemperatureC = telemetry.batteryTemperatureC.current(now),
             powerKw = telemetry.powerKw.current(now),
             chargingNeededEstimate = (energy as? BaselineEnergyResult.Estimate)?.chargingStopNeeded,
+            chargingEnergyKwh = (energy as? BaselineEnergyResult.Estimate)?.requiredChargingEnergyKwh,
             energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
             socSourceLabel = when {
                 source.simulated -> "SİMÜLASYON · TEST VERİSİ"
-                telemetry.socPercent.current(now) != null -> "GERÇEK OBD · ölçüm"
-                route != null -> "Varsayılan Başlangıç %80 · MODEL/TAHMİN"
+                energy is BaselineEnergyResult.Estimate && energy.usedLiveObd ->
+                    "CANLI OBD başlangıç SoC · MODEL/TAHMİN"
+                energy is BaselineEnergyResult.Estimate &&
+                    !modelPrefs.contains("explicitAssumedSocPct") ->
+                    "Varsayılan Başlangıç %80 · MODEL/TAHMİN"
+                energy is BaselineEnergyResult.Estimate ->
+                    "Seçilmiş başlangıç SoC · MODEL/TAHMİN"
                 else -> null
             },
             simulationEnabled = source.simulated,
             gpsWarning = if (!source.simulated && _foreground.value &&
-                now - gpsWaitSinceMs > 10_000L && usableGps == null
+                now - lastGpsAt > 10_000L && usableGps == null
             ) "GPS Sinyali Bekleniyor..." else null,
             route = visualRoute,
             gpsFix = usableGps
@@ -240,6 +250,8 @@ class NavigationViewModel @Inject constructor(
         val phase = when {
             planner.planning -> RouteLoadStatus.Loading
             planner.error != null -> RouteLoadStatus.Error(planner.error)
+            route?.routeId != null && cockpit.gpsWarning != null ->
+                RouteLoadStatus.GpsLost
             route?.routeId != null -> RouteLoadStatus.Success(route.routeId)
             else -> RouteLoadStatus.Empty
         }
@@ -397,7 +409,7 @@ class NavigationViewModel @Inject constructor(
         _planner.update { if (origin) it.copy(searchingOrigin = true)
             else it.copy(searchingDestination = true) }
         try {
-            val found = routes.search(value)
+            val found = routes.searchResult(value).getOrThrow()
             val error = if (found.isEmpty()) "Adres bulunamadı. Daha açık bir konum yaz." else null
             _planner.update { if (origin) it.copy(originMatches = found, searchingOrigin = false, error = error)
                 else it.copy(destinationMatches = found, searchingDestination = false, error = error) }
@@ -477,7 +489,7 @@ class NavigationViewModel @Inject constructor(
             _planner.update { it.copy(planning = true, error = null) }
             routes.clear() // Don't retain a successful stale route during failed replanning.
             try {
-                when (val result = routes.calculate(start, target)) {
+                when (val result = routes.calculateResult(start, target).getOrThrow()) {
                     is RouteCalculationResult.Success ->
                         _planner.update { it.copy(planning = false, error = null) }
                     is RouteCalculationResult.Failure ->
