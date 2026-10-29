@@ -48,6 +48,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.GeoCoordinate
 import tr.id4.mediahub.nativecockpit.domain.model.GpsFix
 import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
 import tr.id4.mediahub.nativecockpit.domain.model.GeoViewport
+import tr.id4.mediahub.nativecockpit.domain.model.WeatherWaypoint
 import tr.id4.mediahub.nativecockpit.domain.usecase.StationCorridor
 import tr.id4.mediahub.nativecockpit.domain.model.validRouteGeometry
 
@@ -62,6 +63,8 @@ private const val STATION_DC_LAYER = "eya-station-dc-icons"
 private const val STATION_ICON = "eya-station-bolt"
 private const val STATION_CLUSTER_LAYER = "eya-station-cluster-circles"
 private const val STATION_CLUSTER_COUNT_LAYER = "eya-station-cluster-count"
+private const val WEATHER_SRC = "eya-weather-route"
+private const val WEATHER_LAYER = "eya-weather-markers"
 
 /** One MapView for this composition; Compose owns transparent cockpit overlays. */
 @Composable
@@ -69,6 +72,7 @@ fun MapLibreCockpit(
     gpsFix: GpsFix?,
     routePoints: List<GeoCoordinate>,
     stations: List<ChargingStation>,
+    weatherPoints: List<WeatherWaypoint>,
     onViewportChanged: (GeoViewport) -> Unit,
     onStationTapped: (ChargingStation) -> Unit,
     modifier: Modifier = Modifier
@@ -230,6 +234,9 @@ fun MapLibreCockpit(
         }
         updateStations(style, geo)
     }
+    LaunchedEffect(activeStyle, weatherPoints) {
+        activeStyle?.let { updateWeather(it, weatherPoints) }
+    }
     LaunchedEffect(activeStyle, gpsFix, routePoints) {
         activeStyle?.let { carAnimator.update(it, gpsFix, routePoints, System.currentTimeMillis()) }
         if (!centeredOnRealGps && activeStyle != null &&
@@ -285,7 +292,7 @@ private fun buildStationGeoJson(
         val props=JsonObject().apply {
             addProperty("stationId",station.id)
             addProperty("dc",station.hasDc)
-            addProperty("corridor",routeIndex?.isAlongRoute(station)==true)
+            addProperty("corridor",routeIndex?.isDcAlongRoute(station)==true)
         }
         Feature.fromGeometry(Point.fromLngLat(station.coordinate.longitude,
             station.coordinate.latitude),props)
@@ -338,7 +345,7 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
             circleRadius(15f),
             circleColor(android.graphics.Color.TRANSPARENT),
             circleStrokeWidth(3f),
-            circleStrokeColor(android.graphics.Color.rgb(0, 230, 118))
+            circleStrokeColor(android.graphics.Color.rgb(16, 235, 235))
         ))
     style.addLayer(SymbolLayer(STATION_DC_LAYER, STATION_SRC)
         .withFilter(Expression.all(isSingle,
