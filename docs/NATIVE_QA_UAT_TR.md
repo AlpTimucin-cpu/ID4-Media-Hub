@@ -124,5 +124,6 @@ $adb = "C:\Users\Alp\Desktop\platform-tools\adb.exe"
 - Harita `QA-MAP-13K`: 13.000+ geçerli kaynak, 3 koşuda 0 ANR/OOM; 60 Hz'de p95 kare ≤ 33,3 ms, jank ≤ %10; işaret/küme gecikme eşikleri sağlanmalı.
 - TTS/AudioFocus `QA-MEM-TTS`: 50 tur sonrası GC ölçümünde Java ≤ +10 MiB, Native ≤ +15 MiB, PSS ≤ +25 MiB; önceki Activity/TTS referansları tutulmamalı ve ses odağı bırakılmalı.
 - OBD `QA-OBD-10X`: 10/10 bağlan-kop döngüsünde durum/hata UI'a iletilmeli; soket sızıntısı ve 10 sn TTL'yi aşan canlı değer bulunmamalı.
+- Enerji `QA-EV-OBD`: 5 geçerli ve her biri ≥ 30 km ölçümlü sürüşte her bir mutlak kWh sapması ≤ %15, toplam enerji ağırlıklı sapma ≤ %10 olmalı; doğrulanmış OBD enerji ölçümü yoksa BLOCKED.
 - Harici medya + PiP için olmayan yeteneklerin 'çalışıyor' olarak sunulmaması.
 - JUnit + Gradle assembleDebug başarılı olsa bile donanım UAT tamamlanmadan production-ready ilan edilmez.
