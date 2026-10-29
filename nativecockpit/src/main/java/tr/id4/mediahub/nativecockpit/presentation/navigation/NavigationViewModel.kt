@@ -297,9 +297,18 @@ class NavigationViewModel @Inject constructor(
                     val now = System.currentTimeMillis()
                     val route = ttsProgress.enrich(current.route, current.fix, now)
                     policy.nextAnnouncement(route, current.fix, now)?.let { message ->
-                        if (guide.speak(message, current.voice.volume)) {
-                            policy.confirmSpoken(now)
-                        }
+                        val queued = guide.speak(
+                            message,
+                            current.voice.volume,
+                            onUtteranceStarted = {
+                                // A successful enqueue is NOT proof of audible speech.
+                                policy.confirmSpoken(System.currentTimeMillis())
+                            },
+                            onUtteranceFailed = {
+                                policy.cancelPending()
+                            }
+                        )
+                        if (!queued) policy.cancelPending()
                     }
                 }
             }
@@ -316,6 +325,7 @@ class NavigationViewModel @Inject constructor(
         if (isForeground) gpsWaitSinceMs = System.currentTimeMillis()
         if (!isForeground) {
             guide.stop()
+            policy.cancelPending()
             locationRepository.stop()
         }
     }
