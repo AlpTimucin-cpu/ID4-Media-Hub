@@ -145,12 +145,14 @@ class NavigationViewModel @Inject constructor(
         now: Long
     ): BaselineEnergyResult? {
         if (route?.routeId == null) return null
-        val capacity = if (modelPrefs.contains("usableBatteryKwh"))
-            modelPrefs.getFloat("usableBatteryKwh", Float.NaN).toDouble() else Double.NaN
-        val consumption = if (modelPrefs.contains("referenceWhPerKm"))
-            modelPrefs.getFloat("referenceWhPerKm", Float.NaN).toDouble() else Double.NaN
-        val reserve = if (modelPrefs.contains("arrivalReservePct"))
-            modelPrefs.getFloat("arrivalReservePct", Float.NaN).toDouble() else Double.NaN
+        // Damaged/old preference types must not crash the navigation UI.
+        fun readFloat(key: String): Double? = runCatching {
+            if (modelPrefs.contains(key)) modelPrefs.getFloat(key, Float.NaN)
+                .toDouble().takeIf { it.isFinite() } else null
+        }.getOrNull()
+        val capacity = readFloat("usableBatteryKwh") ?: Double.NaN
+        val consumption = readFloat("referenceWhPerKm") ?: Double.NaN
+        val reserve = readFloat("arrivalReservePct") ?: Double.NaN
         if (!capacity.isFinite() || capacity <= 0.0 ||
             !consumption.isFinite() || consumption <= 0.0 ||
             !reserve.isFinite() || reserve !in 0.0..100.0
@@ -160,11 +162,9 @@ class NavigationViewModel @Inject constructor(
         val timed = telemetry.socPercent.measuredAtMillis
         val soc = if (fresh != null && timed != null) {
             DepartureSoc.FreshObd(fresh, timed)
-        } else if (modelPrefs.contains("explicitAssumedSocPct")) {
+        } else if (readFloat("explicitAssumedSocPct") != null) {
             // Never silently fall back to 80%/100% without a prior user selection.
-            DepartureSoc.ExplicitAssumption(
-                modelPrefs.getFloat("explicitAssumedSocPct", Float.NaN).toDouble()
-            )
+            DepartureSoc.ExplicitAssumption(readFloat("explicitAssumedSocPct")!!)
         } else return BaselineEnergyResult.Unavailable("Güncel OBD SoC veya seçilmiş başlangıç SoC yok")
 
         return EvBaselineEnergyEstimator.estimate(
