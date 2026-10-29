@@ -87,7 +87,6 @@ fun MediaWebViewScreen(
             MediaPageUiState.Ready -> Unit
         }
 
-        val ctx = androidx.compose.ui.platform.LocalContext.current
         AndroidView(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             factory = { context ->
@@ -162,16 +161,14 @@ fun MediaWebViewScreen(
                 if (view !== webView) view = webView
             }
         )
-        DisposableEffect(service, view) {
+        DisposableEffect(service) {
             val current = view
             onDispose {
-                if (current === view) {
-                    current?.stopLoading()
-                    current?.loadUrl("about:blank")
-                    current?.removeAllViews()
-                    current?.destroy()
-                    view = null
-                }
+                current?.stopLoading()
+                current?.loadUrl("about:blank")
+                current?.removeAllViews()
+                current?.destroy()
+                view = null
             }
         }
     }
