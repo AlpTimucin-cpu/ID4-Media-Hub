@@ -14,6 +14,9 @@ data class CockpitUiState(
     // MODEL/TAHMİN only; never present a missing OBD field as live.
     val chargingNeededEstimate: Boolean? = null,
     val energyEstimateStatus: String? = null,
+    val socSourceLabel: String? = null,
+    val simulationEnabled: Boolean = false,
+    val gpsWarning: String? = null,
     val route: RouteSnapshot? = null,
     val gpsFix: GpsFix? = null
 )
