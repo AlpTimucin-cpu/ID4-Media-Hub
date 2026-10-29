@@ -237,7 +237,7 @@ fun CockpitScreen(
                         .width(maxWidth * .31f)
                         .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
                         .verticalScroll(rememberScrollState())
-                ) { RoutePanel(visibleRoute, routeState) }
+                ) { RoutePanel(visibleRoute, routeState, state) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
@@ -252,7 +252,7 @@ fun CockpitScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state) }
                     GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute) }
                 }
             }
@@ -418,7 +418,7 @@ private fun MetricLine(title: String, value: String) {
 }
 
 @Composable
-private fun RoutePanel(route: RouteSnapshot?, selection: NavigationRouteState) {
+private fun RoutePanel(route: RouteSnapshot?, selection: NavigationRouteState, model: CockpitUiState) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
     if (route == null) {
@@ -443,7 +443,15 @@ private fun RoutePanel(route: RouteSnapshot?, selection: NavigationRouteState) {
     MetricLine("Kalan · GPS", CockpitFormat.distance(route?.remainingKm))
     MetricLine("Tahmini sürüş", CockpitFormat.minutes(route?.estimatedDriveMinutes))
     MetricLine("Tahmini varış saati", CockpitFormat.eta(route?.estimatedArrivalEpochMs))
-    MetricLine("Varış SoC · MODEL", CockpitFormat.percent(route?.estimatedArrivalSocPercent))
+    MetricLine("Varış SoC · MODEL/TAHMİN", CockpitFormat.percent(route?.estimatedArrivalSocPercent))
+    MetricLine("Şarj ihtiyacı · MODEL/TAHMİN", when(model.chargingNeededEstimate) {
+        true -> "Rezerv için şarj gerekiyor"
+        false -> "Hesaba göre gerekmiyor"
+        null -> "—"
+    })
+    model.energyEstimateStatus?.let { message ->
+        Text("MODEL/TAHMİN oluşturulamadı: $message", color = SoftText, fontSize = 10.sp)
+    }
     MetricLine("Önerilen DC durak", route?.suggestedDcStops?.takeIf { it >= 0 }?.toString() ?: "—")
     Text("OSRM ETA trafiksiz MODEL; şarj süresi ayrıca hesaplanır.",
         color = SoftText, fontSize = 10.sp,
