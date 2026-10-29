@@ -1,6 +1,7 @@
 package tr.id4.mediahub.nativecockpit.presentation.navigation
 
 import android.content.Context
+import tr.id4.mediahub.nativecockpit.BuildConfig
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -49,6 +51,7 @@ data class VoiceUiState(
 
 sealed interface RouteLoadStatus {
     data object Idle : RouteLoadStatus
+    data object Empty : RouteLoadStatus
     data object Loading : RouteLoadStatus
     data class Success(val routeId: String) : RouteLoadStatus
     data class Error(val message: String) : RouteLoadStatus
@@ -59,7 +62,8 @@ data class NavigationUiState(
     val planner: RoutePlannerUiState = RoutePlannerUiState(),
     val voice: VoiceUiState = VoiceUiState(),
     val routeState: NavigationRouteState = NavigationRouteState(),
-    val loadStatus: RouteLoadStatus = RouteLoadStatus.Idle
+    val loadStatus: RouteLoadStatus = RouteLoadStatus.Empty,
+    val simulationEnabled: Boolean = false
 )
 
 /** Single source of truth for the route editor AND the main navigation panel. */
@@ -92,6 +96,26 @@ class NavigationViewModel @Inject constructor(
     private val progress = RouteProgressTracker()
     private val ttsProgress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
+    private val _simulationEnabled = MutableStateFlow(false)
+    private val _simulationFrame = MutableStateFlow<SimulationFrame?>(null)
+    private var gpsWaitSinceMs = System.currentTimeMillis()
+
+    private data class DataSources(
+        val telemetry: VehicleTelemetry,
+        val gps: GpsFix?,
+        val simulated: Boolean
+    )
+
+    // Real OBD and real FusedLocation are never overwritten by test data.
+    private val sources = combine(
+        vehicleRepository.telemetry, locationRepository.gpsFix,
+        _simulationEnabled, _simulationFrame
+    ) { telemetry, gps, enabled, frame ->
+        if (enabled) DataSources(
+            frame?.telemetry ?: VehicleTelemetry(),
+            frame?.fix, true
+        ) else DataSources(telemetry, gps, false)
+    }
     private val _gpsError = MutableStateFlow<String?>(null)
     val gpsError: StateFlow<String?> = _gpsError.asStateFlow()
     private val _planner = MutableStateFlow(RoutePlannerUiState())
@@ -111,17 +135,16 @@ class NavigationViewModel @Inject constructor(
         }
     }
     private val cockpit = combine(
-        vehicleRepository.telemetry,
-        routes.currentRoute,
-        locationRepository.gpsFix,
-        ticker
-    ) { telemetry, route, gps, now ->
-        val usableGps = gps?.takeIf { it.usable(now) }
-        val energy = estimateEnergy(route, telemetry, now)
+        sources, routes.currentRoute, ticker
+    ) { source, route, now ->
+        val usableGps = source.gps?.takeIf { it.usable(now) }
+        if (!source.simulated && usableGps != null) gpsWaitSinceMs = now
+        val telemetry = source.telemetry
+        val energy = estimateEnergy(route, telemetry, now, source.simulated)
         val baseRoute = progress.enrich(route, usableGps, now)
         val visualRoute = if (energy is BaselineEnergyResult.Estimate) {
             baseRoute?.copy(estimatedArrivalSocPercent = energy.arrivalSocPercent)
-        } else baseRoute
+        } else baseRoute?.copy(estimatedArrivalSocPercent = null)
         CockpitUiState(
             socPercent = telemetry.socPercent.current(now),
             speedKmh = telemetry.speedKmh.current(now),
@@ -130,6 +153,16 @@ class NavigationViewModel @Inject constructor(
             powerKw = telemetry.powerKw.current(now),
             chargingNeededEstimate = (energy as? BaselineEnergyResult.Estimate)?.chargingStopNeeded,
             energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
+            socSourceLabel = when {
+                source.simulated -> "SİMÜLASYON · TEST VERİSİ"
+                telemetry.socPercent.current(now) != null -> "GERÇEK OBD · ölçüm"
+                route != null -> "Varsayılan Başlangıç %80 · MODEL/TAHMİN"
+                else -> null
+            },
+            simulationEnabled = source.simulated,
+            gpsWarning = if (!source.simulated && _foreground.value &&
+                now - gpsWaitSinceMs > 10_000L && usableGps == null
+            ) "GPS Sinyali Bekleniyor..." else null,
             route = visualRoute,
             gpsFix = usableGps
         )
@@ -142,7 +175,8 @@ class NavigationViewModel @Inject constructor(
     private fun estimateEnergy(
         route: RouteSnapshot?,
         telemetry: VehicleTelemetry,
-        now: Long
+        now: Long,
+        simulated: Boolean
     ): BaselineEnergyResult? {
         if (route?.routeId == null) return null
         // Damaged/old preference types must not crash the navigation UI.
@@ -150,9 +184,10 @@ class NavigationViewModel @Inject constructor(
             if (modelPrefs.contains(key)) modelPrefs.getFloat(key, Float.NaN)
                 .toDouble().takeIf { it.isFinite() } else null
         }.getOrNull()
-        val capacity = readFloat("usableBatteryKwh") ?: Double.NaN
-        val consumption = readFloat("referenceWhPerKm") ?: Double.NaN
-        val reserve = readFloat("arrivalReservePct") ?: Double.NaN
+        // These deterministic values are only TEST FIXTURES in DEBUG simulation.
+        val capacity = if (simulated) 60.0 else readFloat("usableBatteryKwh") ?: Double.NaN
+        val consumption = if (simulated) 180.0 else readFloat("referenceWhPerKm") ?: Double.NaN
+        val reserve = if (simulated) 15.0 else readFloat("arrivalReservePct") ?: Double.NaN
         if (!capacity.isFinite() || capacity <= 0.0 ||
             !consumption.isFinite() || consumption <= 0.0 ||
             !reserve.isFinite() || reserve !in 0.0..100.0
@@ -160,12 +195,13 @@ class NavigationViewModel @Inject constructor(
 
         val fresh = telemetry.socPercent.current(now)
         val timed = telemetry.socPercent.measuredAtMillis
-        val soc = if (fresh != null && timed != null) {
-            DepartureSoc.FreshObd(fresh, timed)
-        } else if (readFloat("explicitAssumedSocPct") != null) {
-            // Never silently fall back to 80%/100% without a prior user selection.
-            DepartureSoc.ExplicitAssumption(readFloat("explicitAssumedSocPct")!!)
-        } else return BaselineEnergyResult.Unavailable("Güncel OBD SoC veya seçilmiş başlangıç SoC yok")
+        val soc = when {
+            simulated -> DepartureSoc.ExplicitAssumption(fresh ?: 80.0)
+            fresh != null && timed != null -> DepartureSoc.FreshObd(fresh, timed)
+            else -> DepartureSoc.ExplicitAssumption(
+                readFloat("explicitAssumedSocPct") ?: 80.0
+            ) // Explicit, visibly labelled 80% default, never a live measurement.
+        }
 
         return EvBaselineEnergyEstimator.estimate(
             BaselineEnergyInputs(
@@ -205,12 +241,24 @@ class NavigationViewModel @Inject constructor(
             planner.planning -> RouteLoadStatus.Loading
             planner.error != null -> RouteLoadStatus.Error(planner.error)
             route?.routeId != null -> RouteLoadStatus.Success(route.routeId)
-            else -> RouteLoadStatus.Idle
+            else -> RouteLoadStatus.Empty
         }
-        NavigationUiState(cockpit, planner, voice, routeState, phase)
+        NavigationUiState(cockpit, planner, voice, routeState, phase, cockpit.simulationEnabled)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationUiState())
 
     init {
+        viewModelScope.launch {
+            combine(_simulationEnabled, _foreground, routes.currentRoute) { enabled, front, route ->
+                Triple(enabled && BuildConfig.DEBUG, front, route)
+            }.collectLatest { (enabled, front, route) ->
+                _simulationFrame.value = null
+                if (enabled && front) {
+                    DebugRouteSimulation.frames(route).collect { frame ->
+                        _simulationFrame.value = frame
+                    }
+                }
+            }
+        }
         viewModelScope.launch {
             snapshotFlow { guide.status }.collect { status ->
                 _voice.update { it.copy(status = status) }
@@ -221,12 +269,12 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 routes.currentRoute,
-                locationRepository.gpsFix,
+                sources,
                 _foreground,
                 CarNavigationOwnership.navigating,
                 _voice
-            ) { route, gps, foreground, carNavigating, voice ->
-                SpeechInputs(route, gps, foreground && !carNavigating, voice)
+            ) { route, source, foreground, carNavigating, voice ->
+                SpeechInputs(route, source.gps, foreground && !carNavigating, voice)
             }.collect { current ->
                 if (!current.allowed || !current.voice.enabled ||
                     current.voice.status != NativeVoiceGuide.Status.READY &&
@@ -252,6 +300,7 @@ class NavigationViewModel @Inject constructor(
 
     fun setForeground(isForeground: Boolean) {
         _foreground.value = isForeground
+        if (isForeground) gpsWaitSinceMs = System.currentTimeMillis()
         if (!isForeground) {
             guide.stop()
             locationRepository.stop()
@@ -259,13 +308,27 @@ class NavigationViewModel @Inject constructor(
     }
     fun startGps() {
         _gpsError.value = null
-        locationRepository.start()
+        if (!_simulationEnabled.value) locationRepository.start()
+    }
+
+    fun setSimulationEnabled(enabled: Boolean) {
+        val next = BuildConfig.DEBUG && enabled
+        if (_simulationEnabled.value == next) return
+        guide.stop()
+        policy.reset()
+        _simulationFrame.value = null
+        _simulationEnabled.value = next
+        gpsWaitSinceMs = System.currentTimeMillis()
+        _gpsError.value = null
+        if (next) locationRepository.stop()
+        else if (_foreground.value) locationRepository.start()
     }
     fun stopGps() = locationRepository.stop()
 
     /** Last known Fused fix, delivered only after the user grants runtime permission. */
     @Suppress("DEPRECATION")
     fun acceptLastLocation(location: android.location.Location?) {
+        if (_simulationEnabled.value) return
         if (location == null || location.isFromMockProvider || !location.hasAccuracy()) {
             reportGpsError("Konum okunamadı. GPS'i ve hassas konumu kontrol et.")
             return
@@ -363,6 +426,10 @@ class NavigationViewModel @Inject constructor(
     }
     /** Activity first verifies fine/coarse runtime permission. */
     fun useCurrentGps() {
+        if (_simulationEnabled.value) {
+            _planner.update { it.copy(error = "Simülasyonda başlangıç ve varışı adres aramasından seç.") }
+            return
+        }
         gpsJob?.cancel(); originJob?.cancel(); planningJob?.cancel(); routes.clear()
         gpsJob = viewModelScope.launch {
             _planner.update { it.copy(locatingGps = true, originFromGps = false,
@@ -408,12 +475,20 @@ class NavigationViewModel @Inject constructor(
                 return@launch
             }
             _planner.update { it.copy(planning = true, error = null) }
+            routes.clear() // Don't retain a successful stale route during failed replanning.
             try {
                 when (val result = routes.calculate(start, target)) {
                     is RouteCalculationResult.Success ->
                         _planner.update { it.copy(planning = false, error = null) }
                     is RouteCalculationResult.Failure ->
-                        _planner.update { it.copy(planning = false, error = result.message) }
+                        _planner.update { it.copy(
+                            planning = false,
+                            error = when {
+                                result.message.contains("internet", ignoreCase = true) ->
+                                    "İnternet Bağlantısı Yok"
+                                else -> "Rota Hesaplanamadı (OSRM Hatası): " + result.message.take(90)
+                            }
+                        ) }
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
