@@ -192,7 +192,7 @@ fun MapLibreCockpit(
                     return@OnMapClickListener true
                 }
                 val hits=map.queryRenderedFeatures(map.projection.toScreenLocation(point),
-                    STATION_DC_LAYER,STATION_RING_LAYER,STATION_ALL_LAYER)
+                    STATION_PLANNED_LAYER,STATION_DC_LAYER,STATION_RING_LAYER,STATION_ALL_LAYER)
                 val id=hits.firstOrNull()?.let { f ->
                     if(f.hasProperty("stationId")) f.getStringProperty("stationId") else null
                 }
