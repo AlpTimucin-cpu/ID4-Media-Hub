@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import tr.id4.mediahub.nativecockpit.BuildConfig
 import tr.id4.mediahub.nativecockpit.presentation.map.MapLibreCockpit
 import tr.id4.mediahub.nativecockpit.domain.model.RouteSnapshot
+import tr.id4.mediahub.nativecockpit.domain.model.RouteWeatherState
 import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
 import tr.id4.mediahub.nativecockpit.domain.model.StationFilter
 import tr.id4.mediahub.nativecockpit.domain.model.GeoViewport
@@ -78,6 +79,7 @@ fun CockpitScreen(
     onGpsClick: () -> Unit,
     gpsError: String? = null,
     chargingUi: ChargingUiState,
+    weatherUi: RouteWeatherState,
     onStationFilter: (StationFilter) -> Unit,
     onMapViewport: (GeoViewport) -> Unit,
     onRefreshStations: () -> Unit,
@@ -112,6 +114,32 @@ fun CockpitScreen(
         onChooseAlternative=onRouteAlternative,onClear=onRouteClear
     )
     var selectedStation by remember { mutableStateOf<ChargingStation?>(null) }
+    var showCorridor by remember { mutableStateOf(false) }
+    if (showCorridor) {
+        ModalBottomSheet(
+            onDismissRequest = { showCorridor = false },
+            containerColor = Color(0xFF0A1728),
+            contentColor = Color.White
+        ) {
+            Column(Modifier.fillMaxWidth().heightIn(max = 450.dp)
+                .verticalScroll(rememberScrollState()).padding(16.dp)) {
+                Text("Rota Üzeri DC Şarj İstasyonları",
+                    style = MaterialTheme.typography.titleLarge)
+                chargingUi.corridorStations.forEach { station ->
+                    TextButton(onClick = {
+                        showCorridor = false
+                        selectedStation = station
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Text(station.name + " · " + station.operator,
+                            color = Color.White, maxLines = 2)
+                    }
+                }
+                if (chargingUi.corridorStations.isEmpty()) {
+                    Text("Rota çizgisine 2 km içinde doğrulanmış DC kaydı yok.")
+                }
+            }
+        }
+    }
     var showVoiceSettings by remember { mutableStateOf(false) }
     if (showVoiceSettings) {
         AlertDialog(
@@ -226,6 +254,9 @@ fun CockpitScreen(
                 gpsFix = state.gpsFix,
                 routePoints = visibleRoute?.routePoints ?: emptyList(),
                 stations = chargingUi.visible,
+                weatherPoints = weatherUi.points.takeIf {
+                    weatherUi.routeId == visibleRoute?.routeId
+                }.orEmpty(),
                 onViewportChanged = onMapViewport,
                 onStationTapped = { selectedStation=it },
                 modifier = Modifier.fillMaxSize()
@@ -261,7 +292,8 @@ fun CockpitScreen(
                         .width(maxWidth * .31f)
                         .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
                         .verticalScroll(rememberScrollState())
-                ) { RoutePanel(visibleRoute, routeState, state, loadStatus) }
+                ) { RoutePanel(visibleRoute, routeState, state, loadStatus,
+                    chargingUi, weatherUi, { showCorridor = true }) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
@@ -276,7 +308,8 @@ fun CockpitScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus,
+                    chargingUi, weatherUi, { showCorridor = true }) }
                     GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute, state.simulationEnabled) }
                 }
             }
@@ -315,10 +348,11 @@ private fun ChargingFilters(ui: ChargingUiState,
                     StationFilter.ALL -> "Tümü"
                     StationFilter.DC -> "DC"
                     StationFilter.ROUTE_CCS -> "Rota CCS"
+                    StationFilter.ROUTE_DC -> "Rota DC"
                 }
                 TextButton(onClick={ {onFilter(option)} },
                     modifier=Modifier.heightIn(min=48.dp),
-                    enabled=option!=StationFilter.ROUTE_CCS || ui.routeProvided) {
+                    enabled=(option != StationFilter.ROUTE_CCS && option != StationFilter.ROUTE_DC) || ui.routeProvided) {
                     Text(title,color=if(option==ui.selectedFilter) NeonGreen else Color.White,
                         fontSize=11.sp)
                 }
@@ -332,7 +366,7 @@ private fun ChargingFilters(ui: ChargingUiState,
             Text("Önce gerçek rota oluştur",color=Color.White,fontSize=10.sp)
         Text(ui.verifiedAtUtc?.let { "Kaynak doğrulama: $it" } ?: "Kaynak tarihi bilinmiyor",
             color=SoftText,fontSize=9.sp)
-        Text("Yeşil halka: çizgiye ≤2 km (sapma süresi değil)",color=SoftText,fontSize=9.sp)
+        Text("Turkuaz halka: rotaya <2 km DC (sürüş sapması değil)",color=SoftText,fontSize=9.sp)
     }
 }
 
@@ -446,7 +480,10 @@ private fun RoutePanel(
     route: RouteSnapshot?,
     selection: NavigationRouteState,
     model: CockpitUiState,
-    loadStatus: RouteLoadStatus
+    loadStatus: RouteLoadStatus,
+    charging: ChargingUiState,
+    weather: RouteWeatherState,
+    onRouteDcClick: () -> Unit
 ) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
@@ -491,7 +528,24 @@ private fun RoutePanel(
     model.energyEstimateStatus?.let { message ->
         Text("MODEL/TAHMİN oluşturulamadı: $message", color = SoftText, fontSize = 10.sp)
     }
-    MetricLine("Önerilen DC durak", route?.suggestedDcStops?.takeIf { it >= 0 }?.toString() ?: "—")
+    TextButton(onClick = onRouteDcClick,
+        enabled = charging.routeProvided,
+        modifier = Modifier.fillMaxWidth()) {
+        Text("Rota Üzeri: ${charging.corridorCount?.toString() ?: "—"} Adet DC İstasyonu",
+            color = Turquoise, fontSize = 12.sp)
+    }
+    val destinationWeather = weather.destination?.takeIf {
+        route?.routeId != null && weather.routeId == route.routeId
+    }
+    MetricLine("Varış bölgesi · Güncel hava tahmini", destinationWeather?.let {
+        "${it.summaryTr} · ${it.temperatureC.toInt()}°C"
+    } ?: if(weather.loading) "Hava tahmini yükleniyor…" else "—")
+    MetricLine("Varış bölgesi · Rüzgâr", destinationWeather?.let {
+        "${it.windSpeedKmh.toInt()} km/sa"
+    } ?: "—")
+    if (weather.error != null && route?.routeId == weather.routeId) {
+        Text(weather.error, color = SoftText, fontSize = 10.sp)
+    }
     Text("OSRM ETA trafiksiz MODEL; şarj süresi ayrıca hesaplanır.",
         color = SoftText, fontSize = 10.sp,
         modifier = Modifier.padding(top = 7.dp))
