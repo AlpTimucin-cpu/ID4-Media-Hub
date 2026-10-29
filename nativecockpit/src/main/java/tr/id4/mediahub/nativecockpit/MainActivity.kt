@@ -160,11 +160,11 @@ class MainActivity : ComponentActivity() {
                     onRouteDestinationChange = navigation::editDestination,
                     onRouteOriginSelected = navigation::selectOrigin,
                     onRouteDestinationSelected = navigation::selectDestination,
-                    onRouteFromGps = { requestGps(true) },
+                    onRouteFromGps = { if (ui.simulationEnabled) navigation.useCurrentGps() else requestGps(true) },
                     onRoutePlan = navigation::plan,
                     onRouteAlternative = navigation::selectAlternative,
                     onRouteClear = navigation::clearRoute,
-                    onGpsClick = { requestGps(false) },
+                    onGpsClick = { if (!ui.simulationEnabled) requestGps(false) },
                     gpsError = gpsError,
                     chargingUi = stations,
                     onStationFilter = charging::changeFilter,
@@ -181,7 +181,12 @@ class MainActivity : ComponentActivity() {
                     voiceVolume = ui.voice.volume,
                     onVoiceVolumeChange = navigation::setVoiceVolume,
                     voiceStatus = ui.voice.status,
-                    onVoiceTest = navigation::testVoice
+                    onVoiceTest = navigation::testVoice,
+                    onSimulationToggle = { enabled ->
+                        // Never mix a genuine Bluetooth session with synthetic frames.
+                        if (enabled) obd.disconnect()
+                        navigation.setSimulationEnabled(enabled)
+                    }
                 )
             }
         }
