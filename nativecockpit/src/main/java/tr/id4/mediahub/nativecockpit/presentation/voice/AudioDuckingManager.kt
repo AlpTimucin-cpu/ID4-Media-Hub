@@ -9,7 +9,7 @@ import android.os.Looper
 
 /**
  * One audio focus owner for short navigation speech.
- * Android ducks cooperative music players; this does NOT alter system stream volume.
+ * Android ducks cooperative media apps; no stream volume or DRM manipulation.
  */
 class AudioDuckingManager(
     context: Context,
@@ -20,17 +20,17 @@ class AudioDuckingManager(
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    private val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val manager =
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val main = Handler(Looper.getMainLooper())
     private val listener = AudioManager.OnAudioFocusChangeListener { change ->
         if (change == AudioManager.AUDIOFOCUS_LOSS ||
             change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
             change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
         ) {
-            // Ignore stale queued callbacks after release()/close().
-            // Guidance speech must not overlap another app taking focus.
             main.post {
-                if (isHeldAndOpen()) onFocusLost()
+                // Late callbacks must not resurrect/interrupt closed TTS.
+                if (lease.shouldStopAfterLoss()) onFocusLost()
             }
         }
     }
@@ -41,31 +41,15 @@ class AudioDuckingManager(
         .setOnAudioFocusChangeListener(listener, main)
         .build()
 
-    private var held = false
-    private var closed = false
+    private val lease = AudioFocusLease(
+        requestFocus = {
+            manager.requestAudioFocus(focusRequest) ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        },
+        abandonFocus = { manager.abandonAudioFocusRequest(focusRequest) }
+    )
 
-    @Synchronized
-    private fun isHeldAndOpen(): Boolean = held && !closed
-
-    @Synchronized
-    fun acquire(): Boolean {
-        if (closed) return false
-        if (held) return true
-        held = manager.requestAudioFocus(focusRequest) ==
-            AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        return held
-    }
-
-    @Synchronized
-    fun release() {
-        if (held) manager.abandonAudioFocusRequest(focusRequest)
-        held = false
-    }
-
-    @Synchronized
-    override fun close() {
-        if (closed) return
-        closed = true // Guard callbacks before relinquishing focus.
-        release()
-    }
+    fun acquire(): Boolean = lease.acquire()
+    fun release() = lease.release()
+    override fun close() = lease.close()
 }
