@@ -71,21 +71,25 @@ class Elm327SessionTest {
         assertEquals(3, adapter.connections)
         assertTrue(adapter.disconnections >= 3)
         assertFalse(adapter.connected)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("3"))
+        assertEquals(ElmSessionPhase.ERROR, session.state.value.phase)
+        assertTrue(session.state.value.error?.contains("denemede") == true)
         // The caller/controller must publish the error to ObdConnectionState.ERROR.
         session.close()
     }
 
-    @Test fun disposedSessionCannotReconnectSilently() = runBlocking {
+    @Test fun closedSessionCanInitializeAgainWithFreshTransportState() = runBlocking {
         val adapter = FakeTransport()
         val session = Elm327Session(adapter)
         session.initialize()
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
         session.close()
-        assertThrows(IllegalStateException::class.java) {
-            runBlocking { session.initialize() }
-        }
-        assertEquals(1, adapter.connections)
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
         assertFalse(adapter.connected)
+        session.initialize() // explicit caller reconnect after close
+        assertEquals(2, adapter.connections)
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        assertEquals(2, adapter.commands.count { it == "ATZ" })
+        session.close()
     }
 
     @Test fun dangerousNonReadCommandsAreRejected(): Unit = runBlocking {
