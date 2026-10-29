@@ -54,6 +54,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
 import tr.id4.mediahub.nativecockpit.presentation.media.ParkedStreamingDialog
+import tr.id4.mediahub.nativecockpit.presentation.voice.TtsPackageWarningDialog
 
 private val CardShape = RoundedCornerShape(22.dp)
 
@@ -146,6 +147,15 @@ fun CockpitScreen(
         }
     }
     var showVoiceSettings by remember { mutableStateOf(false) }
+    var showTtsMissing by remember { mutableStateOf(false) }
+    LaunchedEffect(voiceStatus) {
+        if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) {
+            showTtsMissing = true
+        }
+    }
+    if (showTtsMissing) {
+        TtsPackageWarningDialog(onDismiss = { showTtsMissing = false })
+    }
     if (showVoiceSettings) {
         DarkGlassDialog(
             onDismissRequest = { showVoiceSettings = false },

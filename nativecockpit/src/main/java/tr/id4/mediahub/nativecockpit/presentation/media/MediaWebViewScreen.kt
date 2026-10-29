@@ -2,6 +2,11 @@ package tr.id4.mediahub.nativecockpit.presentation.media
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.webkit.WebChromeClient
+import android.util.Log
 import android.net.Uri
 import android.os.Build
 import android.webkit.CookieManager
@@ -85,6 +90,7 @@ fun MediaWebViewScreen(
     model: MediaWebViewViewModel = viewModel(key = "web-" + service.name)
 ) {
     var view by remember(service) { mutableStateOf<WebView?>(null) }
+    var exitFullscreen by remember(service) { mutableStateOf<(() -> Unit)?>(null) }
     val page by model.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(view, lifecycleOwner, verifiedParked) {
@@ -104,7 +110,11 @@ fun MediaWebViewScreen(
     }
     BackHandler(enabled = verifiedParked) {
         val current = view
-        if (current?.canGoBack() == true) current.goBack() else onClose()
+        when {
+            exitFullscreen != null -> exitFullscreen?.invoke()
+            current?.canGoBack() == true -> current.goBack()
+            else -> onClose()
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -137,7 +147,10 @@ fun MediaWebViewScreen(
         AndroidView(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             factory = { context ->
-                WebView(context).apply {
+                FrameLayout(context).apply {
+                    val host = this
+                    val browser = WebView(context).apply {
+                    val web = this
                     // No JavaScript bridge or WebChrome debugger is exposed.
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
@@ -153,6 +166,33 @@ fun MediaWebViewScreen(
                     }
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+                    webChromeClient = object : WebChromeClient() {
+                        private var custom: View? = null
+                        private var completion: CustomViewCallback? = null
+
+                        override fun onShowCustomView(customView: View, callback: CustomViewCallback) {
+                            if (!verifiedParked || custom != null) {
+                                callback.onCustomViewHidden()
+                                return
+                            }
+                            custom = customView
+                            completion = callback
+                            host.addView(customView, FrameLayout.LayoutParams(-1, -1))
+                            web.visibility = View.GONE
+                            exitFullscreen = { onHideCustomView() }
+                            Log.i("EYA-MEDIA-UAT", "WebView fullscreen entered")
+                        }
+
+                        override fun onHideCustomView() {
+                            custom?.let { host.removeView(it) }
+                            custom = null
+                            completion?.onCustomViewHidden()
+                            completion = null
+                            web.visibility = View.VISIBLE
+                            exitFullscreen = null
+                            Log.i("EYA-MEDIA-UAT", "WebView fullscreen exited")
+                        }
+                    }
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             webView: WebView,
@@ -166,10 +206,12 @@ fun MediaWebViewScreen(
 
                         override fun onPageStarted(webView: WebView, url: String?, favicon: Bitmap?) {
                             model.start()
+                            Log.d("EYA-MEDIA-UAT", "pageStarted service=" + service.name)
                         }
 
                         override fun onPageFinished(webView: WebView, url: String?) {
                             model.ready()
+                            Log.d("EYA-MEDIA-UAT", "pageFinished service=" + service.name)
                         }
 
                         override fun onReceivedError(
@@ -179,6 +221,7 @@ fun MediaWebViewScreen(
                         ) {
                             if (request.isForMainFrame) {
                                 model.error("Sayfa yüklenemedi. Bağlantıyı kontrol edin.")
+                                Log.e("EYA-MEDIA-UAT", "main-frame error code=" + error.errorCode)
                             }
                         }
 
@@ -200,23 +243,27 @@ fun MediaWebViewScreen(
                     }
                     view = this
                     if (safePage(service.url, service)) loadUrl(service.url)
+                    }
+                    host.addView(browser, FrameLayout.LayoutParams(-1, -1))
                 }
             },
-            update = { webView ->
-                // Do not reload on Compose recomposition.
-                if (view !== webView) view = webView
-            },
-            onRelease = { released ->
-                // Release the actual AndroidView, never a remembered null/old view.
-                released.stopLoading()
-                released.loadUrl("about:blank")
-                released.webChromeClient = null
-                released.webViewClient = WebViewClient()
-                (released.parent as? android.view.ViewGroup)?.removeView(released)
-                released.removeAllViews()
-                released.destroy()
-                if (view === released) view = null
+            update = { _ -> Unit }, // Do not reload on recomposition.
+            onRelease = { host ->
+                exitFullscreen?.invoke()
+                exitFullscreen = null
+                view?.let { released ->
+                    released.stopLoading()
+                    released.loadUrl("about:blank")
+                    released.webChromeClient = null
+                    released.webViewClient = WebViewClient()
+                    (released.parent as? ViewGroup)?.removeView(released)
+                    released.removeAllViews()
+                    released.destroy()
+                }
+                host.removeAllViews()
+                view = null
                 model.clear()
+                Log.d("EYA-MEDIA-UAT", "WebView released")
             }
         )
     }

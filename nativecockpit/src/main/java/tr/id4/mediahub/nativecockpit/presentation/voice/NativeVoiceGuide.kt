@@ -48,9 +48,10 @@ class NativeVoiceGuide(context: Context) {
                     return@post
                 }
                 val locale = Locale("tr", "TR")
-                val supported = engine.isLanguageAvailable(locale)
+                val supported = TtsDebugLogger.languageAvailability(engine)
                 val selected = if (supported >= TextToSpeech.LANG_AVAILABLE)
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
+                TtsDebugLogger.selectedLanguage(selected)
                 if (selected < TextToSpeech.LANG_AVAILABLE) {
                     status = Status.TURKISH_VOICE_MISSING
                     lastError = "Türkçe TTS Paketi Eksik"
@@ -62,7 +63,8 @@ class NativeVoiceGuide(context: Context) {
                         override fun onStart(utteranceId: String) {
                             main.post {
                                 if (!closed && activeUtterance == utteranceId) {
-                                    Log.d(logTag, "Utterance started id=$utteranceId")
+                                    Log.d(logTag, "Utterance started")
+                                    TtsDebugLogger.event("utterance onStart")
                                     onStarted?.invoke()
                                     onStarted = null
                                     // After onStart, a future onError is observable
@@ -76,6 +78,7 @@ class NativeVoiceGuide(context: Context) {
                             synthesisError(utteranceId, "TTS seslendirme başarısız")
                         }
                         override fun onError(utteranceId: String, errorCode: Int) {
+                            TtsDebugLogger.utteranceError(errorCode)
                             synthesisError(utteranceId, "TTS ses hatası: $errorCode")
                         }
                         override fun onStop(utteranceId: String, interrupted: Boolean) {
@@ -162,7 +165,8 @@ class NativeVoiceGuide(context: Context) {
     private fun finish(id: String) {
         main.post {
             if (id == activeUtterance) {
-                Log.d(logTag, "Utterance finished id=$id")
+                Log.d(logTag, "Utterance finished")
+                TtsDebugLogger.event("utterance finished, audio focus released")
                 activeUtterance = null
                 onStarted = null
                 val fail = onFailed

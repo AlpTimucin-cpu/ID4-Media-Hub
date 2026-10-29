@@ -88,3 +88,16 @@ Ayrıntılar: [Teknik entegrasyon rehberi](docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRA
 Bu önizleme sürümü GPL-3.0 lisanslı açık kaynak medya tabanını değişikliklerle birlikte kullanır. Dağıtımda kaynak kod ve üçüncü taraf atıfları korunmalıdır. Tüm hak sahipliği, lisans koşulları ve bağımlılıklar için [LICENSE](LICENSE), [NOTICE.md](NOTICE.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) ve [trafik anahtarı güvenliği](SECURITY_TOMTOM.md) belgelerine bak.
 
 **Görünen uygulama adı: Elektrikli Yol Arkadaşım.** Geriye dönük uyumluluk nedeniyle bazı eski dahili dosya, sınıf ve paket tanımlayıcıları halen korunur. Bunlar ayrı bir kontrollü geçiş gerektirir; mevcut uygulama güncellemesini bozacak şekilde topluca değiştirilmez.
+
+## Native kokpit UAT: hava durumu, WebView ve PiP
+
+Bu bölüm **:nativecockpit** Kotlin/Compose prototipine aittir; ana Leaflet kokpiti ve özgün Mola servisi değiştirilmez.
+
+- **Open-Meteo:** Doğrulanmış OSRM GeoJSON rotasında başlangıç, her 100 km ve varış konumu örneklenir. `https://api.open-meteo.com/v1/forecast` servisine `current_weather=true` ve `current=temperature_2m,wind_speed_10m,weather_code` istenir; haritada `GeoJsonSource` + `SymbolLayer` sıcaklık ve ikon gösterebilir. `RouteWeatherViewModel` aktif gözlenirken 15 dakikada bir güncelleme dener. Bu **güncel hava modeli** verisidir; varış saatine göre tahmin değildir.
+- **Şarj ve hız:** Gerçek rota çizgisine en çok 5 km mesafedeki EPDK **DC** soketli istasyonlar `StationCorridor` ile süzülür; bu yol erişimi veya müsaitlik garantisi değildir. `AutomaticDcChargingPlanner` çıktıları `MODEL/TAHMİN` olarak kalır. `annotations=speed` OSRM yol profili hızıdır, **canlı trafik değildir**.
+- **WebView:** Güvenilir Park durumu doğrulanmışsa `MediaWebViewScreen` içinde `https://m.youtube.com` test edilebilir. JavaScript ve DOM storage açıktır; `WebChromeClient.onShowCustomView` tam ekran görüntüye yardımcı olur. Video codec/oturum/DRM desteği cihazda test edilmelidir.
+- **Netflix/Disney+/Prime:** WebView DRM engeline takılabilir. Kullanıcı onaylarsa yüklü resmî uygulama açılır; **üçüncü taraf uygulamayı bizim `PictureInPictureParams` ile zorla PiP'e alamayız**. Harici PiP, o uygulama ve Android'in kontrolündedir. Kokpitte `verifiedParked=false` olduğundan, gerçek ve güvenilir Park bağlantısı gelmeden medya testleri **BLOCKED** kalır.
+- **TTS:** `TtsDebugLogger` `LANG_MISSING_DATA`, `LANG_NOT_SUPPORTED`, `setLanguage` ve ses hatalarını Logcat'e yazar; Türkçe veri yoksa `TtsPackageWarningDialog` paket yükleme talimatı verir.
+- **Tema:** `CustomWarningDialog` yalnız uygulamaya ait uyarılar içindir. Android'in sistem konum izni penceresi Compose ile yeniden temalandırılamaz.
+
+Saha kontrol listeleri: [Native QA / UAT](docs/NATIVE_QA_UAT_TR.md).

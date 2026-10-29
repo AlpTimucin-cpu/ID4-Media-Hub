@@ -1,6 +1,7 @@
 package tr.id4.mediahub.nativecockpit.presentation.map
 
 import android.content.ComponentCallbacks2
+import android.util.Log
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -240,6 +241,8 @@ fun MapLibreCockpit(
             buildStationGeoJson(stations, routePoints, plannedStopIds)
         }
         updateStations(style, geo)
+        Log.d("EYA-MAP-UAT", "stationSource=" + (style.getSourceAs<GeoJsonSource>(STATION_SRC) != null) +
+            " dcRingLayer=" + (style.getLayer(STATION_RING_LAYER) != null))
     }
     LaunchedEffect(activeStyle, speedProfile) {
         activeStyle?.let { updateSpeedProfile(it, speedProfile) }
@@ -309,6 +312,10 @@ private fun buildStationGeoJson(
         Feature.fromGeometry(Point.fromLngLat(station.coordinate.longitude,
             station.coordinate.latitude),props)
     }
+    val dcAlong = features.count { it.getBooleanProperty("corridor") }
+    Log.d("EYA-MAP-UAT", "routeVertices=" + route.size +
+        " stations=" + stations.size + " corridorDc5km=" + dcAlong +
+        " proposed=" + plannedStopIds.size)
     return FeatureCollection.fromFeatures(features)
 }
 
@@ -404,6 +411,8 @@ private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
     }
     val data = FeatureCollection.fromFeatures(features)
     val source = style.getSourceAs<GeoJsonSource>(WEATHER_SRC)
+    Log.d("EYA-MAP-UAT", "weatherPoints=" + features.size +
+        " routeLayer=" + (style.getLayer(ROUTE_LAYER) != null))
     if (source != null) {
         source.setGeoJson(data)
     } else {
@@ -411,7 +420,7 @@ private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
         listOf("sun", "cloud", "rain").forEach { kind ->
             style.addImage("eya-weather-" + kind, weatherBitmap(kind))
         }
-        style.addLayer(SymbolLayer(WEATHER_LAYER, WEATHER_SRC).withProperties(
+        val weatherLayer = SymbolLayer(WEATHER_LAYER, WEATHER_SRC).withProperties(
             iconImage(Expression.get("weatherIcon")),
             iconSize(0.8f),
             iconAllowOverlap(true),
@@ -421,7 +430,10 @@ private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
             textHaloColor(android.graphics.Color.rgb(4, 28, 45)),
             textHaloWidth(2f),
             textAllowOverlap(true)
-        ))
+        )
+        if (style.getLayer(ROUTE_LAYER) != null) style.addLayerAbove(weatherLayer, ROUTE_LAYER)
+        else style.addLayer(weatherLayer)
+        Log.d("EYA-MAP-UAT", "weatherLayer=" + (style.getLayer(WEATHER_LAYER) != null))
     }
 }
 
@@ -470,18 +482,24 @@ private fun updateSpeedProfile(style: Style, segments: List<ProfileSpeedSegment>
         }.toList()
     val geo = FeatureCollection.fromFeatures(features)
     val src = style.getSourceAs<GeoJsonSource>(SPEED_SRC)
+    Log.d("EYA-MAP-UAT", "OSRM profileSpeedSegments=" + features.size + " LIVE_TRAFFIC=false")
     if (src != null) { src.setGeoJson(geo); return }
     style.addSource(GeoJsonSource(SPEED_SRC, geo))
-    style.addLayer(LineLayer(SPEED_NORMAL, SPEED_SRC).withFilter(
+    val normal = LineLayer(SPEED_NORMAL, SPEED_SRC).withFilter(
         Expression.eq(Expression.get("slow"), Expression.literal(false))
     ).withProperties(
         lineColor(android.graphics.Color.rgb(69, 201, 130)),
         lineWidth(3f)
-    ))
-    style.addLayer(LineLayer(SPEED_SLOW, SPEED_SRC).withFilter(
+    )
+    if (style.getLayer(ROUTE_LAYER) != null) style.addLayerAbove(normal, ROUTE_LAYER)
+    else style.addLayer(normal)
+    val slow = LineLayer(SPEED_SLOW, SPEED_SRC).withFilter(
         Expression.eq(Expression.get("slow"), Expression.literal(true))
     ).withProperties(
         lineColor(android.graphics.Color.rgb(236, 89, 87)),
         lineWidth(3f)
-    ))
+    )
+    style.addLayerAbove(slow, SPEED_NORMAL)
+    Log.d("EYA-MAP-UAT", "speedLayers normal=" + (style.getLayer(SPEED_NORMAL) != null) +
+        " slow=" + (style.getLayer(SPEED_SLOW) != null))
 }

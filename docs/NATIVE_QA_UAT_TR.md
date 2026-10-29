@@ -188,3 +188,54 @@ $adb = "C:\Users\Alp\Desktop\platform-tools\adb.exe"
 - Dil `QA-LOCALE-EN`: en-US cihazda TTS tr-TR kalmalı; 10/10 Türkçe manevra fixture'ı ve 20/20 sabit UI etiketi tutarlı; standart OSRM isteğine desteklenmeyen dil parametresi eklenmemeli.
 - Harici medya + PiP için olmayan yeteneklerin 'çalışıyor' olarak sunulmaması.
 - JUnit + Gradle assembleDebug başarılı olsa bile donanım UAT tamamlanmadan production-ready ilan edilmez.
+
+## Ek saha UAT protokolleri — TTS / WebView DRM / Harita katmanları
+
+**Kanıt zorunluluğu:** Her koşu için commit SHA, APK sürümü, cihaz/Android/WebView/TTS sürümleri, test tarihi, EPDK katalog tarihi, ağ, konum izni, Park doğrulama kaynağı ve ekran/log kanıtı kaydedilir. Fiziksel cihaz testi çalıştırılmadıkça PASS verilmez; koşul sağlanmıyorsa **BLOCKED**.
+
+### QA-TTS-PACK — TTS Paket Kontrolü
+
+- [ ] Android **Ayarlar > Dil ve Giriş > Metin Okuma** altında Türkçe konuşma veri paketini kontrol et (telefon modeline göre menü adı değişebilir).
+- [ ] Ses ekranından **Türkçe ses testi**ni 10 kez başlat; duyulan metin Türkçe olmalı. Ses motoru/cihaz ses çıkışı ayrıca kontrol edilmeli.
+- [ ] Logcat: `EYA-TTS-UAT` satırlarında `LANG_AVAILABLE` veya `LANG_COUNTRY_AVAILABLE`; hata koşulunda `LANG_MISSING_DATA` / `LANG_NOT_SUPPORTED`; `setLanguage` sonucunu kaydet.
+- [ ] Türkçe ses paketi yoksa kullanıcıda **Türkçe TTS Paketi Eksik** dialogu açılmalı. Motor tr-TR yerine sessizce en-US ses kullanmamalı; paketi devre dışı bırakamıyorsan negatif testi BLOCKED kaydet.
+- [ ] `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` konuşmada alınmalı; ses tamamlanınca, hata veya uygulama arka planında bırakılmalı. Harici oynatıcının ne kadar kısıldığı OS tarafından belirlenir.
+- [ ] Gerçek OSRM `legs[].steps` manevralarında 200 m / 50 m uyarılarının iki ayrı aşamada yalnız birer defa duyulduğunu güvenli koşullarda **yolcu gözlemcisi** doğrulasın. Güncel GPS yoksa BLOCKED.
+- [ ] FAIL halinde zaman damgası, motor sonucu, focus durumu ve Logcat ilişkisini kaydet. Hassas GPS koordinatı/ses kaydını paylaşırken maskele.
+
+### QA-WEBVIEW-DRM — WebView / Resmî uygulama / PiP
+
+- [ ] Ön koşul: güvenilir Park sinyali. Native kokpit halen `verifiedParked=false` verdiği için mevcut sürümde WebView uçtan uca testi **BLOCKED**; sahte Park sinyali ekleme.
+- [ ] Park doğrulanabildiğinde YouTube `https://m.youtube.com` aç; `EYA-MEDIA-UAT` altında `pageStarted` ve `pageFinished` veya HTTP/SSL hata kaydını al.
+- [ ] İzinli test videosunda oynatma/ses/codec ve tam ekrana gir-çık kontrolü yap; `WebChromeClient.onShowCustomView` / `onHideCustomView` Logcat, geri tuşu ve bellekte bırakılmış WebView olup olmadığını incele.
+- [ ] Netflix/Disney+/Prime düğmelerinde DRM uyarısı ve harici uygulamayı **kullanıcı onayıyla** açma davranışını doğrula. Resmî paket yüklü değilse anlamlı hata gösterilmeli.
+- [ ] Harici uygulama PiP destekliyorsa onun kendi PiP davranışını test et; bizim uygulamanın başka Activity'yi zorla PiP'e alması **beklenmez**.
+- [ ] Harici geçişte `MainActivity.onPause()` mevcut GPS/TTS/OBD yaşam döngüsünü durdurur; arka planda kesintisiz navigasyon bekleme. DRM siyah ekranını uygulama çökmesi olarak sınıflandırma.
+- [ ] FAIL kanıtı: cihaz/WebView sürümü, EYA-MEDIA-UAT satırları, ekran kaydı, izin/oturum/codec hata kodu. Hesap ve çerezleri maskele.
+
+### QA-MAP-LAYERS — Harita Katman Sıralaması ve DC 5 km
+
+- [ ] Geçerli OSRM `LineString` ve `eya-route-line` mevcut mu? Rota çizilmeden görüntü testi BLOCKED.
+- [ ] MapLibre kaynakları: `eya-weather-route`, `eya-osrm-speed-profile`, `eya-station-source`; katmanları: `eya-weather-markers`, `eya-osrm-speed-normal`, `eya-osrm-speed-slow`, `eya-station-route-outline`.
+- [ ] `style.addLayerAbove(weatherLayer, ROUTE_LAYER)` sonrasında sıcaklık + durum ikonu rota çizgisi üstünde görünmeli; 100 km aralıklı örnekleme ve tam varış koordinatını karşılaştır.
+- [ ] Kırmızı/yavaş ve yeşil/normal hız çizgilerini farklı zoomlarda görsel denetle. `annotations=speed` yalnız **OSRM profil hızı**; canlı trafik sonucu sayma.
+- [ ] `EYA-MAP-UAT` içindeki `corridorDc5km`, rota nokta sayısı ve katalog sayısını kaydet; EPDK DC soketli olup rotaya 5 km'den yakın istasyonlar turkuaz halka almalı, uzaktakiler almamalı.
+- [ ] Clustering nedeniyle düşük zoomda halka kaybolabilir; yüksek zoomda ve farklı rota alternatiflerinde tekrar kontrol et. Stil yeniden yüklemesi sonrası `weatherLayer=true`, `speedLayers normal=true slow=true`, `dcRingLayer=true` bekle.
+- [ ] Uygulama arka/öne geçişi, rota temizleme, harita kaydırma/zoom ve ağ hatalarında crash/ANR olmamalı.
+- [ ] FAIL halinde `EYA-MAP-UAT` çıktısı, stil/zoom, kaynak verisi SHA, işaret ID ve ekran kaydını iliştir.
+
+### QA-UI-DARK — Koyu GPS uyarısı
+
+- [ ] Uygulamanın **kendi** uyarı diyaloğunda `CustomWarningDialog` seçilmişse renkler `#0A0F1A`, beyaz metin, neon yeşil `#00E676` ve geri/kapat davranışı doğrulanır.
+- [ ] Android sisteminin konum izni diyaloğu başka bir pencereyse Compose temasıyla değiştirilemez. Ekran sahibini doğrula; sırf beyaz olduğu için uygulama UI hatası verme.
+- [ ] Mevcut Tesla/ABRP koyu kokpit ve cam panel, MapLibre, `EvBaselineEnergyEstimator` ve özgün Mola servisine regresyon olmamalı.
+
+### QA Logcat ve sonuç kaydı (Windows PowerShell)
+
+```powershell
+$adb = "C:\\Users\\Alp\\Desktop\\platform-tools\\adb.exe"
+& $adb logcat -c
+& $adb logcat -v time -s EYA-TTS-UAT EYA-Voice EYA-MEDIA-UAT EYA-MAP-UAT AndroidRuntime
+```
+
+`test_id | commit | cihaz/Android | test girdisi | gözlenen | PASS/FAIL/BLOCKED/INVALID | log/ekran kanıtı | issue`
