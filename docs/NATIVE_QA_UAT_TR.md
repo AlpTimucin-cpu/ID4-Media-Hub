@@ -40,6 +40,79 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 11. Uygulamanın kendi oynatıcısı Park bilgisiyle doğrulandığında (gelecekte), yalnız ona ait PiP geçişi/giriş/çıkışı sınanmalı; şimdiki sürümde bu uçtan uca akış yok.
 12. Android Auto DHU ve gerçek araç oturumlarında TTS sahipliği çakışmasını, bağlantı kesilmesi/yeniden bağlanma ve 13.000+ istasyon harita kaydırma akıcılığını ayrıca test et.
 
+## Ölçülebilir kabul testleri — ayrıntılı protokoller
+
+**Ölçüm kuralı:** Aşağıdaki sayılar Android'in garanti ettiği sistem sınırları değil, **proje içi QA kabul eşikleridir**. APK commit SHA'sı, cihaz modeli, Android sürümü, ekran yenileme hızı, şebeke koşulu, katalog sürümü, GPS/OBD veri kaynağı ve test tarihini her koşuyla kaydet. Isınma (warm-up) sonrasında aynı sürümü **üç bağımsız kez** ölç; tek iyi koşuyu başarı kabul etme. Telefonun güç tasarrufunu kapat; termal kısıtlamaya giren koşuyu geçersiz sayıp cihaz soğuyunca tekrarla. Performans için **release-benzeri, profillenebilir** build kullan; debug+Profiler'ın ölçümü etkileyebileceğini raporda belirt.
+
+### QA-MAP-13K — EPDK şarj istasyonu / MapLibre dayanıklılığı
+
+**Ön koşul:** Gerçek kaynak metadata'sı ve kayıt sayısı kaydedilmiş **en az 13.000 geçerli, tekilleştirilmiş koordinatlı** istasyon; tüm haritaya aktarılmış \`GeoJsonSource\` (filtre \`ALL\`). Katalog 13.000'in altındaysa testi **BLOCKED** işaretle, eksik veriyi gerçek EPDK kaydı diye sunma. İnterneti sabitle; harita karo ağı gecikmesini \`MapLibre\` işleme gecikmesinden ayır. Sabit 60 Hz görüntüleme koşulu tercih et; başka Hz'de de 16,7/33,3 ms eşiklerinin 60 Hz'e özgü olduğunu kaydet.
+
+**Test adımları:**
+1. Uygulamayı yeniden aç, \`ALL\` filtresini seç; 13.000+ kayıt sayısını ve \`withCluster(true)\`, \`withClusterRadius(60)\`, \`withClusterMaxZoom(13)\` ayarlarını doğrula. Bir kez veri/karo ısınması yap; ilk beklenen yükleme gecikmesini ayrı kaydet.
+2. Android Studio **System Trace / Perfetto FrameTimeline** kaydı başlat. 60 saniyede en az **30 yatay/dikey pan** hareketi yap; Türkiye ölçeğinden il ölçeğine geçişi kapsa. Her tekrarın geçerli \`FrameTimeline\` örnek sayısını yaz.
+3. Zoom **4 → 8 → 12 → 15 → 12 → 8 → 4** dizisini **10 kez** uygula. Ekrandaki küme sayılarının yakınlaştırmada açıldığını, tekli istasyonların kaybolmadan seçilebildiğini görsel olarak doğrula.
+4. **20 küme dairesine**, ardından **20 tekil istasyon işaretine** dokun. \`ACTION_UP\` ile görsel tepkinin ilk karesi arasını, küme zoom başlangıcı/bitişi ve istasyon ayrıntısı görünme süresini trace/video olay zamanlarıyla ölç. Yanlış istasyon seçimini ayrı say.
+5. Pan/zoom/tıklamayı toplam **10 dakika** sürdür; \`logcat\` içinde \`ANR\`, \`FATAL EXCEPTION\` ve \`OutOfMemoryError\` ara. 3 koşunun her birinde tüm eylemler tamamlanmalı.
+
+**Beklenen sonuç / PASS:** Her geçerli koşuda **0 crash / 0 ANR / 0 OOM**; haritada **1 saniyeyi aşan tepkisizlik 0**; **60 Hz'de görüntü kare süresi p95 ≤ 33,3 ms**, janky frame oranı **≤ %10** (FrameTimeline); pan/zoom ilk tepki **p95 ≤ 250 ms**; küme zoom animasyonu başlangıcı **p95 ≤ 250 ms**, tamamlanması **p95 ≤ 1.500 ms**; tekil marker ayrıntısı **p95 ≤ 500 ms**; **0 yanlış işaret/istasyon**. Bütün süreleri *ms*, p95'i ham örneklerden hesapla. Trace/video veya örnek sayısı yoksa ölçüm **BLOCKED**, gözleme dayalı PASS değil.
+
+**Başarısızlık durumunda:** İhlalin \`P95_FRAME\`, \`JANK\`, \`PAN_LATENCY\`, \`CLUSTER_ZOOM\`, \`MARKER_TAP\`, \`ANR\`, \`DATA_COUNT\` kodunu kaydet; ekran kaydı, \`Perfetto\` trace, ağ/karo gecikmesi ve kataloğun GeoJSON seri hale getirilme süresini iliştir. Kaynak güncellemelerinin gereksiz yeniden tetiklenmesini, ana thread'de GeoJSON oluşturulmasını, hatalı/tekrarlı istasyonları ve style reload'larını araştır. Ağ gecikmesi ise veri önbelleği/sunucu ile GPU/cluster hatasını ayrı raporla; düzeltmeden sonra **aynı 3 koşuyu tekrar** et.
+
+### QA-MEM-TTS — TTS / AudioFocus sızıntı ve lifecycle testi
+
+**Ön koşul:** Gerçek Türkçe TTS motoru yüklü. **Android Studio Memory Profiler** içinde Java/Kotlin heap, Native heap ve \`Allocations\` kaydı kullan. Aynı APK, aynı cihaz, aynı ekran; uygulama stabil olduğunda **2 dakika boşta bekleyip GC** sonrası başlangıç (B0) snapshot'ı al. Profiler'ın kendi ek yükünü not et.
+
+**Test adımları:**
+1. Uygulama ön plandayken **50 tur** yap: \`Türkçe ses testi\` başlat → bitmesini bekle → Mola veya test müziğinde geçici kısılma/geri dönüşü doğrula → **2 sn** bekle. Ayrıca her **10 turda** bir konuşma sürerken \`onPause\` (uygulamayı arka plana al) ve \`onResume\` dönüşünü test et.
+2. **10 kez** ekran yönünü değiştir; varsa etkin rota/TTS durumunu korurken eski Activity nesnelerinin tutulmadığını izle. TTS motorunu Activity her durakladığında \`shutdown()\` etme: \`onPause()\` için \`stop() + releaseFocus\`, ViewModel \`onCleared()\` / Android Auto \`onDestroy()\` için \`stop() + shutdown() + releaseFocus\` beklenir.
+3. **10., 20., 30., 40. ve 50. turda** ses tamamlandıktan sonra **30 sn** boşta bekle, GC tetikle ve \`Java heap\`, \`Native heap\`, \`PSS/Private Dirty\`, \`TextToSpeech\`, \`Activity\`, \`AudioDuckingManager\` retained-instance sayılarını kaydet. 50 tur sonunda ek olarak **2 dk** boşta bekle, GC ardından B50 ölç.
+4. Navigasyon ekranını kapatıp ilgili Activity/Screen'i yok et; heap dump'ta **eski Activity/Screen = 0 retained instance**, kapatılmış \`TextToSpeech\` ve eski ses odağı yöneticisi = **0** olmalı. Güncel yaşayan Activity ve tek TTS sahibi sızıntı sayılmaz.
+
+**Beklenen sonuç / PASS (QA bütçesi):** B50–B0 **Java heap ≤ +10 MiB**, **Native heap ≤ +15 MiB**, **toplam PSS ≤ +25 MiB**; 10→50. tur örneklerinde devamlı ve belirgin yükselme eğilimi yok (beş nokta üst üste artıyorsa **FAIL/inceleme**); süreç boyunca **0 crash / ANR**; biten/durdurulan her TTS sonrası \`AudioFocus\` en geç **1 sn** içinde serbest ve eski medya ses seviyesi kullanıcı müdahalesi olmadan geri dönmeli. Fiziksel Android'de AudioFocus \`abandon\` gözlenemiyorsa kabul **BLOCKED**.
+
+**Başarısızlık durumunda:** \`MEM_JAVA\`, \`MEM_NATIVE\`, \`MEM_PSS\`, \`RETAINED_ACTIVITY\`, \`TTS_SHUTDOWN\`, \`FOCUS_STUCK\` koduyla heap dump + allocation timeline + \`dumpsys meminfo\` + logcat ekle. \`Handler\` callback, \`UtteranceProgressListener\`, context/Activity referansı, yinelenen TTS örneği ve geç \`AudioFocus\` callback zincirini incele; düzeltmeden sonra B0'ı yeniden oluşturup 50 turu tekrar koş. Tekil GC dalgalanmasını kanıtlanmış leak olarak raporlama.
+
+### QA-EV-OBD — Enerji tahmini / ölçülmüş tüketim karşılaştırması
+
+**Ön koşul:** \`EvBaselineEnergyEstimator\` tahmini ile kıyaslanacak **bağımsız doğrulanmış** kWh tüketim ölçümü zorunlu. BMS toplam enerji sayaçlarının birimi/ölçeği belgelenmeli veya **doğrulanmış HV güç (kW)** değerleri zaman üzerinden (çekiş + HVAC + rejenerasyon işareti doğru) entegre edilmeli. Yalnız ekran SoC yüzdesi, denenmiş ham PID veya \`candidateBmsSocPercent\` **kWh ölçümü sayılmaz**. Projede güvenilir ölçüm kanalı yoksa bu UAT **BLOCKED**; modelin doğru olduğu iddia edilmez.
+
+**Test adımları:**
+1. Önceden kalibre edilmemiş, **en az 5 ayrı sürüş** belirle; her biri **≥ 30 km** ve ölçülmüş enerji **≥ 2 kWh**. Mümkünse şehir/otoyol, klima açık/kapalı, soğuk/ılık koşulları kapsa; güvenlik kuralları ve sürüş hız limitleri dışına çıkma.
+2. Kalkıştan **önce** gerçek OSRM rota ID/mesafesi, model sürümü, kalibre edilmiş kullanılabilir batarya kapasitesi (kWh), referans Wh/km, başlangıç SoC **kaynağı** (\`FreshObd\` / \`ExplicitAssumption\`), hedef rezerv, öngörülen hız ve sıcaklık ile klima durumunu kaydet. Tahmini kWh'ı **önceden dondur**; gerçek sürüş verisiyle geriye dönük değiştirme.
+3. OBD enerji ölçümünü **≥ 1 Hz** örnekle; zaman damgası, ölçüm birimi, işaret ve geçerliliği sakla. **Geçerli örnek kapsaması ≥ %95**, arada **> 5 sn** boşluk yoksa koşu geçerli. OBD kopan, yanlış ölçekli veya geçersiz verili koşuyu **INVALID**, gerçek ölçümü olmayan koşuyu **BLOCKED** olarak ayır.
+4. Varışta aynı enerji ölçümünden \`E_ölçüm_kWh\` hesapla; \`E_tahmin_kWh\` ile eşleştir. **Sapma (%) = 100 × (E_tahmin − E_ölçüm) / E_ölçüm**; mutlak sapma \`|sapma|\`. Tüm koşularda ağırlıklı toplam sapma \`100 × |ΣE_tahmin − ΣE_ölçüm| / ΣE_ölçüm\` olarak ayrıca yaz.
+5. Sonuçları \`run_id,date,commit,route_id,route_km,actual_km,start_soc_pct,soc_source,battery_usable_kwh,reference_wh_km,model_speed_kmh,actual_mean_speed_kmh,temp_c,climate_on,speed_multiplier,climate_multiplier,predicted_kwh,measured_kwh,signed_error_pct,absolute_error_pct,sample_coverage_pct,max_gap_s,measurement_source,result\` sütunlarıyla **CSV** dosyasına kaydet. Ham zaman serilerini ayrıca iliştir; kişisel konum izlerini paylaşmadan önce maskele.
+
+**Beklenen sonuç / PASS (ilk kalibrasyon hedefi):** Her **geçerli** sürüşte \`|sapma| ≤ %15\`; en az 5 sürüşün toplam enerji ağırlıklı sapması **≤ %10**; ölçüm kapsaması **≥ %95**; tahmin \`MODEL / TAHMİN\` diye etiketli; bayat OBD otomatik reddediliyor. Bu sınırlar proje kalibrasyon hedefidir; **ABRP düzeyinde doğruluk garantisi değildir**. 5 geçerli sürüş tamamlanmazsa **BLOCKED**, geçerli sürüşlerden biri limit dışındaysa **FAIL**.
+
+**Başarısızlık durumunda:** \`ENERGY_BIAS\`, \`ENERGY_TRIP\`, \`OBD_UNVERIFIED\`, \`SAMPLE_GAP\`, \`MODEL_SOURCE\` kodunu kaydet. Wh/km birim dönüşümlerini, rejenerasyon işaretini, batarya kapasitesi varsayımını, hızın tek anlık mı yoksa rota ortalaması mı olduğunu, HVAC/sıcaklık ve rota uzunluğu farklarını denetle. Kalibrasyon katsayılarını sadece ayrı **eğitim sürüşlerinde** ayarla; bu 5 doğrulama sürüşüne göre ayarlayıp aynı veriye PASS verme. Düzeltmeyi farklı 5 sürüşle yeniden test et.
+
+### QA-OBD-10X — 10 ardışık bağlantı / kopma döngüsü
+
+**Ön koşul:** Araç güvenli biçimde **park halinde**, test cihazı daha önce eşleştirilmiş, adaptör kullanıcıya ait. Kontağı defalarca aç/kapatmak yerine kontrollü test için adaptör gücünü kesmek veya erişim dışına çıkarmak tercih edilir; aracın ve elektronik sistemlerin güvenliği önceliklidir. SPP/BLE adaptör türünü, cihaz Android sürümünü, ECU/protokolü ve poll aralığını kaydet.
+
+**Test adımları:**
+1. Başlangıç durumu \`ObdPhase.DISCONNECTED\` olmalı; bağlı soket/GATT kalmamalı. Adaptöre bağlan, \`CONNECTING → CONNECTED\` geçişini ve \`ATZ → ATE0 → ATL0\` sırasını doğrula; **en az bir** salt-okunur \`010D\` sorgusunun yanıtını kaydet.
+2. **10 kez**, her birinde: bağlantıyı kur → **30 sn** stabil okuma → kontrollü olarak adaptörün güç/bağlantısını kes → yeni \`010D\` okuması dene → \`ERROR\` veya güvenli \`DISCONNECTED\` durumunu ve hata metnini gözle → adaptörü geri aç → uygulamanın **açık kullanıcı komutuyla** yeniden bağlan. Hata halinde arka planda sonsuz reconnect döngüsü beklenmez.
+3. Her turda süreleri ölç: \`t_connect\` = kullanıcı bağlan komutundan \`CONNECTED\` durumuna; \`t_loss\` = ilk başarısız okumadan \`ERROR/DISCONNECTED\` mesajına. Ayrıca adapter oturum sayısı, son ham yanıt zaman damgası, aynı anda açık soket/GATT ve \`ObdConnectionState.error\` alanını kaydet.
+4. 10. tur sonunda bir normal bağlantı daha dene, bağlantıyı **manuel kes**; uygulamayı arka plana al ve yeniden aç. Bağlantı kapalı kalmalı, kaybolmuş veya gecikmiş eski yanıt yeniden \`CONNECTED\` durumuna döndürmemeli.
+
+**Beklenen sonuç / PASS (cihaz QA hedefi):** **10/10** turda crash/ANR yok; her başlangıç bağlantısı **≤ 30 sn**; tek okuma hatasından itibaren politika gereği en çok **3 okuma denemesi**, \`ERROR\` veya \`DISCONNECTED\` UI mesajı **≤ 45 sn**; eş zamanlı **en fazla 1** canlı socket/GATT oturumu; ölçüm verisi mevcut \`TimedValue.current(now, 10_000)\` TTL'si dolduğunda **canlı gibi görünmemeli**; bağ kopması ve reconnect esnasında kilitlenme/yanlış ECU yanıtı yok; son manuel \`disconnect\` sonrası bağlantı açık kalmaz. Hata metninin UI'da görünmesi zorunlu; yalnızca logcat'te hata olması **FAIL**.
+
+**Başarısızlık durumunda:** \`OBD_TIMEOUT\`, \`OBD_RECONNECT\`, \`OBD_STATE\`, \`OBD_STALE\`, \`OBD_LEAK\`, \`OBD_CRASH\` koduyla tur numarası, SPP/BLE türü, Bluetooth HCI kaydı (mümkün ve hassas veriler maskeli ise), uygulama logcat, durumu gösteren ekran kaydı ve bağlantı sayacı ekle. \`Mutex\` kilitleri, \`BluetoothSocket.close()\`/GATT \`close()\`, eski callback'lerin yeni oturumu etkilemesi ve üç deneme sınırını incele. Sorunu düzelttikten sonra **10 turun tümünü yeniden** koş.
+
+### Sonuç kaydı şablonu
+
+Her QA protokolünde şu tek satır biçimini kullan:
+\`test_id | commit | cihaz/Android | tekrar sayısı | kaynak/veri sürümü | ölçülen değer(ler) | PASS/FAIL/BLOCKED/INVALID | kanıt yolu | issue no | yeniden test tarihi\`.
+
+- **PASS:** tüm zorunlu kanıtlar mevcut ve bütün eşikler karşılanmış.
+- **FAIL:** kanıt var ve en az bir kabul eşiği ihlal edilmiş.
+- **BLOCKED:** gerekli gerçek EPDK/OBD/PiP koşulu ya da ölçüm altyapısı yok; sonuç geçerli biçimde sınanamıyor.
+- **INVALID:** örnek kaybı, termal throttling veya bozuk ölçüm nedeniyle koşu karşılaştırılabilir değil; tekrar alınmalı.
+- Release kararı için kritik \`ANR\`, bellek sızıntısı, OBD yanlış canlı veri ve enerji kaynağı sahteciliği **0 açık hata** koşulu geçerlidir.
+
 ### ADB gözlem komutları (Windows PowerShell)
 ```powershell
 $adb = "C:\Users\Alp\Desktop\platform-tools\adb.exe"
@@ -48,8 +121,8 @@ $adb = "C:\Users\Alp\Desktop\platform-tools\adb.exe"
 ```
 
 ### UAT kabul ölçütleri
-- Sıfır FATAL EXCEPTION / ANR; TTS lifecycle testleri sırasında sürekli artan bellek kullanımı veya tutulmuş odağın olmaması.
-- OBD kopma sonrası uygulamanın kilitlenmemesi; hata görünmesi; geçersiz/bayat ölçümün canlı sunulmaması.
-- Enerji sonuçlarının `MODEL/TAHMİN` biçiminde gösterilmesi; canlı SoC yalnız doğrulanmış OBD verisinden.
+- Harita `QA-MAP-13K`: 13.000+ geçerli kaynak, 3 koşuda 0 ANR/OOM; 60 Hz'de p95 kare ≤ 33,3 ms, jank ≤ %10; işaret/küme gecikme eşikleri sağlanmalı.
+- TTS/AudioFocus `QA-MEM-TTS`: 50 tur sonrası GC ölçümünde Java ≤ +10 MiB, Native ≤ +15 MiB, PSS ≤ +25 MiB; önceki Activity/TTS referansları tutulmamalı ve ses odağı bırakılmalı.
+- OBD `QA-OBD-10X`: 10/10 bağlan-kop döngüsünde durum/hata UI'a iletilmeli; soket sızıntısı ve 10 sn TTL'yi aşan canlı değer bulunmamalı.
 - Harici medya + PiP için olmayan yeteneklerin 'çalışıyor' olarak sunulmaması.
 - JUnit + Gradle assembleDebug başarılı olsa bile donanım UAT tamamlanmadan production-ready ilan edilmez.
