@@ -22,6 +22,9 @@ fun ObdSettingsDialog(
     onDisconnect: () -> Unit,
     onMebDiagnostic: (String) -> Unit,
     onClearDiagnostic: () -> Unit,
+    simulationSupported: Boolean,
+    simulationEnabled: Boolean,
+    onSimulationToggle: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
@@ -30,17 +33,28 @@ fun ObdSettingsDialog(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text("OBD Bağlantısı ve MEB Teşhis",style=MaterialTheme.typography.titleLarge)
+                if (simulationSupported) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(Modifier.weight(1f)) {
+                            Text("SİMÜLASYON · TEST VERİSİ")
+                            Text("Gerçek araç verisi değildir; sadece DEBUG sürümünde.",
+                                style=MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked=simulationEnabled, onCheckedChange=onSimulationToggle)
+                    }
+                    HorizontalDivider()
+                }
                 Text("Bluetooth Classic SPP ELM327. Adaptörü önce Android Bluetooth ayarlarında eşleştirin.",
                     style=MaterialTheme.typography.bodySmall)
                 Text("Durum: ${state.phase}")
                 state.error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick=onRefresh, modifier=Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick=onRefresh, enabled=!simulationEnabled, modifier=Modifier.fillMaxWidth()) {
                     Text("Eşleştirilmiş cihazları yenile / izin iste")
                 }
                 if (state.devices.isEmpty()) Text("Eşleştirilmiş cihaz yok. Bu ekran tarama yapmaz.")
                 state.devices.forEach { device ->
                     OutlinedButton(onClick={onConnect(device.address)},
-                        enabled=state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
+                        enabled=!simulationEnabled && state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
                         modifier=Modifier.fillMaxWidth()) { Text(device.name) }
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -53,15 +67,15 @@ fun ObdSettingsDialog(
                         "Topluluk PID kaynakları cihazınızda doğrulanmadı; sonuçlar navigasyondaki SoC/SoH alanına aktarılmaz.",
                         style=MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick={ { onMebDiagnostic("22028C") } },
-                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text("BMS şarj yüzdesini oku · 22028C")
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E0E") } },
-                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text("Batarya maksimum sıcaklığı · 221E0E")
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E3D") } },
-                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text("Batarya akımı · yalnız ham yanıt · 221E3D")
                     }
                     if (state.diagnosticBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
