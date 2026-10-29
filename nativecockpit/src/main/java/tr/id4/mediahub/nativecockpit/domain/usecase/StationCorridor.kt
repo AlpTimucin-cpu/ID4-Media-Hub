@@ -50,6 +50,10 @@ object StationCorridor {
         position: GeoCoordinate, start: GeoCoordinate, end: GeoCoordinate
     ): Double {
         if (start == end) return Double.POSITIVE_INFINITY
+        // A point exactly on the segment must remain zero; Turf nearest-point
+        // interpolation can introduce small floating-point error here.
+        val projected = segmentDistanceMeters(position, start, end)
+        if (projected < 0.01) return projected
         val p = Point.fromLngLat(position.longitude, position.latitude)
         val line = listOf(
             Point.fromLngLat(start.longitude, start.latitude),
