@@ -76,13 +76,13 @@ object StationCorridor {
 
     fun isAlongRoute(station: ChargingStation, route: List<GeoCoordinate>): Boolean =
         station.hasDcCcs &&
-            (distanceMeters(station.coordinate, route) ?: Double.POSITIVE_INFINITY) <
+            (distanceMeters(station.coordinate, route) ?: Double.POSITIVE_INFINITY) <=
                 MAX_DISTANCE_METERS
 
     // DC is sufficient; never infer kW from an unverified powerRaw string.
     fun isDcAlongRoute(station: ChargingStation, route: List<GeoCoordinate>): Boolean =
         station.hasDc &&
-            (distanceMeters(station.coordinate, route) ?: Double.POSITIVE_INFINITY) <
+            (distanceMeters(station.coordinate, route) ?: Double.POSITIVE_INFINITY) <=
                 MAX_DISTANCE_METERS
 
     /** Index real route segments into small geographic cells, once per route. */
@@ -123,7 +123,7 @@ object StationCorridor {
             return segmentIndices.any { i ->
                 // Fast planar reject; Turf computes the accepted geodesic distance.
                 segmentDistanceMeters(p, route[i], route[i + 1]) < MAX_DISTANCE_METERS + 200.0 &&
-                    turfSegmentMeters(p, route[i], route[i + 1]) < MAX_DISTANCE_METERS
+                    turfSegmentMeters(p, route[i], route[i + 1]) <= MAX_DISTANCE_METERS
             }
         }
 
