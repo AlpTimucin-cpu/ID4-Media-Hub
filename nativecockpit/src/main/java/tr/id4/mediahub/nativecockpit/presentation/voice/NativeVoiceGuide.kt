@@ -30,6 +30,8 @@ class NativeVoiceGuide(context: Context) {
     private val ducking = AudioDuckingManager(context) { stop() }
     private val attrs: AudioAttributes = ducking.attributes
     private var activeUtterance: String? = null
+    private var onStarted: (() -> Unit)? = null
+    private var onFailed: (() -> Unit)? = null
     private var sequence = 0L
     private var closed = false
 
@@ -58,7 +60,16 @@ class NativeVoiceGuide(context: Context) {
                     engine.setSpeechRate(1.0f)
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String) {
-                            Log.d(logTag, "Utterance started id=$utteranceId")
+                            main.post {
+                                if (!closed && activeUtterance == utteranceId) {
+                                    Log.d(logTag, "Utterance started id=$utteranceId")
+                                    onStarted?.invoke()
+                                    onStarted = null
+                                    // After onStart, a future onError is observable
+                                    // but must not mark this already-spoken stage retryable.
+                                    onFailed = null
+                                }
+                            }
                         }
                         override fun onDone(utteranceId: String) { finish(utteranceId) }
                         override fun onError(utteranceId: String) {
@@ -78,7 +89,12 @@ class NativeVoiceGuide(context: Context) {
     }
 
     /** Returns false rather than speaking without a valid audio-focus grant. */
-    fun speak(text: String, volume: Float): Boolean {
+    fun speak(
+        text: String,
+        volume: Float,
+        onUtteranceStarted: (() -> Unit)? = null,
+        onUtteranceFailed: (() -> Unit)? = null
+    ): Boolean {
         if (closed || (status != Status.READY && status != Status.AUDIO_FOCUS_DENIED) ||
             text.isBlank() || text.length > 190)
             return false
@@ -94,6 +110,8 @@ class NativeVoiceGuide(context: Context) {
         lastError = null
         val id = "eya-voice-${++sequence}"
         activeUtterance = id
+        onStarted = onUtteranceStarted
+        onFailed = onUtteranceFailed
         val params = Bundle().apply {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,volume.coerceIn(.15f,1f))
         }
@@ -114,6 +132,10 @@ class NativeVoiceGuide(context: Context) {
     fun stop() {
         tts?.stop()
         activeUtterance = null
+        onStarted = null
+        val fail = onFailed
+        onFailed = null
+        fail?.invoke() // Do not consume a queued-but-never-started maneuver.
         releaseFocus()
     }
 
@@ -124,6 +146,10 @@ class NativeVoiceGuide(context: Context) {
                 lastError = reason
                 Log.e(logTag, "Utterance synthesis failed id=$id: $reason")
                 activeUtterance = null
+                onStarted = null
+                val fail = onFailed
+                onFailed = null
+                fail?.invoke()
                 releaseFocus()
             }
         }
@@ -134,6 +160,10 @@ class NativeVoiceGuide(context: Context) {
             if (id == activeUtterance) {
                 Log.d(logTag, "Utterance finished id=$id")
                 activeUtterance = null
+                onStarted = null
+                val fail = onFailed
+                onFailed = null
+                fail?.invoke()
                 releaseFocus()
             }
         }
