@@ -49,6 +49,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.GpsFix
 import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
 import tr.id4.mediahub.nativecockpit.domain.model.GeoViewport
 import tr.id4.mediahub.nativecockpit.domain.model.WeatherWaypoint
+import tr.id4.mediahub.nativecockpit.domain.model.ProfileSpeedSegment
 import tr.id4.mediahub.nativecockpit.domain.usecase.StationCorridor
 import tr.id4.mediahub.nativecockpit.domain.model.validRouteGeometry
 
@@ -63,6 +64,9 @@ private const val STATION_DC_LAYER = "eya-station-dc-icons"
 private const val STATION_ICON = "eya-station-bolt"
 private const val STATION_CLUSTER_LAYER = "eya-station-cluster-circles"
 private const val STATION_CLUSTER_COUNT_LAYER = "eya-station-cluster-count"
+private const val SPEED_SRC = "eya-osrm-speed-profile"
+private const val SPEED_SLOW = "eya-osrm-speed-slow"
+private const val SPEED_NORMAL = "eya-osrm-speed-normal"
 private const val WEATHER_SRC = "eya-weather-route"
 private const val WEATHER_LAYER = "eya-weather-markers"
 
@@ -73,6 +77,7 @@ fun MapLibreCockpit(
     routePoints: List<GeoCoordinate>,
     stations: List<ChargingStation>,
     weatherPoints: List<WeatherWaypoint>,
+    speedProfile: List<ProfileSpeedSegment> = emptyList(),
     onViewportChanged: (GeoViewport) -> Unit,
     onStationTapped: (ChargingStation) -> Unit,
     modifier: Modifier = Modifier
@@ -233,6 +238,9 @@ fun MapLibreCockpit(
             buildStationGeoJson(stations, routePoints)
         }
         updateStations(style, geo)
+    }
+    LaunchedEffect(activeStyle, speedProfile) {
+        activeStyle?.let { updateSpeedProfile(it, speedProfile) }
     }
     LaunchedEffect(activeStyle, weatherPoints) {
         activeStyle?.let { updateWeather(it, weatherPoints) }
@@ -426,4 +434,40 @@ private fun weatherBitmap(type: String): Bitmap {
         }
     }
     return bitmap
+}
+
+
+/** OSRM PROFILE speeds, never real-time traffic or measured congestion. */
+private fun updateSpeedProfile(style: Style, segments: List<ProfileSpeedSegment>) {
+    val features = segments.asSequence()
+        .filter { it.from.valid() && it.to.valid() &&
+            it.speedKmh.isFinite() && it.speedKmh in 0.0..300.0 }
+        .take(19_999)
+        .map { segment ->
+            val props = JsonObject().apply {
+                addProperty("slow", segment.speedKmh < 30.0)
+            }
+            Feature.fromGeometry(
+                LineString.fromLngLats(listOf(
+                    Point.fromLngLat(segment.from.longitude, segment.from.latitude),
+                    Point.fromLngLat(segment.to.longitude, segment.to.latitude)
+                )), props
+            )
+        }.toList()
+    val geo = FeatureCollection.fromFeatures(features)
+    val src = style.getSourceAs<GeoJsonSource>(SPEED_SRC)
+    if (src != null) { src.setGeoJson(geo); return }
+    style.addSource(GeoJsonSource(SPEED_SRC, geo))
+    style.addLayer(LineLayer(SPEED_NORMAL, SPEED_SRC).withFilter(
+        Expression.eq(Expression.get("slow"), Expression.literal(false))
+    ).withProperties(
+        lineColor(android.graphics.Color.rgb(69, 201, 130)),
+        lineWidth(3f)
+    ))
+    style.addLayer(LineLayer(SPEED_SLOW, SPEED_SRC).withFilter(
+        Expression.eq(Expression.get("slow"), Expression.literal(true))
+    ).withProperties(
+        lineColor(android.graphics.Color.rgb(236, 89, 87)),
+        lineWidth(3f)
+    ))
 }
