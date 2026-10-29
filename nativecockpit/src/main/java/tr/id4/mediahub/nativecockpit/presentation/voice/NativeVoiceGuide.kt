@@ -99,7 +99,7 @@ class NativeVoiceGuide(context: Context) {
             text.isBlank() || text.length > 190)
             return false
         val engine = tts ?: return false
-        stop() // Flush any previous announcement and release its audio focus.
+        stopCurrent(notifyFailure = false) // Replace old utterance without canceling the NEW cue.
         if (!ducking.acquire()) {
             status = Status.AUDIO_FOCUS_DENIED
             lastError = "Ses odağı alınamadı"
@@ -129,13 +129,17 @@ class NativeVoiceGuide(context: Context) {
         return true
     }
 
-    fun stop() {
+    fun stop() = stopCurrent(notifyFailure = true)
+
+    private fun stopCurrent(notifyFailure: Boolean) {
         tts?.stop()
         activeUtterance = null
         onStarted = null
         val fail = onFailed
         onFailed = null
-        fail?.invoke() // Do not consume a queued-but-never-started maneuver.
+        // A replacement maneuver may already be pending: its policy state
+        // must not be cleared by the PREVIOUS utterance's callback.
+        if (notifyFailure) fail?.invoke()
         releaseFocus()
     }
 
