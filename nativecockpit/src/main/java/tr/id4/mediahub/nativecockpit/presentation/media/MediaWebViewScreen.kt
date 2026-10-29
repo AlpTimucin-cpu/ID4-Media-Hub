@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,7 +58,7 @@ fun MediaWebViewScreen(
     onExternalFallback: (MediaWebsite) -> Unit,
     onClose: () -> Unit
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycleCompat()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var webView by remember { mutableStateOf<WebView?>(null) }
     var fullscreen by remember { mutableStateOf<View?>(null) }
     var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
@@ -190,7 +191,3 @@ fun MediaWebViewScreen(
     }
 }
 
-// This file uses a plain lifecycle-aware Flow collector, without Hilt or media dependencies.
-@Composable
-private fun <T> StateFlow<T>.collectAsStateWithLifecycleCompat(): State<T> =
-    androidx.lifecycle.compose.collectAsStateWithLifecycle(this)
