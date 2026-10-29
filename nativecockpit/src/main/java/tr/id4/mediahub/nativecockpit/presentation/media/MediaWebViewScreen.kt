@@ -179,17 +179,19 @@ fun MediaWebViewScreen(
             update = { webView ->
                 // Do not reload on Compose recomposition.
                 if (view !== webView) view = webView
+            },
+            onRelease = { released ->
+                // Release the actual AndroidView, never a remembered null/old view.
+                released.stopLoading()
+                released.loadUrl("about:blank")
+                released.webChromeClient = null
+                released.webViewClient = WebViewClient()
+                (released.parent as? android.view.ViewGroup)?.removeView(released)
+                released.removeAllViews()
+                released.destroy()
+                if (view === released) view = null
+                model.clear()
             }
         )
-        DisposableEffect(service) {
-            val current = view
-            onDispose {
-                current?.stopLoading()
-                current?.loadUrl("about:blank")
-                current?.removeAllViews()
-                current?.destroy()
-                view = null
-            }
-        }
     }
 }
