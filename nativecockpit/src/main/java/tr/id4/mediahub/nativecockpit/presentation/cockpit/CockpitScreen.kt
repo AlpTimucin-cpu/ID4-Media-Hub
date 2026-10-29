@@ -43,6 +43,8 @@ import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
 import tr.id4.mediahub.nativecockpit.domain.model.StationFilter
 import tr.id4.mediahub.nativecockpit.domain.model.GeoViewport
 import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingUiState
+import tr.id4.mediahub.nativecockpit.presentation.charging.RouteChargingUiState
+import tr.id4.mediahub.nativecockpit.domain.usecase.AutomaticChargePlan
 import tr.id4.mediahub.nativecockpit.presentation.voice.NativeVoiceGuide
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerUiState
 import tr.id4.mediahub.nativecockpit.presentation.route.RoutePlannerDialog
@@ -80,6 +82,7 @@ fun CockpitScreen(
     onGpsClick: () -> Unit,
     gpsError: String? = null,
     chargingUi: ChargingUiState,
+    automaticChargePlan: RouteChargingUiState,
     weatherUi: RouteWeatherState,
     onStationFilter: (StationFilter) -> Unit,
     onMapViewport: (GeoViewport) -> Unit,
@@ -270,6 +273,8 @@ fun CockpitScreen(
                 gpsFix = state.gpsFix,
                 routePoints = visibleRoute?.routePoints ?: emptyList(),
                 stations = chargingUi.visible,
+                plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
+                    ?.stops?.map { it.station.id }?.toSet().orEmpty(),
                 weatherPoints = weatherUi.points.takeIf {
                     weatherUi.routeId == visibleRoute?.routeId
                 }.orEmpty(),
@@ -310,7 +315,7 @@ fun CockpitScreen(
                         .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
                         .verticalScroll(rememberScrollState())
                 ) { RoutePanel(visibleRoute, routeState, state, loadStatus,
-                    chargingUi, weatherUi, { showCorridor = true }) }
+                    chargingUi, weatherUi, automaticChargePlan, { showCorridor = true }) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
@@ -326,7 +331,7 @@ fun CockpitScreen(
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
                     GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus,
-                    chargingUi, weatherUi, { showCorridor = true }) }
+                    chargingUi, weatherUi, automaticChargePlan, { showCorridor = true }) }
                     GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute, state.simulationEnabled) }
                 }
             }
@@ -502,6 +507,7 @@ private fun RoutePanel(
     loadStatus: RouteLoadStatus,
     charging: ChargingUiState,
     weather: RouteWeatherState,
+    autoCharge: RouteChargingUiState,
     onRouteDcClick: () -> Unit
 ) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -544,6 +550,29 @@ private fun RoutePanel(
     MetricLine("Gerekli şarj · MODEL/TAHMİN",
         model.chargingEnergyKwh?.takeIf { it.isFinite() && it >= 0.0 }
             ?.let { "%.1f kWh".format(it) } ?: "—")
+    if (route?.routeId != null && autoCharge.routeId == route.routeId) {
+        when (val plan = autoCharge.plan) {
+            is AutomaticChargePlan.Estimate -> {
+                MetricLine("Otomatik DC adayları · MODEL/TAHMİN",
+                    "${plan.stops.size} durak · ${"%.1f".format(plan.totalSuggestedChargeKwh)} kWh")
+                plan.stops.take(4).forEach { stop ->
+                    MetricLine(
+                        "DC aday · ${"%.0f".format(stop.distanceFromStartKm)} km",
+                        stop.station.name.take(32) + " · +" +
+                            "%.1f".format(stop.suggestedEnergyKwh) + " kWh"
+                    )
+                }
+                Text(plan.source, color = SoftText, fontSize = 10.sp)
+                if (autoCharge.catalogIsStale) {
+                    Text("EPDK kayıtları güncel değil", color = Color(0xFFFFBD78), fontSize = 10.sp)
+                }
+            }
+            is AutomaticChargePlan.Unavailable ->
+                Text("Otomatik şarj planı: ${plan.reason}",
+                    color = SoftText, fontSize = 10.sp)
+            AutomaticChargePlan.Empty -> Unit
+        }
+    }
     model.energyEstimateStatus?.let { message ->
         Text("MODEL/TAHMİN oluşturulamadı: $message", color = SoftText, fontSize = 10.sp)
     }
