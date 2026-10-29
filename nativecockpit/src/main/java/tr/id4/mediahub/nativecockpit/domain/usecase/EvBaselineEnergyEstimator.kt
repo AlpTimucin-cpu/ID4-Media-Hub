@@ -2,6 +2,7 @@ package tr.id4.mediahub.nativecockpit.domain.usecase
 
 import tr.id4.mediahub.nativecockpit.domain.model.RouteSnapshot
 import tr.id4.mediahub.nativecockpit.domain.model.validRouteGeometry
+import kotlin.math.ln
 
 /** Real OBD readings and explicitly assumed SoC must never be conflated. */
 sealed interface DepartureSoc {
@@ -19,8 +20,33 @@ data class BaselineEnergyInputs(
     val consumptionWhPerKm: Double,
     val consumptionBasis: ConsumptionBasis,
     val requiredArrivalSocPercent: Double,
-    val nowMs: Long
+    val nowMs: Long,
+    // Optional route scenario measurements; absent = preserve original baseline.
+    val speedKmh: Double? = null,
+    val outsideTemperatureC: Double? = null,
+    val climateActive: Boolean = false,
+    val calibration: EnergyCalibration = EnergyCalibration()
 )
+
+/** Transparent tunable heuristic, NOT an ABRP proprietary model. */
+data class EnergyCalibration(
+    val speedReferenceKmh: Double = 110.0,
+    val speedLogGain: Double = 0.12,
+    val degreesPerLogStep: Double = 20.0,
+    val coldThresholdC: Double = 15.0,
+    val hotThresholdC: Double = 30.0,
+    val coldGainPerDegree: Double = 0.012,
+    val hotGainPerDegree: Double = 0.008
+) {
+    fun valid(): Boolean =
+        listOf(speedReferenceKmh, speedLogGain, degreesPerLogStep,
+            coldThresholdC, hotThresholdC,
+            coldGainPerDegree, hotGainPerDegree).all { it.isFinite() } &&
+            speedReferenceKmh > 0 && degreesPerLogStep > 0 &&
+            speedLogGain in 0.0..1.0 &&
+            coldGainPerDegree in 0.0..0.05 &&
+            hotGainPerDegree in 0.0..0.05 && coldThresholdC < hotThresholdC
+}
 
 sealed interface BaselineEnergyResult {
     data class Unavailable(val reason: String) : BaselineEnergyResult
@@ -31,7 +57,11 @@ sealed interface BaselineEnergyResult {
         val requiredChargingEnergyKwh: Double,
         val chargingStopNeeded: Boolean,
         val usedLiveObd: Boolean,
-        val consumptionBasis: ConsumptionBasis
+        val consumptionBasis: ConsumptionBasis,
+        val speedMultiplier: Double = 1.0,
+        val climateMultiplier: Double = 1.0,
+        val effectiveWhPerKm: Double = 0.0,
+        val isScenarioProjection: Boolean = false
     ) : BaselineEnergyResult
 }
 
@@ -65,7 +95,31 @@ object EvBaselineEnergyEstimator {
         if (!soc.isFinite() || soc !in 0.0..100.0)
             return BaselineEnergyResult.Unavailable("Başlangıç SoC değeri geçersiz")
 
-        val driveKwh = km * input.consumptionWhPerKm / 1000.0
+        if (!input.calibration.valid() ||
+            (input.speedKmh != null && (!input.speedKmh.isFinite() ||
+                input.speedKmh !in 0.0..250.0)) ||
+            (input.outsideTemperatureC != null && (!input.outsideTemperatureC.isFinite() ||
+                input.outsideTemperatureC !in -40.0..65.0))
+        ) return BaselineEnergyResult.Unavailable("Hız/sıcaklık kalibrasyon girdisi geçersiz")
+
+        val tuning = input.calibration
+        val speedFactor = input.speedKmh?.let { speed ->
+            if (speed <= tuning.speedReferenceKmh) 1.0
+            else (1.0 + tuning.speedLogGain * ln(
+                1.0 + (speed - tuning.speedReferenceKmh) / tuning.degreesPerLogStep
+            )).coerceIn(1.0, 1.8)
+        } ?: 1.0
+        val climateFactor = if (input.climateActive) {
+            input.outsideTemperatureC?.let { temp ->
+                val cold = (tuning.coldThresholdC - temp).coerceAtLeast(0.0)
+                val hot = (temp - tuning.hotThresholdC).coerceAtLeast(0.0)
+                (1.0 + cold * tuning.coldGainPerDegree +
+                    hot * tuning.hotGainPerDegree).coerceIn(1.0, 1.65)
+            } ?: 1.0
+        } else 1.0
+
+        val effectiveWhPerKm = input.consumptionWhPerKm * speedFactor * climateFactor
+        val driveKwh = km * effectiveWhPerKm / 1000.0
         if (!driveKwh.isFinite())
             return BaselineEnergyResult.Unavailable("Rota enerji hesabı taşma yaptı")
         val arrivalPercent = soc - 100.0 * driveKwh / input.usableBatteryKwh
@@ -78,7 +132,12 @@ object EvBaselineEnergyEstimator {
             requiredChargingEnergyKwh = chargingKwh,
             chargingStopNeeded = arrivalPercent < input.requiredArrivalSocPercent,
             usedLiveObd = input.departureSoc is DepartureSoc.FreshObd,
-            consumptionBasis = input.consumptionBasis
+            consumptionBasis = input.consumptionBasis,
+            speedMultiplier = speedFactor,
+            climateMultiplier = climateFactor,
+            effectiveWhPerKm = effectiveWhPerKm,
+            isScenarioProjection = input.speedKmh != null ||
+                (input.climateActive && input.outsideTemperatureC != null)
         )
     }
 }
