@@ -1,6 +1,7 @@
 package tr.id4.mediahub.nativecockpit.presentation.cockpit
 
 import tr.id4.mediahub.nativecockpit.domain.model.GpsFix
+import tr.id4.mediahub.nativecockpit.domain.usecase.AutoChargePlan
 import tr.id4.mediahub.nativecockpit.domain.model.RouteSnapshot
 
 /** Main MapLibre cockpit values originate from the central NavigationViewModel. */
@@ -14,6 +15,7 @@ data class CockpitUiState(
     // MODEL/TAHMİN only; never present a missing OBD field as live.
     val chargingNeededEstimate: Boolean? = null,
     val chargingEnergyKwh: Double? = null,
+    val autoChargePlan: AutoChargePlan? = null,
     val energyEstimateStatus: String? = null,
     val socSourceLabel: String? = null,
     val simulationEnabled: Boolean = false,
