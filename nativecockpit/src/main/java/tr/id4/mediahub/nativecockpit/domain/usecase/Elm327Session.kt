@@ -14,7 +14,9 @@ class Elm327Session(private val transport: ObdTransport) {
     @Volatile private var closed = false
 
     suspend fun initialize(): String = mutex.withLock {
-        closed = false
+        // A closed session is terminal. Create a new session to reconnect after
+        // explicit disconnect; never silently revive a disposed transport.
+        check(!closed) { "OBD oturumu kapatıldı." }
         connectAndInitialize()
     }
 
