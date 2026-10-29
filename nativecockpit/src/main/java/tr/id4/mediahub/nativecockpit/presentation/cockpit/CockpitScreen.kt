@@ -231,9 +231,10 @@ fun CockpitScreen(
                 modifier = Modifier.fillMaxSize()
             )
             Text(
-                if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
-                else if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
-                else state.gpsWarning ?: gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
+                (loadStatus as? RouteLoadStatus.Error)?.message
+                    ?: if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
+                    else if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
+                    else state.gpsWarning ?: gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
                 color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .padding(top = 8.dp)
@@ -449,6 +450,9 @@ private fun RoutePanel(
 ) {
     Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
+    if (loadStatus is RouteLoadStatus.GpsLost) {
+        Text("GPS Sinyali Bekleniyor...", color=Color(0xFFFFBD78), fontSize=11.sp)
+    }
     if (route == null || loadStatus is RouteLoadStatus.Loading ||
         loadStatus is RouteLoadStatus.Error) {
         Text(if (loadStatus is RouteLoadStatus.Loading) "Rota hesaplanıyor…" else "Rota bekleniyor",
@@ -481,6 +485,9 @@ private fun RoutePanel(
         false -> "Hesaba göre gerekmiyor"
         null -> "—"
     })
+    MetricLine("Gerekli şarj · MODEL/TAHMİN",
+        model.chargingEnergyKwh?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.let { "%.1f kWh".format(it) } ?: "—")
     model.energyEstimateStatus?.let { message ->
         Text("MODEL/TAHMİN oluşturulamadı: $message", color = SoftText, fontSize = 10.sp)
     }
