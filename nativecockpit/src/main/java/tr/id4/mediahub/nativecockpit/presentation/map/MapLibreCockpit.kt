@@ -373,7 +373,7 @@ private fun lightningBitmap(): Bitmap {
 private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
     val features = samples.filter { it.coordinate.valid() }.map { item ->
         val props = JsonObject().apply {
-            addProperty("weatherIcon", item.iconKey)
+            addProperty("weatherIcon", "eya-weather-" + item.iconKey)
             addProperty("tempText", item.temperatureC.toInt().toString() + "°C")
         }
         Feature.fromGeometry(
@@ -386,7 +386,13 @@ private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
         source.setGeoJson(data)
     } else {
         style.addSource(GeoJsonSource(WEATHER_SRC, data))
+        listOf("sun", "cloud", "rain").forEach { kind ->
+            style.addImage("eya-weather-" + kind, weatherBitmap(kind))
+        }
         style.addLayer(SymbolLayer(WEATHER_LAYER, WEATHER_SRC).withProperties(
+            iconImage(Expression.get("weatherIcon")),
+            iconSize(0.8f),
+            iconAllowOverlap(true),
             textField(Expression.get("tempText")),
             textSize(12f),
             textColor(android.graphics.Color.WHITE),
