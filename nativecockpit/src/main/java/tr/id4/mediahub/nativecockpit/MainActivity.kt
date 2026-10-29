@@ -26,6 +26,7 @@ import tr.id4.mediahub.nativecockpit.presentation.navigation.NavigationViewModel
 import tr.id4.mediahub.nativecockpit.presentation.charging.ChargingViewModel
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.CockpitScreen
 import tr.id4.mediahub.nativecockpit.presentation.cockpit.EyaTheme
+import tr.id4.mediahub.nativecockpit.presentation.media.enterOwnVideoPipWhenParked
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -46,6 +47,16 @@ class MainActivity : ComponentActivity() {
             bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
         } else obd.refreshPaired()
     }
+
+    /**
+     * For a future OWNED player Activity only; call after a trusted Park signal.
+     * Third-party streaming packages own their own PiP and DRM surfaces.
+     * Existing MapLibre and media app navigation are unaffected.
+     */
+    fun enterParkedOwnedVideoPip(
+        verifiedParked: Boolean,
+        ownVideoPlaying: Boolean
+    ): Boolean = enterOwnVideoPipWhenParked(verifiedParked, ownVideoPlaying)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
