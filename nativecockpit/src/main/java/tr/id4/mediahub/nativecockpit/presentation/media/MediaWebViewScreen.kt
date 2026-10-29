@@ -1,193 +1,178 @@
 package tr.id4.mediahub.nativecockpit.presentation.media
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Build
+import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
 import android.net.http.SslError
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.*
-import android.widget.FrameLayout
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebSettings
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import androidx.compose.ui.unit.dp
 
-enum class MediaWebsite(val title: String, val homepage: String) {
+/** Web browsing is NOT a DRM bypass. Only verified parked playback is permitted. */
+enum class MediaSite(val title: String, val url: String) {
     NETFLIX("Netflix", "https://www.netflix.com"),
     DISNEY("Disney+", "https://www.disneyplus.com"),
     PRIME("Prime Video", "https://www.primevideo.com"),
     YOUTUBE("YouTube", "https://m.youtube.com")
 }
 
-sealed interface MediaPageState {
-    data object Loading : MediaPageState
-    data object Success : MediaPageState
-    data class Error(val message: String, val drmPossible: Boolean = false) : MediaPageState
+sealed interface MediaPageUiState {
+    data object Loading : MediaPageUiState
+    data object Ready : MediaPageUiState
+    data class Error(val message: String) : MediaPageUiState
 }
 
-class MediaBrowserViewModel : ViewModel() {
-    private val mutable = MutableStateFlow<MediaPageState>(MediaPageState.Loading)
-    val uiState: StateFlow<MediaPageState> = mutable.asStateFlow()
-    fun started() { mutable.value = MediaPageState.Loading }
-    fun finished() { mutable.value = MediaPageState.Success }
-    fun failed(message: String, drm: Boolean = false) {
-        mutable.value = MediaPageState.Error(message, drm)
-    }
-}
+private fun safePage(url: String?): Boolean = runCatching {
+    val uri = Uri.parse(url)
+    uri.scheme.equals("https", ignoreCase = true) &&
+        !uri.host.isNullOrBlank()
+}.getOrDefault(false)
 
 /**
- * An app-owned browser, not an embedded third-party Android application.
- * Only instantiate while a trusted vehicle Park state is available.
- * Widevine/DRM availability is controlled by the content provider, not this app.
+ * Existing dark cockpit remains untouched. This embedded web surface is
+ * activated only after an authoritative parked signal; zero GPS speed is
+ * never treated as parked.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MediaWebViewScreen(
-    site: MediaWebsite,
-    viewModel: MediaBrowserViewModel,
+    service: MediaSite,
     verifiedParked: Boolean,
-    onFullScreenVideo: (Boolean) -> Unit,
-    onExternalFallback: (MediaWebsite) -> Unit,
     onClose: () -> Unit
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var webView by remember { mutableStateOf<WebView?>(null) }
-    var fullscreen by remember { mutableStateOf<View?>(null) }
-    var fullscreenCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
-    val ink = Color(0xFF0A0F1A)
-    val white = Color.White
-
-    fun exitFullScreen() {
-        fullscreenCallback?.onCustomViewHidden()
-        fullscreenCallback = null
-        fullscreen = null
-        onFullScreenVideo(false)
+    var view by remember(service) { mutableStateOf<WebView?>(null) }
+    var page by remember(service) { mutableStateOf<MediaPageUiState>(MediaPageUiState.Loading) }
+    BackHandler(enabled = verifiedParked) {
+        val current = view
+        if (current?.canGoBack() == true) current.goBack() else onClose()
     }
 
-    BackHandler(fullscreen != null) { exitFullScreen() }
-    DisposableEffect(webView) {
-        onDispose {
-            // Release renderer and Activity references on exit/configuration changes.
-            webView?.stopLoading()
-            webView?.onPause()
-            webView?.webChromeClient = null
-            webView?.webViewClient = WebViewClient()
-            (webView?.parent as? ViewGroup)?.removeView(webView)
-            webView?.destroy()
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(service.title, color = Color.White)
+            TextButton(onClick = onClose) { Text("Kapat") }
         }
-    }
 
-    Column(Modifier.fillMaxSize().background(ink)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(site.title, color = white, style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = onClose) { Text("Kapat", color = white) }
-        }
         if (!verifiedParked) {
-            Text("Video için doğrulanmış Park vitesi gerekli.",
-                color = Color(0xFFFFCE73))
+            Text("Video yalnızca Park konumu güvenilir şekilde doğrulandığında açılır.",
+                color = Color(0xFFFFBD78), modifier = Modifier.padding(16.dp))
             return@Column
         }
-        Text("DRM korumalı yayınlar WebView'de desteklenmeyebilir.",
-            color = Color(0xFFABC5D5), style = MaterialTheme.typography.bodySmall)
-        when (val current = state) {
-            MediaPageState.Loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
-            is MediaPageState.Error -> {
-                Text(current.message, color = Color(0xFFFFB17C))
-                if (current.drmPossible) {
-                    TextButton(onClick = { onExternalFallback(site) }) {
-                        Text("Bu içerik için harici uygulama kullanın")
-                    }
-                }
-            }
-            MediaPageState.Success -> Unit
+
+        if (service != MediaSite.YOUTUBE) {
+            Text("DRM nedeniyle oynatma desteklenmeyebilir. Siyah ekran varsa resmi uygulamayı kullanın.",
+                color = Color(0xFFFFBD78),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 12.dp))
         }
-        Box(Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.mediaPlaybackRequiresUserGesture = false
-                        // NEVER_ALLOW blocks HTTPS-to-HTTP injection.
-                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        settings.javaScriptCanOpenWindowsAutomatically = false
-                        settings.setSupportMultipleWindows(false)
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(v: WebView, url: String?, favicon: Bitmap?) {
-                                viewModel.started()
-                            }
-                            override fun onPageFinished(v: WebView, url: String?) {
-                                if (viewModel.uiState.value is MediaPageState.Loading) {
-                                    viewModel.finished()
-                                }
-                            }
-                            override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean {
-                                // Reject javascript:, intent:, file:, cleartext and custom scheme navigation.
-                                return request.url.scheme != "https"
-                            }
-                            override fun onReceivedError(
-                                v: WebView, request: WebResourceRequest, error: WebResourceError
-                            ) {
-                                if (request.isForMainFrame) viewModel.failed("Bağlantı Hatası: Sayfa açılamadı")
-                            }
-                            override fun onReceivedHttpError(
-                                v: WebView, request: WebResourceRequest, response: WebResourceResponse
-                            ) {
-                                if (request.isForMainFrame && response.statusCode >= 400)
-                                    viewModel.failed(
-                                        "Servis sayfayı açamadı (HTTP ${response.statusCode})",
-                                        response.statusCode in listOf(403, 451)
-                                    )
-                            }
-                            override fun onReceivedSslError(v: WebView, handler: SslErrorHandler, error: SslError) {
-                                handler.cancel() // Never bypass TLS failures.
-                                viewModel.failed("Güvenli bağlantı doğrulanamadı")
-                            }
-                            override fun onRenderProcessGone(v: WebView, detail: RenderProcessGoneDetail): Boolean {
-                                viewModel.failed("Medya tarayıcısı kapandı. Yeniden açın.")
-                                v.post { (v.parent as? ViewGroup)?.removeView(v); v.destroy() }
-                                return true
-                            }
-                        }
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onShowCustomView(
-                                view: View, callback: CustomViewCallback
-                            ) {
-                                fullscreen = view
-                                fullscreenCallback = callback
-                                onFullScreenVideo(true)
-                            }
-                            override fun onHideCustomView() { exitFullScreen() }
-                        }
-                        webView = this
-                        viewModel.started()
-                        loadUrl(site.homepage)
+
+        when (val state = page) {
+            MediaPageUiState.Loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
+            is MediaPageUiState.Error -> Text(state.message, color = Color(0xFFFFB17C),
+                modifier = Modifier.padding(12.dp))
+            MediaPageUiState.Ready -> Unit
+        }
+
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        AndroidView(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            factory = { context ->
+                WebView(context).apply {
+                    // No JavaScript bridge or WebChrome debugger is exposed.
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.javaScriptCanOpenWindowsAutomatically = false
+                    settings.setSupportMultipleWindows(false)
+                    settings.allowFileAccess = false
+                    settings.allowContentAccess = false
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    // Autoplay is only enabled within the verified parked gate.
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        settings.safeBrowsingEnabled = true
                     }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-            fullscreen?.let { video ->
-                AndroidView(
-                    factory = { ctx ->
-                        FrameLayout(ctx).apply {
-                            (video.parent as? ViewGroup)?.removeView(video)
-                            addView(video, FrameLayout.LayoutParams(-1, -1))
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            webView: WebView,
+                            request: WebResourceRequest
+                        ): Boolean {
+                            if (!request.isForMainFrame) return false
+                            if (safePage(request.url.toString())) return false
+                            page = MediaPageUiState.Error("Güvensiz bağlantı engellendi")
+                            return true
                         }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+
+                        override fun onPageStarted(webView: WebView, url: String?, favicon: Bitmap?) {
+                            page = MediaPageUiState.Loading
+                        }
+
+                        override fun onPageFinished(webView: WebView, url: String?) {
+                            if (page !is MediaPageUiState.Error)
+                                page = MediaPageUiState.Ready
+                        }
+
+                        override fun onReceivedError(
+                            webView: WebView,
+                            request: WebResourceRequest,
+                            error: WebResourceError
+                        ) {
+                            if (request.isForMainFrame) {
+                                page = MediaPageUiState.Error("Sayfa yüklenemedi. Bağlantıyı kontrol edin.")
+                            }
+                        }
+
+                        override fun onReceivedSslError(
+                            webView: WebView, handler: SslErrorHandler, error: SslError
+                        ) {
+                            handler.cancel() // Never bypass certificate errors.
+                            page = MediaPageUiState.Error("Güvenli bağlantı doğrulanamadı")
+                        }
+
+                        override fun onReceivedHttpError(
+                            webView: WebView,
+                            request: WebResourceRequest,
+                            response: android.webkit.WebResourceResponse
+                        ) {
+                            if (request.isForMainFrame && response.statusCode >= 400)
+                                page = MediaPageUiState.Error("Site HTTP ${response.statusCode} hatası verdi")
+                        }
+                    }
+                    view = this
+                    if (safePage(service.url)) loadUrl(service.url)
+                }
+            },
+            update = { webView ->
+                // Do not reload on Compose recomposition.
+                if (view !== webView) view = webView
+            }
+        )
+        DisposableEffect(service, view) {
+            val current = view
+            onDispose {
+                if (current === view) {
+                    current?.stopLoading()
+                    current?.loadUrl("about:blank")
+                    current?.removeAllViews()
+                    current?.destroy()
+                    view = null
+                }
             }
         }
     }
 }
-
