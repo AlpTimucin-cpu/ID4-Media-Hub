@@ -9,7 +9,7 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 - **TTS:** `NavigationViewModel.onCleared()` -> `guide.close()` -> `tts.stop()`, `tts.shutdown()`, `ducking.close()`. `MainActivity.onPause()` -> `setForeground(false)` -> `guide.stop()`. Android Auto `EyaCarNavigationScreen.onStop()` seslendirimi durdurur; `onDestroy()` ses motorunu kapatır. Activity her duraksadığında TTS'yi shutdown etmek, yeniden başlamada motoru kullanılamaz kılardı; bu nedenle sadece stop yapılır.
 - **AudioFocus:** `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`; konuşma bittiğinde veya iptalinde odak bırakılır. QA düzeltmesi `AudioFocusLease` ile tek sahipliği ve stale callback korumasını test edilebilir kılar. Üçüncü taraf oyuncunun gerçekten ses kısması **garanti değildir**.
 - **PiP:** Manifest `supportsPictureInPicture=true` ve `OwnVideoPip` yalnızca *uygulamamızın sahip olduğu* aktif video için çalışabilir. Dış Netflix/Disney+/Prime PiP özelliği diğer uygulamaya aittir. Kodda `ParkedStreamingDialog(verifiedParked=false)` olduğu için Native Kokpit video başlatma butonları **devre dışı**. Araç hareketli video kilidi/DRM devre dışı bırakılamaz. Harici uygulamaya geçildiğinde `MainActivity.onPause()` GPS/TTS ve OBD akışını durdurur; arkada navigasyon sürdürülmez. Bu bir yaşam döngüsü kısıtıdır, çökme kanıtı değildir.
-- **OBD:** ELM327 oturumu `ATZ, ATE0, ATL0` ile başlar, salt-okunur sorguları üç denemeyle sınırlar. Kopma ve zaman aşımı bağlantıyı kapatır. QA düzeltmesi: `close()` edilen oturum `initialize()` ile yeniden açılamaz. Cihaz denetleyicisinin hata halinde `ObdConnectionState(phase=ERROR, error=...)` yayımlaması ayrı bağlantı testinde doğrulanmalıdır.
+- **OBD:** ELM327 oturumu `DISCONNECTED → CONNECTING → READY / ERROR` durumlarını yayımlar; `ATZ, ATE0, ATL0` ile sıralı başlar ve salt-okunur sorguları en çok üç denemeyle sınırlar. `close()` socket/kanalı kapatıp eski işlemleri geçersizleştirir; kullanıcı yeniden bağlan dediğinde aynı oturum nesnesi `initialize()` ile **yeniden açılabilir**. Kopma ve zaman aşımı sonrasında `ElmSessionState.ERROR` yayımı ile `ObdConnectionState(phase=ERROR, error=...)` UI eşleşmesi gerçek cihaz testinde ayrı doğrulanmalıdır.
 - **Enerji:** `EvBaselineEnergyEstimator` 110 km/sa üstünde logaritmik hız katsayısı, sıcaklıkta klima etkisi uygular. Eksik girdide tarafsız çarpan kullanılır, NaN ve bayat OBD reddedilir. Çarpanlar ölçülmüş fiziksel model değil, kalibrasyon varsayımıdır.
 
 ## JVM otomatik test matrisi
@@ -20,7 +20,7 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 | aynı | hız/sıcaklık eksik; NaN/Infinity | varsayılan 1.00/1.00, geçersiz girdiye Unavailable |
 | `Elm327SessionTest.kt` | BT kopma bir kez | reconnect, ELM init yeniden |
 | aynı | sürekli BT kopma / kontağın kapanması | 3 denemede IOException, soket kapalı |
-| aynı | close sonrası initialize | IllegalStateException, oturum tekrar açılmaz |
+| aynı | close sonrası açık kullanıcı yeniden başlatma | DISCONNECTED → CONNECTING → READY; eski yanıtlar sızmaz |
 | `AudioFocusLeaseTest.kt` | fake Mola oynatıcı + geçici TTS focus | taklit ses kısılır ve eski seviyesine döner |
 | aynı | focus reddedildi / geç callback | medya değişmez; close sonrası callback yok sayılır |
 
