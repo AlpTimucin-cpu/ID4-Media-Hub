@@ -52,9 +52,10 @@ object OsrmResponseParser {
                 // OSRM speed annotations describe the router's speed profile.
                 // Only align them to geometry if there is exactly one leg.
                 val allLegs = route.getAsJsonArray("legs")
-                val rawSpeeds = if (allLegs?.size() == 1)
+                val rawSpeeds = if (allLegs?.size() == 1) runCatching {
                     allLegs[0].asJsonObject.getAsJsonObject("annotation")
-                        ?.getAsJsonArray("speed") else null
+                        ?.getAsJsonArray("speed")
+                }.getOrNull() else null
                 val segments: List<ProfileSpeedSegment> =
                     if (rawSpeeds != null && rawSpeeds.size() == points.size - 1) {
                         rawSpeeds.mapIndexedNotNull { i, el ->
