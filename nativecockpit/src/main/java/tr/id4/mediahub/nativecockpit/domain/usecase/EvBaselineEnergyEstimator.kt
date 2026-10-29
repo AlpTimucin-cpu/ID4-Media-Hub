@@ -48,6 +48,38 @@ data class EnergyCalibration(
             hotGainPerDegree in 0.0..0.05 && coldThresholdC < hotThresholdC
 }
 
+
+/** Pure, testable route-scenario multipliers. Unknown inputs stay neutral. */
+fun calculateConsumptionFactors(
+    speedKmh: Double?,
+    outsideTemperatureC: Double?,
+    climateActive: Boolean,
+    calibration: EnergyCalibration
+): Pair<Double, Double> {
+    require(calibration.valid())
+    val speedFactor = speedKmh?.let { speed ->
+        require(speed.isFinite() && speed in 0.0..250.0)
+        if (speed <= calibration.speedReferenceKmh) 1.0
+        else (
+            1.0 + calibration.speedLogGain * ln(
+                1.0 + (speed - calibration.speedReferenceKmh) /
+                    calibration.degreesPerLogStep
+            )
+        ).coerceIn(1.0, 1.8)
+    } ?: 1.0
+
+    val climateFactor =
+        if (climateActive && outsideTemperatureC != null) {
+            val temperature = outsideTemperatureC
+            require(temperature.isFinite() && temperature in -40.0..65.0)
+            val cold = (calibration.coldThresholdC - temperature).coerceAtLeast(0.0)
+            val hot = (temperature - calibration.hotThresholdC).coerceAtLeast(0.0)
+            (1.0 + cold * calibration.coldGainPerDegree +
+                hot * calibration.hotGainPerDegree).coerceIn(1.0, 1.65)
+        } else 1.0
+    return speedFactor to climateFactor
+}
+
 sealed interface BaselineEnergyResult {
     data class Unavailable(val reason: String) : BaselineEnergyResult
     data class Estimate(
@@ -102,21 +134,12 @@ object EvBaselineEnergyEstimator {
                 input.outsideTemperatureC !in -40.0..65.0))
         ) return BaselineEnergyResult.Unavailable("Hız/sıcaklık kalibrasyon girdisi geçersiz")
 
-        val tuning = input.calibration
-        val speedFactor = input.speedKmh?.let { speed ->
-            if (speed <= tuning.speedReferenceKmh) 1.0
-            else (1.0 + tuning.speedLogGain * ln(
-                1.0 + (speed - tuning.speedReferenceKmh) / tuning.degreesPerLogStep
-            )).coerceIn(1.0, 1.8)
-        } ?: 1.0
-        val climateFactor = if (input.climateActive) {
-            input.outsideTemperatureC?.let { temp ->
-                val cold = (tuning.coldThresholdC - temp).coerceAtLeast(0.0)
-                val hot = (temp - tuning.hotThresholdC).coerceAtLeast(0.0)
-                (1.0 + cold * tuning.coldGainPerDegree +
-                    hot * tuning.hotGainPerDegree).coerceIn(1.0, 1.65)
-            } ?: 1.0
-        } else 1.0
+        val (speedFactor, climateFactor) = calculateConsumptionFactors(
+            input.speedKmh,
+            input.outsideTemperatureC,
+            input.climateActive,
+            input.calibration
+        )
 
         val effectiveWhPerKm = input.consumptionWhPerKm * speedFactor * climateFactor
         val driveKwh = km * effectiveWhPerKm / 1000.0
