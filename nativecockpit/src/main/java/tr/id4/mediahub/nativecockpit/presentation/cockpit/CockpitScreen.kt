@@ -54,6 +54,7 @@ import tr.id4.mediahub.nativecockpit.presentation.media.ParkedStreamingDialog
 private val CardShape = RoundedCornerShape(22.dp)
 
 /** Overlay on one real MapLibre map. Never displays fabricated GPS or battery values. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CockpitScreen(
     state: CockpitUiState,
