@@ -44,6 +44,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.58")
     ksp("com.google.dagger:hilt-compiler:2.58")
     implementation("org.maplibre.gl:android-sdk:13.7.1")
+    implementation("org.maplibre.gl:android-sdk-turf:6.0.1")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
