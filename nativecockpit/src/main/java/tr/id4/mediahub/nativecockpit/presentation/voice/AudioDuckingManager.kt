@@ -23,7 +23,8 @@ class AudioDuckingManager(
     private val manager =
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val main = Handler(Looper.getMainLooper())
-    private val listener = AudioManager.OnAudioFocusChangeListener { change ->
+    private val listener: AudioManager.OnAudioFocusChangeListener =
+        AudioManager.OnAudioFocusChangeListener { change ->
         if (change == AudioManager.AUDIOFOCUS_LOSS ||
             change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
             change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
@@ -34,14 +35,14 @@ class AudioDuckingManager(
             }
         }
     }
-    private val focusRequest = AudioFocusRequest.Builder(
+    private val focusRequest: AudioFocusRequest = AudioFocusRequest.Builder(
         AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
     )
         .setAudioAttributes(attributes)
         .setOnAudioFocusChangeListener(listener, main)
         .build()
 
-    private val lease = AudioFocusLease(
+    private val lease: AudioFocusLease = AudioFocusLease(
         requestFocus = {
             manager.requestAudioFocus(focusRequest) ==
                 AudioManager.AUDIOFOCUS_REQUEST_GRANTED
