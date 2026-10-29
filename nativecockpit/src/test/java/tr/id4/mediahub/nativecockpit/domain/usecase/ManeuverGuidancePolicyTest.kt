@@ -31,18 +31,18 @@ class ManeuverGuidancePolicyTest {
         assertNull(p.nextAnnouncement(route, fix(35.027, accuracy = 60f), now))
     }
 
-    @Test fun speechAtTwoHundredAndFiftyMetersOnly() {
+    @Test fun speechAtTwoHundredMetersOnly() {
         val p = ManeuverGuidancePolicy()
         // Do not read a turn from a kilometre away.
         assertNull(p.nextAnnouncement(route, fix(35.019), now))
 
         val first = fix(35.027, now + 1_000)
-        assertEquals("İki yüz elli metre sonra, sağa dönün",
+        assertEquals("İki yüz metre sonra, sağa dönün",
             p.nextAnnouncement(route, first, now + 1_000))
         assertNull(p.nextAnnouncement(route, first, now + 1_500))
 
-        // If TTS is unavailable, do not silently consume the 250 m cue.
-        assertEquals("İki yüz elli metre sonra, sağa dönün",
+        // If TTS is unavailable, do not silently consume the 200 m cue.
+        assertEquals("İki yüz metre sonra, sağa dönün",
             p.nextAnnouncement(route, fix(35.0271, now + 2_000), now + 2_000))
         p.confirmSpoken(now + 2_000)
         assertNull(p.nextAnnouncement(route, fix(35.0272, now + 3_000), now + 3_000))
