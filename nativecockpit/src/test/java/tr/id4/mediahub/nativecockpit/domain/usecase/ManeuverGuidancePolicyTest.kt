@@ -41,9 +41,9 @@ class ManeuverGuidancePolicyTest {
             p.nextAnnouncement(route, first, now + 1_000))
         assertNull(p.nextAnnouncement(route, first, now + 1_500))
 
-        // If TTS is unavailable, do not silently consume the 200 m cue.
-        assertEquals("İki yüz metre sonra, sağa dönün",
-            p.nextAnnouncement(route, fix(35.0271, now + 2_000), now + 2_000))
+        // A queued request is not consumed, but do not enqueue it every GPS tick.
+        assertNull(p.nextAnnouncement(route, fix(35.0271, now + 2_000), now + 2_000))
+        // The Android engine reports onStart, so the cue can now be consumed.
         p.confirmSpoken(now + 2_000)
         assertNull(p.nextAnnouncement(route, fix(35.0272, now + 3_000), now + 3_000))
 
@@ -52,6 +52,26 @@ class ManeuverGuidancePolicyTest {
             p.nextAnnouncement(route, final, now + 7_000))
         p.confirmSpoken(now + 7_000)
         assertNull(p.nextAnnouncement(route, fix(35.0286, now + 8_000), now + 8_000))
+    }
+
+    @Test fun failedSynthesisCanRetryAtNextFix() {
+        val p = ManeuverGuidancePolicy()
+        assertNotNull(p.nextAnnouncement(route, fix(35.027, now), now))
+        p.cancelPending() // TextToSpeech.onError / onStop / focus denied
+        assertEquals(
+            "İki yüz metre sonra, sağa dönün",
+            p.nextAnnouncement(route, fix(35.0271, now + 1_000), now + 1_000)
+        )
+    }
+
+    @Test fun silentEngineTimeoutReleasesQueuedCueForRetry() {
+        val p = ManeuverGuidancePolicy()
+        assertNotNull(p.nextAnnouncement(route, fix(35.027, now), now))
+        assertNull(p.nextAnnouncement(route, fix(35.0271, now + 1_000), now + 1_000))
+        assertEquals(
+            "İki yüz metre sonra, sağa dönün",
+            p.nextAnnouncement(route, fix(35.0272, now + 6_000), now + 6_000)
+        )
     }
 
     @Test fun nearTurnAndOffRouteFailClosed() {
