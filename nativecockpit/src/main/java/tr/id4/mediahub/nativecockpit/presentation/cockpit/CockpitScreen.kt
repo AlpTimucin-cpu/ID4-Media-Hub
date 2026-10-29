@@ -88,6 +88,7 @@ fun CockpitScreen(
     voiceVolume: Float,
     onVoiceVolumeChange: (Float) -> Unit,
     voiceStatus: NativeVoiceGuide.Status,
+    voiceError: String?,
     onVoiceTest: () -> Unit,
     onSimulationToggle: (Boolean) -> Unit
 ) {
@@ -236,13 +237,14 @@ fun CockpitScreen(
     val visibleRoute = state.route ?: routeState.routeResult
     val snackbarHost = remember { SnackbarHostState() }
     val connectionError = (loadStatus as? RouteLoadStatus.Error)?.message
+        ?: voiceError
         ?: chargingUi.error
         ?: weatherUi.error?.takeIf { weatherUi.routeId == visibleRoute?.routeId }
     LaunchedEffect(connectionError) {
         if (!connectionError.isNullOrBlank()) {
             // Show a non-blocking error without replacing existing glass panels.
             snackbarHost.showSnackbar(
-                message = "Bağlantı Hatası: " + connectionError.take(130),
+                message = connectionError.take(130),
                 duration = SnackbarDuration.Short
             )
         }
