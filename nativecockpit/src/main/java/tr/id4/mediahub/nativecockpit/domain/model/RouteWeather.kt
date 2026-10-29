@@ -25,10 +25,13 @@ data class WeatherWaypoint(
 
 data class RouteWeatherState(
     val routeId: String? = null,
+    val routeLengthKm: Double? = null,
     val points: List<WeatherWaypoint> = emptyList(),
     val loading: Boolean = false,
     val fetchedAtMillis: Long? = null,
     val error: String? = null
 ) {
-    val destination: WeatherWaypoint? get() = points.lastOrNull()
+    val destination: WeatherWaypoint? get() = points.lastOrNull()?.takeIf {
+        routeLengthKm != null && kotlin.math.abs(it.distanceFromStartKm - routeLengthKm) < 0.2
+    }
 }
