@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tr.id4.mediahub.nativecockpit.BuildConfig
 import tr.id4.mediahub.nativecockpit.presentation.map.MapLibreCockpit
 import tr.id4.mediahub.nativecockpit.domain.model.RouteSnapshot
 import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
@@ -84,7 +85,8 @@ fun CockpitScreen(
     voiceVolume: Float,
     onVoiceVolumeChange: (Float) -> Unit,
     voiceStatus: NativeVoiceGuide.Status,
-    onVoiceTest: () -> Unit
+    onVoiceTest: () -> Unit,
+    onSimulationToggle: (Boolean) -> Unit
 ) {
     var selectedDock by remember { mutableStateOf<DockTab?>(null) }
     var showObdSettings by remember { mutableStateOf(false) }
@@ -95,6 +97,9 @@ fun CockpitScreen(
         onDisconnect = onObdDisconnect,
         onMebDiagnostic = onObdMebDiagnostic,
         onClearDiagnostic = onObdClearDiagnostic,
+        simulationSupported = BuildConfig.DEBUG,
+        simulationEnabled = state.simulationEnabled,
+        onSimulationToggle = onSimulationToggle,
         onDismiss = {showObdSettings = false}
     )
     var showRoutePlanner by remember { mutableStateOf(false) }
@@ -144,22 +149,30 @@ fun CockpitScreen(
         )
     }
     selectedStation?.let { station ->
-        AlertDialog(onDismissRequest = { selectedStation=null },
-            title = { Text(station.name.ifBlank { "Şarj istasyonu" }) },
-            text = {
-                Column(Modifier.heightIn(max=350.dp).verticalScroll(rememberScrollState())) {
-                    Text(station.operator.ifBlank { "Operatör belirtilmedi" })
-                    Text(station.address.ifBlank { "Adres belirtilmedi" })
-                    HorizontalDivider(Modifier.padding(vertical=9.dp))
-                    station.sockets.forEach { socket ->
-                        Text("${socket.kind} · ${socket.type} · güç (ham): ${socket.powerRaw.ifBlank { "—" }}",
-                            fontSize=12.sp)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text("EPDK kayıt tarihi: ${station.sourceVerifiedAtUtc}",fontSize=11.sp)
-                    Text("Canlı müsaitlik, fiyat ve araçla erişim bilinmiyor.",fontSize=11.sp)
+        // Existing station detail, now presented from the bottom.
+        ModalBottomSheet(
+            onDismissRequest = { selectedStation = null },
+            containerColor = Color(0xFF0A1728),
+            contentColor = Color.White
+        ) {
+            Column(Modifier.fillMaxWidth().heightIn(max=420.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal=20.dp, vertical=14.dp)) {
+                Text(station.name.ifBlank { "Şarj istasyonu" },
+                    style=MaterialTheme.typography.titleLarge)
+                Text(station.operator.ifBlank { "Operatör belirtilmedi" })
+                Text(station.address.ifBlank { "Adres belirtilmedi" })
+                HorizontalDivider(Modifier.padding(vertical=9.dp))
+                station.sockets.forEach { socket ->
+                    Text("${socket.kind} · ${socket.type} · güç (ham): ${socket.powerRaw.ifBlank { "—" }}",
+                        fontSize=12.sp)
                 }
-            },confirmButton={ TextButton(onClick={selectedStation=null}){Text("Kapat")} })
+                Spacer(Modifier.height(8.dp))
+                Text("EPDK kayıt tarihi: ${station.sourceVerifiedAtUtc}", fontSize=11.sp)
+                Text("Canlı müsaitlik, fiyat ve araçla erişim bilinmiyor.", fontSize=11.sp)
+                TextButton(onClick={ selectedStation = null }) { Text("Kapat") }
+            }
+        }
     }
 
     // External streaming launches are off until a trusted Park signal exists.
@@ -199,6 +212,12 @@ fun CockpitScreen(
             onVoiceSettings={showVoiceSettings=true},
             voiceStatus=voiceStatus
         )
+        if (state.simulationEnabled) {
+            Text("SİMÜLASYON MODU · TEST VERİLERİ · GERÇEK KONUM/OBD DEĞİL",
+                color=Color(0xFFFFCE73), fontSize=11.sp,
+                modifier=Modifier.fillMaxWidth().background(Color(0xFF563215))
+                    .padding(horizontal=12.dp, vertical=6.dp))
+        }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val wide = maxWidth >= 600.dp && maxWidth > maxHeight * 1.1f
             val compactLandscape = maxHeight < 420.dp
@@ -211,14 +230,15 @@ fun CockpitScreen(
                 modifier = Modifier.fillMaxSize()
             )
             Text(
-                if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
-                else gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
+                if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
+                else if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
+                else state.gpsWarning ?: gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
                 color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .padding(top = 8.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xDE0B2639))
-                    .clickable { onGpsClick() }
+                    .clickable(enabled=!state.simulationEnabled) { onGpsClick() }
                     .padding(horizontal = 15.dp, vertical = 15.dp)
                     .semantics { contentDescription = "GPS konum iznini ve takibini aç" }
             )
@@ -245,7 +265,7 @@ fun CockpitScreen(
                     modifier = Modifier.align(Alignment.BottomEnd)
                         .padding(end = 13.dp, bottom = 12.dp)
                         .width(maxWidth * .65f)
-                ) { RouteProgress(visibleRoute) }
+                ) { RouteProgress(visibleRoute, state.simulationEnabled) }
             } else {
                 // Portrait/small-screen: cards scroll; dock remains reachable.
                 Column(
@@ -255,7 +275,7 @@ fun CockpitScreen(
                 ) {
                     GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
                     GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute) }
+                    GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute, state.simulationEnabled) }
                 }
             }
             ChargingFilters(
@@ -366,7 +386,7 @@ private fun GlassSurface(modifier: Modifier = Modifier, content: @Composable Col
 
 @Composable
 private fun VehiclePanel(state: CockpitUiState, compact: Boolean) {
-    Text("BATARYA DOLULUĞU · OBD", color = SoftText,
+    Text(if(state.simulationEnabled) "BATARYA DOLULUĞU · TEST" else "BATARYA DOLULUĞU · OBD", color = SoftText,
         fontSize = 11.sp, fontWeight = FontWeight.Medium)
     Text(CockpitFormat.percent(state.socPercent), fontSize = if (compact) 40.sp else 59.sp,
         lineHeight = if (compact) 44.sp else 63.sp,
@@ -383,8 +403,8 @@ private fun VehiclePanel(state: CockpitUiState, compact: Boolean) {
     MetricLine("Batarya sıcaklığı", CockpitFormat.temperature(state.batteryTemperatureC))
     MetricLine("Anlık güç", CockpitFormat.power(state.powerKw))
     Spacer(Modifier.height(5.dp))
-    Text(if (state.socPercent == null) "OBD SoC güncel değil / bağlı değil"
-         else "OBD ölçümü · en çok 10 sn eski",
+    Text(state.socSourceLabel ?: if(state.socPercent == null)
+        "OBD SoC güncel değil / bağlı değil" else "OBD ölçümü · en çok 10 sn eski",
         fontSize = 10.sp, color = if (state.socPercent == null) Color(0xFFFFBD78) else NeonGreen)
 }
 
@@ -454,6 +474,7 @@ private fun RoutePanel(
     MetricLine("Tahmini sürüş", CockpitFormat.minutes(route?.estimatedDriveMinutes))
     MetricLine("Tahmini varış saati", CockpitFormat.eta(route?.estimatedArrivalEpochMs))
     MetricLine("Varış SoC · MODEL/TAHMİN", CockpitFormat.percent(route?.estimatedArrivalSocPercent))
+    model.socSourceLabel?.let { Text(it, color=SoftText, fontSize=10.sp) }
     MetricLine("Şarj ihtiyacı · MODEL/TAHMİN", when(model.chargingNeededEstimate) {
         true -> "Rezerv için şarj gerekiyor"
         false -> "Hesaba göre gerekmiyor"
@@ -469,14 +490,14 @@ private fun RoutePanel(
 }
 
 @Composable
-private fun RouteProgress(route: RouteSnapshot?) {
+private fun RouteProgress(route: RouteSnapshot?, simulation: Boolean) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.DirectionsCar, null, tint = Turquoise)
         Spacer(Modifier.width(9.dp))
         Text("ROTA İLERLEMESİ", color = Color.White,
             fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
         Spacer(Modifier.weight(1f))
-        Text(route?.validProgress()?.let { "%${(it * 100).toInt()} · GPS" }
+        Text(route?.validProgress()?.let { "%${(it * 100).toInt()} · ${if(simulation) "SİM" else "GPS"}" }
              ?: "GPS ilerlemesi yok", color = SoftText, fontSize = 11.sp)
     }
     Spacer(Modifier.height(11.dp))
