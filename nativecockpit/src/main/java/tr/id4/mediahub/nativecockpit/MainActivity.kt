@@ -185,6 +185,7 @@ class MainActivity : ComponentActivity() {
                     voiceVolume = ui.voice.volume,
                     onVoiceVolumeChange = navigation::setVoiceVolume,
                     voiceStatus = ui.voice.status,
+                    voiceError = ui.voice.error,
                     onVoiceTest = navigation::testVoice,
                     onSimulationToggle = { enabled ->
                         // Never mix a genuine Bluetooth session with synthetic frames.
