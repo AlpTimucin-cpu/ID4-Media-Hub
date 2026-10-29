@@ -3,6 +3,10 @@ package tr.id4.mediahub.nativecockpit.domain.usecase
 import kotlin.math.*
 import tr.id4.mediahub.nativecockpit.domain.model.ChargingStation
 import tr.id4.mediahub.nativecockpit.domain.model.GeoCoordinate
+import org.maplibre.geojson.Point
+import org.maplibre.turf.TurfConstants
+import org.maplibre.turf.TurfMeasurement
+import org.maplibre.turf.TurfMisc
 
 /** Exact projected distance to the real OSRM line; never a driving detour. */
 object StationCorridor {
@@ -37,11 +41,31 @@ object StationCorridor {
         return hypot(ax + t * dx, ay + t * dy)
     }
 
+    /**
+     * MapLibre Java Turf has no pointToLineDistance symbol. The equivalent is
+     * nearestPointOnLine(point, [segment endpoints]) + TurfMeasurement.distance
+     * in metres. Use it AFTER indexed prefiltering for 13k+ EPDK records.
+     */
+    private fun turfSegmentMeters(
+        position: GeoCoordinate, start: GeoCoordinate, end: GeoCoordinate
+    ): Double {
+        if (start == end) return Double.POSITIVE_INFINITY
+        val p = Point.fromLngLat(position.longitude, position.latitude)
+        val line = listOf(
+            Point.fromLngLat(start.longitude, start.latitude),
+            Point.fromLngLat(end.longitude, end.latitude)
+        )
+        val snapped = TurfMisc.nearestPointOnLine(
+            p, line, TurfConstants.UNIT_METRES
+        ).geometry() as? Point ?: return Double.POSITIVE_INFINITY
+        return TurfMeasurement.distance(p, snapped, TurfConstants.UNIT_METRES)
+    }
+
     fun distanceMeters(station: GeoCoordinate, route: List<GeoCoordinate>): Double? {
         if (!station.valid() || route.size < 2 || route.any { !it.valid() }) return null
         var best = Double.POSITIVE_INFINITY
         for (i in 0 until route.lastIndex) {
-            best = min(best, segmentDistanceMeters(station, route[i], route[i + 1]))
+            best = min(best, turfSegmentMeters(station, route[i], route[i + 1]))
         }
         return best.takeIf { it.isFinite() }
     }
@@ -93,7 +117,9 @@ object StationCorridor {
             val segmentIndices = cells[key(cell(p.latitude), cell(p.longitude))]
                 ?: return false
             return segmentIndices.any { i ->
-                segmentDistanceMeters(p, route[i], route[i + 1]) < MAX_DISTANCE_METERS
+                // Fast planar reject; Turf computes the accepted geodesic distance.
+                segmentDistanceMeters(p, route[i], route[i + 1]) < MAX_DISTANCE_METERS + 200.0 &&
+                    turfSegmentMeters(p, route[i], route[i + 1]) < MAX_DISTANCE_METERS
             }
         }
 
