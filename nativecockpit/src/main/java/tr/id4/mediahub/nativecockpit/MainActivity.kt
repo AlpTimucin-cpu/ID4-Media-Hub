@@ -147,14 +147,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val gpsError by navigation.gpsError.collectAsStateWithLifecycle()
-            val routeState by navigation.routeState.collectAsStateWithLifecycle()
             val ui by navigation.uiState.collectAsStateWithLifecycle()
             val stations by charging.uiState.collectAsStateWithLifecycle()
             val obdConnection by obd.connection.collectAsStateWithLifecycle()
             EyaTheme {
                 CockpitScreen(
                     state = ui.cockpit,
-                    routeState = routeState,
+                    routeState = ui.routeState,
                     routePlannerUi = ui.planner,
                     onRouteOriginChange = navigation::editOrigin,
                     onRouteDestinationChange = navigation::editDestination,
