@@ -33,9 +33,9 @@ class BluetoothClassicObdTransport(
 ) : ObdTransport {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
-    private var socket: BluetoothSocket? = null
-    private var readJob: Job? = null
-    private var incoming = Channel<ByteArray>(Channel.BUFFERED)
+    @Volatile private var socket: BluetoothSocket? = null
+    @Volatile private var readJob: Job? = null
+    @Volatile private var incoming = Channel<ByteArray>(Channel.BUFFERED)
     @Volatile private var ready = false
 
     override val connected: Boolean get() = ready && socket?.isConnected == true
@@ -130,13 +130,17 @@ class BluetoothClassicObdTransport(
         }
 
     override fun disconnect() {
+        // Must work even while exchange() holds 'lock'; never await that mutex here.
         ready = false
-        // Closing a BluetoothSocket unblocks inputStream.read().
-        runCatching { socket?.close() }
+        val oldSocket = socket
         socket = null
-        readJob?.cancel()
+        val oldJob = readJob
         readJob = null
-        incoming.close()
+        // Channel.cancel() drops buffered/stale bytes AND resumes blocked receives.
+        // Channel.close() alone could still return bytes from a previous session.
+        incoming.cancel()
+        runCatching { oldSocket?.close() } // Unblocks blocking inputStream.read().
+        oldJob?.cancel()
     }
 
     companion object {
