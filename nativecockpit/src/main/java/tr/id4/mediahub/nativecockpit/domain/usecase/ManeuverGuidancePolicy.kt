@@ -59,11 +59,11 @@ class ManeuverGuidancePolicy {
         if (vehicle.offRoute > 35.0 || maneuver.offRoute > 25.0) return null
         val ahead = maneuver.metersAlong - vehicle.metersAlong
         if (ahead < -10.0 || ahead > 1_100.0) return null
-        // Only two stages: announce at 250 m, then again at 50 m.
+        // Only two stages: announce at 200 m, then again at 50 m.
         // A driver joining close to a junction hears the 50 m stage only.
         val level = when {
             ahead <= 50.0 -> 1
-            ahead <= 250.0 -> 0
+            ahead <= 200.0 -> 0
             else -> return null
         }
         if (level <= lastLevel || (lastSpeechTime > 0 && nowMs - lastSpeechTime < 4_000L)) {
@@ -72,7 +72,7 @@ class ManeuverGuidancePolicy {
         }
         // IMPORTANT: do not mark as spoken until TextToSpeech accepted the request.
         proposedLevel = level
-        return (if (level == 0) "İki yüz elli metre sonra, " else "Elli metre sonra, ") +
+        return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
             instruction
     }
 
