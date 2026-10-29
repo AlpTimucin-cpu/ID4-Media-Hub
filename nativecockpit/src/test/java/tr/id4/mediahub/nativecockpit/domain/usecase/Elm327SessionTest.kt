@@ -12,13 +12,19 @@ class Elm327SessionTest {
             private set
         val commands = mutableListOf<String>()
         var failOnce = false
+        var alwaysDropOnRead = false
         var connections = 0
+        var disconnections = 0
         override suspend fun connect(timeoutMillis: Long) {
             connections++
             connected = true
         }
         override suspend fun exchange(command: String, timeoutMillis: Long): String {
             commands.add(command)
+            if (alwaysDropOnRead && command == "221E0E") {
+                connected = false
+                throw IOException("Bluetooth out of range / ignition off")
+            }
             if (failOnce && command == "221E0E") {
                 failOnce = false
                 throw IOException("Adapter disconnected")
@@ -29,7 +35,10 @@ class Elm327SessionTest {
                 else -> "62 1E 0E 04 68"
             }
         }
-        override fun disconnect() { connected = false }
+        override fun disconnect() {
+            disconnections++
+            connected = false
+        }
     }
 
     @Test fun startsWithExactInitializationSequence() = runBlocking {
@@ -49,6 +58,34 @@ class Elm327SessionTest {
         assertEquals(2, fake.connections)
         assertEquals(2, fake.commands.count { it == "ATZ" })
         session.close()
+    }
+
+    @Test fun permanentDropRetriesThreeTimesThenExposesError() = runBlocking {
+        val adapter = FakeTransport().apply { alwaysDropOnRead = true }
+        val session = Elm327Session(adapter)
+        session.initialize()
+        val result = runCatching { session.readOnly("221E0E") }
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IOException)
+        assertEquals(3, adapter.commands.count { it == "221E0E" })
+        assertEquals(3, adapter.connections)
+        assertTrue(adapter.disconnections >= 3)
+        assertFalse(adapter.connected)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("3"))
+        // The caller/controller must publish the error to ObdConnectionState.ERROR.
+        session.close()
+    }
+
+    @Test fun disposedSessionCannotReconnectSilently() = runBlocking {
+        val adapter = FakeTransport()
+        val session = Elm327Session(adapter)
+        session.initialize()
+        session.close()
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { session.initialize() }
+        }
+        assertEquals(1, adapter.connections)
+        assertFalse(adapter.connected)
     }
 
     @Test fun dangerousNonReadCommandsAreRejected(): Unit = runBlocking {
