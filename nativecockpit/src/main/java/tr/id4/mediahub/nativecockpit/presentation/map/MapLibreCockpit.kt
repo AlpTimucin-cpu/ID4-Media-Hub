@@ -402,3 +402,28 @@ private fun updateWeather(style: Style, samples: List<WeatherWaypoint>) {
         ))
     }
 }
+
+/** Draw weather pictograms locally; no extra tile, image or font requests. */
+private fun weatherBitmap(type: String): Bitmap {
+    val bitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    paint.color = android.graphics.Color.rgb(4, 28, 45)
+    canvas.drawCircle(24f, 24f, 22f, paint)
+    paint.color = if (type == "sun") android.graphics.Color.rgb(255, 194, 67)
+        else android.graphics.Color.rgb(200, 227, 245)
+    if (type == "sun") {
+        canvas.drawCircle(24f, 24f, 11f, paint)
+    } else {
+        canvas.drawOval(12f, 19f, 36f, 32f, paint)
+        canvas.drawCircle(20f, 19f, 8f, paint)
+        canvas.drawCircle(28f, 19f, 7f, paint)
+        if (type == "rain") {
+            paint.color = android.graphics.Color.rgb(42, 182, 238)
+            paint.strokeWidth = 3f
+            canvas.drawLine(17f, 34f, 13f, 41f, paint)
+            canvas.drawLine(30f, 34f, 26f, 41f, paint)
+        }
+    }
+    return bitmap
+}
