@@ -1,101 +1,72 @@
 package tr.id4.mediahub.nativecockpit.presentation.media
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
-/** Phone-side external app handoff only. Never bypass car UX/driving restrictions. */
-enum class StreamingApp(val title: String, val androidPackage: String) {
-    NETFLIX("Netflix", "com.netflix.mediaclient"),
-    DISNEY("Disney+", "com.disney.disneyplus"),
-    PRIME("Prime Video", "com.amazon.avod.thirdpartyclient")
-}
-
-/** True only from an authoritative Park gear / vehicle UX-restrictions source. */
+/** Embedded browsing replaces external package launching, without touching Mola. */
 @Composable
 fun ParkedStreamingDialog(
     verifiedParked: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var error by remember { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf<MediaSite?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().fillMaxHeight(0.9f),
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFF0A1728),
             shadowElevation = 12.dp
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text("Medya uygulamaları", style = MaterialTheme.typography.titleLarge,
-                    color = Color.White)
-                Text(
-                    if (verifiedParked) "Araç park halinde doğrulandı."
-                    else "Video yalnızca araç Park konumundayken açılır. " +
-                        "Park bilgisi doğrulanamadığı için başlatma kapalı.",
-                    color = Color(0xFFABC5D5),
-                    style = MaterialTheme.typography.bodySmall
+            val site = selected
+            if (site != null) {
+                MediaWebViewScreen(
+                    service = site,
+                    verifiedParked = verifiedParked,
+                    onClose = { selected = null }
                 )
-                StreamingApp.entries.forEach { app ->
-                    Button(
-                        enabled = verifiedParked,
-                        onClick = {
-                            if (!verifiedParked) return@Button
-                            error = tryLaunch(context, app)
-                            if (error == null) onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text(app.title) }
-                }
-                error?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFFFB17C))
-                }
-                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Kapat")
+            } else {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Medya tarayıcısı", style = MaterialTheme.typography.titleLarge,
+                        color = Color.White)
+                    Text(
+                        if (verifiedParked) "Park doğrulandı. İçerikler uygulama içinde açılır."
+                        else "Güvenilir Park sinyali yok. Video başlatma engellendi; " +
+                             "sıfır GPS hızı Park doğrulaması değildir.",
+                        color = Color(0xFFABC5D5),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    MediaSite.entries.forEach { service ->
+                        OutlinedButton(
+                            enabled = verifiedParked,
+                            onClick = { selected = service },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) {
+                            Text(service.title)
+                        }
+                    }
+                    Text(
+                        "Netflix, Disney+ ve Prime Video korumalı içerikleri " +
+                            "WebView içinde çalışmayabilir; resmi uygulamaları kullanın.",
+                        color = Color(0xFFFFBD78),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                        Text("Kapat")
+                    }
                 }
             }
         }
-    }
-}
-
-/** No embedding, screen-capture, DRM changes or third-party PiP coercion. */
-private fun tryLaunch(context: Context, service: StreamingApp): String? {
-    val intent = context.packageManager
-        .getLaunchIntentForPackage(service.androidPackage)
-        ?: return service.title + " cihazda kurulu değil veya kullanılamıyor."
-    return try {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        null
-    } catch (_: ActivityNotFoundException) {
-        service.title + " başlatılamadı."
-    } catch (_: SecurityException) {
-        service.title + " başlatma izni bulunamadı."
     }
 }
