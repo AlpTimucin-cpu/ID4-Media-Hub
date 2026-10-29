@@ -15,6 +15,9 @@ import kotlin.math.hypot
 class ManeuverGuidancePolicy {
     private data class Projection(val metersAlong: Double, val offRoute: Double)
     private var routeAndStep: String? = null
+    private var activeRouteId: String? = null
+    // A GPS jitter or a recalculated next step must not repeat an already spoken cue.
+    private val spokenStagesByStep = LinkedHashMap<String, Int>()
     private var lastLevel = -1
     private var proposedLevel: Int? = null
     private var lastFixTime = 0L
@@ -22,6 +25,8 @@ class ManeuverGuidancePolicy {
 
     fun reset() {
         routeAndStep = null
+        activeRouteId = null
+        spokenStagesByStep.clear()
         lastLevel = -1
         proposedLevel = null
         lastFixTime = 0L
@@ -42,12 +47,17 @@ class ManeuverGuidancePolicy {
         if (!fix.usable(nowMs) || fix.accuracyMeters > 35f) return null
 
         val key = "$id|$stepId"
+        if (id != activeRouteId) {
+            // Only a genuinely new route can discard deduplication history.
+            activeRouteId = id
+            spokenStagesByStep.clear()
+            lastSpeechTime = 0L
+        }
         if (key != routeAndStep) {
             routeAndStep = key
-            lastLevel = -1
+            lastLevel = spokenStagesByStep[key] ?: -1
             proposedLevel = null
             lastFixTime = 0L
-            lastSpeechTime = 0L
         }
         // The Compose UI can update every second with the same GPS fix.
         if (fix.recordedAtMillis <= lastFixTime) return null
@@ -80,6 +90,13 @@ class ManeuverGuidancePolicy {
     fun confirmSpoken(nowMs: Long) {
         proposedLevel?.let { level ->
             lastLevel = maxOf(lastLevel, level)
+            routeAndStep?.let { key ->
+                spokenStagesByStep[key] = maxOf(spokenStagesByStep[key] ?: -1, level)
+                // Bound retained state for long routes.
+                if (spokenStagesByStep.size > 150) {
+                    spokenStagesByStep.remove(spokenStagesByStep.keys.first())
+                }
+            }
             lastSpeechTime = nowMs
         }
         proposedLevel = null
