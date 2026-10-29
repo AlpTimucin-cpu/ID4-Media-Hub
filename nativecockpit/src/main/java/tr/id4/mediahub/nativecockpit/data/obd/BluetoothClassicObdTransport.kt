@@ -71,7 +71,8 @@ class BluetoothClassicObdTransport(
                     continuation.invokeOnCancellation { runCatching { next.close() } }
                 }
             }
-            incoming = Channel(Channel.BUFFERED)
+            val receiveChannel = Channel<ByteArray>(Channel.BUFFERED)
+            incoming = receiveChannel
             ready = true
             readJob = scope.launch {
                 val bytes = ByteArray(512)
@@ -79,11 +80,12 @@ class BluetoothClassicObdTransport(
                     while (isActive) {
                         val count = next.inputStream.read(bytes)
                         if (count < 0) throw IOException("OBD bağlantısı kesildi")
-                        if (count > 0) incoming.send(bytes.copyOf(count))
+                        if (count > 0) receiveChannel.send(bytes.copyOf(count))
                     }
                 } catch (error: Exception) {
-                    ready = false
-                    incoming.close(IOException("SPP okuma bağlantısı kesildi", error))
+                    receiveChannel.close(IOException("SPP okuma bağlantısı kesildi", error))
+                    // A late callback from an old socket cannot drop a new link.
+                    if (socket === next) ready = false
                 }
             }
         } catch (error: Exception) {
