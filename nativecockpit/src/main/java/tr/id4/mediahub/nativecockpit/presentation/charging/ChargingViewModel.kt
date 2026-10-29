@@ -23,6 +23,7 @@ data class ChargingUiState(
     val selectedFilter: StationFilter = StationFilter.ALL,
     val total: Int = 0,
     val corridorCount: Int? = null,
+    val corridorStations: List<ChargingStation> = emptyList(),
     val routeProvided: Boolean = false,
     val verifiedAtUtc: String? = null,
     val loading: Boolean = true,
@@ -53,18 +54,28 @@ class ChargingViewModel @Inject constructor(
             // a scan of every OSRM vertex for every one of 13k+ stations.
             val index=if(routePoints.size>=2) StationCorridor.index(routePoints) else null
             val alongIds=if(index!=null)
-                catalog.stations.asSequence().filter(index::isAlongRoute).map { it.id }.toSet()
+                catalog.stations.asSequence().filter(index::isDcAlongRoute).map { it.id }.toSet()
             else emptySet()
             val visible=catalog.stations.asSequence()
                 .filter { when(selected){
                     StationFilter.ALL -> true
                     StationFilter.DC -> it.hasDc
-                    StationFilter.ROUTE_CCS -> it.id in alongIds
+                    StationFilter.ROUTE_CCS -> it.hasDcCcs && it.id in alongIds
+                    StationFilter.ROUTE_DC -> it.id in alongIds
                 }}.toList()
-            ChargingUiState(visible,selected,catalog.stations.size,
-                if(index!=null) visible.count { it.id in alongIds }
-                else null,routePoints.size>=2,catalog.verifiedAtUtc,
-                catalog.loading,catalog.staleCache,catalog.error)
+            ChargingUiState(
+                visible = visible,
+                selectedFilter = selected,
+                total = catalog.stations.size,
+                corridorCount = if (index != null) alongIds.size else null,
+                corridorStations = if (index != null)
+                    catalog.stations.filter { it.id in alongIds } else emptyList(),
+                routeProvided = routePoints.size >= 2,
+                verifiedAtUtc = catalog.verifiedAtUtc,
+                loading = catalog.loading,
+                fromCache = catalog.staleCache,
+                error = catalog.error
+            )
         }
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ChargingUiState())
 }
