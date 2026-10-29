@@ -60,6 +60,7 @@ private const val ROUTE_LAYER = "eya-route-line"
 private const val STATION_SRC = "eya-station-source"
 private const val STATION_ALL_LAYER = "eya-station-all"
 private const val STATION_RING_LAYER = "eya-station-route-outline"
+private const val STATION_PLANNED_LAYER = "eya-station-plan-outline"
 private const val STATION_DC_LAYER = "eya-station-dc-icons"
 private const val STATION_ICON = "eya-station-bolt"
 private const val STATION_CLUSTER_LAYER = "eya-station-cluster-circles"
@@ -76,6 +77,7 @@ fun MapLibreCockpit(
     gpsFix: GpsFix?,
     routePoints: List<GeoCoordinate>,
     stations: List<ChargingStation>,
+    plannedStopIds: Set<String> = emptySet(),
     weatherPoints: List<WeatherWaypoint>,
     speedProfile: List<ProfileSpeedSegment> = emptyList(),
     onViewportChanged: (GeoViewport) -> Unit,
@@ -231,11 +233,11 @@ fun MapLibreCockpit(
         }
         if(routePoints.isEmpty())fittedRouteKey=null
     }
-    LaunchedEffect(activeStyle, stations, routePoints) {
+    LaunchedEffect(activeStyle, stations, routePoints, plannedStopIds) {
         val style = activeStyle ?: return@LaunchedEffect
         // Serialize the 13k+ stations off the UI thread; the source clusters them.
         val geo = withContext(Dispatchers.Default) {
-            buildStationGeoJson(stations, routePoints)
+            buildStationGeoJson(stations, routePoints, plannedStopIds)
         }
         updateStations(style, geo)
     }
@@ -293,7 +295,8 @@ private fun updateRoute(style: Style, points: List<GeoCoordinate>) {
 
 /** Feature properties carry only station IDs; details come from verified repository. */
 private fun buildStationGeoJson(
-    stations: List<ChargingStation>, route: List<GeoCoordinate>
+    stations: List<ChargingStation>, route: List<GeoCoordinate>,
+    plannedStopIds: Set<String>
 ): FeatureCollection {
     val routeIndex=if(route.size>=2) StationCorridor.index(route) else null
     val features=stations.map { station ->
@@ -301,6 +304,7 @@ private fun buildStationGeoJson(
             addProperty("stationId",station.id)
             addProperty("dc",station.hasDc)
             addProperty("corridor",routeIndex?.isDcAlongRoute(station)==true)
+            addProperty("proposedStop",station.id in plannedStopIds)
         }
         Feature.fromGeometry(Point.fromLngLat(station.coordinate.longitude,
             station.coordinate.latitude),props)
@@ -354,6 +358,16 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
             circleColor(android.graphics.Color.TRANSPARENT),
             circleStrokeWidth(3f),
             circleStrokeColor(android.graphics.Color.rgb(16, 235, 235))
+        ))
+    // Do not claim these candidates are verified reachable driving detours.
+    style.addLayer(CircleLayer(STATION_PLANNED_LAYER, STATION_SRC)
+        .withFilter(Expression.all(isSingle,
+            Expression.eq(Expression.get("proposedStop"), Expression.literal(true))))
+        .withProperties(
+            circleRadius(19f),
+            circleColor(android.graphics.Color.TRANSPARENT),
+            circleStrokeWidth(4f),
+            circleStrokeColor(android.graphics.Color.rgb(255, 194, 67))
         ))
     style.addLayer(SymbolLayer(STATION_DC_LAYER, STATION_SRC)
         .withFilter(Expression.all(isSingle,
