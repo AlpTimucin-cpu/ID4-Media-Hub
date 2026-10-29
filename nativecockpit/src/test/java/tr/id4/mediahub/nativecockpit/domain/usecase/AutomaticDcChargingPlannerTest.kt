@@ -39,6 +39,25 @@ class AutomaticDcChargingPlannerTest {
         assertTrue(estimate.source.contains("MODEL/TAHMİN"))
     }
 
+    @Test fun powerRequiresExplicitKilowattUnit() {
+        val specified = dc.copy(
+            sockets = listOf(ChargingSocket("one", "CCS2", "DC", "150 kW"))
+        )
+        val verified = AutomaticDcChargingPlanner.plan(
+            route, AutomaticDcChargingPlanner.candidates(route, listOf(specified)),
+            baseline, 60.0, 80.0, 15.0
+        ) as AutomaticChargePlan.Estimate
+        assertEquals(150.0, verified.stops.single().verifiedPowerKw!!, 0.01)
+
+        val unknown = AutomaticDcChargingPlanner.plan(
+            route, AutomaticDcChargingPlanner.candidates(route, listOf(dc.copy(
+                sockets = listOf(ChargingSocket("one", "CCS2", "DC", "150"))
+            ))),
+            baseline, 60.0, 80.0, 15.0
+        ) as AutomaticChargePlan.Estimate
+        assertNull(unknown.stops.single().verifiedPowerKw)
+    }
+
     @Test fun noReachableDcIsUnavailableNotAFabricatedPlan() {
         val result = AutomaticDcChargingPlanner.plan(route, emptyList(), baseline, 60.0, 80.0, 15.0)
         assertTrue(result is AutomaticChargePlan.Unavailable)
