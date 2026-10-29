@@ -49,13 +49,29 @@ object OsrmResponseParser {
                             m.string("type"), m.string("modifier")))
                     }
                 }
+                // OSRM speed annotations describe the router's speed profile.
+                // Only align them to geometry if there is exactly one leg.
+                val allLegs = route.getAsJsonArray("legs")
+                val rawSpeeds = if (allLegs?.size() == 1)
+                    allLegs[0].asJsonObject.getAsJsonObject("annotation")
+                        ?.getAsJsonArray("speed") else null
+                val segments: List<ProfileSpeedSegment> =
+                    if (rawSpeeds != null && rawSpeeds.size() == points.size - 1) {
+                        rawSpeeds.mapIndexedNotNull { i, el ->
+                            val metresPerSecond = runCatching { el.asDouble }.getOrNull()
+                            metresPerSecond?.takeIf { it.isFinite() && it in 0.0..80.0 }?.let { v ->
+                                ProfileSpeedSegment(points[i], points[i + 1], v * 3.6)
+                            }
+                        }.takeIf { it.size == rawSpeeds.size() }.orEmpty()
+                    } else emptyList()
                 val snap=RouteSnapshot(
                     destination=targetLabel.take(120),
                     routeId=id, routePoints=points,
                     totalKm=distance/1000,
                     osrmDurationSeconds=seconds,
                     estimatedDriveMinutes=ceil(seconds/60).toLong(),
-                    maneuvers=maneuvers
+                    maneuvers=maneuvers,
+                    profileSpeeds=segments
                 )
                 RouteOption(snap,distance/1000,ceil(seconds/60).toLong())
             }catch(_: RuntimeException){null}
