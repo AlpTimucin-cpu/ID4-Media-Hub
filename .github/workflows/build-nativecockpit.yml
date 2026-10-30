@@ -70,7 +70,7 @@ jobs:
           retention-days: 14
 
   release:
-    # Every trusted branch push and manual dispatch; only after tests pass.
+    # Only trusted push/dispatch; do not expose signing secrets to pull requests.
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 50
@@ -82,69 +82,81 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Verify Android SDK
+      - name: Install Android SDK
         shell: bash
         run: |
           set -euo pipefail
           sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' -print -quit)"
           test -x "$sdkmanager_bin"
           echo "$(dirname "$sdkmanager_bin")" >> "$GITHUB_PATH"
-      - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          "$sdkmanager_bin" "platforms;android-36" "build-tools;36.0.0"
       - name: Gradle 8.14.3
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.14.3"
-      - name: Validate owner-provided signing credentials
+
+      - name: Restore and verify owner signing identity
         shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.EYA_RELEASE_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.EYA_RELEASE_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.EYA_RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.EYA_RELEASE_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_EXPORT_PASSPHRASE: ${{ secrets.KEYSTORE_EXPORT_PASSPHRASE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$KEYSTORE_BASE64" || { echo "::error::Missing EYA_RELEASE_KEYSTORE_BASE64"; exit 1; }
-          test -n "$STORE_PASSWORD" || { echo "::error::Missing EYA_RELEASE_STORE_PASSWORD"; exit 1; }
-          test -n "$KEY_ALIAS" || { echo "::error::Missing EYA_RELEASE_KEY_ALIAS"; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "::error::Missing EYA_RELEASE_KEY_PASSWORD"; exit 1; }
+          test -n "$KEYSTORE_BASE64" || { echo "::error::Missing KEYSTORE_BASE64"; exit 1; }
+          test "${#KEYSTORE_EXPORT_PASSPHRASE}" -ge 20 || { echo "::error::Missing export passphrase"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "::error::Missing KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "::error::Missing KEY_ALIAS"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "::error::Missing KEY_PASSWORD"; exit 1; }
           umask 077
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/eya-release.jks"
-          test -s "$RUNNER_TEMP/eya-release.jks"
-      - name: Compile signed and R8-minified release APK
+          # KEYSTORE_BASE64 holds encrypted bytes because this repo is public.
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/eya-release.jks.enc"
+          openssl enc -d -aes-256-cbc -md sha256 -pbkdf2 -iter 300000 \
+            -in "$RUNNER_TEMP/eya-release.jks.enc" \
+            -out "$RUNNER_TEMP/eya-release.jks" \
+            -pass env:KEYSTORE_EXPORT_PASSPHRASE
+          keytool -list -keystore "$RUNNER_TEMP/eya-release.jks" \
+            -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
+          rm -f "$RUNNER_TEMP/eya-release.jks.enc"
+
+      - name: Build signed stable Release APK (R8 off temporarily)
         shell: bash
         env:
           EYA_RELEASE_STORE_FILE: ${{ runner.temp }}/eya-release.jks
-          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.EYA_RELEASE_STORE_PASSWORD }}
-          EYA_RELEASE_KEY_ALIAS: ${{ secrets.EYA_RELEASE_KEY_ALIAS }}
-          EYA_RELEASE_KEY_PASSWORD: ${{ secrets.EYA_RELEASE_KEY_PASSWORD }}
+          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          EYA_RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          EYA_RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          gradle :nativecockpit:testDebugUnitTest :nativecockpit:assembleRelease --stacktrace --no-daemon
-      - name: Verify APK signing and package identity
+          gradle :nativecockpit:assembleRelease --stacktrace --no-daemon
+
+      - name: Verify APK certificate and prepare artifact
         shell: bash
         run: |
           set -euo pipefail
           apk="nativecockpit/build/outputs/apk/release/nativecockpit-release.apk"
           test -s "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
             grep -q "package: name='tr.id4.mediahub.nativecockpit'"
-          # Artifact uses a predictable filename independent of Gradle module name.
           cp "$apk" app-release.apk
           sha256sum app-release.apk > app-release.sha256
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app-release.apk
           ls -lh app-release.apk
-      - name: Publish production-signed release APK
+
+      - name: Publish signed Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Elektrikli-Yol-Arkadasim-Signed-R8-Release-APK
+          name: Elektrikli-Yol-Arkadasim-Signed-Stable-Release
           path: |
             app-release.apk
             app-release.sha256
           if-no-files-found: error
           retention-days: 30
-      - name: Remove ephemeral signing material
+
+      - name: Erase temporary signing material
         if: always()
         shell: bash
-        run: rm -f "$RUNNER_TEMP/eya-release.jks"
+        run: |
+          rm -f "$RUNNER_TEMP/eya-release.jks" "$RUNNER_TEMP/eya-release.jks.enc"
