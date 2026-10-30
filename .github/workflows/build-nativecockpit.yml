@@ -5,11 +5,6 @@ on:
   push:
     branches:
       - feature/mola-native-id4
-    paths:
-      - "nativecockpit/**"
-      - "settings.gradle.kts"
-      - "build.gradle.kts"
-      - ".github/workflows/build-nativecockpit.yml"
 
 permissions:
   contents: read
@@ -64,24 +59,6 @@ jobs:
           grep -q 'androidx.car.app.category.NAVIGATION' manifest-tree.txt
           grep -q 'android.permission.BLUETOOTH_CONNECT' manifest-tree.txt
           echo "APK includes Android Auto navigation service and paired Bluetooth permission"
-      - name: R8 release smoke test with disposable CI certificate (NEVER publish)
-        shell: bash
-        run: |
-          set -euo pipefail
-          trap 'rm -f "$RUNNER_TEMP/eya-smoke.jks"' EXIT
-          keytool -genkeypair -noprompt -storetype JKS \
-            -keystore "$RUNNER_TEMP/eya-smoke.jks" \
-            -alias ci-smoke -storepass "ci-only-123456" \
-            -keypass "ci-only-123456" -keyalg RSA \
-            -keysize 3072 -validity 1 -dname "CN=Disposable CI Smoke"
-          export EYA_RELEASE_STORE_FILE="$RUNNER_TEMP/eya-smoke.jks"
-          export EYA_RELEASE_STORE_PASSWORD="ci-only-123456"
-          export EYA_RELEASE_KEY_ALIAS="ci-smoke"
-          export EYA_RELEASE_KEY_PASSWORD="ci-only-123456"
-          gradle :nativecockpit:assembleRelease --stacktrace --no-daemon
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify \
-            nativecockpit/build/outputs/apk/release/nativecockpit-release.apk
-          # No upload. A real production certificate is required for signed release.
       - name: Publish test APK and checksum
         uses: actions/upload-artifact@v4
         with:
@@ -93,8 +70,8 @@ jobs:
           retention-days: 14
 
   release:
-    # Release is explicit. Push/PR CI never publishes a production-signed binary.
-    if: github.event_name == 'workflow_dispatch'
+    # Every trusted branch push and manual dispatch; only after tests pass.
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -153,15 +130,18 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
             grep -q "package: name='tr.id4.mediahub.nativecockpit'"
-          sha256sum "$apk" > nativecockpit-release.sha256
-          ls -lh "$apk"
+          # Artifact uses a predictable filename independent of Gradle module name.
+          cp "$apk" app-release.apk
+          sha256sum app-release.apk > app-release.sha256
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app-release.apk
+          ls -lh app-release.apk
       - name: Publish production-signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Elektrikli-Yol-Arkadasim-Native-Signed-Release-APK
+          name: Elektrikli-Yol-Arkadasim-Signed-R8-Release-APK
           path: |
-            nativecockpit/build/outputs/apk/release/nativecockpit-release.apk
-            nativecockpit-release.sha256
+            app-release.apk
+            app-release.sha256
           if-no-files-found: error
           retention-days: 30
       - name: Remove ephemeral signing material
