@@ -333,14 +333,19 @@ class NavigationViewModel @Inject constructor(
                             current.voice.volume,
                             onUtteranceStarted = {
                                 // A successful enqueue is NOT proof of audible speech.
-                                policy.confirmSpoken(System.currentTimeMillis())
-                                if (BuildConfig.DEBUG && current.simulated)
-                                    Log.i(simulationTag, "TTS onStart: stage acknowledged")
+                                viewModelScope.launch {
+                                    // TTS calls arrive on Binder threads; policy is main-thread owned.
+                                    policy.confirmSpoken(System.currentTimeMillis())
+                                    if (BuildConfig.DEBUG && current.simulated)
+                                        Log.i(simulationTag, "TTS onStart: stage acknowledged")
+                                }
                             },
                             onUtteranceFailed = {
-                                policy.cancelPending()
-                                if (BuildConfig.DEBUG && current.simulated)
-                                    Log.w(simulationTag, "TTS synthesis failed; cue retryable")
+                                viewModelScope.launch {
+                                    policy.cancelPending()
+                                    if (BuildConfig.DEBUG && current.simulated)
+                                        Log.w(simulationTag, "TTS synthesis failed; cue retryable")
+                                }
                             }
                         )
                         if (!queued) {

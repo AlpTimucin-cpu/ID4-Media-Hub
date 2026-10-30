@@ -59,6 +59,7 @@ private const val FALLBACK_STYLE = "https://tiles.openfreemap.org/styles/fiord"
 private const val ROUTE_SRC = "eya-route-source"
 private const val ROUTE_LAYER = "eya-route-line"
 private const val STATION_SRC = "eya-station-source"
+private const val STATION_CORRIDOR_SRC = "eya-route-dc-corridor-source"
 private const val STATION_ALL_LAYER = "eya-station-all"
 private const val STATION_RING_LAYER = "eya-station-route-outline"
 private const val STATION_PLANNED_LAYER = "eya-station-plan-outline"
@@ -358,6 +359,14 @@ private fun buildStationGeoJson(
 }
 
 private fun updateStations(style: Style, geo: FeatureCollection) {
+    // Route-DC rings are NOT clustered; they remain visible at overview zoom.
+    val corridorFeatures = geo.features().orEmpty().filter { feature ->
+        feature.hasProperty("corridor") && feature.getBooleanProperty("corridor")
+    }
+    val corridorGeo = FeatureCollection.fromFeatures(corridorFeatures)
+    style.getSourceAs<GeoJsonSource>(STATION_CORRIDOR_SRC)?.setGeoJson(corridorGeo)
+        ?: style.addSource(GeoJsonSource(STATION_CORRIDOR_SRC, corridorGeo))
+    Log.d("EYA-MAP-UAT", "unclusteredCorridorDc=" + corridorFeatures.size)
     val existing=style.getSourceAs<GeoJsonSource>(STATION_SRC)
     if(existing!=null){existing.setGeoJson(geo);return}
     // Clustering belongs to the data source: thousands of points do not become
@@ -395,9 +404,8 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
             circleStrokeWidth(1f),
             circleStrokeColor(android.graphics.Color.WHITE)
         ))
-    style.addLayer(CircleLayer(STATION_RING_LAYER, STATION_SRC)
-        .withFilter(Expression.all(isSingle,
-            Expression.eq(Expression.get("corridor"), Expression.literal(true))))
+    style.addLayer(CircleLayer(STATION_RING_LAYER, STATION_CORRIDOR_SRC)
+        .withFilter(Expression.eq(Expression.get("corridor"), Expression.literal(true)))
         .withProperties(
             circleRadius(15f),
             circleColor(android.graphics.Color.TRANSPARENT),

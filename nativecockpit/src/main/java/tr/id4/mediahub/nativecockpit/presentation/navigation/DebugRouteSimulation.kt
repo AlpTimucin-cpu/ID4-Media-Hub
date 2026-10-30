@@ -1,9 +1,11 @@
 package tr.id4.mediahub.nativecockpit.presentation.navigation
 
 import kotlin.math.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import tr.id4.mediahub.nativecockpit.domain.model.*
 
 /**
@@ -45,7 +47,7 @@ internal object DebugRouteSimulation {
             else tick++
             delay(tickMillis)
         }
-    }
+    }.flowOn(Dispatchers.Default)
 
     /** Deterministic injection point for JVM UAT: no Android mock provider. */
     fun frameAt(route: RouteSnapshot?, metersAlong: Double, nowMs: Long): SimulationFrame =
