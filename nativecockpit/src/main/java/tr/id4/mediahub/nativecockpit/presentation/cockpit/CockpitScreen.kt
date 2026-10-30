@@ -391,7 +391,7 @@ fun CockpitScreen(
                         .clickable { compactDetails = "PROGRESS" }
                 ) {
                     val progress = visibleRoute?.validProgress()
-                        ?.takeIf { it.isFinite() }?.coerceIn(0.0, 1.0)
+                        ?.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
                     Text(
                         progress?.let { "ROTA İLERLEMESİ · %${(it * 100).toInt()}" }
                             ?: "ROTA İLERLEMESİ · GPS yok",
