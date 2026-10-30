@@ -342,7 +342,8 @@ fun CockpitScreen(
             )
             Text(
                 (loadStatus as? RouteLoadStatus.Error)?.message
-                    ?: if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
+                    ?: if (state.simulationEnabled && state.gpsFix == null) "TEST GPS · geçerli OSRM rotası bekleniyor"
+                    else if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
                     else if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
                     else state.gpsWarning ?: gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
                 color = Color.White, fontSize = 11.sp,
@@ -661,7 +662,9 @@ private fun RoutePanel(
             Text(it.take(120), color = Color(0xFFFFB17C), fontSize = 11.sp)
         }
     } else {
-        Text(route.nextTurnInstruction?.takeIf { it.isNotBlank() } ?: "Manevra bekleniyor",
+        Text(route.nextTurnInstruction?.takeIf { it.isNotBlank() }
+                ?: if (model.simulationEnabled) "TEST · OSRM manevrası bekleniyor"
+                   else "Manevra bekleniyor",
             color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             maxLines = 2, overflow = TextOverflow.Ellipsis)
         val m = route.nextTurnMeters?.takeIf { it.isFinite() && it >= 0.0 }

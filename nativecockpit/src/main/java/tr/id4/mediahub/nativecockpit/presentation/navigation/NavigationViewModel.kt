@@ -1,6 +1,7 @@
 package tr.id4.mediahub.nativecockpit.presentation.navigation
 
 import android.content.Context
+import android.util.Log
 import tr.id4.mediahub.nativecockpit.BuildConfig
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -102,6 +103,7 @@ class NavigationViewModel @Inject constructor(
     private val _simulationEnabled = MutableStateFlow(BuildConfig.DEBUG)
     val isSimulationMode: StateFlow<Boolean> = _simulationEnabled.asStateFlow()
     private val _simulationFrame = MutableStateFlow<SimulationFrame?>(null)
+    private val simulationTag = "EYA-SIM-UAT"
     private var gpsWaitSinceMs = System.currentTimeMillis()
 
     private data class DataSources(
@@ -265,9 +267,19 @@ class NavigationViewModel @Inject constructor(
                 Triple(enabled && BuildConfig.DEBUG, front, route)
             }.collectLatest { (enabled, front, route) ->
                 _simulationFrame.value = null
+                if (BuildConfig.DEBUG) {
+                    Log.i(simulationTag, "simulated=$enabled foreground=$front " +
+                        "routeReady=${route?.routeId != null} maneuvers=${route?.maneuvers?.size ?: 0}")
+                }
                 if (enabled && front) {
+                    // The SAME frame powers MapLibre/progress and the TTS route policy.
+                    // Never write simulated coordinates into the real GPS repository.
                     DebugRouteSimulation.frames(route).collect { frame ->
                         _simulationFrame.value = frame
+                        if (BuildConfig.DEBUG) {
+                            Log.d(simulationTag, "simFrame hasGps=${frame.fix != null} " +
+                                "gpsFresh=${frame.fix?.usable(System.currentTimeMillis()) == true}")
+                        }
                     }
                 }
             }
@@ -287,7 +299,8 @@ class NavigationViewModel @Inject constructor(
                 CarNavigationOwnership.navigating,
                 _voice
             ) { route, source, foreground, carNavigating, voice ->
-                SpeechInputs(route, source.gps, foreground && !carNavigating, voice)
+                SpeechInputs(route, source.gps, foreground && !carNavigating, voice,
+                    source.simulated)
             }.collect { current ->
                 if (!current.allowed || !current.voice.enabled ||
                     current.voice.status != NativeVoiceGuide.Status.READY &&
@@ -296,19 +309,39 @@ class NavigationViewModel @Inject constructor(
                 } else {
                     val now = System.currentTimeMillis()
                     val route = ttsProgress.enrich(current.route, current.fix, now)
+                    if (BuildConfig.DEBUG && current.simulated) {
+                        Log.d(simulationTag, "speechInput: route=${route?.routeId != null} " +
+                            "fixFresh=${current.fix?.usable(now) == true} " +
+                            "turn=${route?.nextManeuver?.id ?: "none"} " +
+                            "aheadMeters=${route?.nextTurnMeters?.toInt() ?: -1} " +
+                            "voiceStatus=${current.voice.status}")
+                    }
                     policy.nextAnnouncement(route, current.fix, now)?.let { message ->
+                        if (BuildConfig.DEBUG && current.simulated)
+                            Log.i(simulationTag, "TTS cue requested for " +
+                                "${route?.nextManeuver?.id ?: "unknown"} " +
+                                "ahead=${route?.nextTurnMeters?.toInt() ?: -1}m")
                         val queued = guide.speak(
                             message,
                             current.voice.volume,
                             onUtteranceStarted = {
                                 // A successful enqueue is NOT proof of audible speech.
                                 policy.confirmSpoken(System.currentTimeMillis())
+                                if (BuildConfig.DEBUG && current.simulated)
+                                    Log.i(simulationTag, "TTS onStart: stage acknowledged")
                             },
                             onUtteranceFailed = {
                                 policy.cancelPending()
+                                if (BuildConfig.DEBUG && current.simulated)
+                                    Log.w(simulationTag, "TTS synthesis failed; cue retryable")
                             }
                         )
-                        if (!queued) policy.cancelPending()
+                        if (!queued) {
+                            policy.cancelPending()
+                            if (BuildConfig.DEBUG && current.simulated)
+                                Log.w(simulationTag, "TTS not queued; " +
+                                    "status=${current.voice.status} error=${guide.lastError}")
+                        }
                     }
                 }
             }
@@ -317,7 +350,8 @@ class NavigationViewModel @Inject constructor(
 
     private data class SpeechInputs(
         val route: RouteSnapshot?, val fix: GpsFix?,
-        val allowed: Boolean, val voice: VoiceUiState
+        val allowed: Boolean, val voice: VoiceUiState,
+        val simulated: Boolean
     )
 
     fun setForeground(isForeground: Boolean) {
@@ -342,6 +376,8 @@ class NavigationViewModel @Inject constructor(
         _simulationFrame.value = null
         _simulationEnabled.value = next
         gpsWaitSinceMs = System.currentTimeMillis()
+        if (BuildConfig.DEBUG)
+            Log.i(simulationTag, "Simulation toggled: $next; guidance state reset")
         _gpsError.value = null
         if (next) locationRepository.stop()
         else if (_foreground.value) locationRepository.start()
