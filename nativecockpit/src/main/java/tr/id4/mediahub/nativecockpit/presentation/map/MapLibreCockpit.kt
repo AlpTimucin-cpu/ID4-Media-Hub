@@ -221,7 +221,10 @@ fun MapLibreCockpit(
 
     // Show only actual OSRM geometry, fit once per selected alternative.
     LaunchedEffect(activeStyle, routePoints) {
-        activeStyle?.let { updateRoute(it, routePoints) }
+        activeStyle?.let {
+            updateRoute(it, routePoints)
+            ensureRouteOverlayZOrder(it)
+        }
         if (activeStyle != null && validRouteGeometry(routePoints)) {
             val signature=routePoints.hashCode()
             if(fittedRouteKey!=signature){
@@ -241,14 +244,21 @@ fun MapLibreCockpit(
             buildStationGeoJson(stations, routePoints, plannedStopIds)
         }
         updateStations(style, geo)
+        ensureRouteOverlayZOrder(style)
         Log.d("EYA-MAP-UAT", "stationSource=" + (style.getSourceAs<GeoJsonSource>(STATION_SRC) != null) +
             " dcRingLayer=" + (style.getLayer(STATION_RING_LAYER) != null))
     }
     LaunchedEffect(activeStyle, speedProfile) {
-        activeStyle?.let { updateSpeedProfile(it, speedProfile) }
+        activeStyle?.let {
+            updateSpeedProfile(it, speedProfile)
+            ensureRouteOverlayZOrder(it)
+        }
     }
     LaunchedEffect(activeStyle, weatherPoints) {
-        activeStyle?.let { updateWeather(it, weatherPoints) }
+        activeStyle?.let {
+            updateWeather(it, weatherPoints)
+            ensureRouteOverlayZOrder(it)
+        }
     }
     LaunchedEffect(activeStyle, gpsFix, routePoints) {
         activeStyle?.let { carAnimator.update(it, gpsFix, routePoints, System.currentTimeMillis()) }
@@ -278,6 +288,34 @@ fun MapLibreCockpit(
                     try { context.startActivity(intent) } catch (_: Exception) { }
                 }.padding(horizontal = 7.dp, vertical = 3.dp))
     }
+}
+
+/**
+ * MapLibre's last-added layer wins. Weather/EPDK arrive on independent Flows,
+ * so addLayerAbove only at creation is insufficient after style/source refresh.
+ * Reorder *existing app-owned layers* every time any overlay source updates.
+ *
+ * Bottom -> top: route, OSRM profile speeds, charging markers, weather icons.
+ * No tile/provider layers, MapLibre resources or data sources are replaced.
+ */
+private fun ensureRouteOverlayZOrder(style: Style) {
+    if (style.getLayer(ROUTE_LAYER) == null) return
+
+    var below = ROUTE_LAYER
+    val overlayOrder = listOf(
+        SPEED_NORMAL, SPEED_SLOW,
+        STATION_CLUSTER_LAYER, STATION_CLUSTER_COUNT_LAYER,
+        STATION_ALL_LAYER, STATION_RING_LAYER, STATION_PLANNED_LAYER,
+        STATION_DC_LAYER, WEATHER_LAYER
+    )
+    overlayOrder.forEach { id ->
+        val layer = style.getLayer(id) ?: return@forEach
+        // Keep the source and all layer styling unchanged.
+        style.removeLayer(id)
+        style.addLayerAbove(layer, below)
+        below = id
+    }
+    Log.d("EYA-MAP-UAT", "overlayZOrder top=$below aboveRoute=$ROUTE_LAYER")
 }
 
 private fun updateRoute(style: Style, points: List<GeoCoordinate>) {

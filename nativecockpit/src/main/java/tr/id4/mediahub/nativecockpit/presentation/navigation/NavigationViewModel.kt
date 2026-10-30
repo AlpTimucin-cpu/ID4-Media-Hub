@@ -115,11 +115,16 @@ class NavigationViewModel @Inject constructor(
     // Real OBD and real FusedLocation are never overwritten by test data.
     private val sources = combine(
         vehicleRepository.telemetry, locationRepository.gpsFix,
-        _simulationEnabled, _simulationFrame
-    ) { telemetry, gps, enabled, frame ->
-        if (enabled) DataSources(
-            frame?.telemetry ?: VehicleTelemetry(),
-            frame?.fix, true
+        _simulationEnabled, _simulationFrame, routes.currentRoute
+    ) { telemetry, gps, enabled, frame, route ->
+        // A frame from the previous route must NEVER drive a new route's
+        // progress or trigger an announcement while collectLatest switches.
+        val matchingFrame = frame?.takeIf {
+            route?.routeId != null && it.routeId == route.routeId
+        }
+        if (BuildConfig.DEBUG && enabled) DataSources(
+            matchingFrame?.telemetry ?: VehicleTelemetry(),
+            matchingFrame?.fix, true
         ) else DataSources(telemetry, gps, false)
     }
     private val _gpsError = MutableStateFlow<String?>(null)
@@ -275,9 +280,11 @@ class NavigationViewModel @Inject constructor(
                     // The SAME frame powers MapLibre/progress and the TTS route policy.
                     // Never write simulated coordinates into the real GPS repository.
                     DebugRouteSimulation.frames(route).collect { frame ->
+                        // Atomic Frame: GPS and fixture battery data from ONE route.
                         _simulationFrame.value = frame
                         if (BuildConfig.DEBUG) {
-                            Log.d(simulationTag, "simFrame hasGps=${frame.fix != null} " +
+                            Log.d(simulationTag, "simFrame route=${frame.routeId ?: "none"} " +
+                                "hasGps=${frame.fix != null} " +
                                 "gpsFresh=${frame.fix?.usable(System.currentTimeMillis()) == true}")
                         }
                     }

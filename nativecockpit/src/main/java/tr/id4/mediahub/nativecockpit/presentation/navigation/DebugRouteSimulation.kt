@@ -11,6 +11,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.*
  * mutates LocationRepository or writes real OBD values.
  */
 internal data class SimulationFrame(
+    val routeId: String?,
     val fix: GpsFix?,
     val telemetry: VehicleTelemetry
 )
@@ -39,7 +40,7 @@ internal object DebugRouteSimulation {
             val along = if (geometry != null) {
                 (start + tick.toDouble() * SPEED_M_S).coerceAtMost(geometry.length)
             } else 0.0
-            emit(makeFrame(geometry, along, System.currentTimeMillis()))
+            emit(makeFrame(geometry, route?.routeId, along, System.currentTimeMillis()))
             if (geometry != null && along >= geometry.length) tick = 0L
             else tick++
             delay(tickMillis)
@@ -48,7 +49,7 @@ internal object DebugRouteSimulation {
 
     /** Deterministic injection point for JVM UAT: no Android mock provider. */
     fun frameAt(route: RouteSnapshot?, metersAlong: Double, nowMs: Long): SimulationFrame =
-        makeFrame(geometry(route), metersAlong, nowMs)
+        makeFrame(geometry(route), route?.routeId, metersAlong, nowMs)
 
     private fun geometry(route: RouteSnapshot?): Geometry? {
         val actual = route ?: return null
@@ -76,7 +77,7 @@ internal object DebugRouteSimulation {
     }
 
     private fun makeFrame(
-        geometry: Geometry?, metersAlong: Double, nowMs: Long
+        geometry: Geometry?, routeId: String?, metersAlong: Double, nowMs: Long
     ): SimulationFrame {
         val safeMeters = metersAlong.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
         val along = geometry?.let { safeMeters.coerceAtMost(it.length) } ?: 0.0
@@ -85,6 +86,7 @@ internal object DebugRouteSimulation {
             BATTERY_KWH * 100.0).coerceIn(0.0, 100.0)
         fun timed(value: Double) = TimedValue(value, nowMs)
         return SimulationFrame(
+            routeId = routeId?.takeIf { geometry != null },
             fix = point?.let {
                 GpsFix(
                     coordinate = it,

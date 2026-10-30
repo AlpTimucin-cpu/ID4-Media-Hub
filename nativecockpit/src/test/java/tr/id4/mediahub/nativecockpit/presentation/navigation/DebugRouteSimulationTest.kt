@@ -11,9 +11,24 @@ import org.junit.Test
 import tr.id4.mediahub.nativecockpit.domain.model.*
 
 class DebugRouteSimulationTest {
+    @Test fun routeIdChangesWithTheSelectedRouteNotWithTheLastGpsFix() = runBlocking {
+        val firstRoute = RouteSnapshot(
+            routeId = "route-one",
+            routePoints = listOf(GeoCoordinate(37.0, 34.0), GeoCoordinate(37.01, 34.0))
+        )
+        val secondRoute = firstRoute.copy(routeId = "route-two")
+        val first = DebugRouteSimulation.frames(firstRoute).first()
+        val second = DebugRouteSimulation.frames(secondRoute).first()
+        assertEquals("route-one", first.routeId)
+        assertEquals("route-two", second.routeId)
+        assertNotNull(first.fix)
+        assertNotNull(second.fix)
+    }
+
     @Test fun neverForgesGpsWhenNoVerifiedRouteExists() = runBlocking {
         val sample = DebugRouteSimulation.frames(null).first()
         assertNull(sample.fix)
+        assertNull(sample.routeId)
         assertEquals(80.0, sample.telemetry.socPercent.value!!, 0.0001)
         assertEquals(45.0, sample.telemetry.speedKmh.value!!, 0.0001)
         assertEquals(22.0, sample.telemetry.batteryTemperatureC.value!!, 0.0001)
@@ -30,6 +45,8 @@ class DebugRouteSimulationTest {
             )
         )
         val points = DebugRouteSimulation.frames(route).take(2).toList()
+        assertEquals("fixture-route", points[0].routeId)
+        assertEquals("fixture-route", points[1].routeId)
         val first = points[0].fix!!
         val second = points[1].fix!!
         assertTrue(first.usable(System.currentTimeMillis()))
