@@ -107,6 +107,7 @@ class NavigationViewModel @Inject constructor(
     private val simulationTag = "EYA-SIM-UAT"
     private var debugDemoRouteAttempted = false
     private var debugDemoRouteJob: Job? = null
+    private var debugDemoRouteActive = false
     private var gpsWaitSinceMs = System.currentTimeMillis()
 
     private data class DataSources(
@@ -302,8 +303,21 @@ class NavigationViewModel @Inject constructor(
                             source = "DEBUG UAT"
                         )
                         when (val result = routes.calculateResult(start, destination).getOrThrow()) {
-                            is RouteCalculationResult.Success ->
+                            is RouteCalculationResult.Success -> {
+                                debugDemoRouteActive = true
+                                _planner.update {
+                                    it.copy(
+                                        originText = "TEST · Niğde",
+                                        originSelected = RoutePlace(
+                                            "TEST · Niğde", start, source = "DEBUG UAT"
+                                        ),
+                                        destinationText = destination.label,
+                                        destinationSelected = destination,
+                                        error = null
+                                    )
+                                }
                                 Log.i(simulationTag, "DEBUG demo: OSRM route loaded; awaiting frames")
+                            }
                             is RouteCalculationResult.Failure -> {
                                 Log.w(simulationTag, "DEBUG demo route unavailable: " + result.message)
                                 _planner.update { it.copy(
@@ -441,6 +455,12 @@ class NavigationViewModel @Inject constructor(
         policy.reset()
         _simulationFrame.value = null
         _simulationEnabled.value = next
+        // A DEBUG demo route must not remain as a live-navigation route.
+        if (!next && debugDemoRouteActive) {
+            routes.clear()
+            _planner.value = RoutePlannerUiState()
+            debugDemoRouteActive = false
+        }
         debugDemoRouteJob?.cancel()
         debugDemoRouteJob = null
         debugDemoRouteAttempted = false // Allow one new demo attempt when re-enabled.
@@ -501,6 +521,7 @@ class NavigationViewModel @Inject constructor(
     fun editOrigin(value: String) {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         val text = value.take(100)
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear() // never show an obsolete route for a newly edited origin
@@ -512,6 +533,7 @@ class NavigationViewModel @Inject constructor(
     fun editDestination(value: String) {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         val text = value.take(100)
         destinationJob?.cancel(); planningJob?.cancel()
         routes.clear()
@@ -548,6 +570,7 @@ class NavigationViewModel @Inject constructor(
     fun selectOrigin(place: RoutePlace) {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(originText = place.label, originSelected = place,
             originFromGps = false, gpsOrigin = null, locatingGps = false,
@@ -556,6 +579,7 @@ class NavigationViewModel @Inject constructor(
     fun selectDestination(place: RoutePlace) {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         destinationJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(destinationText = place.label, destinationSelected = place,
             destinationMatches = emptyList(), error = null, planning = false) }
@@ -602,6 +626,7 @@ class NavigationViewModel @Inject constructor(
     fun plan() {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         if (!_planner.value.canCalculate) return
         planningJob?.cancel()
         planningJob = viewModelScope.launch {
@@ -639,6 +664,7 @@ class NavigationViewModel @Inject constructor(
     fun clearRoute() {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
+        debugDemoRouteActive = false
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear(); policy.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
