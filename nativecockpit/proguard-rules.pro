@@ -1,28 +1,31 @@
-# Android, Retrofit, Gson, MapLibre & Bluetooth/OBD release rules.
-# Dependencies' own consumer ProGuard rules remain in effect.
--keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
--keepclasseswithmembers class * { native <methods>; }
+# Elektrikli Yol Arkadaşım nativecockpit — R8 full-mode safety net.
+# These rules complement the consumer rules supplied by MapLibre, Retrofit and Gson.
+# Avoid -dontwarn ** or blanket -keep class retrofit2.** which hide errors and bloat APKs.
 
-# Retrofit service interfaces use annotations and a dynamic proxy.
+# Retrofit suspend services and JSON reflection require retained annotations/signatures.
+-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
+-keep class kotlin.coroutines.Continuation
+
+# Retrofit 3 bundles consumer rules; retain only application-specific service interfaces.
 -keep interface tr.id4.mediahub.nativecockpit.data.routing.OsrmService { *; }
 -keep interface tr.id4.mediahub.nativecockpit.data.routing.PhotonService { *; }
--keep interface tr.id4.mediahub.nativecockpit.data.weather.OpenMeteoService { *; }
 -keep interface tr.id4.mediahub.nativecockpit.data.remote.EpdkService { *; }
 
-# Gson annotations may be read reflectively in future DTOs.
+# Gson consumer rules cover annotated DTOs. Keep explicit SerializedName fields as a safeguard.
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# NativeMapView is reached through MapLibre's JNI boundary.
-# The MapLibre SDK supplies its own consumer rules for the remaining classes.
+# MapLibre Android JNI/rendering entrypoints. Other MapLibre classes use SDK consumer rules.
+-keepclasseswithmembers class * { native <methods>; }
 -keep class org.maplibre.android.MapLibre { *; }
 -keep class org.maplibre.android.maps.NativeMapView { *; }
+-keep class org.maplibre.android.maps.MapView { *; }
 
-# Keep the app-specific classic Bluetooth/ELM327 transports, parsers and
-# Android Auto service. Android framework Bluetooth APIs cannot be shrunk.
+# OBD uses Android Bluetooth API / ELM327 parser reflection-adjacent integrations.
 -keep class tr.id4.mediahub.nativecockpit.data.obd.** { *; }
+
+# Manifest Android Auto entrypoint; remaining Hilt entrypoints are generated/manifest kept.
 -keep class tr.id4.mediahub.nativecockpit.car.EyaCarAppService { *; }
 
-# No Moshi dependency is currently used by nativecockpit.
-# Do not hide missing classes with blanket -dontwarn rules.
+# No Moshi dependency, custom foreground service or reflective Retrofit DTO in this module.
