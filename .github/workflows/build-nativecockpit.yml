@@ -1,0 +1,162 @@
+name: Native Cockpit · Kotlin Compose APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/mola-native-id4
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Verify preinstalled Android SDK on GitHub runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SDK: ${ANDROID_HOME:-unset}"
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' -print -quit)"
+          test -x "$sdkmanager_bin"
+          echo "$(dirname "$sdkmanager_bin")" >> "$GITHUB_PATH"
+          "$sdkmanager_bin" --version
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Native Cockpit unit tests
+        run: gradle :nativecockpit:testDebugUnitTest --stacktrace --no-daemon
+      - name: Compile native debug APK
+        run: gradle :nativecockpit:assembleDebug --stacktrace --no-daemon
+      - name: Verify APK exists
+        run: |
+          set -euo pipefail
+          apk="nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk"
+          test -s "$apk"
+          sha256sum "$apk" > nativecockpit-debug.sha256
+          ls -lh "$apk"
+      - name: Verify Android Auto navigation service and OBD permissions in APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk"
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          test -x "$aapt"
+          "$aapt" dump xmltree "$apk" AndroidManifest.xml > manifest-tree.txt
+          grep -q 'androidx.car.app.CarAppService' manifest-tree.txt
+          grep -q 'androidx.car.app.category.NAVIGATION' manifest-tree.txt
+          grep -q 'android.permission.BLUETOOTH_CONNECT' manifest-tree.txt
+          echo "APK includes Android Auto navigation service and paired Bluetooth permission"
+      - name: Publish test APK and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elektrikli-Yol-Arkadasim-Native-Kotlin-Debug-APK
+          path: |
+            nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
+            nativecockpit-debug.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    # Only trusted push/dispatch; do not expose signing secrets to pull requests.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' -print -quit)"
+          test -x "$sdkmanager_bin"
+          echo "$(dirname "$sdkmanager_bin")" >> "$GITHUB_PATH"
+          "$sdkmanager_bin" "platforms;android-36" "build-tools;36.0.0"
+      - name: Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Restore and verify owner signing identity
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_EXPORT_PASSPHRASE: ${{ secrets.KEYSTORE_EXPORT_PASSPHRASE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" || { echo "::error::Missing KEYSTORE_BASE64"; exit 1; }
+          test "${#KEYSTORE_EXPORT_PASSPHRASE}" -ge 20 || { echo "::error::Missing export passphrase"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "::error::Missing KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "::error::Missing KEY_ALIAS"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "::error::Missing KEY_PASSWORD"; exit 1; }
+          umask 077
+          # KEYSTORE_BASE64 holds encrypted bytes because this repo is public.
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/eya-release.jks.enc"
+          openssl enc -d -aes-256-cbc -md sha256 -pbkdf2 -iter 300000 \
+            -in "$RUNNER_TEMP/eya-release.jks.enc" \
+            -out "$RUNNER_TEMP/eya-release.jks" \
+            -pass env:KEYSTORE_EXPORT_PASSPHRASE
+          keytool -list -keystore "$RUNNER_TEMP/eya-release.jks" \
+            -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
+          rm -f "$RUNNER_TEMP/eya-release.jks.enc"
+
+      - name: Build signed stable Release APK (R8 off temporarily)
+        shell: bash
+        env:
+          EYA_RELEASE_STORE_FILE: ${{ runner.temp }}/eya-release.jks
+          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          EYA_RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          EYA_RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          gradle :nativecockpit:assembleRelease --stacktrace --no-daemon
+
+      - name: Verify APK certificate and prepare artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="nativecockpit/build/outputs/apk/release/nativecockpit-release.apk"
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
+            grep -q "package: name='tr.id4.mediahub.nativecockpit'"
+          cp "$apk" app-release.apk
+          sha256sum app-release.apk > app-release.sha256
+          ls -lh app-release.apk
+
+      - name: Publish signed Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elektrikli-Yol-Arkadasim-Signed-Stable-Release
+          path: |
+            app-release.apk
+            app-release.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Erase temporary signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/eya-release.jks" "$RUNNER_TEMP/eya-release.jks.enc"
