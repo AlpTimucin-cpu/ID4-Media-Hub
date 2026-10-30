@@ -121,6 +121,8 @@ fun CockpitScreen(
     )
     var selectedStation by remember { mutableStateOf<ChargingStation?>(null) }
     var showCorridor by remember { mutableStateOf(false) }
+    var showStationFilters by remember { mutableStateOf(false) }
+    var compactDetails by remember { mutableStateOf<String?>(null) }
     if (showCorridor) {
         ModalBottomSheet(
             onDismissRequest = { showCorridor = false },
@@ -142,6 +144,50 @@ fun CockpitScreen(
                 }
                 if (chargingUi.corridorStations.isEmpty()) {
                     Text("Rota çizgisine 5 km içinde doğrulanmış DC kaydı yok.")
+                }
+            }
+        }
+    }
+    if (showStationFilters) {
+        ModalBottomSheet(
+            onDismissRequest = { showStationFilters = false },
+            containerColor = Color(0xFF0A1728),
+            contentColor = Color.White
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                Text("EPDK istasyon filtreleri", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                ChargingFilters(
+                    ui = chargingUi,
+                    onFilter = onStationFilter,
+                    onRefresh = onRefreshStations,
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+    if (compactDetails != null) {
+        ModalBottomSheet(
+            onDismissRequest = { compactDetails = null },
+            containerColor = Color(0xFF0A1728),
+            contentColor = Color.White
+        ) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 500.dp)
+                    .verticalScroll(rememberScrollState()).padding(16.dp)
+            ) {
+                when (compactDetails) {
+                    "VEHICLE" -> VehiclePanel(state, compact = true)
+                    "ROUTE" -> RoutePanel(
+                        state.route ?: routeState.routeResult,
+                        routeState, state, loadStatus, chargingUi, weatherUi,
+                        automaticChargePlan,
+                        { compactDetails = null; showCorridor = true }
+                    )
+                    "PROGRESS" -> RouteProgress(
+                        state.route ?: routeState.routeResult, state.simulationEnabled
+                    )
                 }
             }
         }
@@ -263,7 +309,8 @@ fun CockpitScreen(
             )
         }
     }
-    Column(Modifier.fillMaxSize().background(Ink)) {
+    Column(Modifier.fillMaxSize().background(Ink)
+        .windowInsetsPadding(WindowInsets.safeDrawing)) {
         Header(
             voiceEnabled=voiceEnabled,
             onVoiceToggle=onVoiceToggle,
@@ -308,21 +355,80 @@ fun CockpitScreen(
                     .semantics { contentDescription = "GPS konum iznini ve takibini aç" }
             )
 
-            if (wide) {
-                // Panels float above the ONE MapLibre native map.
+            if (wide && compactLandscape) {
+                // Short landscape: no overlapping floating panels or wide EPDK overlay.
+                // The complete existing panels stay accessible through bottom sheets.
+                GlassSurface(
+                    Modifier.align(Alignment.TopStart)
+                        .padding(start = 10.dp, top = 8.dp)
+                        .width(maxWidth * .26f)
+                        .clickable { compactDetails = "VEHICLE" }
+                ) {
+                    Text("BATARYA · " + CockpitFormat.percent(state.socPercent),
+                        color = NeonGreen, fontSize = 12.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
+                    Text("Araç bilgileri", color = SoftText, fontSize = 10.sp)
+                }
+
+                GlassSurface(
+                    Modifier.align(Alignment.TopEnd)
+                        .padding(end = 10.dp, top = 8.dp)
+                        .width(maxWidth * .29f)
+                        .clickable { compactDetails = "ROUTE" }
+                ) {
+                    Text("NAVİGASYON", color = Turquoise, fontSize = 10.sp)
+                    Text(visibleRoute?.nextTurnInstruction
+                        ?.takeIf { it.isNotBlank() } ?: "Rota ayrıntıları",
+                        color = Color.White, fontSize = 12.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
+                }
+
+                // Progress never shares the bottom-left area with the EPDK control.
+                GlassSurface(
+                    Modifier.align(Alignment.BottomCenter)
+                        .padding(bottom = 6.dp)
+                        .width(maxWidth * .36f)
+                        .clickable { compactDetails = "PROGRESS" }
+                ) {
+                    val progress = visibleRoute?.validProgress()
+                        ?.takeIf { it.isFinite() }?.coerceIn(0.0, 1.0)
+                    Text(
+                        progress?.let { "ROTA İLERLEMESİ · %${(it * 100).toInt()}" }
+                            ?: "ROTA İLERLEMESİ · GPS yok",
+                        color = Color.White, fontSize = 10.sp, maxLines = 1
+                    )
+                    LinearProgressIndicator(
+                        progress = { progress?.toFloat() ?: 0f },
+                        modifier = Modifier.fillMaxWidth().height(3.dp),
+                        color = NeonGreen,
+                        trackColor = GlassLine
+                    )
+                }
+
+                TextButton(
+                    onClick = { showStationFilters = true },
+                    modifier = Modifier.align(Alignment.BottomStart)
+                        .padding(start = 10.dp, bottom = 5.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xEA091D30))
+                ) {
+                    Text("EPDK · Filtre", color = Turquoise, fontSize = 11.sp)
+                }
+            } else if (wide) {
+                // Spacious landscape keeps the original glass cockpit arrangement.
                 GlassSurface(
                     modifier = Modifier.align(Alignment.TopStart)
                         .padding(start = 13.dp, top = 12.dp)
                         .width(maxWidth * .285f)
                         .heightIn(max = maxHeight - 24.dp)
                         .verticalScroll(rememberScrollState())
-                ) { VehiclePanel(state, compact = compactLandscape) }
+                ) { VehiclePanel(state, compact = false) }
 
                 GlassSurface(
                     modifier = Modifier.align(Alignment.TopEnd)
                         .padding(end = 13.dp, top = 12.dp)
                         .width(maxWidth * .31f)
-                        .heightIn(max = maxHeight * (if (maxHeight < 410.dp) .52f else .65f))
+                        .heightIn(max = maxHeight * .55f)
                         .verticalScroll(rememberScrollState())
                 ) { RoutePanel(visibleRoute, routeState, state, loadStatus,
                     chargingUi, weatherUi, automaticChargePlan, { showCorridor = true }) }
@@ -330,29 +436,48 @@ fun CockpitScreen(
                 GlassSurface(
                     modifier = Modifier.align(Alignment.BottomEnd)
                         .padding(end = 13.dp, bottom = 12.dp)
-                        .width(maxWidth * .65f)
+                        .width(maxWidth * .58f)
                 ) { RouteProgress(visibleRoute, state.simulationEnabled) }
+
+                TextButton(
+                    onClick = { showStationFilters = true },
+                    modifier = Modifier.align(Alignment.BottomStart)
+                        .padding(start = 13.dp, bottom = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xEA091D30))
+                ) {
+                    Text("EPDK · Filtre", color = Turquoise)
+                }
             } else {
-                // Portrait/small-screen: cards scroll; dock remains reachable.
+                // Portrait: all cards AND charging filters live in ONE scroll container.
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    GlassSurface(Modifier.fillMaxWidth()) { VehiclePanel(state, compact = true) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RoutePanel(visibleRoute, routeState, state, loadStatus,
-                    chargingUi, weatherUi, automaticChargePlan, { showCorridor = true }) }
-                    GlassSurface(Modifier.fillMaxWidth()) { RouteProgress(visibleRoute, state.simulationEnabled) }
+                    GlassSurface(Modifier.fillMaxWidth()) {
+                        VehiclePanel(state, compact = true)
+                    }
+                    GlassSurface(Modifier.fillMaxWidth()) {
+                        RoutePanel(visibleRoute, routeState, state, loadStatus,
+                            chargingUi, weatherUi, automaticChargePlan,
+                            { showCorridor = true })
+                    }
+                    GlassSurface(Modifier.fillMaxWidth()) {
+                        RouteProgress(visibleRoute, state.simulationEnabled)
+                    }
+                    ChargingFilters(
+                        ui = chargingUi, onFilter = onStationFilter,
+                        onRefresh = onRefreshStations,
+                        modifier = Modifier.fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    )
                 }
             }
-            SnackbarHost(hostState = snackbarHost,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom=68.dp))
-            ChargingFilters(
-                ui=chargingUi,
-                onFilter=onStationFilter,
-                onRefresh=onRefreshStations,
-                modifier=Modifier.align(Alignment.BottomStart)
-                    .padding(start=13.dp,bottom=12.dp)
+            SnackbarHost(
+                hostState = snackbarHost,
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = if (compactLandscape) 50.dp else 68.dp)
             )
         }
         Dock(onTap = { tab ->
@@ -384,7 +509,7 @@ private fun ChargingFilters(ui: ChargingUiState,
                     StationFilter.ROUTE_CCS -> "Rota CCS"
                     StationFilter.ROUTE_DC -> "Rota DC"
                 }
-                TextButton(onClick={ {onFilter(option)} },
+                TextButton(onClick={ onFilter(option) },
                     modifier=Modifier.heightIn(min=48.dp),
                     enabled=(option != StationFilter.ROUTE_CCS && option != StationFilter.ROUTE_DC) || ui.routeProvided) {
                     Text(title,color=if(option==ui.selectedFilter) NeonGreen else Color.White,
