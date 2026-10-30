@@ -317,7 +317,7 @@ fun CockpitScreen(
             onVoiceSettings={showVoiceSettings=true},
             voiceStatus=voiceStatus
         )
-        if (state.simulationEnabled) {
+        if (BuildConfig.DEBUG && state.simulationEnabled) {
             Text("SİMÜLASYON MODU · TEST VERİLERİ · GERÇEK KONUM/OBD DEĞİL",
                 color=Color(0xFFFFCE73), fontSize=11.sp,
                 modifier=Modifier.fillMaxWidth().background(Color(0xFF563215))

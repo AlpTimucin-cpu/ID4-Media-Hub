@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -104,6 +105,8 @@ class NavigationViewModel @Inject constructor(
     val isSimulationMode: StateFlow<Boolean> = _simulationEnabled.asStateFlow()
     private val _simulationFrame = MutableStateFlow<SimulationFrame?>(null)
     private val simulationTag = "EYA-SIM-UAT"
+    private var debugDemoRouteAttempted = false
+    private var debugDemoRouteJob: Job? = null
     private var gpsWaitSinceMs = System.currentTimeMillis()
 
     private data class DataSources(
@@ -127,6 +130,11 @@ class NavigationViewModel @Inject constructor(
             matchingFrame?.fix, true
         ) else DataSources(telemetry, gps, false)
     }
+    // Exposed effective location, sourced from the same flow as cockpit and TTS.
+    // Do not inject synthetic locations into FusedLocationProviderClient.
+    val gpsLocation: StateFlow<GpsFix?> = sources.map { it.gps }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _gpsError = MutableStateFlow<String?>(null)
     val gpsError: StateFlow<String?> = _gpsError.asStateFlow()
     private val _planner = MutableStateFlow(RoutePlannerUiState())
@@ -268,6 +276,52 @@ class NavigationViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            // An explicitly labelled DEBUG journey; OSRM supplies real road geometry.
+            // Only one attempt per activation. A manually selected route wins.
+            combine(_simulationEnabled, _foreground) { enabled, foreground ->
+                BuildConfig.DEBUG && enabled && foreground
+            }.collect { active ->
+                if (!active) {
+                    debugDemoRouteJob?.cancel()
+                    debugDemoRouteJob = null
+                    return@collect
+                }
+                if (debugDemoRouteAttempted ||
+                    routes.currentRoute.value != null ||
+                    _planner.value.originText.isNotBlank() ||
+                    _planner.value.destinationText.isNotBlank()) return@collect
+
+                debugDemoRouteAttempted = true
+                debugDemoRouteJob = viewModelScope.launch {
+                    Log.i(simulationTag, "DEBUG demo: requesting OSRM route; not a real GPS fix")
+                    try {
+                        val start = GeoCoordinate(37.9663, 34.6824) // Niğde, TEST only
+                        val destination = RoutePlace(
+                            "TEST ROTA · Kayseri",
+                            GeoCoordinate(38.7205, 35.4826),
+                            source = "DEBUG UAT"
+                        )
+                        when (val result = routes.calculateResult(start, destination).getOrThrow()) {
+                            is RouteCalculationResult.Success ->
+                                Log.i(simulationTag, "DEBUG demo: OSRM route loaded; awaiting frames")
+                            is RouteCalculationResult.Failure -> {
+                                Log.w(simulationTag, "DEBUG demo route unavailable: " + result.message)
+                                _planner.update { it.copy(
+                                    error = "TEST rotası alınamadı: " + result.message.take(90)
+                                ) }
+                            }
+                        }
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (error: Exception) {
+                        Log.w(simulationTag, "DEBUG OSRM demo failed: " + error.javaClass.simpleName)
+                        _planner.update { it.copy(error =
+                            "TEST rotası alınamadı: internet/OSRM bağlantısını kontrol et") }
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
             combine(_simulationEnabled, _foreground, routes.currentRoute) { enabled, front, route ->
                 Triple(enabled && BuildConfig.DEBUG, front, route)
             }.collectLatest { (enabled, front, route) ->
@@ -387,6 +441,9 @@ class NavigationViewModel @Inject constructor(
         policy.reset()
         _simulationFrame.value = null
         _simulationEnabled.value = next
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteJob = null
+        debugDemoRouteAttempted = false // Allow one new demo attempt when re-enabled.
         gpsWaitSinceMs = System.currentTimeMillis()
         if (BuildConfig.DEBUG)
             Log.i(simulationTag, "Simulation toggled: $next; guidance state reset")
@@ -442,6 +499,8 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun editOrigin(value: String) {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         val text = value.take(100)
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear() // never show an obsolete route for a newly edited origin
@@ -451,6 +510,8 @@ class NavigationViewModel @Inject constructor(
         originJob = search(text, true)
     }
     fun editDestination(value: String) {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         val text = value.take(100)
         destinationJob?.cancel(); planningJob?.cancel()
         routes.clear()
@@ -485,12 +546,16 @@ class NavigationViewModel @Inject constructor(
         }
     }
     fun selectOrigin(place: RoutePlace) {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(originText = place.label, originSelected = place,
             originFromGps = false, gpsOrigin = null, locatingGps = false,
             originMatches = emptyList(), error = null, planning = false) }
     }
     fun selectDestination(place: RoutePlace) {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         destinationJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(destinationText = place.label, destinationSelected = place,
             destinationMatches = emptyList(), error = null, planning = false) }
@@ -535,6 +600,8 @@ class NavigationViewModel @Inject constructor(
             gpsOrigin = null, error = "Konum izni verilmedi; başlangıç adresini elle seçebilirsin") }
     }
     fun plan() {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         if (!_planner.value.canCalculate) return
         planningJob?.cancel()
         planningJob = viewModelScope.launch {
@@ -570,10 +637,13 @@ class NavigationViewModel @Inject constructor(
     }
     fun selectAlternative(index: Int) { routes.choose(index); policy.reset() }
     fun clearRoute() {
+        debugDemoRouteJob?.cancel()
+        debugDemoRouteAttempted = true
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear(); policy.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
     override fun onCleared() {
+        debugDemoRouteJob?.cancel()
         guide.close()
         locationRepository.stop()
         super.onCleared()
