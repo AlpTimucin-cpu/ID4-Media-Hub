@@ -46,6 +46,8 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
     private var appliedRoute: String? = null
     private var appliedGpsAt: Long? = null
     private var centeredOnGps = false
+    // Guards delayed MapLibre callbacks after Android Auto replaces a Surface.
+    private var surfaceGeneration = 0L
 
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
         val hostSurface = surfaceContainer.surface ?: return
@@ -58,6 +60,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
         }
         release()
         activeSurface = hostSurface
+        val generation = ++surfaceGeneration
         try {
             val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val virtual = dm.createVirtualDisplay(
@@ -88,6 +91,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
             view.onStart()
             view.onResume()
             view.getMapAsync { ready ->
+                if (generation != surfaceGeneration || mapView !== view) return@getMapAsync
                 map = ready
                 ready.uiSettings.isAttributionEnabled = true
                 ready.uiSettings.isLogoEnabled = true
@@ -95,6 +99,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
                 ready.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(39.0,35.0)).zoom(5.2).build()
                 ready.setStyle(Style.Builder().fromUri("https://tiles.openfreemap.org/styles/dark")) { loaded ->
+                    if (generation != surfaceGeneration || mapView !== view) return@setStyle
                     style = loaded
                     appliedRoute = null
                     appliedGpsAt = null
@@ -164,6 +169,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
     }
 
     fun release() {
+        surfaceGeneration++ // Invalidate asynchronous map/style callbacks first.
         style = null
         map = null
         appliedGpsAt = null
