@@ -28,3 +28,4 @@ object MediaLauncher {
             Log.w("EYA-MEDIA-UAT", "Launch failed: " + site.name +
                 ", reason=" + it.javaClass.simpleName)
         }
+}
