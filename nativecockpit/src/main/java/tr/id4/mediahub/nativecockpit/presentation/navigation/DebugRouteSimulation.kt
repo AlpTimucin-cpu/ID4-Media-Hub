@@ -1,6 +1,5 @@
 package tr.id4.mediahub.nativecockpit.presentation.navigation
 
-import android.util.Log
 import kotlin.math.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +16,6 @@ internal data class SimulationFrame(
 )
 
 internal object DebugRouteSimulation {
-    private const val TAG = "EYA-SIM-UAT"
     private const val SPEED_M_S = 12.5 // 45 km/h, test fixture
     private const val BATTERY_KWH = 60.0 // Test fixture, NOT an ID.4 specification
     private const val WH_PER_KM = 180.0 // Test fixture, NOT measured consumption
@@ -36,8 +34,6 @@ internal object DebugRouteSimulation {
         require(tickMillis > 0L)
         val geometry = geometry(route)
         val start = if (geometry != null && route != null) startMeters(route, geometry) else 0.0
-        Log.i(TAG, if (geometry == null) "Simulation: waiting for valid OSRM route" else
-            "Simulation: route valid; maneuvers=${route?.maneuvers?.size ?: 0}; startMeters=${start.toInt()}")
         var tick = 0L
         while (true) {
             val along = if (geometry != null) {
