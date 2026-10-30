@@ -66,7 +66,11 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
                 surfaceContainer.dpi.coerceAtLeast(120),
                 hostSurface,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY
-            ) ?: return
+            ) ?: run {
+                Log.e("EyaCarMap", "Android Auto VirtualDisplay unavailable")
+                release()
+                return
+            }
             display = virtual
             val popup = Presentation(context, virtual.display)
             presentation = popup
@@ -174,7 +178,8 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
         presentation = null
         try { display?.release() } catch (_: Exception) { }
         display = null
-        activeSurface?.release()
+        // SurfaceContainer's Surface belongs to the Android Auto host.
+        // Releasing it here can invalidate future sessions and cause crashes.
         activeSurface = null
     }
 }

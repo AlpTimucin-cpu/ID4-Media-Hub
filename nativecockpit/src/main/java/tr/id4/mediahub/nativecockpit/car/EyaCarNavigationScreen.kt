@@ -179,8 +179,17 @@ class EyaCarNavigationScreen(
             voice.status == NativeVoiceGuide.Status.READY) {
             val enriched = progress.enrich(currentRoute, currentFix, now)
             val announcement = speechPolicy.nextAnnouncement(enriched, currentFix, now)
-            if (announcement != null && voice.speak(announcement, voicePrefs.volume)) {
-                speechPolicy.confirmSpoken(now)
+            if (announcement != null) {
+                // An enqueue is not proof that the speech engine started.
+                val queued = voice.speak(
+                    announcement, voicePrefs.volume,
+                    onUtteranceStarted = {
+                        // NativeVoiceGuide marshals this callback onto the main thread.
+                        speechPolicy.confirmSpoken(System.currentTimeMillis())
+                    },
+                    onUtteranceFailed = { speechPolicy.cancelPending() }
+                )
+                if (!queued) speechPolicy.cancelPending()
             }
         } else if (!voicePrefs.enabled) voice.stop()
     }
