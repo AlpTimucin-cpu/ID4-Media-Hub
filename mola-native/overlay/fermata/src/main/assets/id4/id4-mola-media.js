@@ -3,7 +3,7 @@
  * replace Android Auto media services, or spoof parked state. */
 (function (root, doc) {
  'use strict';
- var cards = [["tv","📺 Canlı TV","İnternet televizyonu","tv"],["youtube","▶ Video","Video oynatıcı","youtube"],["mirror","▣ Ekran Yansıtma","Telefon ekranı","mirror"],["netflix","Film ve Dizi 1","Resmî servis","netflix"],["disney","Film ve Dizi 2","Resmî servis","disney"],["prime","Film ve Dizi 3","Resmî servis","prime"],["media","▣ Yerel Medya","Video ve müzik dosyaları","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastler","Sesli programlar","podcast"],["web","◎ Web","Tarayıcı","web"],["windasist","Yol Araçları","Ek araç özellikleri","windasist"],["mola","Elektrikli Yol Arkadaşım","Ana ekran","mola"],["shortcuts","＋ Kısayollar","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","Uygulama ayarları","settings"],["equalizer","▥ Ses","Ses ve ekolayzır","equalizer"]];
+ var cards = [["tv","📺 Canlı TV","İnternet televizyonu","tv"],["youtube","▶ Video","Video oynatıcı","youtube"],["mirror","▣ Ekran Yansıtma","Telefon ekranı","mirror"],["netflix","Film ve Dizi 1","Uygulama içinde","netflix"],["disney","Film ve Dizi 2","Uygulama içinde","disney"],["prime","Film ve Dizi 3","Uygulama içinde","prime"],["media","▣ Yerel Medya","Video ve müzik dosyaları","media"],["radio","◉ Radyo","İnternet radyoları","radio"],["podcast","♫ Podcastler","Sesli programlar","podcast"],["web","◎ Web","Tarayıcı","web"],["windasist","Yol Araçları","Ek araç özellikleri","windasist"],["mola","Elektrikli Yol Arkadaşım","Ana ekran","mola"],["shortcuts","＋ Kısayollar","Kısayolları düzenle","shortcuts"],["settings","⚙ Ayarlar","Uygulama ayarları","settings"],["equalizer","▥ Ses","Ses ve ekolayzır","equalizer"]];
  var overlay = null, opened = false;
  function node(tag, cls, txt) {
   var el = doc.createElement(tag);
@@ -89,7 +89,7 @@
   originalButton.setAttribute('aria-label','Yüklü, değiştirilmemiş orijinal uygulamayı aç');
   originalButton.appendChild(node('strong','','◉ Orijinal medya uygulamasını aç'));
   originalButton.appendChild(node('small','',
-   'Sürüm 3.2 · bütün orijinal menüler kendi uygulamasında korunur'));
+   'Mola 4.1.10 / önceki sürüm · orijinal uygulamayı ayrıca aç'));
   originalButton.onclick=openOriginalMedia;
   panel.appendChild(head);panel.appendChild(originalButton);panel.appendChild(grid);
   panel.appendChild(node('p', 'id4-mola-disclaimer',

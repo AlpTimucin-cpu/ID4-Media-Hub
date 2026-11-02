@@ -288,10 +288,11 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
     private void openMediaSafely(){
         openMolaDestination("mola");
     }
-    // This package/component pair was read directly from the *user-supplied*
-    // Mola 3.2 APK manifest (versionCode 421). Do not change or unpack its code.
-    private static final String ORIGINAL_MOLA_PACKAGE =
-        "me.app.fermataX.auto.mola32.debug";
+    // Package/component identities verified against the supplied APK manifests.
+    private static final String[] ORIGINAL_MOLA_PACKAGES = {
+        "me.app.fermataX.auto.mola.debug", // supplied 4.1.10, versionCode 433
+        "me.app.fermataX.auto.mola32.debug"
+    };
     private static final String ORIGINAL_MOLA_LAUNCHER =
         "me.app.fermatax.auto.PhoneLauncherActivity";
 
@@ -302,20 +303,19 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
      */
     private void openOriginalMediaUnmodified(){
         if(destroyed || isFinishing() || isDestroyed())return;
-        try{
-            Intent other=new Intent(Intent.ACTION_MAIN);
-            other.addCategory(Intent.CATEGORY_LAUNCHER);
-            other.setClassName(ORIGINAL_MOLA_PACKAGE,ORIGINAL_MOLA_LAUNCHER);
-            other.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
-                Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(other);
-        }catch(android.content.ActivityNotFoundException e){
-            send("molaStatus",record("media",
-                "Orijinal medya uygulaması 3.2 kurulu değil. Önce orijinal APK'yı ayrıca yükle."));
-        }catch(SecurityException e){
-            send("molaStatus",record("media",
-                "Orijinal uygulamanın başlatılmasına Android izin vermedi."));
+        for(String packageName : ORIGINAL_MOLA_PACKAGES){
+            if(packageName.equals(getPackageName()))continue;
+            try{
+                Intent other=new Intent(Intent.ACTION_MAIN);
+                other.addCategory(Intent.CATEGORY_LAUNCHER);
+                other.setClassName(packageName,ORIGINAL_MOLA_LAUNCHER);
+                other.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(other);
+                return;
+            }catch(android.content.ActivityNotFoundException | SecurityException ignored){}
         }
+        send("molaStatus",record("media","Mola 4.1.10 veya önceki uyumlu sürüm telefonda bulunamadı."));
     }
 
 
@@ -341,8 +341,8 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
 
     /**
      * Media catalogue commands are explicit user taps, not remote URLs.
-     * DRM services must use their official native application (or official web
-     * landing page). Never copy cookies, decrypt streams or bypass parked-only
+     * Subscription sites open inside the existing web add-on. Never copy account
+     * cookies from other apps, decrypt streams or bypass parked-only
      * restrictions. Mola audio/video effects remain in its own MediaSession.
      */
     private void openMolaCatalogueItem(String item){
@@ -350,13 +350,13 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         if(item==null)return;
         switch(item){
             case "netflix":
-                openOfficialVideo("com.netflix.mediaclient","https://www.netflix.com/");
+                openEmbeddedVideo("netflix");
                 return;
             case "disney":
-                openOfficialVideo("com.disney.disneyplus","https://www.disneyplus.com/");
+                openEmbeddedVideo("disney");
                 return;
             case "prime":
-                openOfficialVideo("com.amazon.avod.thirdpartyclient","https://www.primevideo.com/");
+                openEmbeddedVideo("prime");
                 return;
             case "youtube":
             case "tv":
@@ -392,31 +392,14 @@ public final class Id4NavigatorActivity extends Activity implements LocationList
         return elapsed<0 || elapsed>15000 || p.getSpeed()>0.4f;
     }
 
-    private void openOfficialVideo(String packageName,String site){
-        // Navigation remains alive. Do not present third-party DRM playback
-        // as if it were an embedded Mola media player.
+    private void openEmbeddedVideo(String target){
         if(videoLaunchBlockedByMotion()){
             send("molaStatus",record("media",
-                "Video açılışı engellendi: güncel, doğru ve hareketsiz GPS gerekli. "+
-                "GPS hareketsizliği park vitesini doğrulamaz; araç parkta olmalıdır."));
+                "Video açılışı için güncel, doğru ve hareketsiz GPS gerekli. Araç parkta olmalıdır."));
             return;
         }
-        try{
-            Intent installed=getPackageManager().getLaunchIntentForPackage(packageName);
-            if(installed!=null){
-                installed.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(installed);
-                return;
-            }
-        }catch(SecurityException ignored){}
-        try{
-            Intent official=new Intent(Intent.ACTION_VIEW,Uri.parse(site));
-            official.addCategory(Intent.CATEGORY_BROWSABLE);
-            startActivity(official);
-        }catch(android.content.ActivityNotFoundException | SecurityException e){
-            send("molaStatus",record("media",
-                "Resmî video uygulaması veya bağlantıyı açabilen tarayıcı bulunamadı."));
-        }
+        // No external app or browser launch: use the existing Mola WebBrowserFragment.
+        openMolaDestination(target);
     }
 
     private JSONObject record(String status,String detail) {

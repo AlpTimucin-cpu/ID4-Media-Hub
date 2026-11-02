@@ -53,7 +53,7 @@ assert.equal(layer.hidden,false);
 assert.equal(layer.attrs['aria-hidden'],'false');
 assert.equal(body.children.length,1,'navigation map must not be recreated');
 entries['id4-mola-netflix'].onclick();
-assert.equal(calls.at(-1),'netflix','official app must have native handoff');
+assert.equal(calls.at(-1),'netflix','site card must reach the native in-app router');
 assert.equal(root.ID4MolaMediaHub.isOpen(),false);
 entries['dock-music'].onclick();
 entries['id4-mola-equalizer'].onclick();
@@ -69,4 +69,4 @@ assert.equal(root.ID4MolaMediaHub.isOpen(),false);
 assert(!source.includes('MediaSession.setPlaybackSpeed') &&
  !source.includes('webview.loadUrl("https://www.netflix'),
  'DRM playback and original audio engines must not be spoofed');
-console.log('PASS: Mola 3.2 in-place catalogue, 15 cards, official DRM handoff and equalizer');
+console.log('PASS: Mola in-place catalogue, 15 cards, embedded site routing and equalizer');

@@ -9,8 +9,8 @@ android {
         applicationId = "tr.id4.mediahub"
         minSdk = 28
         targetSdk = 35
-        versionCode = 62
-        versionName = "0.61-anr-fix-test"
+        versionCode = 63
+        versionName = "0.62-mola-media"
         // POCO F5 runs arm64-v8a. Prevent packaging 3 unused VLC/MapLibre ABIs.
         if (providers.gradleProperty("id4EmulatorTest").orNull != "true") {
             ndk { abiFilters += listOf("arm64-v8a") }

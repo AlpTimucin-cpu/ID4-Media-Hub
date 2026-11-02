@@ -266,6 +266,8 @@ source=manifest.read_text(encoding="utf-8")
 queries_anchor="    </queries>"
 assert source.count(queries_anchor)==1
 source=source.replace(queries_anchor,
+    '        <package android:name="me.app.fermataX.auto.mola.debug" />\n'
+    '        <package android:name="me.app.fermataX.auto.mola32.debug" />\n'
     '        <package android:name="com.netflix.mediaclient" />\n'
     '        <package android:name="com.disney.disneyplus" />\n'
     '        <package android:name="com.amazon.avod.thirdpartyclient" />\n'

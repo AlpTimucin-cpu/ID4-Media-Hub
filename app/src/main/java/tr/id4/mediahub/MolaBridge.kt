@@ -11,11 +11,12 @@ import android.net.Uri
  * This is stage 1, not an embedded copy of Mola or proof of car-screen video.
  */
 object MolaBridge {
+    const val MOLA_4110 = "me.app.fermataX.auto.mola.debug"
     const val MOLA_32 = "me.app.fermataX.auto.mola32.debug"
     const val MOLA_UPSTREAM = "me.app.fermataX.auto.debug"
     const val MOLA_RELEASE = "me.app.fermataX.auto"
     private const val MAIN_ACTIVITY = "me.aap.fermata.ui.activity.MainActivity"
-    private val packages = listOf(MOLA_32, MOLA_UPSTREAM, MOLA_RELEASE)
+    private val packages = listOf(MOLA_4110, MOLA_32, MOLA_UPSTREAM, MOLA_RELEASE)
 
     private fun installed(activity: Activity): Pair<String, String>? =
         packages.firstNotNullOfOrNull { name ->
@@ -29,7 +30,7 @@ object MolaBridge {
     fun open(activity: Activity) {
         val found = installed(activity)
         if (found == null) {
-            message(activity, "Mola bulunamadı", "Mola 3.2 veya bilinen FermataX paketlerinden biri bu telefonda kurulu değil.")
+            message(activity, "Mola bulunamadı", "Mola 4.1.10 veya bilinen FermataX paketlerinden biri bu telefonda kurulu değil.")
             return
         }
         val (name, version) = found

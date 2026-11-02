@@ -54,6 +54,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 import tr.id4.mediahub.nativecockpit.domain.model.ObdConnectionState
 import tr.id4.mediahub.nativecockpit.presentation.obd.ObdSettingsDialog
 import tr.id4.mediahub.nativecockpit.presentation.media.ParkedStreamingDialog
+import tr.id4.mediahub.nativecockpit.presentation.media.rememberPhoneMediaAllowed
 import tr.id4.mediahub.nativecockpit.presentation.voice.TtsPackageWarningDialog
 
 private val CardShape = RoundedCornerShape(22.dp)
@@ -265,11 +266,10 @@ fun CockpitScreen(
         }
     }
 
-    // External streaming launches are off until a trusted Park signal exists.
-    // GPS speed zero does not prove Park (traffic lights, poor GPS, etc.).
+    val phoneMediaAllowed = rememberPhoneMediaAllowed()
     if (selectedDock == DockTab.MEDIA) {
         ParkedStreamingDialog(
-            verifiedParked = false,
+            playbackAllowed = phoneMediaAllowed,
             onDismiss = { selectedDock = null }
         )
     }

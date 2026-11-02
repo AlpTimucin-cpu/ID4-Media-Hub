@@ -109,6 +109,7 @@ jobs:
           node --check integration/mola-native/overlay/fermata/src/main/assets/id4/id4-mola-media.js
           node integration/mola-native/tests/test_mola_media.js
           node integration/mola-native/tests/test_external_mola32.cjs
+          python3 integration/mola-native/tests/test_embedded_media.py mola
           node --check integration/mola-native/tests/test_id4_native_bridge.js
           node integration/mola-native/tests/test_id4_native_bridge.js
           python3 - <<'PY'
@@ -135,7 +136,7 @@ jobs:
           from pathlib import Path
           src=Path('integration/mola-native/overlay/fermata/src/main/java/me/aap/fermata/ev/Id4NavigatorActivity.java').read_text()
           start=src.index('private boolean videoLaunchBlockedByMotion()')
-          end=src.index('private void openOfficialVideo(',start)
+          end=src.index('private void openEmbeddedVideo(',start)
           gate=src[start:end]
           assert 'p==null' in gate and 'p.getAccuracy()>35' in gate
           assert '!p.hasSpeed()' in gate and 'return true;' in gate

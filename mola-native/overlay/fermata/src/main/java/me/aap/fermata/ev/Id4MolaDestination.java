@@ -23,7 +23,10 @@ public final class Id4MolaDestination {
             case "radio": return R.id.radio_fragment;
             case "podcast": return R.id.podcast_fragment;
             case "media": return R.id.folders_fragment;
-            case "web": return R.id.web_browser_fragment;
+            case "web":
+            case "netflix":
+            case "disney":
+            case "prime": return R.id.web_browser_fragment;
             case "settings":
             case "equalizer": return R.id.settings_fragment;
             // Internal Mola dashboard actions stay on the original dashboard.
@@ -35,10 +38,32 @@ public final class Id4MolaDestination {
         }
     }
 
+    public static String siteFor(String target) {
+        if (target == null) return null;
+        switch (target) {
+            case "netflix": return "https://www.netflix.com/";
+            case "disney": return "https://www.disneyplus.com/";
+            case "prime": return "https://www.primevideo.com/";
+            default: return null;
+        }
+    }
+
     public static void navigate(MainActivityDelegate delegate, String target) {
         if (delegate == null) return;
         int fragment = fragmentFor(target);
         try {
+            String site = siteFor(target);
+            if (site != null) {
+                int previous = delegate.getActiveNavItemId();
+                delegate.setActiveNavItemId(fragment);
+                // Existing add-on owns its WebView, DRM permission policy, cookies and MediaSession.
+                // The input survives asynchronous installation/activation of the web add-on.
+                if (!delegate.showFragmentWhenReady(fragment, site)) {
+                    delegate.setActiveNavItemId(previous);
+                    delegate.returnToDashboard();
+                }
+                return;
+            }
             if (!NavigationCoordinator.select(delegate, fragment)) {
                 delegate.returnToDashboard();
             }

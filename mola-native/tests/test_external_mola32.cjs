@@ -9,7 +9,8 @@ const workflow=fs.readFileSync(path.join(__dirname,'../../.github/workflows/buil
 const patch=fs.readFileSync(path.join(__dirname,'../patch_mola.py'),'utf8');
 assert(src.includes('"me.app.fermataX.auto.mola32.debug"'));
 assert(src.includes('"me.app.fermatax.auto.PhoneLauncherActivity"'));
-assert(src.includes('other.setClassName(ORIGINAL_MOLA_PACKAGE,ORIGINAL_MOLA_LAUNCHER)'));
+assert(src.includes('"me.app.fermataX.auto.mola.debug"'));
+assert(src.includes('other.setClassName(packageName,ORIGINAL_MOLA_LAUNCHER)'));
 assert(src.includes('@JavascriptInterface public void openOriginalMedia()'));
 assert(src.includes('ui.post(()->openOriginalMediaUnmodified())'));
 assert(src.includes('catch(android.content.ActivityNotFoundException'));
@@ -20,4 +21,4 @@ assert(css.includes('.id4-mola-external-original'));
 assert(!src.includes('DexClassLoader')&&!src.includes('PathClassLoader'));
 assert(!patch.includes('Mola-3.2(3).apk'));
 assert(!workflow.includes('Mola-3.2(3).apk'));
-console.log('PASS: optional original Mola 3.2 handoff; native media unmodified; distinct packages');
+console.log('PASS: optional original Mola 4.1.10/3.2 handoff; native media unmodified; distinct packages');
