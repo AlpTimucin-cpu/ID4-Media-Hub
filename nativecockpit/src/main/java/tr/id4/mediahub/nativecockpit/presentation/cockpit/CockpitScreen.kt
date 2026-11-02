@@ -540,6 +540,10 @@ private fun Header(
     onVoiceSettings: () -> Unit,
     voiceStatus: NativeVoiceGuide.Status
 ) {
+    val voiceActionDescription = stringResource(
+        if (voiceEnabled) R.string.native_mute_voice_guidance
+        else R.string.native_unmute_voice_guidance
+    )
     Row(
         Modifier.fillMaxWidth().heightIn(min=64.dp)
             .padding(horizontal=14.dp),
@@ -557,8 +561,7 @@ private fun Header(
         IconButton(
             onClick=onVoiceToggle,
             modifier=Modifier.size(50.dp).semantics {
-                contentDescription=if(voiceEnabled) stringResource(R.string.native_mute_voice_guidance)
-                                   else stringResource(R.string.native_unmute_voice_guidance)
+                contentDescription = voiceActionDescription
             }
         ) {
             Icon(if(voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
