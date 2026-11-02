@@ -35,12 +35,14 @@ try:
                               ('compact-landscape','1280x720','320')]:
         shell('wm','size',size);shell('wm','density',density)
         shell('am','force-stop','com.evcockpit')
-        shell('am','start','-W','-n','com.evcockpit/.MainActivity')
+        (out/(name+'.launch.txt')).write_text(shell('am','start','-W','-n','com.evcockpit/.MainActivity'))
         time.sleep(8)
         capture(name)
     logs=adb('logcat','-d','-v','threadtime').decode(errors='replace')
     (out/'startup-logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|Fatal signal',logs),'Android reported a fatal error'
 finally:
+    (out/'startup-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
+    (out/'activity-state.txt').write_text(shell('dumpsys','activity','activities'))
     shell('wm','size','reset');shell('wm','density','reset')
 print('PASS: actual APK cold start, dock labels and portrait/landscape captures')
