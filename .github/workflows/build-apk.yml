@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [feature/fermata-style-car-video]
   push:
-    branches: [main, feature/fermata-style-car-video, feature/mola-32-migration]
+    branches: [main, feature/fermata-style-car-video, feature/mola-32-migration, feature/mola-native-id4]
     paths:
       - 'app/**'
       - 'evlite/**'
@@ -50,7 +50,7 @@ jobs:
           "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '8.14.3'
       - name: Bundle the exact owner-provided filmler_full.m3u
         shell: bash
         run: bash .github/scripts/prepare-bundled-m3u.sh
@@ -112,7 +112,7 @@ jobs:
           "$TOOL" --install 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '8.14.3'
       - name: Build NO-MEDIA EV Lite and run unit tests
         run: gradle --no-daemon :evlite:testDebugUnitTest :evlite:assembleDebug
       - name: Verify EV Lite APK excludes media and sensitive permissions

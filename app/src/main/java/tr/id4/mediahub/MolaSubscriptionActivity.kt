@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
+import android.webkit.PermissionRequest
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
@@ -152,10 +153,14 @@ class MolaSubscriptionActivity : Activity() {
             javaScriptCanOpenWindowsAutomatically=false
             setSupportMultipleWindows(false)
             safeBrowsingEnabled=true
+            useWideViewPort=true
+            loadWithOverviewMode=true
+            userAgentString=SubscriptionWebPermissions.userAgent(service,userAgentString)
         }
         // These in-app sessions are distinct from the installed native apps.
         // Third-party site cookies are not automatically shared with them.
-        CookieManager.getInstance().setAcceptThirdPartyCookies(web,false)
+        CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web,true)
         web.webViewClient=object:WebViewClient(){
             override fun shouldOverrideUrlLoading(view:WebView?,request:WebResourceRequest):Boolean{
                 if(!request.isForMainFrame)return false
@@ -197,6 +202,13 @@ class MolaSubscriptionActivity : Activity() {
             }
         }
         web.webChromeClient=object:WebChromeClient(){
+            override fun onPermissionRequest(request:PermissionRequest){
+                if(SubscriptionWebPermissions.allowsProtectedMedia(service,web.url,request.origin.toString()) &&
+                    PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID in request.resources){
+                    request.grant(arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID))
+                }else request.deny()
+            }
+
             override fun onProgressChanged(view:WebView?,progress:Int){
                 loading.progress=progress
                 loading.visibility=if(progress>=100)View.GONE else View.VISIBLE
@@ -327,7 +339,10 @@ class MolaSubscriptionActivity : Activity() {
         }
     }
     override fun onPause(){
-        if(::web.isInitialized)web.onPause()
+        if(::web.isInitialized){
+            web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(function(m){m.pause();});",null)
+            web.onPause()
+        }
         CookieManager.getInstance().flush()
         super.onPause()
     }

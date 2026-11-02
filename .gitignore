@@ -1,0 +1,9 @@
+# Android local SDK configuration and release signing material.
+/local.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+
+# Transient native build output; do not commit signed or unsigned APKs.
+/.gradle/
+/nativecockpit/build/
