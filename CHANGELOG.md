@@ -1,4 +1,4 @@
-# Elektrikli Yol Arkadaşım — Sürüm Notları
+# EV Cockpit — Sürüm Notları
 
 Bu belge güncel kullanıcıya açık uygulamanın değişikliklerini özetler. Eski teknik deneyler ve bunların özgün kayıtları Git sürüm geçmişinde korunur. Telif sahipliği ve üçüncü taraf lisans bildirimleri [LICENSE](LICENSE), [NOTICE.md](NOTICE.md) ve [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyalarındadır.
 
@@ -8,13 +8,13 @@ Bu belge güncel kullanıcıya açık uygulamanın değişikliklerini özetler. 
 - Rota kaynaklı tüketim, sıcaklık ve DC şarj eğrisi ayrı ve birim testli JS modülüne taşındı. Sonuçların tamamı **model tahminidir**.
 - EPDK rota koridoru 5 km olarak daraltıldı. Kayıt tarihi korunur. Gerçek sürüş sapma süresi, canlı istasyon müsaitliği ve fiyatı **doğrulanmadı**; hiçbirini uydurmaz.
 - Doğrulanmış GPS/OBD geldiğinde batarya renkli rota çizgisi hesaplanabilir; aksi hâlde sahte pil göstergesi oluşturulmaz.
-- OBD veri yaş eşiği 10 saniye olarak düşürüldü; Java köprüsü eski geriye dönük callback’lere ek olarak zaman damgalı `id4:obd`, `id4:route`, `id4:gps`, `id4:stations`, `id4:weather` olayı gönderir.
+- OBD veri yaş eşiği 10 saniye olarak düşürüldü; Java köprüsü eski geriye dönük callback’lere ek olarak zaman damgalı `evcockpit:obd`, `evcockpit:route`, `evcockpit:gps`, `evcockpit:stations`, `evcockpit:weather` olayı gönderir.
 - Türkçe yerel TTS yönlendirmesine yaklaşık 1 km/300 m/100 m/şimdi eşikleri ve kısa süreli ses odağı eklendi. **Cihaz üzerinde anons kesinliği ve ses odağı doğrulanmadı.**
 - Android Auto, gerçek şarj istasyonu erişilebilirliği, GPS yol eşlemesi ve SoC PID kalibrasyonu cihaz testine kadar **doğrulanmadı** kabul edilir.
 
 ## 26 Ekim 2026 — Entegrasyon ve marka yenilemesi
 
-- Görünen Android uygulama adı ve kokpit başlığı **Elektrikli Yol Arkadaşım** olarak güncellendi.
+- Görünen Android uygulama adı ve kokpit başlığı **EV Cockpit** olarak güncellendi.
 - Özgün elektrikli otomobil/rota uygulama simgesi ve daha sade medya kartları hazırlandı.
 - Harita üzerinde tek Leaflet örneği korunarak gerçek OSRM GeoJSON rota geometrisi ve mevcut açık harita altlığı kullanıldı. Var olan güzergâh/istasyon fonksiyonları değiştirilmedi.
 - Android'deki doğrulanmış Bluetooth OBD ölçümleri, mevcut yerel olay köprüsü üzerinden arayüze aktarılmaya devam ediyor. Sahte SoC, voltaj, hız veya kalan menzil gösterilmiyor.

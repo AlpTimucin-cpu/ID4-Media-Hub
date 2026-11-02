@@ -9,7 +9,7 @@ on:
     paths:
       - '.github/workflows/emulator-smoke.yml'
       - 'app/**'
-      - '.github/scripts/mola-smoke.sh'
+      - '.github/scripts/mediaengine-smoke.sh'
       - '.github/scripts/prepare-bundled-m3u.sh'
 permissions:
   contents: read
@@ -49,19 +49,19 @@ jobs:
           # hosted runner may have only ~7.1GB free (FATAL during AVD boot).
           disk-size: 2048M
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -partition-size 2048
-          script: bash .github/scripts/mola-smoke.sh
+          script: bash .github/scripts/mediaengine-smoke.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-emulator-smoke
           path: |
-            id4_home.png
-            id4_home_movie.xml
-            id4_movie.xml
-            id4_movie.png
-            id4_offline_player.xml
-            id4_offline_player.png
-            id4_movie_detail.xml
-            id4_movie_detail.png
+            evcockpit_home.png
+            evcockpit_home_movie.xml
+            evcockpit_movie.xml
+            evcockpit_movie.png
+            evcockpit_offline_player.xml
+            evcockpit_offline_player.png
+            evcockpit_movie_detail.xml
+            evcockpit_movie_detail.png
             android_runtime_errors.log
           retention-days: 7

@@ -2,7 +2,7 @@
 
 **Kontrol edilen adres:** https://claude.ai/artifact/J4Nmn2k3jqWkuyVTeXzjJh
 
-**12 Ekim 2026 erişim sonucu:** Claude Artifact sayfası web isteğine yanıt vermiyor; erişim engellendi. Bu nedenle bağlantıda kaç APK bulunduğu, paket adları, sürümleri, izinleri, kaynak kodları veya lisansları **bilinmiyor**. Hiçbir APK indirilmiş, tersine mühendislikle incelenmiş ya da ID.4 Media Hub'a monte edilmiş olarak gösterilemez.
+**12 Ekim 2026 erişim sonucu:** Claude Artifact sayfası web isteğine yanıt vermiyor; erişim engellendi. Bu nedenle bağlantıda kaç APK bulunduğu, paket adları, sürümleri, izinleri, kaynak kodları veya lisansları **bilinmiyor**. Hiçbir APK indirilmiş, tersine mühendislikle incelenmiş ya da EV Cockpit'a monte edilmiş olarak gösterilemez.
 
 ## Dosyalar sağlandığında izlenecek güvenli süreç
 
@@ -10,7 +10,7 @@
 2. Her APK için SHA-256, paket adı/sürümü, manifest, izinler, dex ve native kütüphane envanteri oluşturun.
 3. İzin/veri erişimi, dış bağlantı, sertifika doğrulama, lisans ve Android 15 uyumluluğunu denetleyin. APK içindeki özel anahtarlar veya oturum belirteçleri rapora alınmaz.
 4. Hakları uygun açık kaynak parçaları kaynak belirtip lisans şartlarına uyarak kullanın; özel mülk yazılımlardan uygulama kodu, marka veya ikon kopyalamayın. Belgelendirilmiş kamuya açık Intent/API arayüzleri üzerinden bağlanma seçeneğini değerlendirin.
-5. Özellikleri kendi Media Hub kodunda derleyin, otomatik Android testlerini çalıştırın; fiziksel Volkswagen ID.4 test sonuçlarını ayrıca kaydedin.
+5. Özellikleri kendi Media Hub kodunda derleyin, otomatik Android testlerini çalıştırın; fiziksel electric vehicle test sonuçlarını ayrıca kaydedin.
 
 ## Mevcut APK envanter aracı
 
@@ -28,4 +28,4 @@ Android SDK'nın `aapt` programı PATH üzerinde mevcutsa APK paket adı, sürü
 
 - Dış uygulamalar sürücü ön ekranındaki hareket halinde video kilidini aşmak için kullanılmaz.
 - Lisans, DRM, telif veya izin kontrollerini aşan kod uyarlanmaz.
-- APK envanter dosyası güvenlik garantisi, telif hakkı lisansı veya ID.4 uyumluluk belgesi değildir.
+- APK envanter dosyası güvenlik garantisi, telif hakkı lisansı veya EV Cockpit uyumluluk belgesi değildir.

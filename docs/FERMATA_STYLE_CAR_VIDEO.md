@@ -1,10 +1,10 @@
-# ID.4 Media Hub — Fermata-style car display prototype
+# EV Cockpit — Fermata-style car display prototype
 
 ## Goal (not another launcher)
 Build an actual unified player, catalogue and vehicle-facing video surface that displays permitted streams while the vehicle is **parked**. Keep YouTube / IPTV in one user interface wherever providers allow it. Do **not** present shortcuts to separate apps as in-app integration.
 
 Target:
-- Volkswagen ID.4 Pure (2024), existing vehicle display; no additional Android box.
+- electric vehicle Pure (2024), existing vehicle display; no additional Android box.
 - POCO F5 Android 15, Android Auto projection.
 - Native Media3 for HLS / progressive web media when authorized.
 - On-device M3U playlist storage and background import, EPG and catch-up for sources that provide them.
@@ -27,32 +27,32 @@ https://developer.android.com/training/cars/parked/auto
 Fermata's maintainer describes that on Android 14+ simply sideloading a video app generally does not make its video UI appear in the car; root or a special adapter is generally needed to bypass the sideload visibility constraint:
 https://github.com/AndreyPavlenko/Fermata/discussions/432
 
-This experiment MUST NOT claim that the car will show video until testing proves it on this exact phone + ID.4 Android Auto combination. Mobile screenshot or successful Android APK build is NOT proof of in-vehicle video.
+This experiment MUST NOT claim that the car will show video until testing proves it on this exact phone + EV Cockpit Android Auto combination. Mobile screenshot or successful Android APK build is NOT proof of in-vehicle video.
 
 ## Architecture decision
 1. **Phone player**: Media3 ExoPlayer + WebView for allowed public pages; app's own licensed media catalogue.
 2. **Audio-only Android Auto**: existing MediaLibraryService; survives while video is unavailable.
 3. **Parked AA video feasibility**: isolate in an optional module / experimental branch. Determine available approved platform APIs and runtime checks; never impersonate a navigation app or circumvent driver-distraction lockouts.
 4. **External apps**: Netflix DRM and third-party APK (SportzX) cannot be silently embedded as video sources. Launching a separate app on the phone is NOT equivalent to video on Android Auto.
-5. **Diagnostics**: capture Android Auto version, Android phone OS, ID.4 app-list visibility, and logs, without leaking personal tokens.
+5. **Diagnostics**: capture Android Auto version, Android phone OS, EV Cockpit app-list visibility, and logs, without leaking personal tokens.
 
 ## Acceptance tests
 - [ ] The prototype APK installs and launches on POCO F5.
 - [ ] 3 authorized HLS streams switch within a single player and show real quality data.
 - [ ] Channels are categorized, logos appear, and EPG follows legal source URLs.
-- [ ] The Android Auto app is visible on the Volkswagen ID.4.
+- [ ] The Android Auto app is visible on the electric vehicle.
 - [ ] While parked, a permitted test video actually appears on the vehicle display.
 - [ ] Video cannot appear to the driver while driving.
 - [ ] If parked video is unsupported, the UI explains this, with working audio mode and no false claim.
 
 ## Next diagnostic dependency
-Before choosing the in-vehicle video implementation, establish whether the POCO F5 is rooted and whether the current Android Auto launcher already displays the ID.4 Media Hub as an audio app. Rooting can disrupt banking/security apps and device integrity; do not change root/system settings without explicit informed approval.
+Before choosing the in-vehicle video implementation, establish whether the POCO F5 is rooted and whether the current Android Auto launcher already displays the EV Cockpit as an audio app. Rooting can disrupt banking/security apps and device integrity; do not change root/system settings without explicit informed approval.
 
 Status: engineering plan and feasibility branch only; not a proven vehicle-video APK.
 
-## 2026-10-09: Verified AABrowser evidence from user's actual ID.4
+## 2026-10-09: Verified AABrowser evidence from user's actual EV Cockpit
 
-User has ALREADY installed/configured Shizuku. Do **not** repeat the Shizuku / developer options steps. AABrowser opens YouTube in the Volkswagen ID.4 screen; Netflix's website opens but the video does not play. That is strong evidence that this phone/vehicle already displays a third-party web browser surface, but it does not establish Netflix DRM playback or support for other apps.
+User has ALREADY installed/configured Shizuku. Do **not** repeat the Shizuku / developer options steps. AABrowser opens YouTube in the electric vehicle screen; Netflix's website opens but the video does not play. That is strong evidence that this phone/vehicle already displays a third-party web browser surface, but it does not establish Netflix DRM playback or support for other apps.
 
 Reference (GPL-3.0 source): https://github.com/kododake/AABrowser
 - AABrowser's `AndroidManifest.xml` exposes an **Activity** with `android.intent.category.CAR_LAUNCHER`, `androidx.car.app.category.NAVIGATION`, and `android.intent.category.APP_MAPS` intent categories, plus app-specific metadata. This differs from our current AudioLibraryService-only vehicle-facing integration.
@@ -61,7 +61,7 @@ Reference (GPL-3.0 source): https://github.com/kododake/AABrowser
 - AABrowser v3.0 has minSdk 35/Android 15. This matches the user's POCO F5 Android 15.
 - Do not blindly copy navigation intent/category labels to misrepresent a video app as a navigation app or override driver-distraction safeguards. Investigate a compliant parked-only path and actual vehicle behavior first.
 
-**Next proof target**: the phone with Shizuku already configured must launch an original, permitted video in a *genuine* ID.4 Media Hub car-display component while the car is parked. No new installer recommendations until the AA Browser car-screen architecture is proven in our own app. Netflix and SportzX must be treated as independent provider/platform constraints, not fixed by changing Android Auto registration.
+**Next proof target**: the phone with Shizuku already configured must launch an original, permitted video in a *genuine* EV Cockpit car-display component while the car is parked. No new installer recommendations until the AA Browser car-screen architecture is proven in our own app. Netflix and SportzX must be treated as independent provider/platform constraints, not fixed by changing Android Auto registration.
 
 ## 2026-10-09 official parked category check
 
@@ -72,25 +72,25 @@ Google official: https://developer.android.com/training/cars/parked/auto
 - Fermata uses older com.google.android.apps.auto.sdk.CarActivity and a bundled nonstandard car SDK, separate projection services, with Xposed in some configurations: https://github.com/AndreyPavlenko/Fermata/blob/master/fermata/src/auto/java/me/aap/fermata/auto/MainCarActivity.java
 - We deliberately do not misclassify a browser as a game or navigation application, and do not claim this build implements car-display video.
 
-QA: Android 15 emulator opened our Web Media by tapping the actual TV-section YouTube Web control. No AndroidRuntime fatal error and topResumedActivity was MediaWebActivity. It is a PHONE emulator test, not a real Volkswagen ID.4 display test.
+QA: Android 15 emulator opened our Web Media by tapping the actual TV-section YouTube Web control. No AndroidRuntime fatal error and topResumedActivity was MediaWebActivity. It is a PHONE emulator test, not a real electric vehicle display test.
 
-## 2026-10-09: Moving-vehicle feasibility research (POCO F5 -> ID.4 Android Auto)
+## 2026-10-09: Moving-vehicle feasibility research (POCO F5 -> EV Cockpit Android Auto)
 
-**User's requirement:** Video on the front, driver-visible ID.4 Android Auto screen while the car is moving. This is a safety-restricted use case. Do not fake a navigation service or bypass driver-distraction restrictions.
+**User's requirement:** Video on the front, driver-visible EV Cockpit Android Auto screen while the car is moving. This is a safety-restricted use case. Do not fake a navigation service or bypass driver-distraction restrictions.
 
 ### Official Android Auto
 
 - https://developer.android.com/training/cars/platforms/android-auto — Android Auto parked activities on Android 15+ are automatically exited on vehicle motion. The only officially supported Android Auto parked category is currently games; those are parked-only.
 - https://developer.android.com/training/cars/parked/auto — Declaring CAR_LAUNCHER enables eligibility in supported parked categories but does not grant a moving-vehicle video surface.
 - https://developer.android.com/training/cars/parked — Android Auto and Android Automotive OS are distinct; video streaming and browsers are supported under Android Automotive OS parked apps, not general Android Auto video apps.
-- https://developer.android.com/training/cars/parked/video — Some Android Automotive OS vehicles support **audio while driving** from an otherwise parked-only video app, with the visual activity hidden and required MediaSession and car UX restriction handling. This is **not** an Android Auto video-in-motion entitlement on ID.4.
+- https://developer.android.com/training/cars/parked/video — Some Android Automotive OS vehicles support **audio while driving** from an otherwise parked-only video app, with the visual activity hidden and required MediaSession and car UX restriction handling. This is **not** an Android Auto video-in-motion entitlement on EV Cockpit.
 - https://developer.android.com/docs/quality-guidelines/car-app-quality — Driver distraction guideline DD-2 prohibits launching/showing parked video/browser UI while driving; DD-4 is a limited audio-only exception on eligible AAOS.
 
 ### AABrowser
 
 - https://github.com/kododake/AABrowser README explicitly marks the app Stationary Use Only and recommends parked/passenger usage.
 - https://github.com/kododake/AABrowser/discussions/40 — March 2026 'persistent display and audio while driving' proposal was **closed/rejected by maintainer**; author proposed identifying as navigation, but maintainer said the idea is not a reliable solution for real head units and is unsupported.
-- Our user has confirmed AABrowser shows YouTube on the ID.4 display while stationary. This **does not imply** it can remain visible during vehicle motion. Netflix web page loads, but protected Netflix video fails independently.
+- Our user has confirmed AABrowser shows YouTube on the EV Cockpit display while stationary. This **does not imply** it can remain visible during vehicle motion. Netflix web page loads, but protected Netflix video fails independently.
 
 ### Fermata
 
@@ -102,7 +102,7 @@ QA: Android 15 emulator opened our Web Media by tapping the actual TV-section Yo
 2. Build a real IPTV and web video player for the phone; do not represent that phone view as vehicle projection. Video on the car front display is only a parked research target.
 3. On supported parked UX surfaces, handle motion transitions by pausing/hiding visual video and restoring controls only on return to parked.
 4. Never substitute a navigation/game category, falsify driving state/speed/parking signals, disable motion guards, or force an exposed Surface to defeat car UX rules.
-5. Passenger video while the vehicle moves belongs on an independent passenger-only display that the driver cannot see. The existing single front ID.4 infotainment display has no verified passenger-safe projection mode.
+5. Passenger video while the vehicle moves belongs on an independent passenger-only display that the driver cannot see. The existing single front EV Cockpit infotainment display has no verified passenger-safe projection mode.
 6. Next proof test: with the car stationary, collect Android Auto launcher visibility and Media Hub audio controls; do not ask user to repeat Shizuku/Android Auto setup already performed.
 
 **Status:** Research completed; moving-video front-display functionality not implemented and not promised. No APK is produced for this research finding.
@@ -111,8 +111,8 @@ QA: Android 15 emulator opened our Web Media by tapping the actual TV-section Yo
 
 - AAAD support told user that AAAD and AAAD-managed apps have **Android 15 compatibility problems** and offered an **AAWireless USB dongle** as a workaround. The email itself has no verified issue-resolution date; do not generalize it as a failure of every Android 15 Android Auto app.
 - Official AAAD source: https://github.com/shmykelsa/AAAD ; AAAD is an app downloader/installer, not the projection/browser rendering engine of the Media Hub.
-- AABrowser's own source and release: https://github.com/kododake/AABrowser ; supports Android 15+ independent of AAAD and worked on the user's ID.4 for a YouTube website.
-- **AAWireless OEM compatibility**: https://www.aawireless.io/en/products/aawireless — the manufacturer explicitly states that cars which **already have built-in wireless Android Auto** are *not compatible* with the dongle. The user's ID.4 uses its native wireless Android Auto, so DO NOT recommend buying an AAWireless dongle as a generic fix.
+- AABrowser's own source and release: https://github.com/kododake/AABrowser ; supports Android 15+ independent of AAAD and worked on the user's EV Cockpit for a YouTube website.
+- **AAWireless OEM compatibility**: https://www.aawireless.io/en/products/aawireless — the manufacturer explicitly states that cars which **already have built-in wireless Android Auto** are *not compatible* with the dongle. The user's EV Cockpit uses its native wireless Android Auto, so DO NOT recommend buying an AAWireless dongle as a generic fix.
 - Do not repeat the existing Shizuku configuration or recommend installing AAAD again. The next testable item is in-car media-library connection diagnostics, then a genuinely supported parked video surface when platform compatibility permits it.
 
 ## 2026-10-09 — DiPlay 0.2.16 user-supplied APK analysis
@@ -122,8 +122,8 @@ User provided social screenshots, https://shihabal3amri.github.io/DiPlay/, and t
 **Projection direction is crucial:**
 - DiPlay is an **Apple CarPlay receiver** for an Android head unit / Android phone acting as a screen. An **iPhone sends** CarPlay to DiPlay. It is NOT a CarPlay or Android Auto sender from the Android phone to an existing car display.
 - The first screenshot depicts an Android-based DIY monitor acting as a receiver. The second shows a Redmi phone as the receiving display, **not** sending Android applications to a factory Volkswagen infotainment screen.
-- Our Volkswagen ID.4 factory screen is itself a CarPlay/Android Auto **receiver**; the POCO F5 Android 15 is an Android Auto sender. Two receivers (POCO running DiPlay and VW factory CarPlay) do not form a usable projection chain. Installing DiPlay on the POCO therefore does not cause it to project arbitrary Android video or Netflix to the VW screen.
-- Installation requires an Android head unit which permits third-party APKs. There is no established stock ID.4 APK install path; BYD DiLink is the documented target platform (other brands unsupported by DiPlay maintainers).
+- Our electric vehicle factory screen is itself a CarPlay/Android Auto **receiver**; the POCO F5 Android 15 is an Android Auto sender. Two receivers (POCO running DiPlay and VW factory CarPlay) do not form a usable projection chain. Installing DiPlay on the POCO therefore does not cause it to project arbitrary Android video or Netflix to the VW screen.
+- Installation requires an Android head unit which permits third-party APKs. There is no established stock EV Cockpit APK install path; BYD DiLink is the documented target platform (other brands unsupported by DiPlay maintainers).
 
 **Source architecture / reusable ideas:** https://github.com/shihabal3amri/DiPlay ; its :mobile module hosts the receiver, :common/:shared contain media transport; 0.2.16 adds experimental low-latency H.264 decode, direct compositor output and received/displayed FPS and decode-time diagnostics, jitter/backlog handling, audio buffering and wireless reconnect logic. These *quality-engineering patterns* may inspire our own Media3 IPTV playback instrumentation, but CarPlay receiver code cannot be dropped into an Android Auto projected video activity. The compiled APK includes native CarPlay-related libraries and bundled experimental offline accessory identity; it is not Apple-certified. Its identity and other licenses must not be copied into this project. DiPlay attributes xcertplay GPL-3.0 and DiAuto-derived UI AGPL-3.0; preserve license obligations before reusing sources.
 

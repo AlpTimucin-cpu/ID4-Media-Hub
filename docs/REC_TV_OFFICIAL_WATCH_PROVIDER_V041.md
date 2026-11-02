@@ -10,7 +10,7 @@
 - Firebase Remote Config/Realtime Database bileşenleri, BetterPlayer, HLS ve YouTube IFrame yapıları var. Uygulamanın servislerine kullanıcı oturumuyla bağlanılmadı, dinamik HTTP trafiği kaydedilmedi.
 - APK içindeki gömülü token/key benzeri diziler ve şifrelenmiş bağlantılar **açığa çıkarılmadı veya projeye entegre edilmedi**. Yayın hakları ve izinsiz erişim durumu doğrulanmayan film/dizi/maç akışları aktarılmadı.
 
-## ID.4 Yol Arkadaşım'a eklenen karşılık
+## EV Cockpit'a eklenen karşılık
 
 - `TmdbCatalogActivity` içindeki film/dizi detayında **Türkiye'de nerede izlenir?** seçeneği.
 - `TmdbMetadata.loadWatchProviders`: TMDB'nin resmî `/3/movie/{id}/watch/providers` ve `/3/tv/{id}/watch/providers` API'sine TLS üzerinden istek. Sadece **Türkiye (`TR`)** sonuçları gösterilir.

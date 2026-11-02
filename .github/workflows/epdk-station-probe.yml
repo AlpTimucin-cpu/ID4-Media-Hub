@@ -2,7 +2,7 @@ name: EPDK Public Station API Read-only Probe
 on:
   workflow_dispatch:
   push:
-    branches: [feature/mola-32-migration]
+    branches: [feature/media-engine-migration]
     paths:
       - "scripts/epdk_station_probe.py"
       - ".github/workflows/epdk-station-probe.yml"

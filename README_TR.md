@@ -1,25 +1,42 @@
-# Elektrikli Yol Arkadaşım — Türkçe Proje Rehberi
+# EV Cockpit
 
-**Elektrikli sürüşe uygun rota, şarj, medya ve araç verileri.**
+Elektrikli araçlar için Kotlin, Jetpack Compose, MapLibre ve OSRM tabanlı, harita odaklı kokpit.
 
-Bu sayfa güncel uygulamanın Türkçe giriş belgesidir. Kapsam, kullanım sınırları, kaynak koddan üretilen ekran önizlemeleri ve APK kurulum bilgileri için [ana README](README.md) dosyasını kullan.
+## Arayüz
 
-## Temel kullanım
+- Tam ekran harita; sol üstte büyük batarya yüzdesi ve tahmini menzil.
+- Sonraki manevra, varış saati ve tahmini varış SoC değerini içeren sade panel.
+- İnce Rota / Şarj / Medya / Ayarlar menüsü.
+- Koyu lacivert yüzeyler, turkuaz vurgu, büyük tipografi ve daha keskin köşeler.
+- Ölçüm yoksa `—`; simülasyon açıksa açık test verisi etiketi.
 
-Uygulamayı açıp **Rota** bölümünde başlangıç ve hedefi seç. OSRM yolu çizilir; alternatifler varsa listelenir. Haritada gösterilen hava tahminleri model verisidir ve yalnız doğrulanmış kaynaklardan alınır.
+## Modüller
 
-**İstasyon** bölümünde istasyonları soket türüne göre inceleyebilir, güzergâh yakınındaki duraklara bakabilirsin. Güncel istasyon doluluğu veya fiyatı yetkili veri servisiyle doğrulanmadıkça kesin değer olarak gösterilmez.
+- `nativecockpit`: `com.evcockpit` paketli Compose kokpiti ve Android Auto navigasyonu.
+- `app`: `com.evcockpit.mediahub` paketli medya araçları.
+- `evlite`: `com.evcockpit.evguide.lite` paketli hafif harita uygulaması.
+- `media-engine`: ayrı lisanslı medya tabanı için kaynak entegrasyonu.
 
-**Araç Verileri** bölümündeki SoC, sıcaklık, voltaj ve diğer göstergeler yalnız gerçekten alınmış, kalibrasyonu doğrulanmış ve taze OBD verisine dayanır. Eşleşmiş Bluetooth adaptörü tek başına bu ölçümlerin mevcut olduğunu kanıtlamaz; ölçüm yoksa gösterge boş kalır.
+## Derleme
 
-**Yol ilerlemesi**, son 30 saniyede alınmış ve doğruluğu uygun GPS noktasının hesaplanan gerçek rotaya mesafesinden hesaplanır. Yol dışı veya eski GPS ile uydurma yüzde üretilmez. İlerleme çubuğundaki araç sembolü bileşen sınırları içinde kalır.
+Java 17, Android SDK 36 ve Gradle 8.14.3 kullanılır.
 
-## Güvenlik
+```bash
+gradle :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug
+```
 
-Araç hareket halindeyken sürücüyü oyalayan video veya tarayıcı içeriği açmaya yönelik kısıtlar kaldırılmaz. Harici medya servisleri kendi abonelik, DRM ve kullanım koşullarını uygular. Servis anahtarlarını kaynak koda ekleme.
+Test APK yolu: `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`.
 
-## Geliştirici notları
+## Paket geçişi
 
-[Harita, OBD ve GPS entegrasyonu](docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md) kılavuzun projeye uygulanmış mimarisini açıklar. Örnek koddaki sabit hız, batarya veya menzil rakamları canlı ölçüm değildir ve kullanılmaz.
+Yeni uygulama kimliği Android'de ayrı bir kurulum oluşturur. Eski uygulama silinmez; özel veriler, tercihler, oturumlar ve izinler kendiliğinden taşınmaz. Manifest, Hilt, kaynak importları, ProGuard ve CI komutları yeni paketle birlikte güncellenmiştir.
 
-Üçüncü taraf lisansları ve telif atıfları [LICENSE](LICENSE) ve [NOTICE.md](NOTICE.md) belgelerinde korunur. Güncel sürümün gerçek cihazda test edilmesi gereklidir.
+Ayrıntılar: [Marka ve paket geçişi](docs/BRAND_MIGRATION.md).
+
+Gerçek harici uygulama paketleri ve çalışan veri kaynağı adresleri, uyumluluğu korumak için kendi tanımlı değerlerini kullanır. Rota, şarj ve menzil tahminleri ölçülmüş araç verisi gibi sunulmaz. Marka değişikliği sürüş ekranında video kısıtlarını kaldırmaz.
+
+## Lisans ve güvenlik
+
+[LICENSE](LICENSE), [NOTICE](NOTICE.md), [üçüncü taraf bildirimleri](THIRD_PARTY_NOTICES.md) ve [API anahtarı güvenliği](SECURITY_TOMTOM.md) belgelerini inceleyin. Kaynak atıfları ve lisans metinleri korunur.
+
+[English](README_EN.md)

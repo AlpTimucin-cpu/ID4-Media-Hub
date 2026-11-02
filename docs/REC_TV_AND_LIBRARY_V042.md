@@ -12,7 +12,7 @@ Tarih: 14 Ekim 2026. Kullanıcının sağladığı dosya: `rectv22.0.2-161mobilb
 
 ## Doğrulanabilen teknik ayrım
 
-| İmza / alan | Yorum | ID.4 Yol Arkadaşım kararı |
+| İmza / alan | Yorum | EV Cockpit kararı |
 | --- | --- | --- |
 | `api.themoviedb.org`, `image.tmdb.org` | Film/dizi bilgi ve görsel API'si; video stream değil | Resmî TMDB API'si ve TMDB/JustWatch Türkiye sağlayıcı bilgileri |
 | `movie/weekly/popular/`, `movie/by/actor/`, `episode/latest/` | REC TV'nin ayrı film/dizi/episode katalog rotalarına işaret ediyor | Özel route veya içeriği kopyalama |
@@ -37,7 +37,7 @@ Tarih: 14 Ekim 2026. Kullanıcının sağladığı dosya: `rectv22.0.2-161mobilb
 - Gradle `:app:testDebugUnitTest` ve `:app:assembleDebug`: GitHub Actions çalışmasının sonucuyla ayrı doğrulanır.
 - API 35 emulator: GitHub Actions smoke-test artefaktları ve loglarıyla ayrı doğrulanır.
 - POCO F5 Android 15: fiziki cihaz erişimi olmadığından elle kurulum/ekran açma testi **yapılmadı**.
-- Volkswagen ID.4 Pure: fiziki araç bağlantısı ve ön ekran videosu **test edilmedi**.
+- electric vehicle Pure: fiziki araç bağlantısı ve ön ekran videosu **test edilmedi**.
 - Canlı TMDB, Netflix, Prime, Blender, IPTV veya spor kaynakları: bu statik APK incelemesinde canlı yayın testi **yapılmadı**.
 
 Entegrasyonlar yalnızca kullanıcı kaynaklarına veya resmî erişim/abonelik koşullarına tabidir; tüm kullanıcı verileri yereldir.

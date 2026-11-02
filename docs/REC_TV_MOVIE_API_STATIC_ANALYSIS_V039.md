@@ -12,7 +12,7 @@ Kullanıcının sağladığı **rectv22.0.2-161mobilbox.apk** dosyası. Flutter 
 
 ## Bizim uygulamadaki karşılık
 
-- **Mola tarzı film/dizi kartları** korunur.
+- **MediaEngine tarzı film/dizi kartları** korunur.
 - Resmî **TMDB API** ile, yalnızca kullanıcı tarafından uygulama içinde girilen TMDB Read Access Token kullanılarak film ve dizi adı, yıl, puan, özet ve afiş getirilebilir. Anahtar kod içinde ve yerel depolamada tutulmaz.
 - **TMDB keşif** ekranında popüler başlıklar ve arama yer alır. Listede seçilen başlığın **kullanıcının mevcut video kütüphanesindeki** kaynakları aranır; varsa Media3 ExoPlayer ile oynatılır.
 - İçerik için kendi yayın kaynağı yoksa **oynatılabilir kaynak bulunamadı** denir; bozuk veya izinsiz bağlantılar uydurulmaz.
@@ -22,7 +22,7 @@ Kullanıcının sağladığı **rectv22.0.2-161mobilbox.apk** dosyası. Flutter 
 ## Nasıl kullanılır?
 
 1. TMDB hesabı açıp API ayarlarından kendi **API Read Access Token** değerini edin.
-2. ID.4 Yol Arkadaşım → **Filmler** veya **Diziler** → **TMDB film / dizi keşfet** → **API anahtarı**.
+2. EV Cockpit → **Filmler** veya **Diziler** → **TMDB film / dizi keşfet** → **API anahtarı**.
 3. Filmi/diziyi ara; içerik bilgisi ve afişi aç.
 4. **Kütüphanemde ara** ile kendi M3U/HTTPS kaynaklarında eşleşen filmi kontrol et.
 

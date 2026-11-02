@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://tile.openstreetmap.org data:; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'none'; font-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none';">
-<title>ID.4 Türkiye Haritası</title>
+<title>EV Cockpit Türkiye Haritası</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <style>
@@ -68,18 +68,18 @@ try {
   pins=L.layerGroup().addTo(map);
   map.on("click",function(e){setTarget(e.latlng.lat,e.latlng.lng,"Haritadaki hedef")});
   map.on("contextmenu",function(e){L.DomEvent.stop(e);setOrigin(e.latlng.lat,e.latlng.lng)});
-  loaded=true;window.id4Ready=true;
+  loaded=true;window.evcockpitReady=true;
   document.getElementById("loading").style.display="none";
 } catch(e) {
   document.getElementById("loading").textContent=
     "Harita açılamadı. İnterneti kontrol et. Harita kitaplığı: "+String(e.message).slice(0,90);
 }
-window.id4MapBounds=function() {
+window.evcockpitMapBounds=function() {
   if(!loaded)return null;
   var b=map.getBounds();
   return [b.getSouth(),b.getWest(),b.getNorth(),b.getEast()];
 };
-window.id4ShowStations=function(entries){
+window.evcockpitShowStations=function(entries){
   if(!loaded||!Array.isArray(entries))return 0;
   pins.clearLayers();
   var count=0;
@@ -106,16 +106,16 @@ window.id4ShowStations=function(entries){
   });
   return count;
 };
-window.id4Focus=function(lat,lon,label){
+window.evcockpitFocus=function(lat,lon,label){
   if(!setTarget(lat,lon,label))return false;
   map.setView([lat,lon],14,{animate:false});
   return true;
 };
-window.id4GetRouteEndpoints=function(){
+window.evcockpitGetRouteEndpoints=function(){
   if(!loaded||!origin||!destination)return null;
   return [origin[1],origin[0],destination[1],destination[0]];
 };
-window.id4ShowRoute=function(data){
+window.evcockpitShowRoute=function(data){
   if(!loaded||!data||!Array.isArray(data.coordinates))return false;
   if(data.coordinates.length>12000)return false;
   var coords=[];
@@ -131,8 +131,8 @@ window.id4ShowRoute=function(data){
     String(data.durationMin||"?")+" dk. Canlı trafik/sesli yönlendirme yok.");
   return true;
 };
-window.id4ClearRoute=function(){if(loaded)clearRoute()};
-window.id4IsReady=function(){return loaded};
+window.evcockpitClearRoute=function(){if(loaded)clearRoute()};
+window.evcockpitIsReady=function(){return loaded};
 })();
 </script>
 </body>

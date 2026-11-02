@@ -1,8 +1,8 @@
-name: Build ID4 EV Lite (No Media)
+name: Build EVCOCKPIT EV Lite (No Media)
 on:
   workflow_dispatch:
   push:
-    branches: [feature/mola-32-migration]
+    branches: [feature/media-engine-migration]
     paths:
       - 'evlite/**'
       - 'settings.gradle.kts'
@@ -40,7 +40,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/evlite_badging.txt
           "$AAPT" dump permissions "$APK" | tee /tmp/evlite_permissions.txt
-          grep -q "package: name='tr.id4.evguide.lite.tvbeta'" /tmp/evlite_badging.txt
+          grep -q "package: name='com.evcockpit.evguide.lite.tvbeta'" /tmp/evlite_badging.txt
           for p in READ_SMS RECEIVE_SMS READ_CONTACTS READ_CALL_LOG ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION ACCESS_BACKGROUND_LOCATION RECORD_AUDIO CAMERA READ_MEDIA_AUDIO READ_MEDIA_VIDEO QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW REQUEST_INSTALL_PACKAGES; do
             if grep -q "android.permission.$p" /tmp/evlite_permissions.txt; then
               echo "::error::Not allowed permission: $p"
@@ -62,7 +62,7 @@ jobs:
           du -h "$APK"
       - uses: actions/upload-artifact@v4
         with:
-          name: ID4-Yol-Arkadasim-EV-Lite-APK
+          name: EV-Cockpit-EV-Lite-APK
           path: |
             evlite/build/outputs/apk/debug/evlite-debug.apk
             evlite/build/outputs/apk/debug/EV_LITE_SHA256.txt

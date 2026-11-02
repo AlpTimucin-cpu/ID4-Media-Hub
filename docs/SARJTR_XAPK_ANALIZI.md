@@ -18,11 +18,11 @@ resmî Google Play imzasıyla eşleştiği doğrulanmamıştır.**
 - Paket manifestinde INTERNET, ACCESS_FINE_LOCATION,
   ACCESS_COARSE_LOCATION, POST_NOTIFICATIONS ve Firebase bildirimiyle
   ilgili izinler yer alıyor. Bunlar Şarj@TR uygulamasının kendi izinleri;
-  **ID.4 Yol Arkadaşım'a aktarılmıyor**.
+  **EV Cockpit'a aktarılmıyor**.
 
 ## APK'da doğrulanan işlev haritası
 
-| İşlev | XAPK kanıtı | ID.4 Yol Arkadaşım planı |
+| İşlev | XAPK kanıtı | EV Cockpit planı |
 |---|---|---|
 | Müsait/kullanımda/rezerve/arıza/bakım/mesai dışı | tr.json çevirileri | Durum enum'u; veri yoksa BİLİNMİYOR |
 | Type 2, CCS, CHAdeMO | Yerel soket simge dosyaları | Resmî EPDK soket tipinden filtre |

@@ -1,6 +1,6 @@
-# ID.4 Yol Arkadaşım v1.2 • Gömülü Türkiye Haritası
+# EV Cockpit v1.2 • Gömülü Türkiye Haritası
 
-Bu sürümde **harita ID.4 Yol Arkadaşım içinden çıkmadan açılır**:
+Bu sürümde **harita EV Cockpit içinden çıkmadan açılır**:
 Netflix/Disney+ benzeri bir uygulama-içi deneyim, fakat video veya
 kopyalanmış üçüncü taraf navigasyon kodu değildir.
 
@@ -45,12 +45,12 @@ gelmez; gerçek POCO F5 testi gerekir.
   yoktur. Doluluk bilgisi uydurulmaz.
 - Android Auto'nun araç navigasyon kategorisi uygulanmış değildir;
   ekran telefon üzerinde çalışmak üzere tasarlanmıştır.
-- Film/dizi katalogları geri getirilmez; Mola TV isteğe bağlı
+- Film/dizi katalogları geri getirilmez; MediaEngine TV isteğe bağlı
   ayrı menüde kalır.
 
 ## Proje
 - Kaynak HTML: `evlite/src/main/assets/map/index.html`
-- Android Activity: `evlite/src/main/java/tr/id4/mediahub/EmbeddedMapActivity.kt`
-- Adres/rota API: `evlite/src/main/java/tr/id4/mediahub/EmbeddedMapServices.kt`
+- Android Activity: `evlite/src/main/java/com/evcockpit/mediahub/EmbeddedMapActivity.kt`
+- Adres/rota API: `evlite/src/main/java/com/evcockpit/mediahub/EmbeddedMapServices.kt`
 - Sürüm: v1.2-embedded-map-beta
-- APK paket kimliği: `tr.id4.evguide.lite.tvbeta`.
+- APK paket kimliği: `com.evcockpit.evguide.lite.tvbeta`.

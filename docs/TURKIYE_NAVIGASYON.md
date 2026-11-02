@@ -1,4 +1,4 @@
-# ID.4 Yol Arkadaşım — Türkiye harita ve şarj entegrasyonu
+# EV Cockpit — Türkiye harita ve şarj entegrasyonu
 
 ## Amaç
 Türkiye genelinde bir şehir/ilçe/sokak/adres/işletme arayıp haritada
@@ -24,7 +24,7 @@ başlatmak ve resmî veriler için Şarj@TR sayfasına ulaşmak.
 - EV Enerji Merkezi ve uygulama ana sayfasından hızlı erişim.
 
 ## Kısıtlar
-1. **Mola ve Volkswagen'in yerleşik navigasyonu etkinleştirilmez.**
+1. **MediaEngine ve Volkswagen'in yerleşik navigasyonu etkinleştirilmez.**
    Bu telefon uygulamasına eklenen yeni bir navigasyon/harita ekranıdır.
 2. Haritada yalnızca kaynakta kayıtlı olan noktalar görünür.
    Hiçbir gönüllü veri kaynağı Türkiye'deki **bütün** kamu/özel
@@ -49,7 +49,7 @@ başlatmak ve resmî veriler için Şarj@TR sayfasına ulaşmak.
    veya SMS/erişilebilirlik izinleri talep etmez. Kullanıcı haritayı
    elle kaydırır veya hedef adres arar.
 8. Google Maps'in trafik tahmini, sesli yönlendirmesi, sapınca
-   yeniden rota çizmesi gibi işlevler **ID.4 Yol Arkadaşım içinde
+   yeniden rota çizmesi gibi işlevler **EV Cockpit içinde
    geliştirilmiş değildir**, hedefi Maps'e devreder.
 9. Android Auto üzerinde **yerel navigasyon kategorisi** için
    `androidx.car.app.category.NAVIGATION`, CarAppService, sürüşe uygun
@@ -75,7 +75,7 @@ başlatmak ve resmî veriler için Şarj@TR sayfasına ulaşmak.
 - İhtiyaç varsa kullanıcı onaylı mevcut konum + navigasyon bildirim
   servisleri, gizlilik ve güç tüketimi testleri.
 - Harita verisi lisans/atıfları, önbellek, offline kapsama ve oran limitleri.
-- POCO F5 Android 15 ve ID.4 Android Auto üzerinde birebir test.
+- POCO F5 Android 15 ve EV Cockpit Android Auto üzerinde birebir test.
 - Android Auto Car App Library navigasyon sertifikasyonu.
 
 **Durum:** Kaynak kodu eklendi; Play Store onayı, derleme ve fiziksel

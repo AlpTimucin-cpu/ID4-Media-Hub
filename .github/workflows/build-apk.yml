@@ -1,4 +1,4 @@
-name: Build ID4 Media Hub APK
+name: Build EV Cockpit APK
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -7,14 +7,14 @@ on:
   pull_request:
     branches: [feature/fermata-style-car-video]
   push:
-    branches: [main, feature/fermata-style-car-video, feature/mola-32-migration, feature/mola-native-id4]
+    branches: [main, feature/fermata-style-car-video, feature/media-engine-migration, feature/ev-cockpit]
     paths:
       - 'app/**'
       - 'evlite/**'
       - '*.gradle.kts'
       - 'gradle.properties'
       - '.github/workflows/build-apk.yml'
-      - 'ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip'
+      - 'EV_Cockpit_v0.8_Source.zip'
 permissions:
   contents: read
 jobs:
@@ -28,10 +28,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! -f settings.gradle.kts ]]; then
-            test -f ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip
-            mkdir -p /tmp/id4-src
-            unzip -q ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip -d /tmp/id4-src
-            cp -a /tmp/id4-src/ID4_Media_Hub_v0_8/. .
+            test -f EV_Cockpit_v0.8_Source.zip
+            mkdir -p /tmp/evcockpit-src
+            unzip -q EV_Cockpit_v0.8_Source.zip -d /tmp/evcockpit-src
+            cp -a /tmp/evcockpit-src/EV_Cockpit_v0_8/. .
           fi
           test -f app/build.gradle.kts
           test -f settings.gradle.kts
@@ -63,10 +63,10 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$AAPT"
-          "$AAPT" dump permissions "$APK" > /tmp/id4-merged-permissions.txt
+          "$AAPT" dump permissions "$APK" > /tmp/evcockpit-merged-permissions.txt
           # No banking-sensitive/privileged Android permissions should be merged.
           for p in READ_SMS RECEIVE_SMS READ_CONTACTS READ_CALL_LOG ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION RECORD_AUDIO CAMERA READ_MEDIA_AUDIO READ_MEDIA_VIDEO QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW REQUEST_INSTALL_PACKAGES; do
-            if grep -Fq "android.permission.$p" /tmp/id4-merged-permissions.txt; then
+            if grep -Fq "android.permission.$p" /tmp/evcockpit-merged-permissions.txt; then
               echo "::error::Unexpected merged permission: $p"
               exit 1
             fi
@@ -87,7 +87,7 @@ jobs:
           cat APK_SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: ID4-Media-Hub-debug-APK
+          name: EV-Cockpit-debug-APK
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/APK_SHA256.txt
@@ -124,7 +124,7 @@ jobs:
           test -s "$APK"
           "$AAPT" dump badging "$APK" | tee /tmp/ev-lite-badging.txt
           "$AAPT" dump permissions "$APK" | tee /tmp/ev-lite-permissions.txt
-          grep -q "package: name='tr.id4.evguide.lite.tvbeta'" /tmp/ev-lite-badging.txt
+          grep -q "package: name='com.evcockpit.evguide.lite.tvbeta'" /tmp/ev-lite-badging.txt
           for p in READ_SMS RECEIVE_SMS READ_CONTACTS READ_CALL_LOG ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION ACCESS_BACKGROUND_LOCATION RECORD_AUDIO CAMERA READ_MEDIA_AUDIO READ_MEDIA_VIDEO QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW REQUEST_INSTALL_PACKAGES; do
             if grep -q "android.permission.$p" /tmp/ev-lite-permissions.txt; then
               echo "::error::Forbidden permission $p"; exit 1
@@ -138,7 +138,7 @@ jobs:
           du -h "$APK"
       - uses: actions/upload-artifact@v4
         with:
-          name: ID4-EV-Lite-No-Media-APK
+          name: EVCOCKPIT-EV-Lite-No-Media-APK
           path: |
             evlite/build/outputs/apk/debug/evlite-debug.apk
             evlite/build/outputs/apk/debug/EV_LITE_SHA256.txt

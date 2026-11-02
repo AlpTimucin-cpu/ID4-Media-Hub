@@ -1,4 +1,4 @@
-# Elektrikli Yol Arkadaşım — Adım 9: Android Auto navigasyon iskeleti
+# EV Cockpit — Adım 9: Android Auto navigasyon iskeleti
 
 Bu adım `:nativecockpit` modülüne Android for Cars App Library **1.7.0** (kararlı) ile Android Auto için `CarAppService` ekler; telefonun mevcut Kotlin/Compose/MapLibre OSRM/Photon/EPDK işlevleri değiştirilmez.
 

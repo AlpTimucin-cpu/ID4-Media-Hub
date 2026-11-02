@@ -1,4 +1,4 @@
-# ID.4 Media Hub — Uygulama birleştirme mimarisi (v0.24)
+# EV Cockpit — Uygulama birleştirme mimarisi (v0.24)
 
 ## Tasarım prensibi
 
@@ -24,7 +24,7 @@ Bu proje başka geliştiricilerin APK dosyalarını birleştirip yeniden paketle
 - Ana Sayfa → Tüm uygulamaları ve bağlantıları yönet → tek panelden sürüm/durum ve kamuya açık eylemler.
 - Kitaplık → Tüm Uygulamalar • Ortak Entegrasyon Merkezi.
 - TV → Media3 HLS oynatıcı; Kitaplık → XMLTV program rehberi; Web Medya → AABrowser'a geçiş.
-- Araç bağlantı raporu ve ses kitaplığı API testi telefonda kontrol içindir; gerçek ID.4 fiziksel testinin yerine geçmez.
+- Araç bağlantı raporu ve ses kitaplığı API testi telefonda kontrol içindir; gerçek EV Cockpit fiziksel testinin yerine geçmez.
 
 ## Test ve güvenlik sınırları
 

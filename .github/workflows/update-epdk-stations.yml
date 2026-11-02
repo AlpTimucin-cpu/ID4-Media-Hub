@@ -5,7 +5,7 @@ on:
     - cron: "45 5 * * *"
   workflow_dispatch:
   push:
-    branches: [feature/mola-32-migration]
+    branches: [feature/media-engine-migration]
     paths:
       - "scripts/update_epdk_public_stations.py"
       - "scripts/tests/test_epdk_public_stations.py"

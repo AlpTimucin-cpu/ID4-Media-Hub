@@ -96,7 +96,7 @@ def main():
     request = Request(
         URL, data=json.dumps(FILTER).encode("utf-8"), method="GET",
         headers={"Accept": "application/json", "Content-Type": "application/json",
-                 "User-Agent": "ID4-Yol-Arkadasim/0.60 (official EPDK API integration)"})
+                 "User-Agent": "EV-Cockpit/0.60 (official EPDK API integration)"})
     try:
         with urlopen(request, timeout=25) as response:
             print("http_status:", response.status)

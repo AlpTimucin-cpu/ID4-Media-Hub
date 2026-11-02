@@ -1,6 +1,6 @@
-# Elektrikli Yol Arkadaşım — Adım 13: Uçtan uca entegrasyon
+# EV Cockpit — Adım 13: Uçtan uca entegrasyon
 
-**Kaynak:** GitHub `AlpTimucin-cpu/ID4-Media-Hub`, `feature/mola-native-id4`, 12. adımın kaynak paketi üzerine değişiklikler.
+**Kaynak:** GitHub `AlpTimucin-cpu/ID4-Media-Hub`, `feature/ev-cockpit`, 12. adımın kaynak paketi üzerine değişiklikler.
 
 ## Veri akışı
 

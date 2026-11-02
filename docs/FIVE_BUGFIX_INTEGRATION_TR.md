@@ -1,4 +1,4 @@
-# Elektrikli Yol Arkadaşım — Entegrasyon ve beş hata düzeltmesi
+# EV Cockpit — Entegrasyon ve beş hata düzeltmesi
 
 - OSRM @Url, longitude/latitude ve HTTP 400 yanıtı kontrolü.
 - Photon isteğinde geçersiz dil kodu gönderilmez.

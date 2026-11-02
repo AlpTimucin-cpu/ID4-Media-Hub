@@ -3,10 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 android {
-    namespace = "tr.id4.mediahub"
+    namespace = "com.evcockpit.mediahub"
     compileSdk = 36
     defaultConfig {
-        applicationId = "tr.id4.evguide.lite"
+        applicationId = "com.evcockpit.evguide.lite"
         minSdk = 28
         targetSdk = 35
         versionCode = 3

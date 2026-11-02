@@ -133,7 +133,7 @@ def compile_epdk(payload):
 def get_official():
     req = Request(URL, method="GET", data=b"{}",
         headers={"Accept":"application/json","Content-Type":"application/json",
-                 "User-Agent":"ID4-Yol-Arkadasim/0.60 (official EPDK open API)"})
+                 "User-Agent":"EV-Cockpit/0.60 (official EPDK open API)"})
     with urlopen(req, timeout=50) as response:
         if response.status != 200:
             raise ValueError("EPDK HTTP not OK")

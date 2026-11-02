@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only APK inventory for ID.4 Media Hub.
+"""Read-only APK inventory for EV Cockpit.
 
 No APK is launched, installed or extracted. The optional Android SDK aapt
 tool reads package/permission metadata only. Never prints stored URLs or keys.
@@ -125,7 +125,7 @@ def main() -> int:
             print("Skipped:", path.name, file=sys.stderr)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({
-        "format": "id4-apk-inventory-v1",
+        "format": "evcockpit-apk-inventory-v1",
         "apk_executed": False, "items": results
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(args.out)

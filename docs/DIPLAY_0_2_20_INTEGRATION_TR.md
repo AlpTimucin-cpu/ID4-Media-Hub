@@ -1,4 +1,4 @@
-# DiPlay 0.2.20 APK İncelemesi ve ID.4 Yol Arkadaşım Entegrasyonu
+# DiPlay 0.2.20 APK İncelemesi ve EV Cockpit Entegrasyonu
 
 **İnceleme tarihi:** 15 Ekim 2026. **Girdi:** Kullanıcının paylaştığı `DiPlay-0.2.20.apk`.
 **APK SHA-256:** `f4d96cf469c5df12350946404a43e737ccc779a30e3b492c29f9c2338806f098`.
@@ -14,8 +14,8 @@ DiPlay 0.2.20 sürüm notlarında USB bağlanma kurtarma, müzik ses saati sapma
 ## 2. Lisans ve uyumluluk sınırı
 
 - Kaynak projenin CarPlay uygulama altyapısı GPL-3.0; DiAuto'dan türetilen arayüz AGPL-3.0 bilgisi veriyor. Kaynağı/binary'yi doğrudan kopyalamak, dağıtım ve atıf yükümlülükleri doğurabilir. **Bu projede DiPlay kopyası, çatallanması, yerel kütüphaneleri, MFi erişimi veya DiAuto arayüzünün kodu kullanılmadı.**
-- DiPlay özellikle **BYD Android head unit üzerine kurulur**; 2024 Volkswagen ID.4 ekranı aynı türde dışarıdan APK kabul eden bir BYD Android tablet değildir.
-- Telefon **POCO F5 Android 15 → ID.4 Android Auto** yolu DiPlay'ın **iPhone → BYD CarPlay** yoluyla eşdeğer değildir.
+- DiPlay özellikle **BYD Android head unit üzerine kurulur**; 2024 electric vehicle ekranı aynı türde dışarıdan APK kabul eden bir BYD Android tablet değildir.
+- Telefon **POCO F5 Android 15 → EV Cockpit Android Auto** yolu DiPlay'ın **iPhone → BYD CarPlay** yoluyla eşdeğer değildir.
 - Android Auto sürüş sırasında video ekranı veya DRM erişim kısıtları değiştirilmedi.
 - İnceleme üçüncü taraf akışlarını veya imzalı URL'leri güncellemez; süreli M3U bağlantıları sunucu tarafında geçersiz olabilir.
 

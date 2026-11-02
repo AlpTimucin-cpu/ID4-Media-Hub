@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 DEST = ROOT / "data" / "charging" / "operator_prices.json"
-UA = "ID4-Yol-Arkadasim-OfficialTariffMonitor/1.0 (+https://github.com/AlpTimucin-cpu/ID4-Media-Hub)"
+UA = "EV-Cockpit-OfficialTariffMonitor/1.0 (+https://github.com/AlpTimucin-cpu/ID4-Media-Hub)"
 OPERATOR_SOURCES = {
     "trugo": ("Trugo", "https://www.trugo.com.tr/price", "trugo.com.tr"),
     "zes": ("ZES", "https://zes.net/tr/fiyatlandirma", "zes.net"),

@@ -3,16 +3,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 android {
-    namespace = "tr.id4.mediahub"
+    namespace = "com.evcockpit.mediahub"
     compileSdk = 36
     defaultConfig {
-        applicationId = "tr.id4.mediahub"
+        applicationId = "com.evcockpit.mediahub"
         minSdk = 28
         targetSdk = 35
         versionCode = 63
-        versionName = "0.62-mola-media"
+        versionName = "0.62-mediaengine-media"
         // POCO F5 runs arm64-v8a. Prevent packaging 3 unused VLC/MapLibre ABIs.
-        if (providers.gradleProperty("id4EmulatorTest").orNull != "true") {
+        if (providers.gradleProperty("evcockpitEmulatorTest").orNull != "true") {
             ndk { abiFilters += listOf("arm64-v8a") }
         }
     }
@@ -40,7 +40,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("com.google.guava:guava:33.4.8-android")
-    // LibVLC engine version used by the GPL Mola source project.
+    // LibVLC engine version used by the GPL MediaEngine source project.
     implementation("org.videolan.android:libvlc-all:3.7.2")
     // Native Android map renderer; no Google Maps API key required.
     implementation("org.maplibre.gl:android-sdk:13.7.1")

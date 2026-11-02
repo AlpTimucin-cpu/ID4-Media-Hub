@@ -1,4 +1,4 @@
-# Adım 12 — Elektrikli Yol Arkadaşım · MEB Read-only PID Teşhis
+# Adım 12 — EV Cockpit · MEB Read-only PID Teşhis
 
 Bu sürüm önceki `:nativecockpit` Android Auto + GPS + OSRM + EPDK modülünü korur.
 
@@ -10,7 +10,7 @@ Topluluk kaynağı: https://github.com/raimuucka/OBD2-Volkswagen-MEB-EV-CAN-para
 - `221E0E`: Topluluk kaynağında **HV batarya maksimum sıcaklığıdır**, SoH değildir. `62 1E 0E WW XX YY ZZ` dönüşünde aday sıcaklık `(WW×256+XX)/64` °C. Daha önce paylaşılan `04 68 ...` değeri bu tanıma göre **17,625 °C** üretir; `112,8% SoH` değildir.
 - `221E3D`: Ham HV akımı yanıtı; çoklu ISO-TP çerçevesi desteklenir ama akım dönüşümü kaynağa göre belirsiz olabileceğinden yalnızca ham yanıt sergilenir.
 
-Tüm bu PID açıklamaları üretici garantili değildir; her ID.4 Pure aracında çalışacağı iddia edilmez.
+Tüm bu PID açıklamaları üretici garantili değildir; her EV Cockpit Pure aracında çalışacağı iddia edilmez.
 
 ## Güvenlik
 

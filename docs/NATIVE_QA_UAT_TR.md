@@ -1,5 +1,5 @@
-# Elektrikli Yol Arkadaşım — Native Kokpit QA / UAT
-Tarih: 29.10.2026 · Dal: `feature/mola-native-id4`
+# EV Cockpit — Native Kokpit QA / UAT
+Tarih: 29.10.2026 · Dal: `feature/ev-cockpit`
 
 ## Kapsam ve üretime hazır olma kararı
 Bu geçiş **şimdilik production-ready değildir**. Derleme ve JVM birim testlerinin başarılı olması,
@@ -21,7 +21,7 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 | `Elm327SessionTest.kt` | BT kopma bir kez | reconnect, ELM init yeniden |
 | aynı | sürekli BT kopma / kontağın kapanması | 3 denemede IOException, soket kapalı |
 | aynı | close sonrası açık kullanıcı yeniden başlatma | DISCONNECTED → CONNECTING → READY; eski yanıtlar sızmaz |
-| `AudioFocusLeaseTest.kt` | fake Mola oynatıcı + geçici TTS focus | taklit ses kısılır ve eski seviyesine döner |
+| `AudioFocusLeaseTest.kt` | fake MediaEngine oynatıcı + geçici TTS focus | taklit ses kısılır ve eski seviyesine döner |
 | aynı | focus reddedildi / geç callback | medya değişmez; close sonrası callback yok sayılır |
 
 ## Telefon/araç üzerinde UAT
@@ -30,13 +30,13 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 1. Native APK'yı kur ve uygulamayı aç. Açılışta ANR/crash olmadığını kontrol et.
 2. Konum iznini reddet: harita doğru hata göstermeli; sahte GPS göstermemeli. Ardından hassas konum izni ver ve GPS'in güncellendiğini doğrula.
 3. `SES` ekranından `Türkçe ses testi` çalıştır: 10 defa tekrarla; ses motoru boşa düşmemeli ve bekleme sırasında ses odağı tutulmamalı.
-4. Park halinde, telefon üzerinde izin verilen bir ses medyası (Mola) çal; SES testi başlat. Müzik Android sisteminin seçimine göre kısılmalı/durmalı ve konuşma sonunda normale dönmeli. Dönmüyorsa FAIL.
+4. Park halinde, telefon üzerinde izin verilen bir ses medyası (MediaEngine) çal; SES testi başlat. Müzik Android sisteminin seçimine göre kısılmalı/durmalı ve konuşma sonunda normale dönmeli. Dönmüyorsa FAIL.
 5. Gerçek OSRM rota oluştur; rota çizgisini ve manevraları doğrula. Güvenli gerçek yol koşullarında yalnız yolcu gözlemiyle yaklaşık 200 m / 50 m anonslarını takip et. Uygulamanın mock GPS reddi gerçek sürüş testinin yerine geçmez.
 6. TTS sırasında uygulamayı arka plana al; konuşma durmalı, ses odağı bırakılmalı. 10 kez arka plan/öne alma ve 5 kez ekran döndürme sonrası bellek/ANR kontrolü yap.
 7. Park halindeyken OBD adaptörünü eşleştir ve bağlan. Doğrulanmış ham `010D` sorgusu dışında ekranda olmayan veri uydurulmamalı.
 8. OBD bağlıyken adaptörün bağlantısını kontrollü kes veya test adaptörünün gücünü kapat. Üç başarısız denemede UI ERROR görmeli ve eski veri canlı gibi kalmamalı. Adaptör yeniden açıldığında açık kullanıcı işlemiyle reconnect et.
 9. `Medya` bölümünde güvenilir Park verisi bulunmuyorsa Netflix/Disney+/Prime düğmelerinin devre dışı kaldığını doğrula. Beklenen davranış budur.
-10. Telefonun **kendi Netflix/Disney+/Prime** uygulamasındaki PiP'i, o uygulama destekliyorsa ayrıca dene. Bu, `Elektrikli Yol Arkadaşım`ın PiP testi değildir. Native Kokpit'in harici uygulamayı PiP'e zorlaması beklenmemeli.
+10. Telefonun **kendi Netflix/Disney+/Prime** uygulamasındaki PiP'i, o uygulama destekliyorsa ayrıca dene. Bu, `EV Cockpit`ın PiP testi değildir. Native Kokpit'in harici uygulamayı PiP'e zorlaması beklenmemeli.
 11. Uygulamanın kendi oynatıcısı Park bilgisiyle doğrulandığında (gelecekte), yalnız ona ait PiP geçişi/giriş/çıkışı sınanmalı; şimdiki sürümde bu uçtan uca akış yok.
 12. Android Auto DHU ve gerçek araç oturumlarında TTS sahipliği çakışmasını, bağlantı kesilmesi/yeniden bağlanma ve 13.000+ istasyon harita kaydırma akıcılığını ayrıca test et.
 
@@ -71,7 +71,7 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 **Ön koşul:** Gerçek Türkçe TTS motoru yüklü. **Android Studio Memory Profiler** içinde Java/Kotlin heap, Native heap ve `Allocations` kaydı kullan. Aynı APK, aynı cihaz, aynı ekran; uygulama stabil olduğunda **2 dakika boşta bekleyip GC** sonrası başlangıç (B0) snapshot'ı al. Profiler'ın kendi ek yükünü not et.
 
 **Test adımları:**
-1. Uygulama ön plandayken **50 tur** yap: `Türkçe ses testi` başlat → bitmesini bekle → Mola veya test müziğinde geçici kısılma/geri dönüşü doğrula → **2 sn** bekle. Ayrıca her **10 turda** bir konuşma sürerken `onPause` (uygulamayı arka plana al) ve `onResume` dönüşünü test et.
+1. Uygulama ön plandayken **50 tur** yap: `Türkçe ses testi` başlat → bitmesini bekle → MediaEngine veya test müziğinde geçici kısılma/geri dönüşü doğrula → **2 sn** bekle. Ayrıca her **10 turda** bir konuşma sürerken `onPause` (uygulamayı arka plana al) ve `onResume` dönüşünü test et.
 2. **10 kez** ekran yönünü değiştir; varsa etkin rota/TTS durumunu korurken eski Activity nesnelerinin tutulmadığını izle. TTS motorunu Activity her durakladığında `shutdown()` etme: `onPause()` için `stop() + releaseFocus`, ViewModel `onCleared()` / Android Auto `onDestroy()` için `stop() + shutdown() + releaseFocus` beklenir.
 3. **10., 20., 30., 40. ve 50. turda** ses tamamlandıktan sonra **30 sn** boşta bekle, GC tetikle ve `Java heap`, `Native heap`, `PSS/Private Dirty`, `TextToSpeech`, `Activity`, `AudioDuckingManager` retained-instance sayılarını kaydet. 50 tur sonunda ek olarak **2 dk** boşta bekle, GC ardından B50 ölç.
 4. Navigasyon ekranını kapatıp ilgili Activity/Screen'i yok et; heap dump'ta **eski Activity/Screen = 0 retained instance**, kapatılmış `TextToSpeech` ve eski ses odağı yöneticisi = **0** olmalı. Güncel yaşayan Activity ve tek TTS sahibi sızıntı sayılmaz.
@@ -100,7 +100,7 @@ donanımda TTS/OBD, Android Auto, PiP ve üçüncü taraf medya uyumluluğunu do
 
 
 **Ölçüm hesabı / karşılaştırılabilirlik:**
-- Sürüşe başlamadan önce aynı rota için tek bir sabit tahmin üret; başlangıç ve varış noktalarını kilitle. **Gerçek sürüş kilometresi ile model rota kilometresi farkı > %3** ise güzergâh eşleşmemiş say ve koşuyu INVALID olarak yeniden yap (başka güzergâhı model hatası olarak puanlama). Rota sapmaları ve mola/şarj başlangıç-bitiş zamanlarını kaydet.
+- Sürüşe başlamadan önce aynı rota için tek bir sabit tahmin üret; başlangıç ve varış noktalarını kilitle. **Gerçek sürüş kilometresi ile model rota kilometresi farkı > %3** ise güzergâh eşleşmemiş say ve koşuyu INVALID olarak yeniden yap (başka güzergâhı model hatası olarak puanlama). Rota sapmaları ve mediaengine/şarj başlangıç-bitiş zamanlarını kaydet.
 - Net yüksek voltaj batarya enerjisi ölçümü için doğrulanmış **P[kW]** zaman serisini işaret konvansiyonuyla kullan. P>0 bataryadan çıkan, P<0 rejenerasyonla geri kazanılan güç olacak şekilde **E_ölçüm[kWh] = Σ((P_i + P_{i+1})/2 × Δt_i[s]/3600)** (trapez integrali). Ham P değerleri *W* ise önce 1000'e böl; 1 Hz örnekleme yeterliliği ve 5 saniyeden uzun gap olmamasını doğrula. Net ölçüm ≤ 0 veya hesap/birim işareti belirsizse INVALID.
 - Kıyaslanan enerji sınırı aynı olmalı: tahminin kapsamadığı şarj enerjisi, farklı sürüş mesafesi, ölçüm dışı rölanti/HVAC, harici ön koşullandırma ayrı not edilmeli. Tek nokta SoC farkından gerçek tüketim kWh hesabı yapma.
 - **Birincil karar metriği:** her geçerli sürüş için mutlak yüzde hata ≤ %15. **Toplam karar:** ağırlıklı net bias = 100 × |Σ(E_tahmin−E_ölçüm)| / ΣE_ölçüm ≤ %10. Ek olarak hata iptalini göstermek için **WAPE = 100 × Σ|E_tahmin−E_ölçüm| / ΣE_ölçüm** değerini raporla; WAPE tek başına eski bias kriterinin yerine geçmez.
@@ -228,7 +228,7 @@ $adb = "C:\Users\Alp\Desktop\platform-tools\adb.exe"
 
 - [ ] Uygulamanın **kendi** uyarı diyaloğunda `CustomWarningDialog` seçilmişse renkler `#0A0F1A`, beyaz metin, neon yeşil `#00E676` ve geri/kapat davranışı doğrulanır.
 - [ ] Android sisteminin konum izni diyaloğu başka bir pencereyse Compose temasıyla değiştirilemez. Ekran sahibini doğrula; sırf beyaz olduğu için uygulama UI hatası verme.
-- [ ] Mevcut Tesla/ABRP koyu kokpit ve cam panel, MapLibre, `EvBaselineEnergyEstimator` ve özgün Mola servisine regresyon olmamalı.
+- [ ] Mevcut Tesla/ABRP koyu kokpit ve cam panel, MapLibre, `EvBaselineEnergyEstimator` ve özgün MediaEngine servisine regresyon olmamalı.
 
 ### QA Logcat ve sonuç kaydı (Windows PowerShell)
 

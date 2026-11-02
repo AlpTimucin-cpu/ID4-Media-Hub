@@ -1,4 +1,4 @@
-# Elektrikli Yol Arkadaşım — Adım 10 · Android Auto gerçek navigasyon metadata
+# EV Cockpit — Adım 10 · Android Auto gerçek navigasyon metadata
 
 Önceki 0.9.0 üzerinde **yalnız `:nativecockpit`** modülüne uygulanan yama. Telefonun mevcut OSRM/Photon/MapLibre ekranını korur.
 

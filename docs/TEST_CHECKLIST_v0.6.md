@@ -1,4 +1,4 @@
-# ID.4 Media Hub v0.6 — Test and Acceptance Criteria
+# EV Cockpit v0.6 — Test and Acceptance Criteria
 
 ## 1. APK build (required; not yet performed)
 
@@ -17,7 +17,7 @@
 
 ## 3. Vehicle / Android Auto
 
-- [ ] ID.4 Media Hub appears in Android Auto's media application list while the vehicle is stationary
+- [ ] EV Cockpit appears in Android Auto's media application list while the vehicle is stationary
 - [ ] Tapping a station starts its stream (MediaSession `onSetMediaItems` mapping)
 - [ ] Next/previous audio station and play/pause controls work
 - [ ] Losing internet access does not terminate the application; the user sees an error
@@ -42,6 +42,6 @@
 - [ ] Lock the phone screen while radio is playing and use Android Auto: does audio continue?
 - [ ] Disconnect and reconnect the internet: does the application report errors without crashing?
 - [ ] At the end of the 41-item queue, do not expect unlimited navigation beyond this boundary; verify direct station selection.
-- [ ] Test video on the phone's own screen while the vehicle is parked; do not expect video on the ID.4 front display.
+- [ ] Test video on the phone's own screen while the vehicle is parked; do not expect video on the EV Cockpit front display.
 
 Note: This checklist is not considered complete until the tests have actually been performed.

@@ -44,7 +44,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
     </queries>
-    <application android:name=".SafeStartApplication" android:label="ID.4 Yol Arkadaşım • Test"
+    <application android:name=".SafeStartApplication" android:label="EV Cockpit • Test"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
@@ -68,20 +68,20 @@
         <activity android:name=".MainActivity" android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".PlayerActivity" android:exported="false" />
-        <activity android:name=".MolaVlcPlayerActivity" android:exported="false" />
+        <activity android:name=".MediaEngineVlcPlayerActivity" android:exported="false" />
         <activity android:name=".EvGarageActivity" android:exported="false" />
         <activity android:name=".TurkeyNavigationActivity" android:exported="false" />
         <activity android:name=".SportzXHubActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden" />
-        <activity android:name=".MolaYoutubeActivity"
+        <activity android:name=".MediaEngineYoutubeActivity"
             android:exported="false" android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden" />
-        <activity android:name=".MolaSubscriptionActivity"
+        <activity android:name=".MediaEngineSubscriptionActivity"
             android:exported="false" android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden" />
-        <activity android:name=".MolaTvBrowseActivity"
+        <activity android:name=".MediaEngineTvBrowseActivity"
             android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".PodcastBrowserActivity"
             android:exported="false" android:windowSoftInputMode="adjustResize" />

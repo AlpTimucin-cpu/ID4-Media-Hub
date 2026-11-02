@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name" formatted="false">Electric Road Companion</string>
+    <string name="app_name" formatted="false">EV Cockpit</string>
     <string name="native_arrival_soc_model_estimate" formatted="false">Arrival SoC · MODEL/ESTIMATE</string>
     <string name="native_automatic_dc_candidates_model_estimate" formatted="false">Automatic DC candidates · MODEL/ESTIMATE</string>
     <string name="native_back_to_map" formatted="false">Back to map</string>
@@ -30,7 +30,7 @@
     <string name="native_destination_selected" formatted="false">Destination selected</string>
     <string name="native_disconnect_obd" formatted="false">Disconnect OBD</string>
     <string name="native_download_english_voice_data_from_settings_language_and_input_text_to_s" formatted="false">"Download English voice data from Settings &gt; Language and input &gt; Text-to-speech. "</string>
-    <string name="native_electric_road_companion" formatted="false">ELECTRIC ROAD COMPANION</string>
+    <string name="native_electric_road_companion" formatted="false">EV COCKPIT</string>
     <string name="native_english_speech_ready" formatted="false">English speech ready</string>
     <string name="native_english_speech_test" formatted="false">English speech test</string>
     <string name="native_english_tts_data_missing" formatted="false">English TTS Data Missing</string>
@@ -107,4 +107,10 @@
     <string name="native_waiting_for_maneuver" formatted="false">Waiting for maneuver</string>
     <string name="native_waiting_for_route" formatted="false">Waiting for route</string>
     <string name="native_weather_open_meteo_current_model_estimate_not_arrival_time_weather" formatted="false">Weather: Open-Meteo · current model estimate, not arrival-time weather</string>
+    <string name="cockpit_gps" formatted="false">Locate vehicle</string>
+    <string name="cockpit_estimated_range" formatted="false">Estimated range · model</string>
+    <string name="cockpit_measurement_unavailable" formatted="false">Vehicle measurement unavailable</string>
+    <string name="cockpit_arrival" formatted="false">Arrival time</string>
+    <string name="cockpit_arrival_soc" formatted="false">Arrival SoC · estimate</string>
+    <string name="cockpit_plan_route" formatted="false">Plan a route</string>
 </resources>

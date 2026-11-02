@@ -5,7 +5,7 @@ on:
     - cron: "15 3 * * *"
   workflow_dispatch:
   push:
-    branches: [feature/mola-32-migration]
+    branches: [feature/media-engine-migration]
     paths:
       - "scripts/update_official_charge_prices.py"
       - "scripts/tests/test_official_charge_prices.py"

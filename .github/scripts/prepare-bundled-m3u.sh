@@ -29,7 +29,7 @@ urls = [
 data = None
 for url in urls:
     try:
-        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ID4Build/1.0)"})
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; EVCOCKPITBuild/1.0)"})
         with urlopen(req, timeout=40) as response:
             candidate = response.read(8_000_001)
         if valid(candidate):

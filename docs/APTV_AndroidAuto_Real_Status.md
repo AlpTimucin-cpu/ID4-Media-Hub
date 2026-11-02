@@ -1,4 +1,4 @@
-# The Actual Difference Between APTV / CarPlay and ID.4 / Android Auto
+# The Actual Difference Between APTV / CarPlay and EV Cockpit / Android Auto
 
 Checked on: October 9, 2026.
 
@@ -7,7 +7,7 @@ Checked on: October 9, 2026.
 - Apple's official user guide limits CarPlay video to non-driving use: https://support.apple.com/guide/iphone/play-videos-with-carplay-xykemxkw6he5/ios
 - Google Android Auto and Android Automotive OS are different platforms. According to Google's parked-app guide, the Android Auto video category is not yet supported. The Media category is for audio while driving: https://developer.android.com/agents/skills/cars/android-for-cars-parked-apps/skill
 
-## What does ID.4 Media Hub do?
+## What does EV Cockpit do?
 
 - Personal/legal M3U IPTV playlists, media playback, and a Netflix shortcut on the phone.
 - Radio through Android Auto's supported audio-library interface, with a goal of steering-wheel and media-control compatibility.
@@ -21,4 +21,4 @@ Checked on: October 9, 2026.
 
 ## Build and test evidence
 
-The project's `tests/architecture_checks.py` and `tests/M3uParserTest.kt` perform source-level checks. An actual Android Gradle build, phone installation, and ID.4 test have not yet been performed. Therefore, no APK or claim of in-vehicle operation is provided.
+The project's `tests/architecture_checks.py` and `tests/M3uParserTest.kt` perform source-level checks. An actual Android Gradle build, phone installation, and EV Cockpit test have not yet been performed. Therefore, no APK or claim of in-vehicle operation is provided.

@@ -34,15 +34,15 @@ val signedReleaseReady = releaseStore?.isFile == true &&
     !keyPasswordValue.isNullOrBlank()
 
 android {
-    namespace = "tr.id4.mediahub.nativecockpit"
+    namespace = "com.evcockpit"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "tr.id4.mediahub.nativecockpit"
+        applicationId = "com.evcockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.1.0-mola-media"
+        versionCode = 17
+        versionName = "2.0.0"
     }
 
     buildFeatures {

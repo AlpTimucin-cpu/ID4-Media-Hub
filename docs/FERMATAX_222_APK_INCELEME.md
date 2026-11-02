@@ -33,7 +33,7 @@ Açık kaynak proje: https://github.com/chuoinho/FermataX (GPL-3.0, Fermata fork
 
 **Alınabilecek bağımsız fikirler:** tek giriş noktasında modüler medya paneli, Android Auto ile telefon oynatma yaşam döngülerini ayırma, kaynak/kategori bazlı geri dönüş, EPG, oynatmaya devam et kartı, kullanıcı kontrollü harici uygulama açma. **Doğrudan APK kopyalama veya native VLC kütüphanelerini aktarma yapılmadı**; lisans/uyumluluk ve paketleme gerektirir.
 
-**Media Hub değişikliği:** Ortak Entegrasyon Merkezi, debug ve normal FermataX paketlerini ayrı uygulama olarak saptar ve kullanıcı isterse telefonda açar; şimdi doğrulanmış paket mimarisini ve oynatma motoru bilgilerini gösterir. Gerçek ID.4 ekranındaki video hâlâ doğrulanmadı.
+**Media Hub değişikliği:** Ortak Entegrasyon Merkezi, debug ve normal FermataX paketlerini ayrı uygulama olarak saptar ve kullanıcı isterse telefonda açar; şimdi doğrulanmış paket mimarisini ve oynatma motoru bilgilerini gösterir. Gerçek EV Cockpit ekranındaki video hâlâ doğrulanmadı.
 
 **Not:** Paylaşılan YouTube bağlantısı https://youtu.be/CdU0OlLds2k doğrudan okunamadı; bu rapor video görüntülerini izlediğim iddiasında bulunmaz.
 

@@ -1,10 +1,10 @@
-# Electric Road Companion — Map, Live Vehicle Data, and Route Progress Integration
+# EV Cockpit — Map, Live Vehicle Data, and Route Progress Integration
 
 > Source: Three sections of the user-uploaded technical guide `tesla_integration_guide.docx`. Its code examples were adapted to the working architecture rather than pasted directly into the project.
 
 ## 1. One map, actual OSRM geometry
 
-The application already creates **one** `L.map('map')` in `navigator.html`. `id4-live-map.js` and the traffic provider connect to it using `attachExistingMap(map)`; a second `L.map('map-canvas')` is not created.
+The application already creates **one** `L.map('map')` in `navigator.html`. `evcockpit-live-map.js` and the traffic provider connect to it using `attachExistingMap(map)`; a second `L.map('map-canvas')` is not created.
 
 Actual routes follow the OSRM schema `/route/v1/driving/{lon},{lat};{lon},{lat}?overview=full&geometries=geojson`. A Leaflet polyline is drawn after validating `code='Ok'`, `routes[0].geometry.coordinates`, distance, and duration. Route calculations can fail because of network errors, timeouts, or invalid geometry; a failed request does not clear the map.
 
@@ -15,7 +15,7 @@ Actual routes follow the OSRM schema `/route/v1/driving/{lon},{lat};{lon},{lat}?
 
 ## 2. Android Bluetooth ELM327 / WebView event flow
 
-`Id4NavigatorActivity.java` forwards measurements from the existing `Id4LiveTelemetry` module through the **single, already registered** JavaScript bridge and the `molaTelemetry` event. No new `AndroidBridge` or periodic `getLiveOBDData()` bridge is added. Measurements are processed when received rather than polling every 500 ms; raw or uncalibrated PIDs are not treated as actual SoC/speed.
+`EvCockpitNavigatorActivity.java` forwards measurements from the existing `EvCockpitLiveTelemetry` module through the **single, already registered** JavaScript bridge and the `mediaengineTelemetry` event. No new `AndroidBridge` or periodic `getLiveOBDData()` bridge is added. Measurements are processed when received rather than polling every 500 ms; raw or uncalibrated PIDs are not treated as actual SoC/speed.
 
 ### Data sources
 
@@ -33,10 +33,10 @@ Original media sessions, DRM, system Bluetooth pairing, and Android Auto driving
 - Progress is calculated within `0..100` when GPS is fresh (≤30 seconds), accuracy is ≤60 m, and route proximity is acceptable.
 - The lower bar fill stays within `0..100%`, and the **🚙 vehicle icon stays within `0..92%`**, preventing overflow.
 - If GPS is unavailable, stale, or off-route, the vehicle icon is hidden and “No GPS route progress / position off-route” is displayed.
-- The same actual `molaPosition` event updates all relevant screens. No sample or fabricated progress trigger is used.
+- The same actual `mediaenginePosition` event updates all relevant screens. No sample or fabricated progress trigger is used.
 
 ## 4. Branding, privacy, and licensing boundaries
 
-The application's **visible name** is `Electric Road Companion`. Technical Java class names, some file paths, JSON event names, and package IDs have not yet been renamed, preserving backward compatibility and allowing the existing APK to update as the same application. Changing them all at once could cause data loss or break builds for existing users.
+The application's **visible name** is `EV Cockpit`. Technical Java class names, some file paths, JSON event names, and package IDs have not yet been renamed, preserving backward compatibility and allowing the existing APK to update as the same application. Changing them all at once could cause data loss or break builds for existing users.
 
 Third-party open-source attribution (for example, [LICENSE](../LICENSE) and [NOTICE](../NOTICE.md)) and names required by licenses are retained. The project is not considered production-validated until usage permissions and real-device tests are complete.

@@ -1,27 +1,55 @@
-# Electric Road Companion — English Project Guide
+# EV Cockpit
 
-**Routes, charging, media, and vehicle data for electric driving.**
+A map-first electric-vehicle cockpit built with Kotlin, Jetpack Compose, MapLibre, OSRM, and read-only vehicle diagnostics.
 
-This page is the English introduction to the current application. See the [main README](README.md) for scope, usage limitations, source-generated screen previews, and APK installation instructions.
+## Interface
 
-## Basic usage
+- One full-screen map, with direct access to routes and charging stations.
+- A large state-of-charge indicator and modeled range in the upper-left corner.
+- A compact arrival panel with the next maneuver, ETA, and estimated arrival SoC.
+- A slim Route / Charging / Media / Settings dock.
+- Dark navy surfaces, one turquoise accent, larger typography, and restrained corner radii.
+- Unknown vehicle measurements remain `—`; simulation data is explicitly labeled.
 
-Open the application and select an origin and destination under **Route**. The OSRM route is drawn, with alternatives listed when available. Weather forecasts displayed on the map are model data obtained only from verified sources.
+## Modules
 
-Under **Stations**, inspect stations by connector type and explore stops near the route. Station availability and pricing are not presented as confirmed unless verified through an authoritative data service.
+| Module | Purpose | Application ID |
+|---|---|---|
+| `nativecockpit` | Compose cockpit and Android Auto navigation | `com.evcockpit` |
+| `app` | Media Hub and companion utilities | `com.evcockpit.mediahub` (`.test` for debug) |
+| `evlite` | Lightweight map and charging tools | `com.evcockpit.evguide.lite` (`.tvbeta` for debug) |
+| `media-engine` | Source overlay for the separately licensed media foundation | Distinct preview identity |
 
-SoC, temperature, voltage, and other indicators under **Vehicle Data** use only actual, calibration-validated, fresh OBD readings. A paired Bluetooth adapter alone does not establish that these readings are available; indicators remain empty when readings are missing.
+## Build
 
-**Route progress** is calculated by projecting an adequately accurate GPS fix received within the last 30 seconds onto the actual calculated route. Stale or off-route GPS does not produce a fabricated percentage. The vehicle symbol stays within the progress bar's bounds.
+Use Java 17, Android SDK 36, and Gradle 8.14.3 for the Kotlin modules.
 
-## Safety
+```bash
+gradle :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug
+gradle :app:testDebugUnitTest :app:assembleDebug
+gradle :evlite:testDebugUnitTest :evlite:assembleDebug
+```
 
-Restrictions on distracting video or browser content for the driver while the vehicle is moving are not removed. External media services apply their own subscription, DRM, and usage terms. Do not put service keys in source code.
+The native test APK is written to `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`. CI workflows publish APK artifacts and checksums. Production signing continues to use the owner's existing secret configuration; no production key is committed to the repository.
 
-## Developer notes
+## Package migration
 
-The [map, OBD, and GPS integration guide](docs/ELECTRIC_ROAD_COMPANION_INTEGRATION.md) describes the architecture adapted to this project. Fixed speed, battery, and range values in sample code are not live measurements and are not used.
+The native source and test packages now live under `com.evcockpit`. The manifest, Hilt entry points, generated-resource imports, ProGuard rules, and CI launch commands use that namespace.
 
-Third-party licenses and copyright attribution are retained in [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). The current release requires real-device testing.
+Changing an application ID creates a **separate Android application**. Existing installations are not overwritten, and private preferences, databases, saved logins, and Android permissions do not migrate automatically. No old application is uninstalled or cleared by this project.
 
-[Turkish guide](README_TR.md).
+See [brand and package migration](docs/BRAND_MIGRATION.md) for the complete refactor scope and external compatibility exceptions.
+
+## Data and media boundaries
+
+OSRM route geometry is real routing data; its speed profile is not live traffic. Charging candidates use dated EPDK data and do not guarantee road access, charger availability, or current prices. Range and arrival SoC are estimates requiring valid measurements or explicitly configured assumptions.
+
+Media playback remains owned by the relevant engine. External application package IDs, upstream source attribution, and existing repository URLs retain their actual externally defined values. Renaming those identifiers would break interoperation or data downloads. Video is not enabled on the driving display by this rebrand.
+
+## License and notices
+
+See [LICENSE](LICENSE), [NOTICE](NOTICE.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [API-key security](SECURITY_TOMTOM.md). Third-party attribution and license texts remain in place.
+
+This is an independent project and does not imply affiliation with a vehicle manufacturer or the owner of an external media application.
+
+[Turkish guide](README_TR.md) · [English guide](README_EN.md)

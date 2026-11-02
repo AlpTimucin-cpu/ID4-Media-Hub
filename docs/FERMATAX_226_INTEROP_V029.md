@@ -1,4 +1,4 @@
-# FermataX 2.2.6 manifest bağlantısı — ID.4 Drive Hub v0.29
+# FermataX 2.2.6 manifest bağlantısı — EV Cockpit Drive Hub v0.29
 
 **Kaynak:** Kullanıcının sağladığı 2.2.6 (332) AndroidManifest.xml metni (`Yapıştırılan markdown(1).md`). Bu, kaynak kodu veya yeni APK'nin ikili analizi değildir. Daha eski 2.2.2 APK'dan ayrı değerlendirilir.
 

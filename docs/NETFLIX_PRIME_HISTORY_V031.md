@@ -1,4 +1,4 @@
-# ID.4 Drive Hub v0.31 — Netflix ve Prime Video içerik geçmişi
+# EV Cockpit Drive Hub v0.31 — Netflix ve Prime Video içerik geçmişi
 
 ## Özellikler
 
@@ -14,7 +14,7 @@
 
 **Bu bir izleme geçmişi/bağlantı hatırlama özelliğidir, oynatma konumu senkronizasyonu değildir.** Netflix/Prime Video hesaplarının gerçek *Continue Watching* verileri, korumalı video akışları veya DRM anahtarlarına erişmez. Servislerin WebView'de videoyu oynatacağı garanti edilmez. Bazı hizmetlerin giriş ve içerik rotaları kayıt için tanınmayabilir; bu durumda geçmişe eklenmez.
 
-Araçtaki Android Auto medya kataloğu yalnızca radyo ve ses içindir; sürücünün görebileceği ön ekranda sürüş sırasında video kısıtlamasını atlatan hiçbir özellik eklenmedi. Android 15 emülatörünün açılması gerçek Volkswagen ID.4 ekranındaki destek anlamına gelmez.
+Araçtaki Android Auto medya kataloğu yalnızca radyo ve ses içindir; sürücünün görebileceği ön ekranda sürüş sırasında video kısıtlamasını atlatan hiçbir özellik eklenmedi. Android 15 emülatörünün açılması gerçek electric vehicle ekranındaki destek anlamına gelmez.
 
 ## Kod
 

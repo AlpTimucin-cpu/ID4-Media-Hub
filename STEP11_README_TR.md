@@ -9,7 +9,7 @@
 
 ## Telefon üzerinden OBD bağlantısı
 1. ELM327 Bluetooth Classic cihazını Android ayarlarından eşleştirin (BLE-only adaptör desteklenmez).
-2. **Elektrikli Yol Arkadaşım** telefon uygulamasını açıp **Ayarlar** sekmesinden OBD Bağlantısı'nı açın.
+2. **EV Cockpit** telefon uygulamasını açıp **Ayarlar** sekmesinden OBD Bağlantısı'nı açın.
 3. Android 12+ Bluetooth yakındaki cihaz bağlantısı izni istenirse izin verin. **Eşleştirilmiş cihazları yenile** düğmesini kullanın.
 4. Kendi ELM327 adaptörünüzü seçin. **010D** destekleniyorsa ölçülmüş **hız** görünür. Yanıt `NO DATA` ise hız bilinmiyor olarak kalır.
 5. Kullanım bittiğinde **OBD bağlantısını kes**; uygulama arka plana geçerse de oturum kapatılır.

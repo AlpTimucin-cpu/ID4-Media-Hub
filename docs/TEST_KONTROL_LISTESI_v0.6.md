@@ -1,4 +1,4 @@
-# ID.4 Media Hub v0.6 — Test ve kabul ölçütleri
+# EV Cockpit v0.6 — Test ve kabul ölçütleri
 
 ## 1. APK derleme (gerekli, henüz yapılmadı)
 - [ ] Android Studio > Open > proje klasörü; Gradle Sync başarıyla tamamlandı
@@ -14,7 +14,7 @@
 - [ ] Netflix kısayolu resmî telefon uygulamasını açıyor
 
 ## 3. Araç / Android Auto
-- [ ] Araç sabitken ID.4 Media Hub Android Auto medya uygulaması listesinde görünüyor
+- [ ] Araç sabitken EV Cockpit Android Auto medya uygulaması listesinde görünüyor
 - [ ] Kanala dokununca yayın başlıyor (MediaSession `onSetMediaItems` eşleme)
 - [ ] Sonraki/önceki ses kanalı ve oynat/duraklat kumandaları çalışıyor
 - [ ] İnternet kesilince uygulama kapanmıyor, kullanıcıya hata görünür oluyor
@@ -39,6 +39,6 @@
 - [ ] Radyo yayını çalarken telefon ekranını kilitle ve Android Auto'yu kullan: ses devam ediyor mu?
 - [ ] İnternet bağlantısını kes/aç: uygulama çökmeden hata bildiriyor mu?
 - [ ] 41 öğelik kuyruk ucu: bu sınırın ötesine sonsuz geçiş bekleme; doğrudan kanal seçimi çalışıyor mu kontrol et.
-- [ ] Araç park halindeyken telefonun kendi ekranındaki video oynatımını test et; ID.4 ön ekranında görüntü arama.
+- [ ] Araç park halindeyken telefonun kendi ekranındaki video oynatımını test et; EV Cockpit ön ekranında görüntü arama.
 
 Not: Bu liste gerçek testler yapılana kadar tamamlanmış kabul edilmez.

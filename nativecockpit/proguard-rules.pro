@@ -1,5 +1,5 @@
 # :nativecockpit only — conservative, temporary R8 stabilization.
-# Other modules (:app, :evlite and Mola/Fermata) are untouched.
+# Other modules (:app, :evlite and MediaEngine/Fermata) are untouched.
 # No device stack trace was provided: these rules do NOT prove a specific crash fix.
 #
 # While the startup crash is investigated, preserve shrinking and obfuscation but
@@ -10,21 +10,21 @@
 
 # Hilt/Dagger Android entrypoints and generated injection members.
 # Dagger/Hilt already package consumer ProGuard rules, so do not globally disable shrinking.
--keep class tr.id4.mediahub.nativecockpit.EyaApplication { *; }
--keep class tr.id4.mediahub.nativecockpit.MainActivity { *; }
--keep class tr.id4.mediahub.nativecockpit.car.EyaCarAppService { *; }
--keep class tr.id4.mediahub.nativecockpit.Hilt_* { *; }
--keep class tr.id4.mediahub.nativecockpit.car.Hilt_* { *; }
--keep class tr.id4.mediahub.nativecockpit.presentation.**.Hilt_* { *; }
--keep class tr.id4.mediahub.nativecockpit.**_Factory { *; }
--keep class tr.id4.mediahub.nativecockpit.**_MembersInjector { *; }
--keep class tr.id4.mediahub.nativecockpit.Dagger* { *; }
+-keep class com.evcockpit.EyaApplication { *; }
+-keep class com.evcockpit.MainActivity { *; }
+-keep class com.evcockpit.car.EyaCarAppService { *; }
+-keep class com.evcockpit.Hilt_* { *; }
+-keep class com.evcockpit.car.Hilt_* { *; }
+-keep class com.evcockpit.presentation.**.Hilt_* { *; }
+-keep class com.evcockpit.**_Factory { *; }
+-keep class com.evcockpit.**_MembersInjector { *; }
+-keep class com.evcockpit.Dagger* { *; }
 
 # Retrofit 3 (dynamic proxies, suspend and generic response signatures).
 -keep class kotlin.coroutines.Continuation
--keep interface tr.id4.mediahub.nativecockpit.data.routing.OsrmService { *; }
--keep interface tr.id4.mediahub.nativecockpit.data.routing.PhotonService { *; }
--keep interface tr.id4.mediahub.nativecockpit.data.remote.EpdkService { *; }
+-keep interface com.evcockpit.data.routing.OsrmService { *; }
+-keep interface com.evcockpit.data.routing.PhotonService { *; }
+-keep interface com.evcockpit.data.remote.EpdkService { *; }
 
 # Gson reflection over annotated DTO fields, plus library consumer rules.
 -keepclassmembers class * {
@@ -38,8 +38,8 @@
 -keep class org.maplibre.android.maps.Style { *; }
 
 # Vehicle diagnostic protocol, Bluetooth transports and Android Auto host surface.
--keep class tr.id4.mediahub.nativecockpit.data.obd.** { *; }
--keep class tr.id4.mediahub.nativecockpit.domain.usecase.Elm327Session { *; }
--keep class tr.id4.mediahub.nativecockpit.car.EyaCarMapSurface { *; }
+-keep class com.evcockpit.data.obd.** { *; }
+-keep class com.evcockpit.domain.usecase.Elm327Session { *; }
+-keep class com.evcockpit.car.EyaCarMapSurface { *; }
 
 # No blanket -dontwarn. Missing APIs should fail the build.

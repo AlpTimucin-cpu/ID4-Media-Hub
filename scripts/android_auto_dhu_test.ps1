@@ -1,5 +1,5 @@
 <#
- Elektrikli Yol Arkadaşım / Step 11: Windows ADB + Android Auto DHU
+ EV Cockpit / Step 11: Windows ADB + Android Auto DHU
  This script does NOT fake a DHU run. Requires actual connected phone and
  Google Android Auto DHU installed via Android Studio SDK Tools.
  Instructions: enable Android Auto developer mode, then 'Start head unit server'.
@@ -21,12 +21,12 @@ $serialArgs = @()
 if ($Serial) { $serialArgs = @('-s', $Serial) }
 & $adbBin devices -l
 if ($LASTEXITCODE -ne 0) { throw 'ADB çalışmadı' }
-$installed = (& $adbBin @serialArgs shell pm path tr.id4.mediahub.nativecockpit 2>&1)
+$installed = (& $adbBin @serialArgs shell pm path com.evcockpit 2>&1)
 if ($LASTEXITCODE -ne 0 -or -not ($installed -match 'package:')) {
-    throw 'Elektrikli Yol Arkadaşım nativecockpit APK telefonda kurulu değil.'
+    throw 'EV Cockpit nativecockpit APK telefonda kurulu değil.'
 }
 Write-Host 'APK telefonda kurulu.' -ForegroundColor Green
-$service = (& $adbBin @serialArgs shell dumpsys package tr.id4.mediahub.nativecockpit 2>&1) | Select-String -Pattern 'EyaCarAppService|androidx.car.app.category.NAVIGATION'
+$service = (& $adbBin @serialArgs shell dumpsys package com.evcockpit 2>&1) | Select-String -Pattern 'EyaCarAppService|androidx.car.app.category.NAVIGATION'
 if (-not $service) { Write-Warning 'Car App service/kategori doğrulanamadı, AndroidManifest kontrol edin.' }
 else { Write-Host 'Car App service kaydı bulundu.' -ForegroundColor Green }
 Write-Host 'Android Auto geliştirici menüsünde Start head unit server seçeneğini AÇIN.'

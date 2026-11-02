@@ -4,14 +4,14 @@ on:
   pull_request:
     branches: [feature/fermata-style-car-video]
   push:
-    branches: [feature/mola-32-migration]
+    branches: [feature/media-engine-migration]
     paths:
       - "app/**"
       - ".github/workflows/emulator-startup.yml"
 permissions:
   contents: read
 concurrency:
-  group: id4-android15-startup
+  group: evcockpit-android15-startup
   cancel-in-progress: true
 jobs:
   android15-startup:
@@ -43,37 +43,37 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
-            gradle --no-daemon :app:assembleDebug -Pid4EmulatorTest=true
+            gradle --no-daemon :app:assembleDebug -PevcockpitEmulatorTest=true
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am force-stop tr.id4.mediahub.test
-            adb shell am start -W -n tr.id4.mediahub.test/.SafeStartActivity
+            adb shell am force-stop com.evcockpit.mediahub.test
+            adb shell am start -W -n com.evcockpit.mediahub.test/.SafeStartActivity
             sleep 6
-            adb logcat -d -v threadtime > /tmp/id4-startup-logcat.txt
+            adb logcat -d -v threadtime > /tmp/evcockpit-startup-logcat.txt
             echo "==== AndroidRuntime fatal traces ===="
-            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub.test\\|Fatal signal" /tmp/id4-startup-logcat.txt | tail -n 130 || true
-            if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/id4-startup-logcat.txt; then
+            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: com.evcockpit.mediahub.test\\|Fatal signal" /tmp/evcockpit-startup-logcat.txt | tail -n 130 || true
+            if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/evcockpit-startup-logcat.txt; then
               echo "::error::Android 15 emulator recorded a fatal error"
               exit 1
             fi
-            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]' || {
+            adb shell pidof com.evcockpit.mediahub.test | grep -q '[0-9]' || {
               echo "::error::Main process not running after cold start"; exit 1;
             }
             echo "PASS: App remained running after cold start"
             # Click phone UI's EvGarageActivity and TurkeyNavigationActivity
             adb logcat -c
-            adb shell am start -W -n tr.id4.mediahub.test/.EvGarageActivity
+            adb shell am start -W -n com.evcockpit.mediahub.test/.EvGarageActivity
             sleep 3
-            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]'
-            adb shell am start -W -n tr.id4.mediahub.test/.TurkeyNavigationActivity
+            adb shell pidof com.evcockpit.mediahub.test | grep -q '[0-9]'
+            adb shell am start -W -n com.evcockpit.mediahub.test/.TurkeyNavigationActivity
             sleep 6
-            adb logcat -d -v threadtime > /tmp/id4-navigation-logcat.txt
-            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: tr.id4.mediahub.test\\|Fatal signal" /tmp/id4-navigation-logcat.txt | tail -n 130 || true
-            if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/id4-navigation-logcat.txt; then
+            adb logcat -d -v threadtime > /tmp/evcockpit-navigation-logcat.txt
+            grep -n -A 28 -B 3 "FATAL EXCEPTION\\|Process: com.evcockpit.mediahub.test\\|Fatal signal" /tmp/evcockpit-navigation-logcat.txt | tail -n 130 || true
+            if grep -Eq "FATAL EXCEPTION|Fatal signal" /tmp/evcockpit-navigation-logcat.txt; then
               echo "::error::EV or navigation activity crashed"
               exit 1
             fi
-            adb shell pidof tr.id4.mediahub.test | grep -q '[0-9]'
+            adb shell pidof com.evcockpit.mediahub.test | grep -q '[0-9]'
             echo "PASS: Main, EV and Navigation activities started without fatal errors"
       - name: Preserve AndroidRuntime diagnostics on failure
         if: failure()
@@ -81,7 +81,7 @@ jobs:
         with:
           name: android15-startup-logs
           path: |
-            /tmp/id4-startup-logcat.txt
-            /tmp/id4-navigation-logcat.txt
+            /tmp/evcockpit-startup-logcat.txt
+            /tmp/evcockpit-navigation-logcat.txt
           if-no-files-found: ignore
           retention-days: 7

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/mola-native-id4
+      - feature/ev-cockpit
 
 permissions:
   contents: read
@@ -167,7 +167,7 @@ jobs:
           test -s "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
-            grep -q "package: name='tr.id4.mediahub.nativecockpit'"
+            grep -q "package: name='com.evcockpit'"
           cp "$apk" app-release.apk
           sha256sum app-release.apk > app-release.sha256
           ls -lh app-release.apk

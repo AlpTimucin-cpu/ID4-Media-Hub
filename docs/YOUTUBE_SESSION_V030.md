@@ -1,4 +1,4 @@
-# ID.4 Drive Hub v0.30 — YouTube oturum ve video geçmişi
+# EV Cockpit Drive Hub v0.30 — YouTube oturum ve video geçmişi
 
 ## Kaynak ve sınırları
 
@@ -20,8 +20,8 @@ Envanterde `YoutubePlaybackSession`, `YoutubeItem`, `YoutubeNavigationCoordinato
 - YouTube ve youtu.be adresleri aynı video kimliğine eşlenir; paylaşım parametreleri silinir.
 - Sahte alan adları, protokol hataları, gömülü hesap bilgileri, geçersiz video kodu ve beklenmedik port test edilir.
 - Android 15 emülatör smoke testi, Web Medya'da **YT◷** düğmesini kontrol eder.
-- Daha önceki emülatör testi uygulamayı başlatmış ve ID.4 Media Cockpit'i açmıştır; sonrasında TV performans düğmesi otomasyonda tek kaydırmayla bulunamadığı için başarısız olmuştu. Bu sürümde görünür UI içinde birkaç kaydırmayla arama eklendi.
+- Daha önceki emülatör testi uygulamayı başlatmış ve EV Cockpit Media Cockpit'i açmıştır; sonrasında TV performans düğmesi otomasyonda tek kaydırmayla bulunamadığı için başarısız olmuştu. Bu sürümde görünür UI içinde birkaç kaydırmayla arama eklendi.
 
 ## Sürüş ve telif kapsamı
 
-Araç hareket halindeyken sürücünün ön ekranında video kilidini kaldıran bir değişiklik yok. YouTube reklam atlatma, DRM çözme, video indirme/ayrıştırma, resmî olmayan medya çıkarma veya başka uygulamanın kaynak kodunu kopyalama yapılmadı. ID.4 araç ekranında oynatma ayrıca doğrulanmalıdır.
+Araç hareket halindeyken sürücünün ön ekranında video kilidini kaldıran bir değişiklik yok. YouTube reklam atlatma, DRM çözme, video indirme/ayrıştırma, resmî olmayan medya çıkarma veya başka uygulamanın kaynak kodunu kopyalama yapılmadı. EV Cockpit araç ekranında oynatma ayrıca doğrulanmalıdır.
