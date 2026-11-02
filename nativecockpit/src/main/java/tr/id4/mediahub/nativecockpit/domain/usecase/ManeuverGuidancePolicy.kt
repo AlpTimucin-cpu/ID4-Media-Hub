@@ -89,7 +89,7 @@ class ManeuverGuidancePolicy {
         // IMPORTANT: do not mark as spoken until TextToSpeech accepted the request.
         proposedLevel = level
         proposedAtMs = nowMs
-        return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
+        return (if (level == 0) "In two hundred meters, " else "In fifty meters, ") +
             instruction
     }
 

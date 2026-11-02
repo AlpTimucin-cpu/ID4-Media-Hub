@@ -15,16 +15,16 @@ data class CarRouteSummary(
     companion object {
         fun from(route: RouteSnapshot?, gps: GpsFix?, nowMillis: Long): CarRouteSummary {
             val locationLabel = if (gps?.usable(nowMillis) == true)
-                "GPS ölçümü güncel" else "GPS ölçümü yok / izin gerekli"
+                "GPS reading is current" else "No GPS reading / permission required"
             if (route == null || !validRouteGeometry(route.routePoints)) {
-                return CarRouteSummary(false, "Rota oluşturulmadı",
-                    "Telefon uygulamasında başlangıç ve hedef seçin", locationLabel)
+                return CarRouteSummary(false, "No route planned",
+                    "Select an origin and destination in the phone app", locationLabel)
             }
             val destination = route.destination?.takeIf { it.isNotBlank() }
-                ?.take(55) ?: "Varış noktası"
+                ?.take(55) ?: "Destination"
             val distance = route.totalKm?.takeIf { it.isFinite() && it > 0 }
-                ?.let { String.format(Locale.forLanguageTag("tr-TR"), "Toplam %.1f km · OSRM", it) }
-                ?: "Rota geometrisi mevcut · uzunluk bilinmiyor"
+                ?.let { String.format(Locale.forLanguageTag("en-US"), "Total %.1f km · OSRM", it) }
+                ?: "Route geometry available · length unknown"
             return CarRouteSummary(true, destination, distance, locationLabel)
         }
     }

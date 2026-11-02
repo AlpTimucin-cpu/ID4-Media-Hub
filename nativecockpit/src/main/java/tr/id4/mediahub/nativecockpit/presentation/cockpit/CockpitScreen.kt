@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.cockpit
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -132,7 +135,7 @@ fun CockpitScreen(
         ) {
             Column(Modifier.fillMaxWidth().heightIn(max = 450.dp)
                 .verticalScroll(rememberScrollState()).padding(16.dp)) {
-                Text("Rota Üzeri DC Şarj İstasyonları",
+                Text(stringResource(R.string.native_dc_charging_stations_along_the_route),
                     style = MaterialTheme.typography.titleLarge)
                 chargingUi.corridorStations.forEach { station ->
                     TextButton(onClick = {
@@ -144,7 +147,7 @@ fun CockpitScreen(
                     }
                 }
                 if (chargingUi.corridorStations.isEmpty()) {
-                    Text("Rota çizgisine 5 km içinde doğrulanmış DC kaydı yok.")
+                    Text(stringResource(R.string.native_no_validated_dc_station_within_5_km_of_the_route_line))
                 }
             }
         }
@@ -156,7 +159,7 @@ fun CockpitScreen(
             contentColor = Color.White
         ) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                Text("EPDK istasyon filtreleri", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.native_epdk_station_filters), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 ChargingFilters(
                     ui = chargingUi,
@@ -206,17 +209,17 @@ fun CockpitScreen(
     if (showVoiceSettings) {
         DarkGlassDialog(
             onDismissRequest = { showVoiceSettings = false },
-            title = { Text("Sesli yol tarifi") },
+            title = { Text(stringResource(R.string.native_voice_guidance)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Durum: " + when(voiceStatus) {
-                        NativeVoiceGuide.Status.LOADING -> "Türkçe ses hazırlanıyor"
-                        NativeVoiceGuide.Status.READY -> "Türkçe ses hazır"
-                        NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> "Türkçe TTS paketi eksik"
-                        NativeVoiceGuide.Status.INIT_FAILED -> "Ses motoru başlatılamadı"
-                        NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> "Ses odağı alınamadı"
+                    Text(stringResource(R.string.native_status) + when(voiceStatus) {
+                        NativeVoiceGuide.Status.LOADING -> stringResource(R.string.native_preparing_english_speech)
+                        NativeVoiceGuide.Status.READY -> stringResource(R.string.native_english_speech_ready)
+                        NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> stringResource(R.string.native_english_tts_data_missing_90a54a)
+                        NativeVoiceGuide.Status.INIT_FAILED -> stringResource(R.string.native_could_not_initialize_the_speech_engine)
+                        NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> stringResource(R.string.native_could_not_obtain_audio_focus)
                     })
-                    Text("Ses seviyesi: %${(voiceVolume * 100).toInt()} · Uygulama sesi")
+                    Text("Volume: ${(voiceVolume * 100).toInt()}% · App audio")
                     Slider(
                         value=voiceVolume,
                         onValueChange=onVoiceVolumeChange,
@@ -224,18 +227,18 @@ fun CockpitScreen(
                         enabled=voiceStatus==NativeVoiceGuide.Status.READY ||
                             voiceStatus==NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED
                     )
-                    Text("Sesli yönlendirme ${if(voiceEnabled) "açık" else "kapalı"}. " +
-                         "Yalnız güncel GPS ve gerçek rota manevrası varsa konuşur.",fontSize=12.sp)
+                    Text("Voice guidance ${if(voiceEnabled) "on" else "off"}. " +
+                         "Speaks only with current GPS and an actual route maneuver.",fontSize=12.sp)
                     OutlinedButton(
                         onClick=onVoiceTest,
                         enabled=voiceEnabled && (voiceStatus==NativeVoiceGuide.Status.READY ||
                             voiceStatus==NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED),
                         modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)
-                    ) { Text("Türkçe ses testi") }
+                    ) { Text(stringResource(R.string.native_english_speech_test)) }
                 }
             },
             confirmButton = {
-                TextButton(onClick={showVoiceSettings=false}) { Text("Tamam") }
+                TextButton(onClick={showVoiceSettings=false}) { Text(stringResource(R.string.native_ok)) }
             }
         )
     }
@@ -249,19 +252,19 @@ fun CockpitScreen(
             Column(Modifier.fillMaxWidth().heightIn(max=420.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal=20.dp, vertical=14.dp)) {
-                Text(station.name.ifBlank { "Şarj istasyonu" },
+                Text(station.name.ifBlank { "Charging station" },
                     style=MaterialTheme.typography.titleLarge)
-                Text(station.operator.ifBlank { "Operatör belirtilmedi" })
-                Text(station.address.ifBlank { "Adres belirtilmedi" })
+                Text(station.operator.ifBlank { "Operator not specified" })
+                Text(station.address.ifBlank { "Address not specified" })
                 HorizontalDivider(Modifier.padding(vertical=9.dp))
                 station.sockets.forEach { socket ->
-                    Text("${socket.kind} · ${socket.type} · güç (ham): ${socket.powerRaw.ifBlank { "—" }}",
+                    Text("${socket.kind} · ${socket.type} · power (raw): ${socket.powerRaw.ifBlank { "—" }}",
                         fontSize=12.sp)
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("EPDK kayıt tarihi: ${station.sourceVerifiedAtUtc}", fontSize=11.sp)
-                Text("Canlı müsaitlik, fiyat ve araçla erişim bilinmiyor.", fontSize=11.sp)
-                TextButton(onClick={ selectedStation = null }) { Text("Kapat") }
+                Text("EPDK record date: ${station.sourceVerifiedAtUtc}", fontSize=11.sp)
+                Text(stringResource(R.string.native_live_availability_price_and_road_access_are_unknown), fontSize=11.sp)
+                TextButton(onClick={ selectedStation = null }) { Text(stringResource(R.string.native_close)) }
             }
         }
     }
@@ -277,19 +280,19 @@ fun CockpitScreen(
     selectedDock?.takeUnless { it == DockTab.MEDIA }?.let { tab ->
         DarkGlassDialog(
             onDismissRequest = { selectedDock = null },
-            title = { Text(tab.title) },
+            title = { Text(stringResource(tab.titleRes)) },
             text = {
                 Text(when (tab) {
-                    DockTab.ROUTE -> "Rota girişi harita üzerinden açılıyor."
-                    DockTab.CHARGING -> "Kaynak EPDK · ${chargingUi.total} halka açık kayıt. " +
-                        (chargingUi.verifiedAtUtc?.let { "Snapshot: $it. " } ?: "Veri bekleniyor. ") +
-                        "Canlı doluluk ve fiyat yok. Rota filtresi yalnız gerçek OSRM rotasıyla çalışır."
-                    DockTab.MEDIA -> "Medya bu sürümde devre dışı. Rota ve harita çalışmaya devam ediyor."
-                    DockTab.SETTINGS -> "GPS ve OBD bağlantı ayarları henüz bu Kotlin uygulamasına bağlanmadı."
+                    DockTab.ROUTE -> "Route entry opens from the map."
+                    DockTab.CHARGING -> "EPDK source · ${chargingUi.total} public records. " +
+                        (chargingUi.verifiedAtUtc?.let { "Snapshot: $it. " } ?: "Waiting for data. ") +
+                        "No live availability or prices. The route filter requires an actual OSRM route."
+                    DockTab.MEDIA -> "Media is disabled in this version. Routes and maps remain available."
+                    DockTab.SETTINGS -> "GPS and OBD connection settings are not yet connected in this Kotlin app."
                 })
             },
             confirmButton = {
-                TextButton(onClick = { selectedDock = null }) { Text("Kapat") }
+                TextButton(onClick = { selectedDock = null }) { Text(stringResource(R.string.native_close)) }
             }
         )
     }
@@ -318,7 +321,7 @@ fun CockpitScreen(
             voiceStatus=voiceStatus
         )
         if (BuildConfig.DEBUG && state.simulationEnabled) {
-            Text("SİMÜLASYON MODU · TEST VERİLERİ · GERÇEK KONUM/OBD DEĞİL",
+            Text(stringResource(R.string.native_simulation_mode_test_data_not_actual_location_obd),
                 color=Color(0xFFFFCE73), fontSize=11.sp,
                 modifier=Modifier.fillMaxWidth().background(Color(0xFF563215))
                     .padding(horizontal=12.dp, vertical=6.dp))
@@ -342,10 +345,10 @@ fun CockpitScreen(
             )
             Text(
                 (loadStatus as? RouteLoadStatus.Error)?.message
-                    ?: if (state.simulationEnabled && state.gpsFix == null) "TEST GPS · geçerli OSRM rotası bekleniyor"
-                    else if (state.simulationEnabled) "TEST GPS · rota üzerinde simüle"
-                    else if (state.gpsFix != null) "GPS güncel · araç işareti gerçek ölçüm"
-                    else state.gpsWarning ?: gpsError ?: "GPS ölçümü bekleniyor · konum izni için dokun",
+                    ?: if (state.simulationEnabled && state.gpsFix == null) "TEST GPS · waiting for a valid OSRM route"
+                    else if (state.simulationEnabled) "TEST GPS · simulated along the route"
+                    else if (state.gpsFix != null) "GPS current · vehicle marker uses an actual reading"
+                    else state.gpsWarning ?: gpsError ?: "Waiting for GPS · tap to grant location permission",
                 color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .padding(top = 8.dp)
@@ -353,7 +356,7 @@ fun CockpitScreen(
                     .background(Color(0xDE0B2639))
                     .clickable(enabled=!state.simulationEnabled) { onGpsClick() }
                     .padding(horizontal = 15.dp, vertical = 15.dp)
-                    .semantics { contentDescription = "GPS konum iznini ve takibini aç" }
+                    .semantics { contentDescription = "Enable GPS permission and tracking" }
             )
 
             if (wide && compactLandscape) {
@@ -365,10 +368,10 @@ fun CockpitScreen(
                         .width(maxWidth * .26f)
                         .clickable { compactDetails = "VEHICLE" }
                 ) {
-                    Text("BATARYA · " + CockpitFormat.percent(state.socPercent),
+                    Text(stringResource(R.string.native_battery) + CockpitFormat.percent(state.socPercent),
                         color = NeonGreen, fontSize = 12.sp, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
-                    Text("Araç bilgileri", color = SoftText, fontSize = 10.sp)
+                    Text(stringResource(R.string.native_vehicle_information), color = SoftText, fontSize = 10.sp)
                 }
 
                 GlassSurface(
@@ -377,9 +380,9 @@ fun CockpitScreen(
                         .width(maxWidth * .29f)
                         .clickable { compactDetails = "ROUTE" }
                 ) {
-                    Text("NAVİGASYON", color = Turquoise, fontSize = 10.sp)
+                    Text(stringResource(R.string.native_navigation), color = Turquoise, fontSize = 10.sp)
                     Text(visibleRoute?.nextTurnInstruction
-                        ?.takeIf { it.isNotBlank() } ?: "Rota ayrıntıları",
+                        ?.takeIf { it.isNotBlank() } ?: "Route details",
                         color = Color.White, fontSize = 12.sp, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
                 }
@@ -394,8 +397,8 @@ fun CockpitScreen(
                     val progress = visibleRoute?.validProgress()
                         ?.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
                     Text(
-                        progress?.let { "ROTA İLERLEMESİ · %${(it * 100).toInt()}" }
-                            ?: "ROTA İLERLEMESİ · GPS yok",
+                        progress?.let { "ROUTE PROGRESS · ${(it * 100).toInt()}%" }
+                            ?: "ROUTE PROGRESS · No GPS",
                         color = Color.White, fontSize = 10.sp, maxLines = 1
                     )
                     LinearProgressIndicator(
@@ -413,7 +416,7 @@ fun CockpitScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xEA091D30))
                 ) {
-                    Text("EPDK · Filtre", color = Turquoise, fontSize = 11.sp)
+                    Text(stringResource(R.string.native_epdk_filter), color = Turquoise, fontSize = 11.sp)
                 }
             } else if (wide) {
                 // Spacious landscape keeps the original glass cockpit arrangement.
@@ -447,7 +450,7 @@ fun CockpitScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xEA091D30))
                 ) {
-                    Text("EPDK · Filtre", color = Turquoise)
+                    Text(stringResource(R.string.native_epdk_filter), color = Turquoise)
                 }
             } else {
                 // Portrait: all cards AND charging filters live in ONE scroll container.
@@ -497,18 +500,18 @@ private fun ChargingFilters(ui: ChargingUiState,
     Column(modifier.clip(RoundedCornerShape(12.dp))
         .background(Color(0xE9091D30)).padding(8.dp),
         verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Text(if(ui.loading) "EPDK yükleniyor…"
-            else if(ui.total==0) "EPDK verisi yok"
-            else "EPDK ${ui.visible.size} haritada · toplam ${ui.total}" +
-                if(ui.fromCache) " · önbellek" else "",
+        Text(if(ui.loading) "Loading EPDK…"
+            else if(ui.total==0) "No EPDK data"
+            else "EPDK ${ui.visible.size} on map · ${ui.total} total" +
+                if(ui.fromCache) " · cached" else "",
             color=Color.White,fontSize=10.sp)
         Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
             StationFilter.entries.forEach { option ->
                 val title=when(option){
-                    StationFilter.ALL -> "Tümü"
+                    StationFilter.ALL -> "All"
                     StationFilter.DC -> "DC"
-                    StationFilter.ROUTE_CCS -> "Rota CCS"
-                    StationFilter.ROUTE_DC -> "Rota DC"
+                    StationFilter.ROUTE_CCS -> "Route CCS"
+                    StationFilter.ROUTE_DC -> "Route DC"
                 }
                 TextButton(onClick={ onFilter(option) },
                     modifier=Modifier.heightIn(min=48.dp),
@@ -518,15 +521,15 @@ private fun ChargingFilters(ui: ChargingUiState,
                 }
             }
             TextButton(onClick=onRefresh,modifier=Modifier.heightIn(min=48.dp)) {
-                Text("Yenile",color=Turquoise,fontSize=11.sp)
+                Text(stringResource(R.string.native_refresh),color=Turquoise,fontSize=11.sp)
             }
         }
         ui.error?.let { Text(it,color=Color(0xFFFFB86C),fontSize=10.sp) }
         if(ui.selectedFilter==StationFilter.ROUTE_CCS && !ui.routeProvided)
-            Text("Önce gerçek rota oluştur",color=Color.White,fontSize=10.sp)
-        Text(ui.verifiedAtUtc?.let { "Kaynak doğrulama: $it" } ?: "Kaynak tarihi bilinmiyor",
+            Text(stringResource(R.string.native_plan_an_actual_route_first),color=Color.White,fontSize=10.sp)
+        Text(ui.verifiedAtUtc?.let { "Source verification: $it" } ?: "Source date unknown",
             color=SoftText,fontSize=9.sp)
-        Text("Turkuaz halka: rotaya <5 km DC (sürüş sapması değil)",color=SoftText,fontSize=9.sp)
+        Text(stringResource(R.string.native_turquoise_ring_dc_within_5_km_of_route_not_driving_detour),color=SoftText,fontSize=9.sp)
     }
 }
 
@@ -544,18 +547,18 @@ private fun Header(
         horizontalArrangement=Arrangement.spacedBy(8.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            Text("ELEKTRİKLİ YOL ARKADAŞIM", color=Color.White,
+            Text(stringResource(R.string.native_electric_road_companion), color=Color.White,
                 fontWeight=FontWeight.Bold,fontSize=14.sp,
                 maxLines=1,overflow=TextOverflow.Ellipsis)
-            Text("MAPLIBRE · OSRM · SESLİ ROTA · ADIM 7", color=SoftText,fontSize=10.sp,
+            Text(stringResource(R.string.native_maplibre_osrm_voice_guidance_step_7), color=SoftText,fontSize=10.sp,
                 maxLines=1)
         }
         // Large and accessible one-tap mute: works immediately.
         IconButton(
             onClick=onVoiceToggle,
             modifier=Modifier.size(50.dp).semantics {
-                contentDescription=if(voiceEnabled) "Sesli yönlendirmeyi kapat"
-                                   else "Sesli yönlendirmeyi aç"
+                contentDescription=if(voiceEnabled) stringResource(R.string.native_mute_voice_guidance)
+                                   else stringResource(R.string.native_unmute_voice_guidance)
             }
         ) {
             Icon(if(voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
@@ -564,7 +567,7 @@ private fun Header(
                     NeonGreen else SoftText)
         }
         TextButton(onClick=onVoiceSettings,modifier=Modifier.heightIn(min=48.dp)) {
-            Text("SES",color=Turquoise,fontSize=12.sp)
+            Text(stringResource(R.string.native_voice),color=Turquoise,fontSize=12.sp)
         }
     }
 }
@@ -582,7 +585,7 @@ private fun GlassSurface(modifier: Modifier = Modifier, content: @Composable Col
 
 @Composable
 private fun VehiclePanel(state: CockpitUiState, compact: Boolean) {
-    Text(if(state.simulationEnabled) "BATARYA DOLULUĞU · TEST" else "BATARYA DOLULUĞU · OBD", color = SoftText,
+    Text(if(state.simulationEnabled) stringResource(R.string.native_battery_state_of_charge_test) else stringResource(R.string.native_battery_state_of_charge_obd), color = SoftText,
         fontSize = 11.sp, fontWeight = FontWeight.Medium)
     Text(CockpitFormat.percent(state.socPercent), fontSize = if (compact) 40.sp else 59.sp,
         lineHeight = if (compact) 44.sp else 63.sp,
@@ -590,17 +593,17 @@ private fun VehiclePanel(state: CockpitUiState, compact: Boolean) {
     Spacer(Modifier.height(5.dp))
     BatteryProgress(state.socPercent)
     Spacer(Modifier.height(12.dp))
-    Text("TAHMİNİ MENZİL · MODEL · %15 REZERV", color = SoftText, fontSize = 10.sp)
+    Text(stringResource(R.string.native_estimated_range_model_15_reserve), color = SoftText, fontSize = 10.sp)
     Text(CockpitFormat.distance(state.estimatedRangeKm),
         color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
     HorizontalDivider(color = GlassLine, modifier = Modifier.padding(vertical = 12.dp))
-    MetricLine("Hız · ölçüm", CockpitFormat.speed(state.speedKmh))
-    MetricLine("HV gerilimi", CockpitFormat.voltage(state.voltageV))
-    MetricLine("Batarya sıcaklığı", CockpitFormat.temperature(state.batteryTemperatureC))
-    MetricLine("Anlık güç", CockpitFormat.power(state.powerKw))
+    MetricLine(stringResource(R.string.native_speed_measured), CockpitFormat.speed(state.speedKmh))
+    MetricLine(stringResource(R.string.native_hv_voltage), CockpitFormat.voltage(state.voltageV))
+    MetricLine(stringResource(R.string.native_battery_temperature), CockpitFormat.temperature(state.batteryTemperatureC))
+    MetricLine(stringResource(R.string.native_instantaneous_power), CockpitFormat.power(state.powerKw))
     Spacer(Modifier.height(5.dp))
     Text(state.socSourceLabel ?: if(state.socPercent == null)
-        "OBD SoC güncel değil / bağlı değil" else "OBD ölçümü · en çok 10 sn eski",
+        stringResource(R.string.native_obd_soc_stale_disconnected) else stringResource(R.string.native_obd_reading_no_more_than_10_seconds_old),
         fontSize = 10.sp, color = if (state.socPercent == null) Color(0xFFFFBD78) else NeonGreen)
 }
 
@@ -608,12 +611,12 @@ private fun VehiclePanel(state: CockpitUiState, compact: Boolean) {
 private fun BatteryProgress(soc: Double?) {
     val valid = soc?.takeIf { it.isFinite() && it in 0.0..100.0 }
     val target = (valid?.div(100.0)?.toFloat() ?: 0f)
-    val progress by animateFloatAsState(targetValue = target, label = "Batarya seviyesi")
+    val progress by animateFloatAsState(targetValue = target, label = "Battery level")
     Box(
         Modifier.fillMaxWidth().height(8.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(Color(0xFF2B4052))
-            .semantics { contentDescription = valid?.let { "Batarya yüzde ${it.toInt()}" } ?: "Batarya bilinmiyor" }
+            .semantics { contentDescription = valid?.let { "Battery at ${it.toInt()} percent" } ?: "Battery unknown" }
     ) {
         // Absent measurement = empty track, NOT a measured 0%.
         if (valid != null) {
@@ -646,56 +649,56 @@ private fun RoutePanel(
     autoCharge: RouteChargingUiState,
     onRouteDcClick: () -> Unit
 ) {
-    Text("NAVİGASYON", color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    Text(stringResource(R.string.native_navigation), color = Turquoise, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
     if (loadStatus is RouteLoadStatus.GpsLost) {
-        Text("GPS Sinyali Bekleniyor...", color=Color(0xFFFFBD78), fontSize=11.sp)
+        Text(stringResource(R.string.native_waiting_for_gps_signal), color=Color(0xFFFFBD78), fontSize=11.sp)
     }
     if (route == null || loadStatus is RouteLoadStatus.Loading ||
         loadStatus is RouteLoadStatus.Error) {
-        Text(if (loadStatus is RouteLoadStatus.Loading) "Rota hesaplanıyor…" else "Rota bekleniyor",
+        Text(if (loadStatus is RouteLoadStatus.Loading) stringResource(R.string.native_calculating_route) else stringResource(R.string.native_waiting_for_route),
             fontSize = 19.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
         val selected = selection.startLocation != null || selection.destination != null
-        Text(if (selected) "Seçimler hazır; gerçek OSRM rotasını hesapla"
-            else "Başlangıç ve varış henüz seçilmedi", color = SoftText, fontSize = 11.sp)
+        Text(if (selected) stringResource(R.string.native_locations_selected_calculate_the_actual_osrm_route)
+            else stringResource(R.string.native_origin_and_destination_have_not_been_selected), color = SoftText, fontSize = 11.sp)
         (loadStatus as? RouteLoadStatus.Error)?.message?.let {
             Text(it.take(120), color = Color(0xFFFFB17C), fontSize = 11.sp)
         }
     } else {
         Text(route.nextTurnInstruction?.takeIf { it.isNotBlank() }
-                ?: if (model.simulationEnabled) "TEST · OSRM manevrası bekleniyor"
-                   else "Manevra bekleniyor",
+                ?: if (model.simulationEnabled) stringResource(R.string.native_test_waiting_for_osrm_maneuver)
+                   else stringResource(R.string.native_waiting_for_maneuver),
             color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             maxLines = 2, overflow = TextOverflow.Ellipsis)
         val m = route.nextTurnMeters?.takeIf { it.isFinite() && it >= 0.0 }
-        Text(m?.let { "%.0f m sonra".format(it) } ?: "—", color = Turquoise, fontSize = 12.sp)
+        Text(m?.let { "In %.0f m".format(it) } ?: "—", color = Turquoise, fontSize = 12.sp)
     }
     HorizontalDivider(color = GlassLine, modifier = Modifier.padding(vertical = 11.dp))
-    MetricLine("Başlangıç", selection.startLabel?.take(30) ?: "—")
-    MetricLine("Hedef", route?.destination?.takeIf { it.isNotBlank() }?.take(30)
+    MetricLine(stringResource(R.string.native_origin), selection.startLabel?.take(30) ?: "—")
+    MetricLine(stringResource(R.string.native_destination), route?.destination?.takeIf { it.isNotBlank() }?.take(30)
         ?: selection.destination?.label?.take(30) ?: "—")
-    MetricLine("Rota toplamı · OSRM", CockpitFormat.distance(route?.totalKm))
-    MetricLine("Kalan · GPS", CockpitFormat.distance(route?.remainingKm))
-    MetricLine("Tahmini sürüş", CockpitFormat.minutes(route?.estimatedDriveMinutes))
-    MetricLine("Tahmini varış saati", CockpitFormat.eta(route?.estimatedArrivalEpochMs))
-    MetricLine("Varış SoC · MODEL/TAHMİN", CockpitFormat.percent(route?.estimatedArrivalSocPercent))
+    MetricLine(stringResource(R.string.native_total_route_osrm), CockpitFormat.distance(route?.totalKm))
+    MetricLine(stringResource(R.string.native_remaining_gps), CockpitFormat.distance(route?.remainingKm))
+    MetricLine(stringResource(R.string.native_estimated_drive_time), CockpitFormat.minutes(route?.estimatedDriveMinutes))
+    MetricLine(stringResource(R.string.native_estimated_arrival_time), CockpitFormat.eta(route?.estimatedArrivalEpochMs))
+    MetricLine(stringResource(R.string.native_arrival_soc_model_estimate), CockpitFormat.percent(route?.estimatedArrivalSocPercent))
     model.socSourceLabel?.let { Text(it, color=SoftText, fontSize=10.sp) }
-    MetricLine("Şarj ihtiyacı · MODEL/TAHMİN", when(model.chargingNeededEstimate) {
-        true -> "Rezerv için şarj gerekiyor"
-        false -> "Hesaba göre gerekmiyor"
+    MetricLine(stringResource(R.string.native_charging_needed_model_estimate), when(model.chargingNeededEstimate) {
+        true -> stringResource(R.string.native_charging_required_to_preserve_the_reserve)
+        false -> stringResource(R.string.native_not_required_according_to_the_model)
         null -> "—"
     })
-    MetricLine("Gerekli şarj · MODEL/TAHMİN",
+    MetricLine(stringResource(R.string.native_required_charge_model_estimate),
         model.chargingEnergyKwh?.takeIf { it.isFinite() && it >= 0.0 }
             ?.let { "%.1f kWh".format(it) } ?: "—")
     if (route?.routeId != null && autoCharge.routeId == route.routeId) {
         when (val plan = autoCharge.plan) {
             is AutomaticChargePlan.Estimate -> {
-                MetricLine("Otomatik DC adayları · MODEL/TAHMİN",
-                    "${plan.stops.size} durak · ${"%.1f".format(plan.totalSuggestedChargeKwh)} kWh")
+                MetricLine(stringResource(R.string.native_automatic_dc_candidates_model_estimate),
+                    "${plan.stops.size} stops · ${"%.1f".format(plan.totalSuggestedChargeKwh)} kWh")
                 plan.stops.take(4).forEach { stop ->
                     MetricLine(
-                        "DC aday · ${"%.0f".format(stop.distanceFromStartKm)} km",
+                        "DC candidate · ${"%.0f".format(stop.distanceFromStartKm)} km",
                         stop.station.name.take(26) + " · +" +
                             "%.1f".format(stop.suggestedEnergyKwh) + " kWh" +
                             (stop.verifiedPowerKw?.let { " · " + "%.0f".format(it) + " kW" } ?: "")
@@ -703,45 +706,45 @@ private fun RoutePanel(
                 }
                 Text(plan.source, color = SoftText, fontSize = 10.sp)
                 if (autoCharge.catalogIsStale) {
-                    Text("EPDK kayıtları güncel değil", color = Color(0xFFFFBD78), fontSize = 10.sp)
+                    Text(stringResource(R.string.native_epdk_records_are_stale), color = Color(0xFFFFBD78), fontSize = 10.sp)
                 }
             }
             is AutomaticChargePlan.Unavailable ->
-                Text("Otomatik şarj planı: ${plan.reason}",
+                Text("Automatic charging plan: ${plan.reason}",
                     color = SoftText, fontSize = 10.sp)
             AutomaticChargePlan.Empty -> Unit
         }
     }
     model.energyEstimateStatus?.let { message ->
-        Text("MODEL/TAHMİN oluşturulamadı: $message", color = SoftText, fontSize = 10.sp)
+        Text("Could not create MODEL/ESTIMATE: $message", color = SoftText, fontSize = 10.sp)
     }
     TextButton(onClick = onRouteDcClick,
         enabled = charging.routeProvided,
         modifier = Modifier.fillMaxWidth()) {
-        Text("Rota Üzeri: ${charging.corridorCount?.toString() ?: "—"} Adet DC İstasyonu",
+        Text("Along the route: ${charging.corridorCount?.toString() ?: "—"} DC charging stations",
             color = Turquoise, fontSize = 12.sp)
     }
     val destinationWeather = weather.destination?.takeIf {
         route?.routeId != null && weather.routeId == route.routeId
     }
-    MetricLine("Varış bölgesi · Güncel hava tahmini", destinationWeather?.let {
+    MetricLine(stringResource(R.string.native_destination_area_current_weather_estimate), destinationWeather?.let {
         "${it.summaryTr} · ${it.temperatureC.toInt()}°C"
-    } ?: if(weather.loading) "Hava tahmini yükleniyor…" else "—")
-    MetricLine("Varış bölgesi · Rüzgâr", destinationWeather?.let {
-        "${it.windSpeedKmh.toInt()} km/sa"
+    } ?: if(weather.loading) "Loading weather estimate…" else "—")
+    MetricLine(stringResource(R.string.native_destination_area_wind), destinationWeather?.let {
+        "${it.windSpeedKmh.toInt()} km/h"
     } ?: "—")
     if (weather.points.isNotEmpty() && weather.routeId == route?.routeId) {
-        Text("Hava: Open-Meteo · güncel model tahmini, varış saatine göre değil",
+        Text(stringResource(R.string.native_weather_open_meteo_current_model_estimate_not_arrival_time_weather),
             color = SoftText, fontSize = 10.sp)
     }
     if (weather.error != null && route?.routeId == weather.routeId) {
         Text(weather.error, color = SoftText, fontSize = 10.sp)
     }
     if (!route?.profileSpeeds.isNullOrEmpty()) {
-        Text("Kırmızı/yeşil çizgiler: OSRM hız profili · CANLI TRAFİK DEĞİL",
+        Text(stringResource(R.string.native_red_green_lines_osrm_speed_profile_not_live_traffic),
             color = SoftText, fontSize = 10.sp)
     }
-    Text("OSRM ETA trafiksiz MODEL; şarj süresi ayrıca hesaplanır.",
+    Text(stringResource(R.string.native_osrm_eta_is_a_model_excluding_traffic_charging_time_is_calculated_sepa),
         color = SoftText, fontSize = 10.sp,
         modifier = Modifier.padding(top = 7.dp))
 }
@@ -751,40 +754,40 @@ private fun RouteProgress(route: RouteSnapshot?, simulation: Boolean) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.DirectionsCar, null, tint = Turquoise)
         Spacer(Modifier.width(9.dp))
-        Text("ROTA İLERLEMESİ", color = Color.White,
+        Text(stringResource(R.string.native_route_progress), color = Color.White,
             fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
         Spacer(Modifier.weight(1f))
-        Text(route?.validProgress()?.let { "%${(it * 100).toInt()} · ${if(simulation) "SİM" else "GPS"}" }
-             ?: "GPS ilerlemesi yok", color = SoftText, fontSize = 11.sp)
+        Text(route?.validProgress()?.let { "%${(it * 100).toInt()} · ${if(simulation) "SIM" else "GPS"}" }
+             ?: "No GPS progress", color = SoftText, fontSize = 11.sp)
     }
     Spacer(Modifier.height(11.dp))
     BoxWithConstraints(Modifier.fillMaxWidth().height(32.dp)) {
         val progress = route?.validProgress()
-        val value by animateFloatAsState(targetValue = progress ?: 0f, label = "GPS rota ilerlemesi")
+        val value by animateFloatAsState(targetValue = progress ?: 0f, label = "GPS route progress")
         Box(Modifier.fillMaxWidth().height(6.dp).align(Alignment.CenterStart)
             .background(Color(0xFF355269), RoundedCornerShape(6.dp)))
         // Show the car only after real GPS position has been projected to route.
         if (progress != null) {
             Box(Modifier.fillMaxWidth(value).height(6.dp).align(Alignment.CenterStart)
                 .background(Turquoise, RoundedCornerShape(6.dp)))
-            Icon(Icons.Default.DirectionsCar, "Gerçek GPS rota ilerlemesi",
+            Icon(Icons.Default.DirectionsCar, "Actual GPS route progress",
                 tint = NeonGreen,
                 modifier = Modifier.offset(x = (maxWidth - 28.dp) * value)
                     .align(Alignment.CenterStart).size(28.dp))
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Kalkış", color = SoftText, fontSize = 10.sp)
-        Text("Varış · ${CockpitFormat.percent(route?.estimatedArrivalSocPercent)} MODEL",
+        Text(stringResource(R.string.native_departure), color = SoftText, fontSize = 10.sp)
+        Text("Arrival · ${CockpitFormat.percent(route?.estimatedArrivalSocPercent)} MODEL",
             color = NeonGreen, fontSize = 10.sp)
     }
 }
 
-private enum class DockTab(val title: String, val icon: ImageVector) {
-    ROUTE("Rota", Icons.Default.Map),
-    CHARGING("Şarj", Icons.Default.Bolt),
-    MEDIA("Medya", Icons.Default.SmartDisplay),
-    SETTINGS("Ayarlar", Icons.Default.Settings)
+private enum class DockTab(val titleRes: Int, val icon: ImageVector) {
+    ROUTE(R.string.native_route, Icons.Default.Map),
+    CHARGING(R.string.native_charging, Icons.Default.Bolt),
+    MEDIA(R.string.native_media, Icons.Default.SmartDisplay),
+    SETTINGS(R.string.native_settings, Icons.Default.Settings)
 }
 
 @Composable
@@ -809,7 +812,7 @@ private fun Dock(onTap: (DockTab) -> Unit) {
                 Icon(tab.icon, null, tint = if (tab == DockTab.ROUTE) NeonGreen else SoftText,
                     modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(tab.title, color = Color.White, fontSize = 13.sp)
+                Text(stringResource(tab.titleRes), color = Color.White, fontSize = 13.sp)
             }
         }
     }

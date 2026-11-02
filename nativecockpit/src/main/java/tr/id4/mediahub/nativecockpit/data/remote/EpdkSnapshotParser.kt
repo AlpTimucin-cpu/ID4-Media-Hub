@@ -23,29 +23,29 @@ object EpdkSnapshotParser {
         while(true) {
             val n=stream.read(buffer)
             if(n<0)break
-            if(result.size()+n>maxBytes) error("EPDK yanıtı izin verilen boyutu aşıyor")
+            if(result.size()+n>maxBytes) error("EPDK response exceeds the permitted size")
             result.write(buffer,0,n)
         }
         return result.toByteArray()
     }
 
     fun parseGzip(bytes: ByteArray): Parsed {
-        require(bytes.size in 1..MAX_GZIP_BYTES) { "EPDK gzip boyutu geçersiz" }
+        require(bytes.size in 1..MAX_GZIP_BYTES) { "Invalid EPDK gzip size" }
         val json=GZIPInputStream(ByteArrayInputStream(bytes)).use { readBounded(it,MAX_JSON_BYTES) }
         return parseJson(String(json,Charsets.UTF_8))
     }
 
     fun parseJson(json: String): Parsed {
         val root=JSONObject(json)
-        require(root.optInt("schema_version") == 1) { "EPDK sürüm uyumsuz" }
+        require(root.optInt("schema_version") == 1) { "Incompatible EPDK version" }
         require(!root.optBoolean("prices_included",true) &&
-            !root.optBoolean("live_status_included",true)) { "Kaynak beklenmedik alanlar içeriyor" }
+            !root.optBoolean("live_status_included",true)) { "Source contains unexpected fields" }
         val verified=root.getString("verified_at_utc")
         val verifiedTime=Instant.parse(verified)
         val now=Instant.now()
-        require(!verifiedTime.isAfter(now.plusSeconds(300))) { "EPDK tarihi gelecekte" }
+        require(!verifiedTime.isAfter(now.plusSeconds(300))) { "EPDK date is in the future" }
         val raw=root.getJSONArray("stations")
-        require(raw.length() in MIN_STATIONS..100_000) { "EPDK kayıt sayısı beklenenden az" }
+        require(raw.length() in MIN_STATIONS..100_000) { "Fewer EPDK records than expected" }
         val items=ArrayList<ChargingStation>(raw.length())
         val ids=HashSet<String>()
         for(i in 0 until raw.length()) {
@@ -69,12 +69,12 @@ object EpdkSnapshotParser {
                         socket.optString("power_raw").take(24)))
                 }
             }
-            items.add(ChargingStation(id,record.optString("name","Şarj istasyonu").take(150),
+            items.add(ChargingStation(id,record.optString("name","Charging station").take(150),
                 record.optString("operator").take(160),record.optString("address").take(260),
                 coords,sockets,verified))
         }
         require(items.size>=MIN_STATIONS && items.size>=raw.length()*.8) {
-            "EPDK snapshot eksik veya yanlış ayrıştırıldı"
+            "EPDK snapshot is incomplete or was parsed incorrectly"
         }
         return Parsed(verified,items)
     }

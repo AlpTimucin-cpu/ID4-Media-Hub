@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.route
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -83,7 +86,7 @@ fun RoutePlannerDialog(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "Rota ve şarj planı",
+                                text = stringResource(R.string.native_route_and_charging_plan),
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = Color.White
@@ -94,7 +97,7 @@ fun RoutePlannerDialog(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Pencereyi kapat",
+                                    contentDescription = "Close dialog",
                                     tint = Color.White
                                 )
                             }
@@ -112,7 +115,7 @@ fun RoutePlannerDialog(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = "Photon / OSM adresleri · OSRM gerçek rota · canlı trafik değil",
+                                text = stringResource(R.string.native_photon_osm_addresses_actual_osrm_route_not_live_traffic),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = muted
                             )
@@ -120,14 +123,14 @@ fun RoutePlannerDialog(
                             // Manual heading replaces the TextField's floating label.
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    text = "NEREDEN",
+                                    text = stringResource(R.string.native_from),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = Color.White
                                 )
                                 OutlinedTextField(
                                     value = state.originText,
                                     onValueChange = onOriginChange,
-                                    placeholder = { Text("Başlangıç adresi veya şehir") },
+                                    placeholder = { Text(stringResource(R.string.native_origin_address_or_city)) },
                                     singleLine = true,
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
@@ -138,15 +141,15 @@ fun RoutePlannerDialog(
                                     modifier = Modifier.heightIn(min = 48.dp)
                                 ) {
                                     Text(
-                                        if (state.locatingGps) "GPS konumu alınıyor…"
-                                        else "Güncel GPS konumumdan başlat"
+                                        if (state.locatingGps) stringResource(R.string.native_getting_gps_location)
+                                        else stringResource(R.string.native_start_from_my_current_gps_location)
                                     )
                                 }
                                 if (state.locatingGps) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 }
                                 if (state.startLocation != null) {
-                                    Text("Başlangıç konumu seçildi", color = success)
+                                    Text(stringResource(R.string.native_origin_selected), color = success)
                                 }
                                 if (state.searchingOrigin) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -156,20 +159,20 @@ fun RoutePlannerDialog(
 
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    text = "NEREYE",
+                                    text = stringResource(R.string.native_to),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = Color.White
                                 )
                                 OutlinedTextField(
                                     value = state.destinationText,
                                     onValueChange = onDestinationChange,
-                                    placeholder = { Text("Varış adresi veya şehir") },
+                                    placeholder = { Text(stringResource(R.string.native_destination_address_or_city)) },
                                     singleLine = true,
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 if (state.destinationLocation != null) {
-                                    Text("Varış konumu seçildi", color = success)
+                                    Text(stringResource(R.string.native_destination_selected), color = success)
                                 }
                                 if (state.searchingDestination) {
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -189,8 +192,8 @@ fun RoutePlannerDialog(
                                 HorizontalDivider(color = Color(0xFF27465B))
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(
-                                        text = "OSRM alternatifleri (" +
-                                            state.options.size + " doğrulanmış)",
+                                        text = stringResource(R.string.native_osrm_alternatives) +
+                                            state.options.size + " validated)",
                                         style = MaterialTheme.typography.titleSmall,
                                         color = Color.White
                                     )
@@ -204,8 +207,8 @@ fun RoutePlannerDialog(
                                         ) {
                                             Text(
                                                 (if (selected) "✓ " else "") +
-                                                    "Rota " + (index + 1) + " · " +
-                                                    "%.1f km · %d dk".format(
+                                                    "Route " + (index + 1) + " · " +
+                                                    "%.1f km · %d min".format(
                                                         item.distanceKm,
                                                         item.durationMinutesWithoutTraffic
                                                     )
@@ -213,8 +216,8 @@ fun RoutePlannerDialog(
                                         }
                                     }
                                     Text(
-                                        text = "Tahminler trafiksizdir. GPS ilerlemesi olmadan " +
-                                            "varış SoC hesaplanmaz.",
+                                        text = stringResource(R.string.native_estimates_exclude_traffic_arrival_soc_is_not_calculated) +
+                                            "without GPS progress.",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = muted
                                     )
@@ -235,7 +238,7 @@ fun RoutePlannerDialog(
                                         .fillMaxWidth()
                                         .heightIn(min = 52.dp)
                                 ) {
-                                    Text("Gerçek yol rotasını hesapla")
+                                    Text(stringResource(R.string.native_calculate_actual_road_route))
                                 }
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -247,13 +250,13 @@ fun RoutePlannerDialog(
                                         modifier = Modifier
                                             .weight(1f)
                                             .heightIn(min = 48.dp)
-                                    ) { Text("Rotayı temizle") }
+                                    ) { Text(stringResource(R.string.native_clear_route)) }
                                     TextButton(
                                         onClick = onDismiss,
                                         modifier = Modifier
                                             .weight(1f)
                                             .heightIn(min = 48.dp)
-                                    ) { Text("Haritaya dön") }
+                                    ) { Text(stringResource(R.string.native_back_to_map)) }
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))

@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.obd
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,26 +35,26 @@ fun ObdSettingsDialog(
             shape=MaterialTheme.shapes.large) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                Text("OBD Bağlantısı ve MEB Teşhis",style=MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.native_obd_connection_and_meb_diagnostics),style=MaterialTheme.typography.titleLarge)
                 if (simulationSupported) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(Modifier.weight(1f)) {
-                            Text("SİMÜLASYON · TEST VERİSİ")
-                            Text("Gerçek araç verisi değildir; sadece DEBUG sürümünde.",
+                            Text(stringResource(R.string.native_simulation_test_data))
+                            Text(stringResource(R.string.native_not_actual_vehicle_data_available_in_debug_builds_only),
                                 style=MaterialTheme.typography.bodySmall)
                         }
                         Switch(checked=simulationEnabled, onCheckedChange=onSimulationToggle)
                     }
                     HorizontalDivider()
                 }
-                Text("Bluetooth Classic SPP ELM327. Adaptörü önce Android Bluetooth ayarlarında eşleştirin.",
+                Text(stringResource(R.string.native_bluetooth_classic_spp_elm327_pair_the_adapter_in_android_bluetooth_set),
                     style=MaterialTheme.typography.bodySmall)
-                Text("Durum: ${state.phase}")
+                Text("Status: ${state.phase}")
                 state.error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
                 OutlinedButton(onClick=onRefresh, enabled=!simulationEnabled, modifier=Modifier.fillMaxWidth()) {
-                    Text("Eşleştirilmiş cihazları yenile / izin iste")
+                    Text(stringResource(R.string.native_refresh_paired_devices_request_permission))
                 }
-                if (state.devices.isEmpty()) Text("Eşleştirilmiş cihaz yok. Bu ekran tarama yapmaz.")
+                if (state.devices.isEmpty()) Text(stringResource(R.string.native_no_paired_devices_this_screen_does_not_scan))
                 state.devices.forEach { device ->
                     OutlinedButton(onClick={onConnect(device.address)},
                         enabled=!simulationEnabled && state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
@@ -59,56 +62,56 @@ fun ObdSettingsDialog(
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (state.phase == ObdPhase.CONNECTED) {
-                    Text(if (state.lastPollSucceeded) "SAE 010D gerçek hız yanıtı alındı"
-                         else "010D hız yanıtı henüz doğrulanmadı")
+                    Text(if (state.lastPollSucceeded) "Actual SAE 010D speed response received"
+                         else "010D speed response not yet validated")
                     HorizontalDivider()
-                    Text("Deneysel MEB ECU okumaları",style=MaterialTheme.typography.titleMedium)
-                    Text("YALNIZCA park hâlinde ve kendi aracınızda deneyin. Sorular salt-okuma UDS 22 servisidir. " +
-                        "Topluluk PID kaynakları cihazınızda doğrulanmadı; sonuçlar navigasyondaki SoC/SoH alanına aktarılmaz.",
+                    Text(stringResource(R.string.native_experimental_meb_ecu_readings),style=MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.native_test_only_while_parked_and_in_your_own_vehicle_queries_use_read_only_u) +
+                        "Community PID sources have not been validated on your device; results are not applied to navigation SoC/SoH fields.",
                         style=MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick={ { onMebDiagnostic("22028C") } },
                         enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
-                        Text("BMS şarj yüzdesini oku · 22028C")
+                        Text(stringResource(R.string.native_read_bms_state_of_charge_22028c))
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E0E") } },
                         enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
-                        Text("Batarya maksimum sıcaklığı · 221E0E")
+                        Text(stringResource(R.string.native_maximum_battery_temperature_221e0e))
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E3D") } },
                         enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
-                        Text("Batarya akımı · yalnız ham yanıt · 221E3D")
+                        Text(stringResource(R.string.native_battery_current_raw_response_only_221e3d))
                     }
                     if (state.diagnosticBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     state.diagnosticResult?.let { item ->
-                        Text("Son sorgu: ${item.request} · ${item.status}",
+                        Text("Last query: ${item.request} · ${item.status}",
                             style=MaterialTheme.typography.bodyMedium)
                         if (item.status == MebResponseStatus.VALID_RAW) {
                             item.candidateBmsSocPercent?.let { percent ->
-                                Text(String.format(Locale.forLanguageTag("tr-TR"),
-                                    "Aday BMS SoC: %.1f %% (araç ekranıyla karşılaştırılmalı)",percent))
+                                Text(String.format(Locale.forLanguageTag("en-US"),
+                                    "Candidate BMS SoC: %.1f %% (compare with the vehicle display)",percent))
                             }
                             item.candidateMaxBatteryTempC?.let { temp ->
-                                Text(String.format(Locale.forLanguageTag("tr-TR"),
-                                    "Aday maksimum batarya sıcaklığı: %.2f °C",temp))
+                                Text(String.format(Locale.forLanguageTag("en-US"),
+                                    "Candidate maximum battery temperature: %.2f °C",temp))
                             }
-                            item.payloadHex?.let { Text("Ham payload: $it",
+                            item.payloadHex?.let { Text("Raw payload: $it",
                                 style=MaterialTheme.typography.bodySmall) }
                         } else {
-                            Text("Doğrulanmış ECU yanıtı alınamadı; veri kullanılmadı.",
+                            Text(stringResource(R.string.native_no_validated_ecu_response_received_data_was_not_used),
                                 style=MaterialTheme.typography.bodySmall)
                         }
                     }
                     TextButton(onClick=onClearDiagnostic,modifier=Modifier.fillMaxWidth()) {
-                        Text("Teşhis sonucunu temizle")
+                        Text(stringResource(R.string.native_clear_diagnostic_result))
                     }
                     Button(onClick=onDisconnect,modifier=Modifier.fillMaxWidth()) {
-                        Text("OBD bağlantısını kes")
+                        Text(stringResource(R.string.native_disconnect_obd))
                     }
                 }
-                Text("BMS SoC (teşhis adayı), gösterge paneli SoC ve SoH aynı şey değildir. " +
-                     "Kokpitte batarya sağlığı/enerji/sıcaklık henüz ölçülmüş veri olarak kullanılmıyor.",
+                Text(stringResource(R.string.native_bms_soc_diagnostic_candidate_dashboard_soc_and_soh_are_different_quant) +
+                     "Battery health/energy/temperature are not yet used as measured data in the cockpit.",
                      style=MaterialTheme.typography.bodySmall)
-                TextButton(onClick=onDismiss,modifier=Modifier.fillMaxWidth()) { Text("Haritaya dön") }
+                TextButton(onClick=onDismiss,modifier=Modifier.fillMaxWidth()) { Text(stringResource(R.string.native_back_to_map)) }
             }
         }
     }

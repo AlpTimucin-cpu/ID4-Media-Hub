@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.common
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +21,7 @@ fun CustomWarningDialog(
     message: String,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit = onDismiss,
-    confirmText: String = "Tamam"
+    confirmText: String = "OK"
 ) {
     val dark = Color(0xFF0A0F1A)
     val neon = Color(0xFF00E676)
@@ -43,7 +46,7 @@ fun CustomWarningDialog(
                 Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
                 Text(message, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Kapat", color = neon) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.native_close), color = neon) }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = onConfirm,

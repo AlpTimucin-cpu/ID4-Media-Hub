@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.media
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.http.SslError
@@ -97,10 +100,10 @@ fun MediaWebViewScreen(
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween) {
             Text(service.title, color = Color.White)
-            TextButton(onClick = onClose) { Text("Kapat") }
+            TextButton(onClick = onClose) { Text(stringResource(R.string.native_close)) }
         }
         if (!playbackAllowed) {
-            Text("Video bu bağlantıda kullanılamıyor.", modifier = Modifier.padding(16.dp))
+            Text(stringResource(R.string.native_video_is_unavailable_for_this_connection), modifier = Modifier.padding(16.dp))
             return@Column
         }
         when (val state = page) {
@@ -112,7 +115,7 @@ fun MediaWebViewScreen(
                     rendererLost = false
                     model.start()
                     generation++
-                }) { Text("Yeniden dene") }
+                }) { Text(stringResource(R.string.native_try_again)) }
             }
             else -> Unit
         }
@@ -174,13 +177,13 @@ fun MediaWebViewScreen(
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                                 if (!request.isForMainFrame) return false
                                 if (allowed && MediaSitePolicy.allows(service, request.url.toString())) return false
-                                model.error("Bu bağlantı site içinde açılamıyor.")
+                                model.error("This link cannot be opened within the site.")
                                 return true
                             }
                             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                                 if (!allowed || !MediaSitePolicy.allows(service, url)) {
                                     view.stopLoading()
-                                    model.error("Sayfa adresi doğrulanamadı.")
+                                    model.error("Could not validate the page address.")
                                 } else model.start()
                             }
                             override fun onPageFinished(view: WebView, url: String?) {
@@ -190,15 +193,15 @@ fun MediaWebViewScreen(
                                 }
                             }
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                if (request.isForMainFrame) model.error("Sayfa yüklenemedi. Bağlantıyı kontrol edin.")
+                                if (request.isForMainFrame) model.error("Could not load the page. Check your connection.")
                             }
                             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
                                 if (request.isForMainFrame && response.statusCode >= 400)
-                                    model.error("Site HTTP ${response.statusCode} hatası verdi.")
+                                    model.error("The site returned HTTP ${response.statusCode}.")
                             }
                             override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
                                 handler.cancel()
-                                model.error("Güvenli bağlantı doğrulanamadı.")
+                                model.error("Could not verify the secure connection.")
                             }
                             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                                 exitFullscreen?.invoke()
@@ -206,7 +209,7 @@ fun MediaWebViewScreen(
                                 host.removeView(view)
                                 view.destroy()
                                 browser = null
-                                model.error("Web içeriği kapandı. Yeniden deneyebilirsiniz.")
+                                model.error("Web content closed. You can try again.")
                                 return true
                             }
                         }

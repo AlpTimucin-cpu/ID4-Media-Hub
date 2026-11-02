@@ -8,7 +8,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.*
 class RouteProgressTrackerTest {
     private val now=1_000_000L
     private val line=listOf(GeoCoordinate(38.0,35.0),GeoCoordinate(38.0,35.01),GeoCoordinate(38.0,35.02))
-    private val maneuver=NavigationManeuver("test-route-1:step-1","Sağa dönün",line[1])
+    private val maneuver=NavigationManeuver("test-route-1:step-1","Turn right",line[1])
     private val route=RouteSnapshot(routeId="test-route-1",routePoints=line,
         totalKm=1.8,osrmDurationSeconds=300.0,maneuvers=listOf(maneuver))
     @Test fun noGpsNoProgress() {

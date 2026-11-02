@@ -64,7 +64,7 @@ internal class EyaCarMapSurface(private val context: CarContext) : SurfaceCallba
         try {
             val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val virtual = dm.createVirtualDisplay(
-                "Elektrikli Yol Arkadaşım – Navigasyon",
+                "Electric Road Companion – Navigation",
                 surfaceContainer.width, surfaceContainer.height,
                 surfaceContainer.dpi.coerceAtLeast(120),
                 hostSurface,

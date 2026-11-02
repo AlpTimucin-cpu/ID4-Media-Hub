@@ -6,7 +6,7 @@ import tr.id4.mediahub.nativecockpit.domain.model.RoutePlace
 
 object PhotonResponseParser {
     fun parse(json:String):List<RoutePlace> {
-        require(json.length<=600_000){"Adres yanıtı çok büyük"}
+        require(json.length<=600_000){"Address response is too large"}
         val root=JsonParser.parseString(json).asJsonObject
         val features=root.getAsJsonArray("features")?:return emptyList()
         return features.take(10).mapNotNull { el ->

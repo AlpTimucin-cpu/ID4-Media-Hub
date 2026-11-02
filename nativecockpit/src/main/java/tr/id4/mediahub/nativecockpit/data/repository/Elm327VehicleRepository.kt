@@ -72,15 +72,15 @@ class Elm327VehicleRepository @Inject constructor(
             val found = adapter?.bondedDevices.orEmpty().mapNotNull { device ->
                 val address = device.address.orEmpty()
                 if (!BluetoothAdapter.checkBluetoothAddress(address)) return@mapNotNull null
-                PairedObdDevice(device.name?.take(60) ?: "Eşleştirilmiş Bluetooth aygıtı", address)
+                PairedObdDevice(device.name?.take(60) ?: "Paired Bluetooth device", address)
             }.sortedBy { it.name.lowercase() }
             _connection.value = _connection.value.copy(devices=found,
-                error=if (adapter == null) "Bluetooth donanımı bulunamadı" else null)
+                error=if (adapter == null) "Bluetooth hardware was not found" else null)
         } catch (_: SecurityException) { permissionDenied() }
     }
 
     override fun permissionDenied() {
-        _connection.value = _connection.value.copy(error="Bluetooth bağlantı izni gerekli")
+        _connection.value = _connection.value.copy(error="Bluetooth connection permission is required")
     }
 
     @SuppressLint("MissingPermission")
@@ -92,7 +92,7 @@ class Elm327VehicleRepository @Inject constructor(
         val device = try { adapter?.bondedDevices?.firstOrNull { it.address == address } }
             catch (_: SecurityException) { null }
         if (device == null) {
-            _connection.value = _connection.value.copy(error="Önce adaptörü Android Bluetooth ayarlarında eşleştirin")
+            _connection.value = _connection.value.copy(error="Pair the adapter in Android Bluetooth settings first")
             return
         }
         task?.cancel()
@@ -109,9 +109,9 @@ class Elm327VehicleRepository @Inject constructor(
                 _connection.value = _connection.value.copy(phase=ObdPhase.ERROR,
                     diagnosticBusy=false,
                     error=when(e) {
-                        is SecurityException -> "Bluetooth izni reddedildi"
-                        is IOException -> "ELM327 bağlantısı/yanıtı başarısız; adaptörü kontrol edin"
-                        else -> "ELM327 bağlantısı kurulamadı"
+                        is SecurityException -> "Bluetooth permission denied"
+                        is IOException -> "ELM327 connection/response failed; check the adapter"
+                        else -> "Could not connect to ELM327"
                     })
             } finally {
                 socket?.closeSilently();socket=null
@@ -129,7 +129,7 @@ class Elm327VehicleRepository @Inject constructor(
         _connection.value=_connection.value.copy(diagnosticBusy=true,diagnosticResult=null,error=null)
         if (diagnosticRequests.trySend(command).isFailure) {
             _connection.value=_connection.value.copy(diagnosticBusy=false,
-                error="OBD teşhis kuyruğu şu an meşgul")
+                error="The OBD diagnostic queue is busy")
         }
     }
 
@@ -161,7 +161,7 @@ class Elm327VehicleRepository @Inject constructor(
                 } catch (e:CancellationException) { throw e }
                 catch (_:Exception) {
                     _connection.value=_connection.value.copy(diagnosticBusy=false,
-                        error="MEB ECU yanıtı alınamadı; adaptör 29-bit CAN desteklemiyor olabilir")
+                        error="No MEB ECU response; the adapter may not support 29-bit CAN")
                     // Uncertain adapter state: end session rather than misinterpret speed.
                     throw IOException("MEB diagnostic session failed")
                 }
@@ -176,7 +176,7 @@ class Elm327VehicleRepository @Inject constructor(
             } else {
                 _telemetry.value=VehicleTelemetry()
                 _connection.value=_connection.value.copy(lastPollSucceeded=false,
-                    error="Araç 010D hız sorgusuna geçerli yanıt vermedi")
+                    error="The vehicle did not return a valid response to the 010D speed query")
             }
             delay(2_500L)
         }

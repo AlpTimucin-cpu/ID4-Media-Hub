@@ -14,12 +14,12 @@ data class WeatherWaypoint(
         else -> "rain"
     }
     val summaryTr: String get() = when (weatherCode) {
-        0, 1 -> "Açık"
-        2, 3 -> "Bulutlu"
-        45, 48 -> "Sisli"
-        71, 73, 75, 77, 85, 86 -> "Karlı"
-        95, 96, 99 -> "Fırtınalı"
-        else -> "Yağışlı"
+        0, 1 -> "Clear"
+        2, 3 -> "Cloudy"
+        45, 48 -> "Foggy"
+        71, 73, 75, 77, 85, 86 -> "Snowy"
+        95, 96, 99 -> "Stormy"
+        else -> "Rainy"
     }
 }
 

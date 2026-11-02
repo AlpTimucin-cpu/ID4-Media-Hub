@@ -46,7 +46,7 @@ class CarGuidancePolicy {
         }
         return CarGuidance(
             routeId = id,
-            destination = route.destination?.takeIf { it.isNotBlank() }?.take(80) ?: "Varış noktası",
+            destination = route.destination?.takeIf { it.isNotBlank() }?.take(80) ?: "Destination",
             remainingMeters = km * 1_000.0,
             remainingSeconds = seconds,
             destinationArrivalEpochMs = endTime,

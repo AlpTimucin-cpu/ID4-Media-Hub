@@ -46,13 +46,13 @@ class EpdkChargingRepository @Inject constructor(
                 val temp=File(cache.parentFile,cache.name+".new")
                 try {
                     temp.writeBytes(network)
-                    check(temp.renameTo(cache)) { "İstasyon önbelleği güncellenemedi" }
+                    check(temp.renameTo(cache)) { "Could not update the station cache" }
                 } finally { temp.delete() }
                 _catalog.value=ChargingCatalog(result.stations,result.verifiedAtUtc,loading=false)
             } catch(e: Exception) {
                 val existing=_catalog.value
                 _catalog.value=existing.copy(loading=false,staleCache=existing.stations.isNotEmpty(),
-                    error="EPDK yenilenemedi · ${e.javaClass.simpleName}")
+                    error="Could not refresh EPDK · ${e.javaClass.simpleName}")
             }
         }
         Unit

@@ -46,7 +46,7 @@ class Elm327Session(private val transport: ObdTransport) {
             if (token == generation) {
                 _state.value = ElmSessionState(
                     ElmSessionPhase.ERROR,
-                    error.message ?: "ELM327 başlatılamadı"
+                    error.message ?: "Could not initialize ELM327"
                 )
             }
             throw error
@@ -56,7 +56,7 @@ class Elm327Session(private val transport: ObdTransport) {
     suspend fun readOnly(command: String): String = commands.withLock {
         val query = command.trim().uppercase(Locale.ROOT).replace(" ", "")
         require(query.matches(Regex("(?:01|09)[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
-            "Yalnızca izin verilen salt-okuma sorguları"
+            "Only permitted read-only queries are allowed"
         }
 
         val token = generation
@@ -71,7 +71,7 @@ class Elm327Session(private val transport: ObdTransport) {
                 ensureCurrent(token)
                 if (result.isBlank() || result.contains("NO DATA", true) ||
                     result.contains("ERROR", true) || result.contains("?", true)
-                ) throw IOException("OBD geçerli yanıt vermedi")
+                ) throw IOException("OBD did not return a valid response")
                 return@withLock result
             } catch (cancel: CancellationException) {
                 transport.disconnect()
@@ -82,7 +82,7 @@ class Elm327Session(private val transport: ObdTransport) {
                 transport.disconnect()
                 last = error
                 if (error is SecurityException) {
-                    _state.value = ElmSessionState(ElmSessionPhase.ERROR, "Bluetooth izni yok")
+                    _state.value = ElmSessionState(ElmSessionPhase.ERROR, "Bluetooth permission is missing")
                     throw error
                 }
             }
@@ -92,7 +92,7 @@ class Elm327Session(private val transport: ObdTransport) {
                 delay(400L * (1 shl attempt))
             }
         }
-        val error = IOException("OBD üç denemede okunamadı", last)
+        val error = IOException("Could not read OBD after three attempts", last)
         if (token == generation) {
             _state.value = ElmSessionState(ElmSessionPhase.ERROR, error.message)
         }
@@ -112,7 +112,7 @@ class Elm327Session(private val transport: ObdTransport) {
                 val reply = transport.exchange(cmd, if (cmd == "ATZ") 6_000L else 3_000L)
                 ensureCurrent(token)
                 if (reply.isBlank() || reply.contains("ERROR", true) || reply.contains("?"))
-                    throw IOException("ELM327 başlangıç komutu başarısız: $cmd")
+                    throw IOException("ELM327 initialization command failed: $cmd")
                 if (cmd == "ATZ") identity = reply
             }
             _state.value = ElmSessionState(ElmSessionPhase.READY)
@@ -124,7 +124,7 @@ class Elm327Session(private val transport: ObdTransport) {
     }
 
     private fun ensureCurrent(token: Long) {
-        if (token != generation) throw IOException("OBD oturumu kapatıldı")
+        if (token != generation) throw IOException("OBD session closed")
     }
 
     @Synchronized

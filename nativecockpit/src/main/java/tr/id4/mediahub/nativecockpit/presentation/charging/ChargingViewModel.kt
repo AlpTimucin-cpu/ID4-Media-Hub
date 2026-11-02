@@ -58,9 +58,9 @@ class ChargingViewModel @Inject constructor(
             // A transient EPDK/network exception must not cancel the ViewModel.
             chargingRepository.refreshResult().onFailure { error ->
                 refreshError.value = when (error) {
-                    is UnknownHostException -> "Bağlantı Hatası: İnternet bağlantısı yok"
-                    is SocketTimeoutException -> "Bağlantı Hatası: EPDK yanıt vermiyor"
-                    else -> "Bağlantı Hatası: Şarj istasyonları güncellenemedi"
+                    is UnknownHostException -> "Connection error: No internet connection"
+                    is SocketTimeoutException -> "Connection error: EPDK is not responding"
+                    else -> "Connection error: Could not refresh charging stations"
                 }
             }
         }

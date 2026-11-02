@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
             @Suppress("MissingPermission")
             fun granted(forRoute: Boolean) {
                 if (!locationManager.isLocationEnabled) {
-                    navigation.reportGpsError("Konum hizmeti kapalı. Telefonun konum ayarını aç.")
+                    navigation.reportGpsError("Location services are off. Enable location in your phone settings.")
                     return
                 }
                 navigation.startGps()
@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
                         .addOnSuccessListener { location ->
                             if (location == null) {
                                 navigation.reportGpsError(
-                                    "Güncel konum bulunamadı. Açık alanda yeniden dene."
+                                    "No current location found. Try again outdoors."
                                 )
                             } else {
                                 navigation.acceptLastLocation(location)
@@ -115,11 +115,11 @@ class MainActivity : ComponentActivity() {
                         }
                         .addOnFailureListener { error ->
                             navigation.reportGpsError(
-                                "Konum alınamadı: " + (error.message ?: "GPS hatası")
+                                "Could not get location: " + (error.message ?: "GPS error")
                             )
                         }
                 } catch (_: SecurityException) {
-                    navigation.reportGpsError("Konum izni geçersiz. İzni yeniden ver.")
+                    navigation.reportGpsError("Location permission is no longer valid. Grant it again.")
                 }
             }
             val permissionLauncher = rememberLauncherForActivityResult(
@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity() {
                 else {
                     if (pendingRouteRequest) navigation.locationPermissionDenied()
                     else navigation.reportGpsError(
-                        "Konum izni verilmedi. Ayarlardan konum iznini aç."
+                        "Location permission was not granted. Enable it in Settings."
                     )
                 }
                 pendingRouteRequest = false

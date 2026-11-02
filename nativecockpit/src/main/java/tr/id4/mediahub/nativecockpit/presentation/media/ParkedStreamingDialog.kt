@@ -1,5 +1,8 @@
 package tr.id4.mediahub.nativecockpit.presentation.media
 
+import androidx.compose.ui.res.stringResource
+import tr.id4.mediahub.nativecockpit.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -58,14 +61,14 @@ fun ParkedStreamingDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Dahili medya tarayıcısı",
+                    stringResource(R.string.native_in_app_media_browser),
                     color = Color.White,
                     style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    if (playbackAllowed) "Telefonda uygulama içi medya"
-                    else "Araç bağlantısı etkin veya bağlantı durumu bekleniyor. " +
-                         "Video bu ekranda kullanılamıyor.",
+                    if (playbackAllowed) stringResource(R.string.native_in_app_media_on_the_phone)
+                    else "Vehicle connection is active or its status is pending. " +
+                         stringResource(R.string.native_video_is_unavailable_on_this_screen),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFABC5D5)
                 )
@@ -81,14 +84,14 @@ fun ParkedStreamingDialog(
                     ) { Text(item.title) }
                 }
                 Text(
-                    "Hesabınızla site içinde giriş yapabilirsiniz. Oynatma desteği servise ve cihazınıza bağlıdır.",
+                    stringResource(R.string.native_sign_in_to_your_account_on_the_site_playback_support_depends_on_the_se),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFB7CEDF)
                 )
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Kapat") }
+                ) { Text(stringResource(R.string.native_close)) }
             }
         }
     }
