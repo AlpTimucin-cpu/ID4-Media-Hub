@@ -62,7 +62,7 @@ jobs:
       - name: Publish test APK and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: Elektrikli-Yol-Arkadasim-Native-Kotlin-Debug-APK
+          name: EV-Cockpit-Native-Kotlin-Debug-APK
           path: |
             nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
             nativecockpit-debug.sha256
@@ -175,7 +175,7 @@ jobs:
       - name: Publish signed Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Elektrikli-Yol-Arkadasim-Signed-Stable-Release
+          name: EV-Cockpit-Signed-Stable-Release
           path: |
             app-release.apk
             app-release.sha256

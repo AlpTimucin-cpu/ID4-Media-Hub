@@ -12,10 +12,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: elektrikli-yol-arkadasim-build
+  group: ev-cockpit-build
   cancel-in-progress: true
 jobs:
-  elektrikli-yol-arkadasim-apk:
+  ev-cockpit-apk:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -184,7 +184,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: Elektrikli-Yol-Arkadasim-Gorsel-Testleri
+          name: EV-Cockpit-Gorsel-Testleri
           path: ${{ runner.temp }}/evcockpit-layout
           retention-days: 7
       - name: Şarj geçmişi ve veri tazeliğini test et
@@ -380,14 +380,14 @@ jobs:
           fi
           test "$(stat -c %s "$APK")" -gt 10000000
           mkdir -p output
-          cp "$APK" output/Elektrikli-Yol-Arkadasim.apk
-          sha256sum output/Elektrikli-Yol-Arkadasim.apk | tee output/SHA256.txt
+          cp "$APK" output/EV-Cockpit.apk
+          sha256sum output/EV-Cockpit.apk | tee output/SHA256.txt
       - name: EV Cockpit APK paketini yükle
         uses: actions/upload-artifact@v7
         with:
-          name: Elektrikli-Yol-Arkadasim-APK
+          name: EV-Cockpit-APK
           path: |
-            output/Elektrikli-Yol-Arkadasim.apk
+            output/EV-Cockpit.apk
             output/SHA256.txt
           retention-days: 7
           if-no-files-found: error
@@ -432,7 +432,7 @@ jobs:
       - name: Publish Native Cockpit test APK
         uses: actions/upload-artifact@v7
         with:
-          name: Elektrikli-Yol-Arkadasim-Native-Cockpit-APK
+          name: EV-Cockpit-Native-Cockpit-APK
           path: |
             nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
             nativecockpit-debug.sha256

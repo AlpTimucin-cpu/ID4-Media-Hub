@@ -92,7 +92,7 @@ fun CockpitScreen(
     val phoneMediaAllowed = rememberPhoneMediaAllowed()
     val snackbar = remember { SnackbarHostState() }
     val error = (loadStatus as? RouteLoadStatus.Error)?.message
-        ?: voiceError ?: chargingUi.error
+        ?: gpsError ?: voiceError ?: chargingUi.error
         ?: weatherUi.error?.takeIf { weatherUi.routeId == route?.routeId }
 
     LaunchedEffect(error) {
@@ -213,7 +213,8 @@ fun CockpitScreen(
                         Text(stringResource(R.string.native_voice), color = Turquoise)
                     }
                     IconButton(onClick = onGpsClick, enabled = !state.simulationEnabled) {
-                        Icon(Icons.Default.GpsFixed, contentDescription = stringResource(R.string.cockpit_gps), tint = Turquoise)
+                        Icon(Icons.Default.GpsFixed, contentDescription = stringResource(R.string.cockpit_gps),
+                            tint = if (state.gpsFix != null) Turquoise else SoftText)
                     }
                     IconButton(onClick = onVoiceToggle) {
                         Icon(
@@ -254,15 +255,6 @@ fun CockpitScreen(
                     Modifier.padding(10.dp), style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFFFFC18D)
                 )
-            }
-        }
-        if (state.gpsFix == null && !state.simulationEnabled) {
-            TextButton(
-                onClick = onGpsClick,
-                modifier = Modifier.align(Alignment.Center).background(Navy, RoundedCornerShape(8.dp))
-            ) {
-                Text(gpsError ?: state.gpsWarning ?: stringResource(R.string.native_waiting_for_gps_signal),
-                    color = SoftText, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         SnackbarHost(
@@ -342,8 +334,10 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
                 style = MaterialTheme.typography.bodySmall, color = SoftText,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            if (state.simulationEnabled) Text(stringResource(R.string.native_simulation_test_data),
-                style = MaterialTheme.typography.labelSmall, color = SoftText)
+            state.socSourceLabel?.let { source ->
+                Text(source, style = MaterialTheme.typography.labelSmall, color = SoftText,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
