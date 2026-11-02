@@ -80,7 +80,7 @@ class Elm327SessionTest {
         assertTrue(adapter.disconnections >= 3)
         assertFalse(adapter.connected)
         assertEquals(ElmSessionPhase.ERROR, session.state.value.phase)
-        assertTrue(session.state.value.error?.contains("denemede") == true)
+        assertTrue(session.state.value.error?.contains("after three attempts") == true)
         // The caller/controller must publish the error to ObdConnectionState.ERROR.
         session.close()
     }
