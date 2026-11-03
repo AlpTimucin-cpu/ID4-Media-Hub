@@ -84,8 +84,7 @@ fun CockpitScreen(
     onVoiceVolumeChange: (Float) -> Unit,
     voiceStatus: NativeVoiceGuide.Status,
     voiceError: String?,
-    onVoiceTest: () -> Unit,
-    onSimulationToggle: (Boolean) -> Unit
+    onVoiceTest: () -> Unit
 ) {
     val route = state.route ?: routeState.routeResult
     var routePlanner by remember { mutableStateOf(false) }
@@ -127,8 +126,7 @@ fun CockpitScreen(
         state = obdConnection, onRefresh = onObdRefresh, onConnect = onObdConnect,
         onDisconnect = onObdDisconnect, onMebDiagnostic = onObdMebDiagnostic,
         onClearDiagnostic = onObdClearDiagnostic,
-        simulationSupported = BuildConfig.DEBUG, simulationEnabled = state.simulationEnabled,
-        onSimulationToggle = onSimulationToggle, onDismiss = { settings = false }
+        onDismiss = { settings = false }
     )
     if (media) ParkedStreamingDialog(
         playbackAllowed = phoneMediaAllowed, onDismiss = { media = false },
@@ -237,6 +235,21 @@ fun CockpitScreen(
             onViewportChanged = onMapViewport, onStationTapped = { station = it },
             modifier = Modifier.fillMaxSize()
         )
+        if (obdConnection.phase != com.evcockpit.domain.model.ObdPhase.CONNECTED) {
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = 90.dp),
+                color = Navy.copy(alpha = .94f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    "OBD Bağlantısı Bekleniyor",
+                    color = SoftText,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+        }
         BatteryHud(
             state = state, compact = compactBattery,
             modifier = Modifier.align(Alignment.TopStart)
@@ -254,7 +267,7 @@ fun CockpitScreen(
                 if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
                     VoiceButton(onClick = { voiceSettings = true })
                     QuickActions(
-                        gpsEnabled = !state.simulationEnabled,
+                        gpsEnabled = true,
                         hasGpsFix = state.gpsFix != null,
                         voiceEnabled = voiceEnabled,
                         onGpsClick = onGpsClick,
@@ -263,7 +276,7 @@ fun CockpitScreen(
                 } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     VoiceButton(onClick = { voiceSettings = true })
                     QuickActions(
-                        gpsEnabled = !state.simulationEnabled,
+                        gpsEnabled = true,
                         hasGpsFix = state.gpsFix != null,
                         voiceEnabled = voiceEnabled,
                         onGpsClick = onGpsClick,
