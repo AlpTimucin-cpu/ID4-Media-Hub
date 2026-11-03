@@ -85,8 +85,14 @@ object EngineeringMath {
         val temps = pair(s.temperatureMaxC, s.temperatureMinC)?.takeIf { it.first >= it.second }
         val soc = s.socPercent.current(nowMs, LIVE_TTL_MS)
         val discharged = s.accumulatedDischargedKwh.current(nowMs, SLOW_TTL_MS)
+        val powerKw = vi?.let { it.first * it.second / 1000.0 }
+        val speed = s.speedKmh.current(nowMs, LIVE_TTL_MS)
         return EngineeringMetrics(
-            batteryPowerKw = vi?.let { it.first * it.second / 1000.0 },
+            batteryPowerKw = powerKw,
+            absoluteCrate = powerKw?.let { abs(it) / REFERENCE_NET_CAPACITY_KWH },
+            instantaneousConsumptionKwh100Km =
+                if (powerKw != null && speed != null && speed > 20.0)
+                    -powerKw * 100.0 / speed else null,
             batteryCellSpreadMv = cells?.let { (it.first - it.second) * 1000.0 },
             batteryTemperatureSpreadC = temps?.let { it.first - it.second },
             dischargeEquivalentFullCycles = discharged?.div(REFERENCE_NET_CAPACITY_KWH),
