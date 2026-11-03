@@ -31,6 +31,7 @@ import kotlinx.coroutines.withTimeout
 import com.evcockpit.data.obd.ElmSpeedParser
 import com.evcockpit.data.obd.MebUdsParser
 import com.evcockpit.domain.model.EngineeringMath
+import com.evcockpit.domain.model.EngineeringMetrics
 import com.evcockpit.domain.model.EngineeringSnapshot
 import com.evcockpit.domain.model.MebResponseStatus
 import com.evcockpit.domain.model.ObdConnectionState
@@ -61,6 +62,12 @@ class Elm327VehicleRepository @Inject constructor(
     override val connection: StateFlow<ObdConnectionState> = _connection.asStateFlow()
     private val _engineering = MutableStateFlow(EngineeringSnapshot())
     override val engineering: StateFlow<EngineeringSnapshot> = _engineering.asStateFlow()
+    private val _metrics = MutableStateFlow(EngineeringMetrics())
+    override val engineeringMetrics: StateFlow<EngineeringMetrics> = _metrics.asStateFlow()
+
+    private fun recalculate() {
+        _metrics.value = EngineeringMath.calculate(_engineering.value, System.currentTimeMillis())
+    }
     private val diagnosticRequests = Channel<String>(capacity=1)
     private var task: Job? = null
     @Volatile private var socket: BluetoothSocket? = null
@@ -107,6 +114,7 @@ class Elm327VehicleRepository @Inject constructor(
                 lastPollSucceeded=false,diagnosticBusy=false,diagnosticResult=null)
             _telemetry.value = VehicleTelemetry()
             _engineering.value = EngineeringSnapshot()
+            _metrics.value = EngineeringMetrics()
             try {
                 withContext(Dispatchers.IO) { runSession(device) }
             } catch (_: CancellationException) {
@@ -123,6 +131,7 @@ class Elm327VehicleRepository @Inject constructor(
                 socket?.closeSilently();socket=null
                 _telemetry.value=VehicleTelemetry()
                 _engineering.value=EngineeringSnapshot()
+                _metrics.value=EngineeringMetrics()
                 if (_connection.value.phase != ObdPhase.ERROR)
                     _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
                         diagnosticBusy=false,diagnosticResult=null)
@@ -179,6 +188,7 @@ class Elm327VehicleRepository @Inject constructor(
                         unsuccessfulReads = _engineering.value.unsuccessfulReads + 1
                     )
                 }
+                recalculate()
                 if (manual != null) {
                     _connection.value = _connection.value.copy(
                         diagnosticBusy = false, diagnosticResult = parsed, error = null
@@ -203,6 +213,8 @@ class Elm327VehicleRepository @Inject constructor(
                 if (speed != null) {
                     val now = System.currentTimeMillis()
                     _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
+                    _engineering.value = _engineering.value.copy(speedKmh = TimedValue(speed, now))
+                    recalculate()
                     _connection.value = _connection.value.copy(
                         lastPollSucceeded = true, lastSpeedAtMs = now
                     )
@@ -273,6 +285,7 @@ class Elm327VehicleRepository @Inject constructor(
         while (diagnosticRequests.tryReceive().isSuccess) { /* discard pending reads */ }
         _telemetry.value=VehicleTelemetry()
         _engineering.value=EngineeringSnapshot()
+        _metrics.value=EngineeringMetrics()
         _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
             selectedDevice=null,lastPollSucceeded=false,lastSpeedAtMs=null,
             diagnosticBusy=false,diagnosticResult=null,error=null)
