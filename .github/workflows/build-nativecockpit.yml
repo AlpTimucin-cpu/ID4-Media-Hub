@@ -47,6 +47,8 @@ jobs:
         run: python3 scripts/check_welcome_greeting.py
       - name: Native Cockpit unit tests
         run: gradle :nativecockpit:testDebugUnitTest --stacktrace --no-daemon
+      - name: Validate release R8 shrinking without signing keys
+        run: gradle :nativecockpit:minifyReleaseWithR8 --stacktrace --no-daemon
       - name: Compile native debug APK
         run: gradle :nativecockpit:assembleDebug --stacktrace --no-daemon
       - name: Verify APK exists
@@ -170,7 +172,7 @@ jobs:
             -alias "$EYA_RELEASE_KEY_ALIAS" >/dev/null
           echo "Owner certificate verified"
 
-      - name: Build signed stable Release APK (R8 off temporarily)
+      - name: Build signed production Release APK (R8 enabled)
         shell: bash
         run: |
           set -euo pipefail
