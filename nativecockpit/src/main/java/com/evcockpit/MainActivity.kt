@@ -2,10 +2,12 @@ package com.evcockpit
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
 import android.content.Context
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +52,26 @@ class MainActivity : ComponentActivity() {
         ) != PackageManager.PERMISSION_GRANTED) {
             bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
         } else obd.refreshPaired()
+    }
+
+    private fun connectObd(address: String) {
+        try {
+            // Foreground service must be explicitly started from a visible app.
+            ContextCompat.startForegroundService(
+                this, Intent(this, ObdForegroundService::class.java)
+            )
+            obd.connect(address)
+        } catch (_: Exception) {
+            Toast.makeText(
+                this, "OBD arka plan servisi başlatılamadı. Bağlantı açılmadı.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun disconnectObd() {
+        obd.disconnect()
+        stopService(Intent(this, ObdForegroundService::class.java))
     }
 
     /**
@@ -156,6 +178,7 @@ class MainActivity : ComponentActivity() {
             val automaticChargePlan by chargePlan.uiState.collectAsStateWithLifecycle()
             val routeWeather by weather.uiState.collectAsStateWithLifecycle()
             val obdConnection by obd.connection.collectAsStateWithLifecycle()
+            val engineering by obd.engineering.collectAsStateWithLifecycle()
             CockpitTheme {
                 CockpitScreen(
                     state = ui.cockpit,
@@ -179,9 +202,10 @@ class MainActivity : ComponentActivity() {
                     onMapViewport = charging::viewportChanged,
                     onRefreshStations = charging::refresh,
                     obdConnection = obdConnection,
+                    engineering = engineering,
                     onObdRefresh = ::refreshObdDevices,
-                    onObdConnect = obd::connect,
-                    onObdDisconnect = obd::disconnect,
+                    onObdConnect = ::connectObd,
+                    onObdDisconnect = ::disconnectObd,
                     onObdMebDiagnostic = obd::requestMebDiagnostic,
                     onObdClearDiagnostic = obd::clearMebDiagnostic,
                     voiceEnabled = ui.voice.enabled,
@@ -193,7 +217,7 @@ class MainActivity : ComponentActivity() {
                     onVoiceTest = navigation::testVoice,
                     onSimulationToggle = { enabled ->
                         // Never mix a genuine Bluetooth session with synthetic frames.
-                        if (enabled) obd.disconnect()
+                        if (enabled) disconnectObd()
                         navigation.setSimulationEnabled(enabled)
                     }
                 )
@@ -211,7 +235,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onPause() {
         navigation.setForeground(false)
-        obd.disconnect() // paired Bluetooth diagnostics are foreground-only
+        // OBD is retained only while the user-started connectedDevice FGS runs.
         super.onPause()
     }
 }
