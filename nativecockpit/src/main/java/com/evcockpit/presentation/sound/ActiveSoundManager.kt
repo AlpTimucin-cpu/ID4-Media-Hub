@@ -2,6 +2,8 @@ package com.evcockpit.presentation.sound
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
+import androidx.media3.common.PlaybackException
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
@@ -54,29 +56,54 @@ class ActiveSoundManager @Inject constructor(
     private var lastSpeedInput: Double? = null
     private var lastInputTime: Long? = null
 
-    private fun player(resourceId: Int): ExoPlayer =
-        ExoPlayer.Builder(context).build().apply {
-            // One ambient mix; do not make two Media3 players fight over focus.
-            setAudioAttributes(
-                AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
-                false
-            )
-            setHandleAudioBecomingNoisy(true)
-            setMediaItem(MediaItem.fromUri(
-                Uri.parse("android.resource://${context.packageName}/$resourceId")
-            ))
-            repeatMode = Player.REPEAT_MODE_ONE
-            prepare()
+    private fun player(resourceId: Int): ExoPlayer? {
+        var candidate: ExoPlayer? = null
+        return try {
+            // Resource existence is checked before Media3 starts asynchronous loading.
+            context.resources.openRawResource(resourceId).use { /* readable */ }
+            candidate = ExoPlayer.Builder(context).build()
+            candidate.apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
+                    false
+                )
+                setHandleAudioBecomingNoisy(true)
+                addListener(object : Player.Listener {
+                    override fun onPlayerError(error: PlaybackException) {
+                        Log.e("EYA-ActiveSound", "Engine audio decoder/source unavailable", error)
+                        pausePlayers()
+                    }
+                })
+                setMediaItem(MediaItem.fromUri(
+                    Uri.parse("android.resource://${context.packageName}/$resourceId")
+                ))
+                repeatMode = Player.REPEAT_MODE_ONE
+                prepare()
+            }
+        } catch (error: Exception) {
+            Log.e("EYA-ActiveSound", "Engine WAV could not be loaded", error)
+            runCatching { candidate?.release() }
+            null
         }
+    }
 
-    private fun selectProfile(profile: EngineProfile) {
-        if (profile == currentProfile) return
-        idle?.release()
-        acceleration?.release()
+    private fun selectProfile(profile: EngineProfile): Boolean {
+        if (profile == currentProfile && idle != null && acceleration != null) return true
+        runCatching { idle?.release() }
+        runCatching { acceleration?.release() }
         idle = player(profile.idle)
         acceleration = player(profile.accel)
+        if (idle == null || acceleration == null) {
+            runCatching { idle?.release() }
+            runCatching { acceleration?.release() }
+            idle = null
+            acceleration = null
+            currentProfile = null
+            return false // Missing assets fail closed; never crash the UI.
+        }
         currentProfile = profile
+        return true
     }
 
     /** Call at most once per real OBD sample; time is the sample timestamp. */
@@ -97,7 +124,7 @@ class ActiveSoundManager @Inject constructor(
                 if (!previewing) pausePlayers()
                 return@post
             }
-            selectProfile(EngineProfile.from(settings.engineSoundProfile))
+            if (!selectProfile(EngineProfile.from(settings.engineSoundProfile))) return@post
             if (lastSpeedAtMs == speedAtMs) {
                 // Poll tick without a new CAN measurement: do not reset accel mode.
                 applyVolumes()
@@ -110,20 +137,25 @@ class ActiveSoundManager @Inject constructor(
             )
             lastSpeedKmh = speedKmh
             lastSpeedAtMs = speedAtMs
-            acceleration?.playbackParameters = PlaybackParameters(1f, decision.pitch)
-            idle?.playbackParameters = PlaybackParameters(1f, 0.95f)
-            when (decision.mode) {
-                EngineMotionPolicy.Mode.ACCELERATING -> {
-                    idle?.pause()
-                    acceleration?.play()
+            runCatching {
+                acceleration?.playbackParameters = PlaybackParameters(1f, decision.pitch)
+                idle?.playbackParameters = PlaybackParameters(1f, 0.95f)
+                when (decision.mode) {
+                    EngineMotionPolicy.Mode.ACCELERATING -> {
+                        idle?.pause()
+                        acceleration?.play()
+                    }
+                    EngineMotionPolicy.Mode.IDLE -> {
+                        acceleration?.pause()
+                        idle?.play()
+                    }
+                    EngineMotionPolicy.Mode.SILENT -> pausePlayers()
                 }
-                EngineMotionPolicy.Mode.IDLE -> {
-                    acceleration?.pause()
-                    idle?.play()
-                }
-                EngineMotionPolicy.Mode.SILENT -> pausePlayers()
+                applyVolumes()
+            }.onFailure { error ->
+                Log.e("EYA-ActiveSound", "Playback update failed", error)
+                pausePlayers()
             }
-            applyVolumes()
         }
     }
 
@@ -149,27 +181,34 @@ class ActiveSoundManager @Inject constructor(
             previewToken++
             val token = previewToken
             previewing = true
-            enabled = settings.isEngineSoundEnabled
             volume = settings.engineVolume.coerceIn(0f, 1.5f)
-            selectProfile(EngineProfile.from(settings.engineSoundProfile))
-            idle?.pause()
-            acceleration?.playbackParameters = PlaybackParameters(1f, 1.25f)
-            acceleration?.play()
-            applyVolumes()
+            if (!selectProfile(EngineProfile.from(settings.engineSoundProfile))) {
+                previewing = false
+                return@post
+            }
+            runCatching {
+                idle?.pause()
+                acceleration?.playbackParameters = PlaybackParameters(1f, 1.25f)
+                acceleration?.play()
+                applyVolumes()
+            }.onFailure { error ->
+                Log.e("EYA-ActiveSound", "Preview playback failed", error)
+                previewing = false
+                pausePlayers()
+                return@post
+            }
             main.postDelayed({
                 if (previewToken == token) {
                     previewing = false
                     pausePlayers()
-                    lastSpeedAtMs = null
-                    // Vehicle polling will resume sound on its next fresh update.
                 }
             }, 3_000L)
         }
     }
 
     private fun pausePlayers() {
-        idle?.pause()
-        acceleration?.pause()
+        runCatching { idle?.pause() }
+        runCatching { acceleration?.pause() }
         lastSpeedAtMs = null
         lastSpeedKmh = null
     }

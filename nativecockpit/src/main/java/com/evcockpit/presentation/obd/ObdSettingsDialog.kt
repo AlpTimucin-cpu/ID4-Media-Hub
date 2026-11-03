@@ -25,9 +25,6 @@ fun ObdSettingsDialog(
     onDisconnect: () -> Unit,
     onMebDiagnostic: (String) -> Unit,
     onClearDiagnostic: () -> Unit,
-    simulationSupported: Boolean,
-    simulationEnabled: Boolean,
-    onSimulationToggle: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
@@ -36,28 +33,20 @@ fun ObdSettingsDialog(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.native_obd_connection_and_meb_diagnostics),style=MaterialTheme.typography.titleLarge)
-                if (simulationSupported) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.native_simulation_test_data))
-                            Text(stringResource(R.string.native_not_actual_vehicle_data_available_in_debug_builds_only),
-                                style=MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked=simulationEnabled, onCheckedChange=onSimulationToggle)
-                    }
-                    HorizontalDivider()
-                }
                 Text(stringResource(R.string.native_bluetooth_classic_spp_elm327_pair_the_adapter_in_android_bluetooth_set),
                     style=MaterialTheme.typography.bodySmall)
                 Text("Durum: ${phaseLabel(state.phase)}")
+                if (state.phase != ObdPhase.CONNECTED) {
+                    Text("OBD Bağlantısı Bekleniyor", style=MaterialTheme.typography.bodyMedium)
+                }
                 state.error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick=onRefresh, enabled=!simulationEnabled, modifier=Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick=onRefresh, enabled=true, modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.native_refresh_paired_devices_request_permission))
                 }
                 if (state.devices.isEmpty()) Text(stringResource(R.string.native_no_paired_devices_this_screen_does_not_scan))
                 state.devices.forEach { device ->
                     OutlinedButton(onClick={onConnect(device.address)},
-                        enabled=!simulationEnabled && state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
+                        enabled=state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
                         modifier=Modifier.fillMaxWidth()) { Text(device.name) }
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -70,15 +59,15 @@ fun ObdSettingsDialog(
                         "Community PID sources have not been validated on your device; results are not applied to navigation SoC/SoH fields.",
                         style=MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick={ { onMebDiagnostic("22028C") } },
-                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.native_read_bms_state_of_charge_22028c))
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E0E") } },
-                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.native_maximum_battery_temperature_221e0e))
                     }
                     OutlinedButton(onClick={ { onMebDiagnostic("221E3D") } },
-                        enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
+                        enabled=!state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.native_battery_current_raw_response_only_221e3d))
                     }
                     if (state.diagnosticBusy) LinearProgressIndicator(Modifier.fillMaxWidth())

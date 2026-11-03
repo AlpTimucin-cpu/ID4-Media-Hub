@@ -16,7 +16,6 @@ data class CockpitUiState(
     val chargingEnergyKwh: Double? = null,
     val energyEstimateStatus: String? = null,
     val socSourceLabel: String? = null,
-    val simulationEnabled: Boolean = false,
     val gpsWarning: String? = null,
     val route: RouteSnapshot? = null,
     val gpsFix: GpsFix? = null

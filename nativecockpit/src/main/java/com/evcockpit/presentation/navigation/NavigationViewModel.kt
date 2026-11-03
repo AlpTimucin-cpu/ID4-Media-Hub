@@ -67,8 +67,7 @@ data class NavigationUiState(
     val planner: RoutePlannerUiState = RoutePlannerUiState(),
     val voice: VoiceUiState = VoiceUiState(),
     val routeState: NavigationRouteState = NavigationRouteState(),
-    val loadStatus: RouteLoadStatus = RouteLoadStatus.Empty,
-    val simulationEnabled: Boolean = false
+    val loadStatus: RouteLoadStatus = RouteLoadStatus.Empty
 )
 
 /** Single source of truth for the route editor AND the main navigation panel. */
@@ -101,32 +100,12 @@ class NavigationViewModel @Inject constructor(
     private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
-    // Debug builds start in TEST mode; release builds can never enable it.
-    private val _simulationEnabled = MutableStateFlow(BuildConfig.DEBUG)
-    val isSimulationMode: StateFlow<Boolean> = _simulationEnabled.asStateFlow()
-    private val _simulationFrame = MutableStateFlow<SimulationFrame?>(null)
-    private val simulationTag = "EYA-SIM-UAT"
-    private var debugDemoRouteAttempted = false
-    private var debugDemoRouteJob: Job? = null
-    private var debugDemoRouteActive = false
     private var gpsWaitSinceMs = System.currentTimeMillis()
-
-    // Single fail-closed selector for simulation vs measured GPS/OBD.
-    // Route id and frame belong to the same combine emission: a stale frame
-    // cannot drive the new route's map progress or TTS announcements.
+    // Genuine ELM327 measurements and Fused provider fixes only.
+    private data class LiveSources(val telemetry: VehicleTelemetry, val gps: GpsFix?)
     private val sources = combine(
-        vehicleRepository.telemetry, locationRepository.gpsFix,
-        _simulationEnabled, _simulationFrame, routes.currentRoute
-    ) { telemetry, gps, enabled, frame, route ->
-        NavigationSourceSelector.select(
-            liveTelemetry = telemetry,
-            liveGps = gps,
-            simulationEnabled = enabled,
-            debugBuild = BuildConfig.DEBUG,
-            frame = frame,
-            currentRouteId = route?.routeId
-        )
-    }
+        vehicleRepository.telemetry, locationRepository.gpsFix
+    ) { telemetry, gps -> LiveSources(telemetry, gps) }
     // Exposed effective location, sourced from the same flow as cockpit and TTS.
     // Do not inject synthetic locations into FusedLocationProviderClient.
     val gpsLocation: StateFlow<GpsFix?> = sources.map { it.gps }
@@ -157,7 +136,7 @@ class NavigationViewModel @Inject constructor(
         val lastGpsAt = source.gps?.recordedAtMillis
             ?.takeIf { it <= now && it >= gpsWaitSinceMs } ?: gpsWaitSinceMs
         val telemetry = source.telemetry
-        val energy = estimateEnergy(route, telemetry, now, source.simulated)
+        val energy = estimateEnergy(route, telemetry, now)
         val baseRoute = progress.enrich(route, usableGps, now)
         val visualRoute = if (energy is BaselineEnergyResult.Estimate) {
             baseRoute?.copy(estimatedArrivalSocPercent = energy.arrivalSocPercent)
@@ -171,19 +150,9 @@ class NavigationViewModel @Inject constructor(
             chargingNeededEstimate = (energy as? BaselineEnergyResult.Estimate)?.chargingStopNeeded,
             chargingEnergyKwh = (energy as? BaselineEnergyResult.Estimate)?.requiredChargingEnergyKwh,
             energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
-            socSourceLabel = when {
-                source.simulated -> "SIMULATION · TEST DATA"
-                energy is BaselineEnergyResult.Estimate && energy.usedLiveObd ->
-                    "LIVE OBD starting SoC · MODEL/ESTIMATE"
-                energy is BaselineEnergyResult.Estimate &&
-                    !modelPrefs.contains("explicitAssumedSocPct") ->
-                    "Default starting SoC 80% · MODEL/ESTIMATE"
-                energy is BaselineEnergyResult.Estimate ->
-                    "Selected starting SoC · MODEL/ESTIMATE"
-                else -> null
-            },
-            simulationEnabled = source.simulated,
-            gpsWarning = if (!source.simulated && _foreground.value &&
+            socSourceLabel = if (energy is BaselineEnergyResult.Estimate &&
+                energy.usedLiveObd) "LIVE OBD · MODEL/ESTIMATE" else null,
+            gpsWarning = if (_foreground.value &&
                 now - lastGpsAt > 10_000L && usableGps == null
             ) "Waiting for GPS signal..." else null,
             route = visualRoute,
@@ -198,8 +167,7 @@ class NavigationViewModel @Inject constructor(
     private fun estimateEnergy(
         route: RouteSnapshot?,
         telemetry: VehicleTelemetry,
-        now: Long,
-        simulated: Boolean
+        now: Long
     ): BaselineEnergyResult? {
         if (route?.routeId == null) return null
         // Damaged/old preference types must not crash the navigation UI.
@@ -207,24 +175,20 @@ class NavigationViewModel @Inject constructor(
             if (modelPrefs.contains(key)) modelPrefs.getFloat(key, Float.NaN)
                 .toDouble().takeIf { it.isFinite() } else null
         }.getOrNull()
-        // These deterministic values are only TEST FIXTURES in DEBUG simulation.
-        val capacity = if (simulated) 60.0 else readFloat("usableBatteryKwh") ?: Double.NaN
-        val consumption = if (simulated) 180.0 else readFloat("referenceWhPerKm") ?: Double.NaN
-        val reserve = if (simulated) 15.0 else readFloat("arrivalReservePct") ?: Double.NaN
+        val capacity = readFloat("usableBatteryKwh") ?: Double.NaN
+        val consumption = readFloat("referenceWhPerKm") ?: Double.NaN
+        val reserve = readFloat("arrivalReservePct") ?: Double.NaN
         if (!capacity.isFinite() || capacity <= 0.0 ||
             !consumption.isFinite() || consumption <= 0.0 ||
             !reserve.isFinite() || reserve !in 0.0..100.0
         ) return BaselineEnergyResult.Unavailable("No calibrated capacity/consumption/reserve data")
 
+        // No synthetic SoC or default 80% substitution.
         val fresh = telemetry.socPercent.current(now)
-        val timed = telemetry.socPercent.measuredAtMillis
-        val soc = when {
-            simulated -> DepartureSoc.ExplicitAssumption(fresh ?: 80.0)
-            fresh != null && timed != null -> DepartureSoc.FreshObd(fresh, timed)
-            else -> DepartureSoc.ExplicitAssumption(
-                readFloat("explicitAssumedSocPct") ?: 80.0
-            ) // Explicit, visibly labelled 80% default, never a live measurement.
-        }
+            ?: return BaselineEnergyResult.Unavailable("Waiting for real BMS SoC")
+        val measuredAt = telemetry.socPercent.measuredAtMillis
+            ?: return BaselineEnergyResult.Unavailable("No BMS timestamp")
+        val soc = DepartureSoc.FreshObd(fresh, measuredAt)
 
         return EvBaselineEnergyEstimator.estimate(
             BaselineEnergyInputs(
@@ -268,111 +232,23 @@ class NavigationViewModel @Inject constructor(
             route?.routeId != null -> RouteLoadStatus.Success(route.routeId)
             else -> RouteLoadStatus.Empty
         }
-        NavigationUiState(cockpit, planner, voice, routeState, phase, cockpit.simulationEnabled)
+        NavigationUiState(cockpit, planner, voice, routeState, phase)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationUiState())
 
     init {
-        viewModelScope.launch {
-            // An explicitly labelled DEBUG journey; OSRM supplies real road geometry.
-            // Only one attempt per activation. A manually selected route wins.
-            combine(_simulationEnabled, _foreground) { enabled, foreground ->
-                BuildConfig.DEBUG && enabled && foreground
-            }.collect { active ->
-                if (!active) {
-                    debugDemoRouteJob?.cancel()
-                    debugDemoRouteJob = null
-                    return@collect
-                }
-                if (debugDemoRouteAttempted ||
-                    routes.currentRoute.value != null ||
-                    _planner.value.originText.isNotBlank() ||
-                    _planner.value.destinationText.isNotBlank()) return@collect
-
-                debugDemoRouteAttempted = true
-                debugDemoRouteJob = viewModelScope.launch {
-                    Log.i(simulationTag, "DEBUG demo: requesting OSRM route; not a real GPS fix")
-                    try {
-                        val start = GeoCoordinate(37.9663, 34.6824) // Niğde, TEST only
-                        val destination = RoutePlace(
-                            "TEST ROUTE · Kayseri",
-                            GeoCoordinate(38.7205, 35.4826),
-                            source = "DEBUG UAT"
-                        )
-                        when (val result = routes.calculateResult(start, destination).getOrThrow()) {
-                            is RouteCalculationResult.Success -> {
-                                debugDemoRouteActive = true
-                                _planner.update {
-                                    it.copy(
-                                        originText = "TEST · Niğde",
-                                        originSelected = RoutePlace(
-                                            "TEST · Niğde", start, source = "DEBUG UAT"
-                                        ),
-                                        destinationText = destination.label,
-                                        destinationSelected = destination,
-                                        error = null
-                                    )
-                                }
-                                Log.i(simulationTag, "DEBUG demo: OSRM route loaded; awaiting frames")
-                            }
-                            is RouteCalculationResult.Failure -> {
-                                Log.w(simulationTag, "DEBUG demo route unavailable: " + result.message)
-                                _planner.update { it.copy(
-                                    error = "Could not load the TEST route: " + result.message.take(90)
-                                ) }
-                            }
-                        }
-                    } catch (cancel: CancellationException) {
-                        throw cancel
-                    } catch (error: Exception) {
-                        Log.w(simulationTag, "DEBUG OSRM demo failed: " + error.javaClass.simpleName)
-                        _planner.update { it.copy(error =
-                            "Could not load the TEST route: check the internet/OSRM connection") }
-                    }
-                }
-            }
-        }
-        viewModelScope.launch {
-            combine(_simulationEnabled, _foreground, routes.currentRoute) { enabled, front, route ->
-                Triple(enabled && BuildConfig.DEBUG, front, route)
-            }.collectLatest { (enabled, front, route) ->
-                _simulationFrame.value = null
-                if (BuildConfig.DEBUG) {
-                    Log.i(simulationTag, "simulated=$enabled foreground=$front " +
-                        "routeReady=${route?.routeId != null} maneuvers=${route?.maneuvers?.size ?: 0}")
-                }
-                if (enabled && front) {
-                    // The SAME frame powers MapLibre/progress and the TTS route policy.
-                    // Never write simulated coordinates into the real GPS repository.
-                    DebugRouteSimulation.frames(route).collect { frame ->
-                        // Atomic Frame: GPS and fixture battery data from ONE route.
-                        _simulationFrame.value = frame
-                        if (BuildConfig.DEBUG) {
-                            Log.d(simulationTag, "simFrame route=${frame.routeId ?: "none"} " +
-                                "hasGps=${frame.fix != null} " +
-                                "gpsFresh=${frame.fix?.usable(System.currentTimeMillis()) == true}")
-                        }
-                    }
-                }
-            }
-        }
         viewModelScope.launch {
             snapshotFlow { guide.status to guide.lastError }.collect { (status, error) ->
                 _voice.update { it.copy(status = status, error = error) }
             }
         }
-        // TTS only with verified route + fresh effective GPS + foreground Activity.
-        // Android Auto has its own owner; never speak twice simultaneously.
+        // Measured GPS drives both route progress and maneuver announcements.
         viewModelScope.launch {
             var activeSpeechRouteId: String? = null
             combine(
-                routes.currentRoute,
-                sources,
-                _foreground,
-                CarNavigationOwnership.navigating,
-                _voice
+                routes.currentRoute, sources, _foreground,
+                CarNavigationOwnership.navigating, _voice
             ) { route, source, foreground, carNavigating, voice ->
-                SpeechInputs(route, source.gps, foreground && !carNavigating, voice,
-                    source.simulated)
+                SpeechInputs(route, source.gps, foreground && !carNavigating, voice)
             }.collect { current ->
                 if (activeSpeechRouteId != current.route?.routeId) {
                     guide.stop()
@@ -380,51 +256,28 @@ class NavigationViewModel @Inject constructor(
                     activeSpeechRouteId = current.route?.routeId
                 }
                 if (!current.allowed || !current.voice.enabled ||
-                    current.voice.status != NativeVoiceGuide.Status.READY &&
-                        current.voice.status != NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED) {
+                    (current.voice.status != NativeVoiceGuide.Status.READY &&
+                        current.voice.status != NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)
+                ) {
                     guide.stop()
                 } else {
-                    val now = System.currentTimeMillis()
-                    val evaluation = speechBridge.evaluate(current.route, current.fix, now)
-                    val route = evaluation.route
-                    if (BuildConfig.DEBUG && current.simulated) {
-                        Log.d(simulationTag, "speechInput: route=${route?.routeId != null} " +
-                            "fixFresh=${current.fix?.usable(now) == true} " +
-                            "turn=${route?.nextManeuver?.id ?: "none"} " +
-                            "aheadMeters=${route?.nextTurnMeters?.toInt() ?: -1} " +
-                            "voiceStatus=${current.voice.status}")
-                    }
-                    evaluation.cue?.let { cue ->
-                        if (BuildConfig.DEBUG && current.simulated)
-                            Log.i(simulationTag, "TTS cue requested for " +
-                                "${route?.nextManeuver?.id ?: "unknown"} " +
-                                "ahead=${route?.nextTurnMeters?.toInt() ?: -1}m")
+                    speechBridge.evaluate(
+                        current.route, current.fix, System.currentTimeMillis()
+                    ).cue?.let { cue ->
                         val queued = guide.speak(
-                            cue.message,
-                            current.voice.volume,
+                            cue.message, current.voice.volume,
                             onUtteranceStarted = {
-                                // A successful enqueue is NOT proof of audible speech.
                                 viewModelScope.launch {
-                                    // TTS calls arrive on Binder threads; policy is main-thread owned.
-                                    speechBridge.confirmStarted(cue.token, System.currentTimeMillis())
-                                    if (BuildConfig.DEBUG && current.simulated)
-                                        Log.i(simulationTag, "TTS onStart: stage acknowledged")
+                                    speechBridge.confirmStarted(
+                                        cue.token, System.currentTimeMillis()
+                                    )
                                 }
                             },
                             onUtteranceFailed = {
-                                viewModelScope.launch {
-                                    speechBridge.cancel(cue.token)
-                                    if (BuildConfig.DEBUG && current.simulated)
-                                        Log.w(simulationTag, "TTS synthesis failed; cue retryable")
-                                }
+                                viewModelScope.launch { speechBridge.cancel(cue.token) }
                             }
                         )
-                        if (!queued) {
-                            speechBridge.cancel(cue.token)
-                            if (BuildConfig.DEBUG && current.simulated)
-                                Log.w(simulationTag, "TTS not queued; " +
-                                    "status=${current.voice.status} error=${guide.lastError}")
-                        }
+                        if (!queued) speechBridge.cancel(cue.token)
                     }
                 }
             }
@@ -433,8 +286,7 @@ class NavigationViewModel @Inject constructor(
 
     private data class SpeechInputs(
         val route: RouteSnapshot?, val fix: GpsFix?,
-        val allowed: Boolean, val voice: VoiceUiState,
-        val simulated: Boolean
+        val allowed: Boolean, val voice: VoiceUiState
     )
 
     fun setForeground(isForeground: Boolean) {
@@ -448,38 +300,14 @@ class NavigationViewModel @Inject constructor(
     }
     fun startGps() {
         _gpsError.value = null
-        if (!_simulationEnabled.value) locationRepository.start()
+        locationRepository.start()
     }
 
-    fun setSimulationEnabled(enabled: Boolean) {
-        val next = BuildConfig.DEBUG && enabled
-        if (_simulationEnabled.value == next) return
-        guide.stop()
-        speechBridge.reset()
-        _simulationFrame.value = null
-        _simulationEnabled.value = next
-        // A DEBUG demo route must not remain as a live-navigation route.
-        if (!next && debugDemoRouteActive) {
-            routes.clear()
-            _planner.value = RoutePlannerUiState()
-            debugDemoRouteActive = false
-        }
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteJob = null
-        debugDemoRouteAttempted = false // Allow one new demo attempt when re-enabled.
-        gpsWaitSinceMs = System.currentTimeMillis()
-        if (BuildConfig.DEBUG)
-            Log.i(simulationTag, "Simulation toggled: $next; guidance state reset")
-        _gpsError.value = null
-        if (next) locationRepository.stop()
-        else if (_foreground.value) locationRepository.start()
-    }
     fun stopGps() = locationRepository.stop()
 
     /** Last known Fused fix, delivered only after the user grants runtime permission. */
     @Suppress("DEPRECATION")
     fun acceptLastLocation(location: android.location.Location?) {
-        if (_simulationEnabled.value) return
         if (location == null || location.isFromMockProvider || !location.hasAccuracy()) {
             reportGpsError("Could not read location. Check GPS and precise location settings.")
             return
@@ -522,9 +350,6 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun editOrigin(value: String) {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         val text = value.take(100)
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear() // never show an obsolete route for a newly edited origin
@@ -534,9 +359,6 @@ class NavigationViewModel @Inject constructor(
         originJob = search(text, true)
     }
     fun editDestination(value: String) {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         val text = value.take(100)
         destinationJob?.cancel(); planningJob?.cancel()
         routes.clear()
@@ -571,28 +393,18 @@ class NavigationViewModel @Inject constructor(
         }
     }
     fun selectOrigin(place: RoutePlace) {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         originJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(originText = place.label, originSelected = place,
             originFromGps = false, gpsOrigin = null, locatingGps = false,
             originMatches = emptyList(), error = null, planning = false) }
     }
     fun selectDestination(place: RoutePlace) {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         destinationJob?.cancel(); planningJob?.cancel(); routes.clear()
         _planner.update { it.copy(destinationText = place.label, destinationSelected = place,
             destinationMatches = emptyList(), error = null, planning = false) }
     }
     /** Activity first verifies fine/coarse runtime permission. */
     fun useCurrentGps() {
-        if (_simulationEnabled.value) {
-            _planner.update { it.copy(error = "Select origin and destination using address search in simulation mode.") }
-            return
-        }
         gpsJob?.cancel(); originJob?.cancel(); planningJob?.cancel(); routes.clear()
         gpsJob = viewModelScope.launch {
             _planner.update { it.copy(locatingGps = true, originFromGps = false,
@@ -627,9 +439,6 @@ class NavigationViewModel @Inject constructor(
             gpsOrigin = null, error = "Location permission was not granted; you can select the origin manually") }
     }
     fun plan() {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         if (!_planner.value.canCalculate) return
         planningJob?.cancel()
         planningJob = viewModelScope.launch {
@@ -665,14 +474,10 @@ class NavigationViewModel @Inject constructor(
     }
     fun selectAlternative(index: Int) { routes.choose(index); speechBridge.reset() }
     fun clearRoute() {
-        debugDemoRouteJob?.cancel()
-        debugDemoRouteAttempted = true
-        debugDemoRouteActive = false
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear(); speechBridge.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
     override fun onCleared() {
-        debugDemoRouteJob?.cancel()
         guide.close()
         locationRepository.stop()
         super.onCleared()

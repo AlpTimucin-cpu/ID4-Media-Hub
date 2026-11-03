@@ -11,7 +11,7 @@ A map-first electric-vehicle cockpit built with Kotlin, Jetpack Compose, MapLibr
 - A compact arrival panel with the next maneuver, ETA, and estimated arrival SoC.
 - A slim Route / Charging / Media / Settings dock.
 - Dark navy surfaces, one neon-green accent, larger typography, and restrained corner radii.
-- Unknown vehicle measurements remain `—`; simulation data is explicitly labeled.
+- Unknown vehicle measurements remain unavailable; no synthetic GPS or vehicle measurements are used.
 
 ## Modules
 
@@ -36,7 +36,7 @@ The native test APK is written to `nativecockpit/build/outputs/apk/debug/nativec
 
 ## Package migration
 
-The native source and test packages now live under `com.evcockpit`. The manifest, Hilt entry points, generated-resource imports, ProGuard rules, and CI launch commands use that namespace.
+The native source packages now live under `com.evcockpit`. The manifest, Hilt entry points, generated-resource imports, ProGuard rules, and CI launch commands use that namespace.
 
 Changing an application ID creates a **separate Android application**. Existing installations are not overwritten, and private preferences, databases, saved logins, and Android permissions do not migrate automatically. No old application is uninstalled or cleared by this project.
 
