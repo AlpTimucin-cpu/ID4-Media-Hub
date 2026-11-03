@@ -1796,6 +1796,9 @@ import com.evcockpit.domain.model.PairedObdDevice
 import com.evcockpit.domain.model.TimedValue
 import com.evcockpit.domain.model.VehicleTelemetry
 import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.domain.repository.ObdTransport
+import com.evcockpit.domain.usecase.Elm327Session
+import com.evcockpit.domain.usecase.ElmSessionPhase
 import com.evcockpit.domain.repository.VehicleRepository
 
 /**
@@ -1919,9 +1922,26 @@ class Elm327VehicleRepository @Inject constructor(
         }
         try { conn.connect() } finally { watchdog.cancel() }
         if (!conn.isConnected) throw IOException("SPP connection unavailable")
-        for (command in listOf("ATZ","ATE0","ATL0","ATS0","ATH0","ATSP0"))
-            sendAndRead(conn,command)
-        _connection.value=_connection.value.copy(phase=ObdPhase.CONNECTED,error=null)
+        // Adapt the same physical RFCOMM socket to the tested Elm327Session.
+        // The single runSession worker still owns all CAN header/filter changes.
+        val transport = object : ObdTransport {
+            override val connected: Boolean get() = conn.isConnected
+            override suspend fun connect(timeoutMillis: Long) {
+                if (!conn.isConnected) throw IOException("SPP socket is no longer connected")
+            }
+            override suspend fun exchange(command: String, timeoutMillis: Long): String =
+                sendAndRead(conn, command)
+            override fun disconnect() { conn.closeSilently() }
+        }
+        val protocol = Elm327Session(transport)
+        try {
+            protocol.initialize() // ATZ, ATE0, ATL0; READY only on real response.
+            if (protocol.state.value.phase != ElmSessionPhase.READY) {
+                throw IOException("ELM327 initialization was not acknowledged")
+            }
+            for (command in listOf("ATS0","ATH0","ATSP0"))
+                sendAndRead(conn, command)
+            _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTED, error=null)
         // Background-in-app polling starts immediately after explicit pairing.
         // A single worker owns ALL ELM I/O: no parallel CAN commands or write DIDs.
         val cycle = listOf(
@@ -1933,7 +1953,7 @@ class Elm327VehicleRepository @Inject constructor(
             val manual = diagnosticRequests.tryReceive().getOrNull()
             val command = manual ?: cycle[cursor++ % cycle.size]
             try {
-                val response = runMebReadOnlyQuery(conn, command)
+                val response = runMebReadOnlyQuery(conn, protocol, command)
                 val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
                 if (parsed.status == MebResponseStatus.VALID_RAW) {
                     _engineering.value = EngineeringMath.update(
@@ -1965,7 +1985,7 @@ class Elm327VehicleRepository @Inject constructor(
             }
 
             try {
-                val speed = ElmSpeedParser.decode(sendAndRead(conn, "010D"))
+                val speed = ElmSpeedParser.decode(protocol.readRawOnce("010D"))
                 if (speed != null) {
                     val now = System.currentTimeMillis()
                     _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
@@ -1986,9 +2006,14 @@ class Elm327VehicleRepository @Inject constructor(
             }
             delay(700L)
         }
+        } finally {
+            protocol.close() // Closes only the socket owned by this session.
+        }
     }
 
-    private suspend fun runMebReadOnlyQuery(conn:BluetoothSocket,command:String):String {
+    private suspend fun runMebReadOnlyQuery(
+        conn: BluetoothSocket, protocol: Elm327Session, command: String
+    ): String {
         // ELM: battery ECU 29-bit/500kbps; 2AB2 capacity is 11-bit 710/77A.
         // UDS service 22 READ ONLY; this function never sends service 2E/31/14.
         var initiated=false
@@ -2011,7 +2036,7 @@ class Elm327VehicleRepository @Inject constructor(
                     throw IOException("ELM protocol setting unsupported")
             }
             initiated=true
-            return sendAndRead(conn,command)
+            return protocol.readRawOnce(command)
         } finally {
             if (initiated || conn.isConnected) {
                 // Drop restrictive CAN RX filter / custom ISO-TP flow control
@@ -2162,6 +2187,27 @@ class Elm327Session(private val transport: ObdTransport) {
             _state.value = ElmSessionState(ElmSessionPhase.ERROR, error.message)
         }
         throw error
+    }
+
+    /**
+     * One tolerant read for an already-connected vehicle session.
+     * A genuine ECU may reply NO DATA to an unsupported PID. Return that
+     * response to the parser without fabricating values or reconnecting.
+     * The caller owns the single CAN configuration/polling coroutine.
+     */
+    suspend fun readRawOnce(command: String): String = commands.withLock {
+        val query = command.trim().uppercase(Locale.ROOT).replace(" ", "")
+        require(query.matches(Regex("(?:01|09)[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
+            "Only read-only PID and UDS requests are allowed"
+        }
+        val token = generation
+        ensureCurrent(token)
+        check(_state.value.phase == ElmSessionPhase.READY && transport.connected) {
+            "ELM327 session is not ready"
+        }
+        val reply = transport.exchange(query, 6_000L)
+        ensureCurrent(token)
+        reply // NO DATA is a real ECU reply; caller decides whether it is useful.
     }
 
     private suspend fun startSession(token: Long): String {
@@ -3346,6 +3392,12 @@ assert "locationRepository.start()" in nav
 assert "isFromMockProvider" in nav
 assert "createRfcommSocketToServiceRecord(spp)" in repo
 assert "conn.connect()" in repo
+assert "Elm327Session(transport)" in repo
+assert "ElmSessionPhase.READY" in repo
+assert 'protocol.readRawOnce("010D")' in repo
+assert "runMebReadOnlyQuery(conn, protocol, command)" in repo
+assert "protocol.close()" in repo
+
 assert "withContext(Dispatchers.IO) { runSession(device) }" in repo
 assert "_telemetry.value = VehicleTelemetry()" in repo
 assert "ObdPhase.CONNECTED" in fg
@@ -3357,3 +3409,166 @@ assert not any(line.strip() == "-dontoptimize" for line in proguard.splitlines()
 print("OK: real-only navigation, fail-closed ELM327 and R8 production guards")
 ````
 
+
+## 20. `nativecockpit/src/test/java/com/evcockpit/domain/usecase/Elm327SessionTest.kt`
+
+````kotlin
+package com.evcockpit.domain.usecase
+
+import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+import com.evcockpit.domain.repository.ObdTransport
+
+class Elm327SessionTest {
+    private class FakeTransport : ObdTransport {
+        override var connected: Boolean = false
+            private set
+        val commands = mutableListOf<String>()
+        var failOnce = false
+        var alwaysDropOnRead = false
+        var connections = 0
+        var disconnections = 0
+        var blockRead: CompletableDeferred<Unit>? = null
+        val readEntered = CompletableDeferred<Unit>()
+        override suspend fun connect(timeoutMillis: Long) {
+            connections++
+            connected = true
+        }
+        override suspend fun exchange(command: String, timeoutMillis: Long): String {
+            commands.add(command)
+            if (command == "221E0E" && blockRead != null) {
+                if (!readEntered.isCompleted) readEntered.complete(Unit)
+                blockRead?.await()
+            }
+            if (alwaysDropOnRead && command == "221E0E") {
+                connected = false
+                throw IOException("Bluetooth out of range / ignition off")
+            }
+            if (failOnce && command == "221E0E") {
+                failOnce = false
+                throw IOException("Adapter disconnected")
+            }
+            return when (command) {
+                "ATZ" -> "ELM327 v1.5"
+                "ATE0", "ATL0" -> "OK"
+                else -> "62 1E 0E 04 68"
+            }
+        }
+        override fun disconnect() {
+            disconnections++
+            connected = false
+        }
+    }
+
+    @Test fun startsWithExactInitializationSequence() = runBlocking {
+        val fake = FakeTransport()
+        val session = Elm327Session(fake)
+        session.initialize()
+        assertEquals(listOf("ATZ", "ATE0", "ATL0"), fake.commands)
+        assertEquals("62 1E 0E 04 68", session.readOnly("22 1E 0E"))
+        session.close()
+    }
+
+    @Test fun retriesConnectionAfterReadFailure() = runBlocking {
+        val fake = FakeTransport().apply { failOnce = true }
+        val session = Elm327Session(fake)
+        session.initialize()
+        assertEquals("62 1E 0E 04 68", session.readOnly("221E0E"))
+        assertEquals(2, fake.connections)
+        assertEquals(2, fake.commands.count { it == "ATZ" })
+        session.close()
+    }
+
+    @Test fun permanentDropRetriesThreeTimesThenExposesError() = runBlocking {
+        val adapter = FakeTransport().apply { alwaysDropOnRead = true }
+        val session = Elm327Session(adapter)
+        session.initialize()
+        val result = runCatching { session.readOnly("221E0E") }
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IOException)
+        assertEquals(3, adapter.commands.count { it == "221E0E" })
+        assertEquals(3, adapter.connections)
+        assertTrue(adapter.disconnections >= 3)
+        assertFalse(adapter.connected)
+        assertEquals(ElmSessionPhase.ERROR, session.state.value.phase)
+        assertTrue(session.state.value.error?.contains("after three attempts") == true)
+        // The caller/controller must publish the error to ObdConnectionState.ERROR.
+        session.close()
+    }
+
+    @Test fun closedSessionCanInitializeAgainWithFreshTransportState() = runBlocking {
+        val adapter = FakeTransport()
+        val session = Elm327Session(adapter)
+        session.initialize()
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        session.close()
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
+        assertFalse(adapter.connected)
+        session.initialize() // explicit caller reconnect after close
+        assertEquals(2, adapter.connections)
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        assertEquals(2, adapter.commands.count { it == "ATZ" })
+        session.close()
+    }
+
+    @Test fun closeDuringReadCannotPublishStaleResultIntoNewSession() = runBlocking {
+        val adapter = FakeTransport().apply {
+            blockRead = CompletableDeferred()
+        }
+        val session = Elm327Session(adapter)
+        session.initialize()
+        val pending = async {
+            runCatching { session.readOnly("221E0E") }
+        }
+        adapter.readEntered.await()
+        session.close() // Must not wait on the command mutex.
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
+        adapter.blockRead?.complete(Unit) // A late old response arrives.
+        assertTrue(pending.await().isFailure)
+        assertEquals(ElmSessionPhase.DISCONNECTED, session.state.value.phase)
+        adapter.blockRead = null
+        session.initialize()
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        session.close()
+    }
+
+    @Test fun dangerousNonReadCommandsAreRejected(): Unit = runBlocking {
+        val session = Elm327Session(FakeTransport())
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readOnly("2F1234") }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readOnly("ATSH7E0") }
+        }
+    }
+    @Test fun rawOnceNeedsReadyAndReturnsGenuineNoDataWithoutReconnecting() = runBlocking {
+        val fake = FakeTransport()
+        val session = Elm327Session(fake)
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { session.readRawOnce("010D") }
+        }
+        session.initialize()
+        assertEquals("62 1E 0E 04 68", session.readRawOnce("221E0E"))
+        assertEquals(1, fake.connections)
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        session.close()
+    }
+
+    @Test fun rawOnceNeverAcceptsCommandsThatWriteToEcu(): Unit = runBlocking {
+        val session = Elm327Session(FakeTransport())
+        session.initialize()
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readRawOnce("2E1234") }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readRawOnce("ATSH710") }
+        }
+        session.close()
+    }
+
+}
+````
