@@ -30,6 +30,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import com.evcockpit.data.obd.ElmSpeedParser
 import com.evcockpit.data.obd.MebUdsParser
+import com.evcockpit.domain.model.EngineeringMath
+import com.evcockpit.domain.model.EngineeringSnapshot
+import com.evcockpit.domain.model.MebResponseStatus
 import com.evcockpit.domain.model.ObdConnectionState
 import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.domain.model.PairedObdDevice
@@ -56,6 +59,8 @@ class Elm327VehicleRepository @Inject constructor(
     override val telemetry: StateFlow<VehicleTelemetry> = _telemetry.asStateFlow()
     private val _connection = MutableStateFlow(ObdConnectionState())
     override val connection: StateFlow<ObdConnectionState> = _connection.asStateFlow()
+    private val _engineering = MutableStateFlow(EngineeringSnapshot())
+    override val engineering: StateFlow<EngineeringSnapshot> = _engineering.asStateFlow()
     private val diagnosticRequests = Channel<String>(capacity=1)
     private var task: Job? = null
     @Volatile private var socket: BluetoothSocket? = null
@@ -101,6 +106,7 @@ class Elm327VehicleRepository @Inject constructor(
                 selectedDevice=address,error=null,lastSpeedAtMs=null,
                 lastPollSucceeded=false,diagnosticBusy=false,diagnosticResult=null)
             _telemetry.value = VehicleTelemetry()
+            _engineering.value = EngineeringSnapshot()
             try {
                 withContext(Dispatchers.IO) { runSession(device) }
             } catch (_: CancellationException) {
@@ -116,6 +122,7 @@ class Elm327VehicleRepository @Inject constructor(
             } finally {
                 socket?.closeSilently();socket=null
                 _telemetry.value=VehicleTelemetry()
+                _engineering.value=EngineeringSnapshot()
                 if (_connection.value.phase != ObdPhase.ERROR)
                     _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
                         diagnosticBusy=false,diagnosticResult=null)
@@ -150,45 +157,81 @@ class Elm327VehicleRepository @Inject constructor(
         for (command in listOf("ATZ","ATE0","ATL0","ATS0","ATH0","ATSP0"))
             sendAndRead(conn,command)
         _connection.value=_connection.value.copy(phase=ObdPhase.CONNECTED,error=null)
+        // Background-in-app polling starts immediately after explicit pairing.
+        // A single worker owns ALL ELM I/O: no parallel CAN commands or write DIDs.
+        val cycle = listOf(
+            "22028C", "221E3B", "221E3D", "221E0E", "221E0F",
+            "221E33", "221E34", "221E1B", "221E32", "222AB2"
+        )
+        var cursor = 0
         while (kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]?.isActive == true) {
-            val query=diagnosticRequests.tryReceive().getOrNull()
-            if (query != null) {
-                try {
-                    val response=runMebReadOnlyQuery(conn,query)
-                    val parsed=MebUdsParser.parse(query,response,System.currentTimeMillis())
-                    _connection.value=_connection.value.copy(diagnosticBusy=false,
-                        diagnosticResult=parsed,error=null)
-                } catch (e:CancellationException) { throw e }
-                catch (_:Exception) {
-                    _connection.value=_connection.value.copy(diagnosticBusy=false,
-                        error="No MEB ECU response; the adapter may not support 29-bit CAN")
-                    // Uncertain adapter state: end session rather than misinterpret speed.
-                    throw IOException("MEB diagnostic session failed")
+            val manual = diagnosticRequests.tryReceive().getOrNull()
+            val command = manual ?: cycle[cursor++ % cycle.size]
+            try {
+                val response = runMebReadOnlyQuery(conn, command)
+                val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
+                if (parsed.status == MebResponseStatus.VALID_RAW) {
+                    _engineering.value = EngineeringMath.update(
+                        _engineering.value, command, parsed.payloadHex, parsed.receivedAtMillis
+                    )
+                } else {
+                    _engineering.value = _engineering.value.copy(
+                        unsuccessfulReads = _engineering.value.unsuccessfulReads + 1
+                    )
                 }
+                if (manual != null) {
+                    _connection.value = _connection.value.copy(
+                        diagnosticBusy = false, diagnosticResult = parsed, error = null
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _engineering.value = _engineering.value.copy(
+                    unsuccessfulReads = _engineering.value.unsuccessfulReads + 1
+                )
+                if (manual != null) _connection.value = _connection.value.copy(
+                    diagnosticBusy = false,
+                    error = "MEB read failed; inspect adapter CAN protocol support"
+                )
+                // A rejected, unsupported or timed-out DID is not evidence of an
+                // ECU defect; continue with other safe reads.
             }
-            val response=sendAndRead(conn,"010D")
-            val speed=ElmSpeedParser.decode(response)
-            if (speed != null) {
-                val now=System.currentTimeMillis()
-                _telemetry.value=VehicleTelemetry(speedKmh=TimedValue(speed,now))
-                _connection.value=_connection.value.copy(lastPollSucceeded=true,
-                    lastSpeedAtMs=now,error=null)
-            } else {
-                _telemetry.value=VehicleTelemetry()
-                _connection.value=_connection.value.copy(lastPollSucceeded=false,
-                    error="The vehicle did not return a valid response to the 010D speed query")
+
+            try {
+                val speed = ElmSpeedParser.decode(sendAndRead(conn, "010D"))
+                if (speed != null) {
+                    val now = System.currentTimeMillis()
+                    _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
+                    _connection.value = _connection.value.copy(
+                        lastPollSucceeded = true, lastSpeedAtMs = now
+                    )
+                } else {
+                    _telemetry.value = VehicleTelemetry()
+                    _connection.value = _connection.value.copy(lastPollSucceeded = false)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _telemetry.value = VehicleTelemetry()
+                _connection.value = _connection.value.copy(lastPollSucceeded = false)
             }
-            delay(2_500L)
+            delay(700L)
         }
     }
 
     private suspend fun runMebReadOnlyQuery(conn:BluetoothSocket,command:String):String {
-        // ELM CAN 29-bit 500 kbps / battery ECU request 17FC007B.
-        // Only send requests explicitly chosen by the driver.
+        // ELM: battery ECU 29-bit/500kbps; 2AB2 capacity is 11-bit 710/77A.
+        // UDS service 22 READ ONLY; this function never sends service 2E/31/14.
         var initiated=false
         try {
-            for (adapterCommand in listOf("ATH1","ATSP7","ATCAF1","ATCFC1",
-                "ATSH${MebUdsParser.REQUEST_ECU}")) {
+            val capacityRead = command == "222AB2"
+            val configuration = listOf(
+                "ATH1", if (capacityRead) "ATSP6" else "ATSP7",
+                "ATCAF1", "ATCFC1",
+                if (capacityRead) "ATSH710" else "ATSH${MebUdsParser.REQUEST_ECU}"
+            )
+            for (adapterCommand in configuration) {
                 val reply=sendAndRead(conn,adapterCommand)
                 if (reply.contains('?') || reply.uppercase().contains("ERROR"))
                     throw IOException("ELM protocol setting unsupported")
@@ -229,6 +272,7 @@ class Elm327VehicleRepository @Inject constructor(
         socket?.closeSilently();socket=null
         while (diagnosticRequests.tryReceive().isSuccess) { /* discard pending reads */ }
         _telemetry.value=VehicleTelemetry()
+        _engineering.value=EngineeringSnapshot()
         _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
             selectedDevice=null,lastPollSucceeded=false,lastSpeedAtMs=null,
             diagnosticBusy=false,diagnosticResult=null,error=null)
