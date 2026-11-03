@@ -18,6 +18,21 @@ def capture(name):
     (out/(name+'.xml')).write_text(data)
     tree=ET.fromstring(data)
     nodes=list(tree.iter('node'))
+    # Resizing a cold Pixel image can leave its unrelated launcher ANR on top.
+    # Dismiss ONLY this exact foreign-system dialog, never an EV Cockpit ANR.
+    if any(n.get('package') == 'android' and
+           n.get('text') == "Pixel Launcher isn't responding" for n in nodes):
+        (out/(name+'.launcher-anr.xml')).write_text(data)
+        (out/(name+'.launcher-anr.png')).write_bytes(adb('exec-out','screencap','-p'))
+        button=next(n for n in nodes if n.get('text') == 'Close app')
+        x1,y1,x2,y2=map(int,re.findall(r'\d+',button.get('bounds','')))
+        shell('input','tap',str((x1+x2)//2),str((y1+y2)//2))
+        time.sleep(2)
+        (out/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
+        shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
+        data=shell('cat','/sdcard/cockpit-ui.xml')
+        (out/(name+'.xml')).write_text(data)
+        nodes=list(ET.fromstring(data).iter('node'))
     # A clean emulator may lack English TTS data. Keep evidence of the warning,
     # dismiss only this known first-run dialog, then inspect the cockpit.
     if any(n.get('text') == 'English TTS Data Missing' for n in nodes):
