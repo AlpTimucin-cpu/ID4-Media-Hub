@@ -272,11 +272,11 @@ class MainActivity : ComponentActivity() {
                     onRouteDestinationChange = navigation::editDestination,
                     onRouteOriginSelected = navigation::selectOrigin,
                     onRouteDestinationSelected = navigation::selectDestination,
-                    onRouteFromGps = { if (ui.simulationEnabled) navigation.useCurrentGps() else requestGps(true) },
+                    onRouteFromGps = { requestGps(true) },
                     onRoutePlan = navigation::plan,
                     onRouteAlternative = navigation::selectAlternative,
                     onRouteClear = navigation::clearRoute,
-                    onGpsClick = { if (!ui.simulationEnabled) requestGps(false) },
+                    onGpsClick = { requestGps(false) },
                     gpsError = gpsError,
                     chargingUi = stations,
                     automaticChargePlan = automaticChargePlan,
@@ -298,12 +298,7 @@ class MainActivity : ComponentActivity() {
                     onVoiceVolumeChange = navigation::setVoiceVolume,
                     voiceStatus = ui.voice.status,
                     voiceError = ui.voice.error,
-                    onVoiceTest = navigation::testVoice,
-                    onSimulationToggle = { enabled ->
-                        // Never mix a genuine Bluetooth session with synthetic frames.
-                        if (enabled) disconnectObd()
-                        navigation.setSimulationEnabled(enabled)
-                    }
+                    onVoiceTest = navigation::testVoice
                 )
                         // Separate settings affordance: original CockpitScreen untouched.
                         IconButton(
