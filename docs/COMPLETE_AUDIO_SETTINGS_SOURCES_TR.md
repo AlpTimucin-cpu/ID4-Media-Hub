@@ -1,8 +1,8 @@
-# EV Cockpit — Ses, DataStore, Active Sound (TAM KOD)
+# Sesli karşılama, kişisel ayarlar, motor profilleri — tam kod
 
-Bu belge aşağıdaki Kotlin/Gradle dosyalarının **tam, kesilmemiş içeriklerini** sağlar. Kaynak dalı: `feature/audio-settings-active-sound`. Mobil GitHub üzerinden doğrudan açılıp kopyalanabilir. `CockpitScreen.kt`, MapLibre ve OBD transport değiştirilmemiştir. WAV dosyaları Gradle sırasında özgün olarak üretilir.
+Bu kaynak paketi `feature/audio-settings-active-sound` geliştirme dalındaki **eksiksiz dosya içeriklerini** barındırır. Uygulama/OBD mimarisi değiştirilmedi; kodu tek tek telefondan kopyalamak yerine GitHub PR tercih edilebilir. WAV dosyaları Gradle ile derleme sırasında özgün olarak üretilir.
 
-## 1. nativecockpit/src/main/java/com/evcockpit/data/settings/UserSettingsRepository.kt
+## 1. `nativecockpit/src/main/java/com/evcockpit/data/settings/UserSettingsRepository.kt`
 
 ````kotlin
 package com.evcockpit.data.settings
@@ -97,7 +97,7 @@ class UserSettingsRepository @Inject constructor(
 }
 ````
 
-## 2. nativecockpit/src/main/java/com/evcockpit/presentation/voice/AppAudioDucking.kt
+## 2. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/AppAudioDucking.kt`
 
 ````kotlin
 package com.evcockpit.presentation.voice
@@ -134,7 +134,7 @@ class AppAudioDucking @Inject constructor() {
 val LocalAppAudioDucking = staticCompositionLocalOf<AppAudioDucking?> { null }
 ````
 
-## 3. nativecockpit/src/main/java/com/evcockpit/presentation/voice/NativeVoiceGuide.kt
+## 3. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/NativeVoiceGuide.kt`
 
 ````kotlin
 package com.evcockpit.presentation.voice
@@ -374,7 +374,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
 }
 ````
 
-## 4. nativecockpit/src/main/java/com/evcockpit/presentation/voice/WelcomeGreetingManager.kt
+## 4. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/WelcomeGreetingManager.kt`
 
 ````kotlin
 package com.evcockpit.presentation.voice
@@ -594,7 +594,7 @@ class WelcomeGreetingManager @Inject constructor(
 }
 ````
 
-## 5. nativecockpit/src/main/java/com/evcockpit/presentation/sound/EngineMotionPolicy.kt
+## 5. `nativecockpit/src/main/java/com/evcockpit/presentation/sound/EngineMotionPolicy.kt`
 
 ````kotlin
 package com.evcockpit.presentation.sound
@@ -628,7 +628,7 @@ internal object EngineMotionPolicy {
 }
 ````
 
-## 6. nativecockpit/src/main/java/com/evcockpit/presentation/sound/ActiveSoundManager.kt
+## 6. `nativecockpit/src/main/java/com/evcockpit/presentation/sound/ActiveSoundManager.kt`
 
 ````kotlin
 package com.evcockpit.presentation.sound
@@ -832,7 +832,7 @@ class ActiveSoundManager @Inject constructor(
 }
 ````
 
-## 7. nativecockpit/src/main/java/com/evcockpit/presentation/settings/SettingsViewModel.kt
+## 7. `nativecockpit/src/main/java/com/evcockpit/presentation/settings/SettingsViewModel.kt`
 
 ````kotlin
 package com.evcockpit.presentation.settings
@@ -900,26 +900,40 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setWelcome(value: Boolean) = viewModelScope.launch {
+    fun setWelcome(value: Boolean) {
+        viewModelScope.launch {
         repository.setWelcomeGreetingEnabled(value)
+        }
     }
-    fun setVoice(value: String?) = viewModelScope.launch {
+    fun setVoice(value: String?) {
+        viewModelScope.launch {
         repository.setTtsVoiceName(value)
+        }
     }
-    fun setRate(value: Float) = viewModelScope.launch {
+    fun setRate(value: Float) {
+        viewModelScope.launch {
         repository.setTtsSpeechRate(value)
+        }
     }
-    fun setNight(value: Boolean) = viewModelScope.launch {
+    fun setNight(value: Boolean) {
+        viewModelScope.launch {
         repository.setNightModeEnabled(value)
+        }
     }
-    fun setEngineEnabled(value: Boolean) = viewModelScope.launch {
+    fun setEngineEnabled(value: Boolean) {
+        viewModelScope.launch {
         repository.setEngineSoundEnabled(value)
+        }
     }
-    fun setEngineProfile(value: String) = viewModelScope.launch {
+    fun setEngineProfile(value: String) {
+        viewModelScope.launch {
         repository.setEngineSoundProfile(value)
+        }
     }
-    fun setEngineVolume(value: Float) = viewModelScope.launch {
+    fun setEngineVolume(value: Float) {
+        viewModelScope.launch {
         repository.setEngineVolume(value)
+        }
     }
 
     override fun onCleared() {
@@ -931,7 +945,7 @@ class SettingsViewModel @Inject constructor(
 }
 ````
 
-## 8. nativecockpit/src/main/java/com/evcockpit/presentation/settings/SettingsScreen.kt
+## 8. `nativecockpit/src/main/java/com/evcockpit/presentation/settings/SettingsScreen.kt`
 
 ````kotlin
 package com.evcockpit.presentation.settings
@@ -1135,7 +1149,7 @@ private fun SettingToggle(title: String, value: Boolean, onChange: (Boolean) -> 
 }
 ````
 
-## 9. nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt
+## 9. `nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt`
 
 ````kotlin
 package com.evcockpit.presentation.media
@@ -1282,7 +1296,7 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
 }
 ````
 
-## 10. nativecockpit/src/main/java/com/evcockpit/presentation/cockpit/CockpitTheme.kt
+## 10. `nativecockpit/src/main/java/com/evcockpit/presentation/cockpit/CockpitTheme.kt`
 
 ````kotlin
 package com.evcockpit.presentation.cockpit
@@ -1369,7 +1383,7 @@ fun CockpitTheme(
 }
 ````
 
-## 11. nativecockpit/src/main/java/com/evcockpit/MainActivity.kt
+## 11. `nativecockpit/src/main/java/com/evcockpit/MainActivity.kt`
 
 ````kotlin
 package com.evcockpit
@@ -1716,7 +1730,7 @@ class MainActivity : ComponentActivity() {
 }
 ````
 
-## 12. nativecockpit/src/main/java/com/evcockpit/ObdForegroundService.kt
+## 12. `nativecockpit/src/main/java/com/evcockpit/ObdForegroundService.kt`
 
 ````kotlin
 package com.evcockpit
@@ -1826,7 +1840,7 @@ class ObdForegroundService : Service() {
 }
 ````
 
-## 13. nativecockpit/src/main/java/com/evcockpit/car/EyaCarAppService.kt
+## 13. `nativecockpit/src/main/java/com/evcockpit/car/EyaCarAppService.kt`
 
 ````kotlin
 package com.evcockpit.car
@@ -1842,12 +1856,14 @@ import javax.inject.Inject
 import com.evcockpit.BuildConfig
 import com.evcockpit.domain.repository.RouteRepository
 import com.evcockpit.presentation.voice.WelcomeGreetingManager
+import com.evcockpit.presentation.voice.AppAudioDucking
 
 /** Android Auto Car App Library entry point. Does NOT start an Activity or play video. */
 @AndroidEntryPoint
 class EyaCarAppService : CarAppService() {
     @Inject lateinit var routes: RouteRepository
     @Inject lateinit var welcome: WelcomeGreetingManager
+    @Inject lateinit var ducking: AppAudioDucking
 
     override fun createHostValidator(): HostValidator =
         if (BuildConfig.DEBUG) HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
@@ -1858,25 +1874,273 @@ class EyaCarAppService : CarAppService() {
     override fun onCreateSession(): Session {
         // Shared singleton gate prevents duplicates if OBD connects as well.
         welcome.launchWelcomeGreeting()
-        return EyaCarSession(routes)
+        return EyaCarSession(routes, ducking)
     }
 
     override fun onCreateSession(sessionInfo: SessionInfo): Session {
         welcome.launchWelcomeGreeting()
-        return EyaCarSession(routes)
+        return EyaCarSession(routes, ducking)
     }
 }
 
-private class EyaCarSession(private val routes: RouteRepository) : Session() {
+private class EyaCarSession(
+    private val routes: RouteRepository,
+    private val ducking: AppAudioDucking
+) : Session() {
     override fun onCreateScreen(intent: Intent): Screen =
-        EyaCarNavigationScreen(carContext, routes)
+        EyaCarNavigationScreen(carContext, routes, ducking)
 }
 ````
 
-## 14. nativecockpit/build.gradle.kts
+## 14. `nativecockpit/src/main/java/com/evcockpit/car/EyaCarNavigationScreen.kt`
+
+````kotlin
+package com.evcockpit.car
+
+import android.util.Log
+import androidx.car.app.AppManager
+import androidx.car.app.CarContext
+import androidx.car.app.Screen
+import androidx.car.app.model.Header
+import androidx.car.app.model.Pane
+import androidx.car.app.model.PaneTemplate
+import androidx.car.app.model.Row
+import androidx.car.app.model.Template
+import androidx.car.app.navigation.NavigationManager
+import androidx.car.app.navigation.NavigationManagerCallback
+import androidx.car.app.navigation.model.MapWithContentTemplate
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import com.evcockpit.domain.model.GpsFix
+import com.evcockpit.domain.model.RouteSnapshot
+import com.evcockpit.domain.model.validRouteGeometry
+import com.evcockpit.domain.repository.RouteRepository
+import com.evcockpit.domain.usecase.ManeuverGuidancePolicy
+import com.evcockpit.domain.usecase.RouteProgressTracker
+import com.evcockpit.presentation.voice.NativeVoiceGuide
+import com.evcockpit.presentation.voice.AppAudioDucking
+import com.evcockpit.presentation.voice.VoicePreference
+import kotlin.math.roundToInt
+
+/** Real OSRM geometry + measured GPS only. Foreground Android Auto session, not a navigation FGS. */
+class EyaCarNavigationScreen(
+    context: CarContext,
+    private val routes: RouteRepository,
+    ducking: AppAudioDucking
+) : Screen(context) {
+    private val tracker = CarGpsTracker(context.applicationContext)
+    private val surface = EyaCarMapSurface(context)
+    private val manager = context.getCarService(NavigationManager::class.java)
+    private val voice = NativeVoiceGuide(context.applicationContext, ducking)
+    private val voicePrefs = VoicePreference(context.applicationContext)
+    private val speechPolicy = ManeuverGuidancePolicy()
+    private val progress = RouteProgressTracker()
+    private val guidancePolicy = CarGuidancePolicy()
+    private val gate = CarTripUpdateGate()
+    private var work: CoroutineScope? = null
+    private var route: RouteSnapshot? = routes.currentRoute.value
+    private var fix: GpsFix? = null
+    private var guidance: CarGuidance? = null
+    private var summary = CarRouteSummary.from(route, null, System.currentTimeMillis())
+    private var activeRouteId: String? = null
+    private var withoutGpsSinceMs: Long = 0L
+    private var autoDriveTestRequested = false
+    private var closed = false
+
+    private val callbacks = object : NavigationManagerCallback {
+        override fun onStopNavigation() {
+            // Host navigation ownership changed: immediately stop all trip IPC and voice.
+            endNavigation()
+        }
+        override fun onAutoDriveEnabled() {
+            // Google Play requires a separate, conspicuously labelled test-only simulation.
+            // This build never injects mock GPS into real driving or presents it as measured.
+            autoDriveTestRequested = true
+            invalidate()
+        }
+    }
+
+    init {
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                manager.setNavigationManagerCallback(callbacks)
+                carContext.getCarService(AppManager::class.java).setSurfaceCallback(surface)
+                tracker.start()
+                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+                work = scope
+                val ticker = flow {
+                    while (kotlin.coroutines.coroutineContext.isActive) {
+                        emit(System.currentTimeMillis())
+                        delay(1_000L)
+                    }
+                }
+                scope.launch {
+                    combine(routes.currentRoute, tracker.gpsFix, ticker) { r, f, now ->
+                        Triple(r, f?.takeIf { it.usable(now) }, now)
+                    }.collect { (r, f, now) ->
+                        route = r
+                        fix = f
+                        surface.update(r, f)
+                        val fresh = guidancePolicy.snapshot(r, f, now)
+                        guidance = fresh
+                        val newSummary = CarRouteSummary.from(r, f, now)
+                        if (newSummary != summary) {
+                            summary = newSummary
+                            invalidate()
+                        }
+                        updateActiveNavigation(r, f, fresh, now)
+                    }
+                }
+            }
+            override fun onStop(owner: LifecycleOwner) {
+                // No foreground service yet: stop rather than claim background navigation.
+                endNavigation()
+                work?.cancel(); work = null
+                tracker.stop()
+                surface.release()
+                manager.clearNavigationManagerCallback()
+            }
+            override fun onDestroy(owner: LifecycleOwner) {
+                endNavigation()
+                work?.cancel(); work = null
+                tracker.stop()
+                surface.release()
+                if (!closed) { closed = true; voice.close() }
+            }
+        })
+    }
+
+    private fun beginNavigation() {
+        if (activeRouteId != null) return
+        val current = guidance ?: return // user must have a REAL route and a fresh GPS fix
+        if (route?.routeId != current.routeId) return
+        try {
+            manager.navigationStarted()
+            activeRouteId = current.routeId
+            CarNavigationOwnership.setNavigating(true)
+            withoutGpsSinceMs = 0L
+            gate.clear()
+            speechPolicy.reset()
+            updateActiveNavigation(route, fix, current, System.currentTimeMillis())
+            invalidate()
+        } catch (e: RuntimeException) {
+            Log.w("EyaCarNavigation", "Host refused navigation start", e)
+            endNavigation()
+        }
+    }
+
+    private fun endNavigation() {
+        val wasActive = activeRouteId != null
+        activeRouteId = null
+        withoutGpsSinceMs = 0L
+        CarNavigationOwnership.setNavigating(false)
+        voice.stop()
+        speechPolicy.reset()
+        gate.clear()
+        if (wasActive) {
+            try { manager.navigationEnded() }
+            catch (e: RuntimeException) { Log.w("EyaCarNavigation", "Host navigation end", e) }
+            invalidate()
+        }
+    }
+
+    private fun updateActiveNavigation(
+        currentRoute: RouteSnapshot?, currentFix: GpsFix?,
+        current: CarGuidance?, now: Long
+    ) {
+        val started = activeRouteId ?: return
+        if (currentRoute?.routeId != started || !validRouteGeometry(currentRoute.routePoints)) {
+            endNavigation() // new alternative means a new explicit trip
+            return
+        }
+        if (current == null || current.routeId != started) {
+            if (withoutGpsSinceMs == 0L) withoutGpsSinceMs = now
+            voice.stop()
+            if (now - withoutGpsSinceMs >= 15_000L) endNavigation()
+            return // never publish stale maneuver or estimated distance
+        }
+        withoutGpsSinceMs = 0L
+        if (gate.shouldPublish(current, now)) {
+            try { manager.updateTrip(CarTripFactory.trip(current)) }
+            catch (e: RuntimeException) { Log.w("EyaCarNavigation", "Trip update rejected", e) }
+            invalidate()
+        }
+        if (voicePrefs.enabled && currentFix != null &&
+            voice.status == NativeVoiceGuide.Status.READY) {
+            val enriched = progress.enrich(currentRoute, currentFix, now)
+            val announcement = speechPolicy.nextAnnouncement(enriched, currentFix, now)
+            if (announcement != null) {
+                // An enqueue is not proof that the speech engine started.
+                val queued = voice.speak(
+                    announcement, voicePrefs.volume,
+                    onUtteranceStarted = {
+                        // NativeVoiceGuide marshals this callback onto the main thread.
+                        speechPolicy.confirmSpoken(System.currentTimeMillis())
+                    },
+                    onUtteranceFailed = { speechPolicy.cancelPending() }
+                )
+                if (!queued) speechPolicy.cancelPending()
+            }
+        } else if (!voicePrefs.enabled) voice.stop()
+    }
+
+    override fun onGetTemplate(): Template {
+        val active = activeRouteId != null
+        val g = guidance?.takeIf { it.routeId == activeRouteId }
+        val pane = Pane.Builder()
+            .addRow(Row.Builder().setTitle(summary.title).addText(summary.detail).build())
+            .addRow(Row.Builder().setTitle("GPS").addText(summary.locationStatus).build())
+
+        if (active) {
+            val step = g?.nextCue
+            val meters = g?.nextMeters
+            pane.addRow(Row.Builder().setTitle("Next maneuver")
+                .addText(if (step != null && meters != null) {
+                    "$step · ${meters.roundToInt()} m"
+                } else "Waiting for current GPS and maneuver data").build())
+            pane.addRow(Row.Builder().setTitle("End navigation")
+                .setOnClickListener { endNavigation() }.build())
+        } else if (guidance != null) {
+            pane.addRow(Row.Builder().setTitle("Start navigation")
+                .setOnClickListener { beginNavigation() }.build())
+        } else {
+            pane.addRow(Row.Builder().setTitle("To get started")
+                .addText("Select a route and grant location permission on the phone").build())
+        }
+        if (autoDriveTestRequested) {
+            pane.addRow(Row.Builder().setTitle("DHU test request")
+                .addText("Simulation is off: actual GPS validation is required").build())
+        }
+        val content = PaneTemplate.Builder(pane.build())
+        if (carContext.carAppApiLevel < 7) {
+            @Suppress("DEPRECATION")
+            return content.setTitle("EV Cockpit").build()
+        }
+        return MapWithContentTemplate.Builder()
+            .setContentTemplate(content.setHeader(
+                Header.Builder().setTitle("EV Cockpit").build()
+            ).build())
+            .build()
+    }
+}
+````
+
+## 15. `nativecockpit/build.gradle.kts`
 
 ````kotlin
 import java.io.File
+import java.io.DataOutputStream
+import kotlin.math.sin
+import kotlin.math.min
 import java.util.Properties
 
 plugins {
@@ -2039,7 +2303,7 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
             for (accelerating in listOf(false, true)) {
                 val mode = if (accelerating) "accel" else "idle"
                 val file = raw.resolve("${profile}_${mode}.wav")
-                java.io.DataOutputStream(file.outputStream().buffered()).use { out ->
+                DataOutputStream(file.outputStream().buffered()).use { out ->
                     fun word(n: Int) {
                         out.writeByte(n and 255)
                         out.writeByte((n ushr 8) and 255)
@@ -2063,16 +2327,16 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
                     for (i in 0 until count) {
                         val t = i.toDouble() / sampleRate
                         val f = fundamental * if (accelerating) 1.75 else 1.0
-                        val pulse = 1.0 + 0.10 * kotlin.math.sin(
+                        val pulse = 1.0 + 0.10 * sin(
                             2.0 * Math.PI * (if (profile == "v8") 8.0 else 5.0) * t
                         )
                         val signal = (
-                            0.52 * kotlin.math.sin(2 * Math.PI * f * t) +
-                            0.24 * kotlin.math.sin(2 * Math.PI * 2 * f * t) +
-                            0.12 * kotlin.math.sin(2 * Math.PI * 3 * f * t)
+                            0.52 * sin(2 * Math.PI * f * t) +
+                            0.24 * sin(2 * Math.PI * 2 * f * t) +
+                            0.12 * sin(2 * Math.PI * 3 * f * t)
                         ) * pulse
                         // Short fades avoid audible clicks at repeat boundaries.
-                        val edge = kotlin.math.min(i, count - 1 - i)
+                        val edge = min(i, count - 1 - i)
                         val fade = (edge.toDouble() / 256).coerceIn(0.0, 1.0)
                         val pcm = (signal * fade * 0.23 * 32767)
                             .toInt().coerceIn(-32768, 32767)
@@ -2084,5 +2348,68 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
     }
 }
 tasks.named("preBuild").configure { dependsOn(generateOriginalEngineWavAssets) }
+````
+
+## 16. `nativecockpit/src/test/java/com/evcockpit/presentation/sound/EngineMotionPolicyTest.kt`
+
+````kotlin
+package com.evcockpit.presentation.sound
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class EngineMotionPolicyTest {
+    @Test fun noRealSpeedMustBeSilent() {
+        assertEquals(
+            EngineMotionPolicy.Mode.SILENT,
+            EngineMotionPolicy.decide(null, null, 0.0).mode
+        )
+        assertEquals(
+            EngineMotionPolicy.Mode.IDLE,
+            EngineMotionPolicy.decide(4.5, 3.0, 1.0).mode
+        )
+    }
+
+    @Test fun accelerationChangesLayerAndPitch() {
+        val accel = EngineMotionPolicy.decide(55.0, 45.0, 2.0)
+        assertEquals(EngineMotionPolicy.Mode.ACCELERATING, accel.mode)
+        assertTrue(accel.pitch > 0.9f)
+        val roar = EngineMotionPolicy.decide(65.0, 42.0, 1.0)
+        assertEquals(1.9f, roar.pitch, 0.0001f)
+        assertEquals(EngineMotionPolicy.Mode.IDLE,
+            EngineMotionPolicy.decide(60.0, 65.0, 2.0).mode)
+    }
+
+    @Test fun invalidTimeDoesNotProduceArtificialRoar() {
+        val m = EngineMotionPolicy.decide(80.0, 20.0, 0.0)
+        assertEquals(EngineMotionPolicy.Mode.IDLE, m.mode)
+        assertTrue(m.pitch < 1.9f)
+    }
+}
+````
+
+## 17. `nativecockpit/src/test/java/com/evcockpit/presentation/voice/AppAudioDuckingTest.kt`
+
+````kotlin
+package com.evcockpit.presentation.voice
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class AppAudioDuckingTest {
+    @Test fun concurrentWelcomeAndNavigationDoNotUnduckEachOther() {
+        val manager = AppAudioDucking()
+        assertFalse(manager.ducked.value)
+        manager.begin("welcome")
+        assertTrue(manager.ducked.value)
+        manager.begin("navigation:42")
+        manager.end("welcome")
+        assertTrue(manager.ducked.value)
+        manager.end("navigation:42")
+        assertFalse(manager.ducked.value)
+        manager.end("navigation:42")
+        assertFalse(manager.ducked.value)
+    }
+}
 ````
 
