@@ -1,7 +1,7 @@
 package com.evcockpit.data.settings
 
 import android.content.Context
-import androidx.datastore.core.IOException
+import java.io.IOException
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
