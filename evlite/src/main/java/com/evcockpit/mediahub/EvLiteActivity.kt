@@ -66,7 +66,7 @@ class EvLiteActivity:Activity() {
         content.addView(body("Aracın kapı, klima veya bataryasına uzaktan erişilmez. " +
             "Konum ve otomobilin OBD bilgileri toplanmaz."))
         content.addView(body("Sürüm 1.0 Lite • Sabit ve basit Android arayüzü. " +
-            "Kaynak ve derleme: github.com/AlpTimucin-cpu/ID4-Media-Hub"))
+            "Kaynak kod: EV Cockpit projesi"))
     }
     private fun d(x:Int)=(x*resources.displayMetrics.density).toInt()
     private fun header(value:String,size:Int):TextView=TextView(this).apply {
