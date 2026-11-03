@@ -109,7 +109,7 @@ fun ObdSettingsDialog(
                     }
                 }
                 Text(stringResource(R.string.native_bms_soc_diagnostic_candidate_dashboard_soc_and_soh_are_different_quant) +
-                     "Battery health/energy/temperature are not yet used as measured data in the cockpit.",
+                     "Technical battery readings are shown separately under Hesaplar; they are not official SoH results.",
                      style=MaterialTheme.typography.bodySmall)
                 TextButton(onClick=onDismiss,modifier=Modifier.fillMaxWidth()) { Text(stringResource(R.string.native_back_to_map)) }
             }
