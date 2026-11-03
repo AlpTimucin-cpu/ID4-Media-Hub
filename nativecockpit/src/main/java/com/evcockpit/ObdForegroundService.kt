@@ -11,6 +11,14 @@ import android.os.Build
 import android.os.IBinder
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.domain.repository.ObdConnectionController
 
 /**
@@ -23,6 +31,8 @@ import com.evcockpit.domain.repository.ObdConnectionController
 @AndroidEntryPoint
 class ObdForegroundService : Service() {
     @Inject lateinit var obd: ObdConnectionController
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var connectionMonitor: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -59,10 +69,24 @@ class ObdForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         } else startForeground(NOTIFICATION_ID, notification)
+
+        connectionMonitor?.cancel()
+        connectionMonitor = scope.launch {
+            var sessionStarted = false
+            obd.connection.collect { state ->
+                if (state.phase == ObdPhase.CONNECTING || state.phase == ObdPhase.CONNECTED)
+                    sessionStarted = true
+                if (sessionStarted &&
+                    (state.phase == ObdPhase.ERROR || state.phase == ObdPhase.DISCONNECTED))
+                    stopSelf()
+            }
+        }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        connectionMonitor?.cancel()
+        scope.cancel()
         obd.disconnect()
         super.onDestroy()
     }
