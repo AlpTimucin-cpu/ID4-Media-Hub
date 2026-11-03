@@ -183,6 +183,7 @@ class MainActivity : ComponentActivity() {
             val routeWeather by weather.uiState.collectAsStateWithLifecycle()
             val obdConnection by obd.connection.collectAsStateWithLifecycle()
             val engineering by obd.engineering.collectAsStateWithLifecycle()
+            val engineeringMetrics by obd.engineeringMetrics.collectAsStateWithLifecycle()
             CockpitTheme {
                 CockpitScreen(
                     state = ui.cockpit,
@@ -207,6 +208,7 @@ class MainActivity : ComponentActivity() {
                     onRefreshStations = charging::refresh,
                     obdConnection = obdConnection,
                     engineering = engineering,
+                    engineeringMetrics = engineeringMetrics,
                     onObdRefresh = ::refreshObdDevices,
                     onObdConnect = ::connectObd,
                     onObdDisconnect = ::disconnectObd,
