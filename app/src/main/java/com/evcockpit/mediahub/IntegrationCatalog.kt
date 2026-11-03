@@ -63,7 +63,7 @@ object IntegrationCatalog {
             projectUrl = "https://github.com/chuoinho/FermataX"),
         IntegrationSource(
             "mediaengine32", "MediaEngine 3.2 (ayrı uygulama)", IntegrationKind.EXTERNAL,
-            "Kullanıcının sağladığı APK'da me.app.fermataX.auto.mola32.debug kimliği doğrulandı. " +
+            "Sağlanan ayrı medya uygulamasının Android paket kimliği doğrulandı. " +
                 "Yalnızca uygulamayı açma veya seçili HTTPS akışı kullanıcı onayıyla gönderilir. " +
                 "3.2 APK'sı GitHub'daki 2.2.2 kaynak/sertifika kaydıyla eşleşmiş sayılmaz. " +
                 "Araç ekranında video oynatma doğrulanmadı.",
