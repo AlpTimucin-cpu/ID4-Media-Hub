@@ -23,20 +23,37 @@ object MediaLauncher {
     )
 
     fun launchMediaEngine(context: Context): MediaLaunchState {
+        val manager = context.packageManager
+        var installedWithoutLauncher = false
         for (packageName in mediaEnginePackages) {
+            // Package visibility is declared explicitly in AndroidManifest <queries>.
+            @Suppress("DEPRECATION")
+            val installed = try { manager.getPackageInfo(packageName, 0); true }
+                catch (_: android.content.pm.PackageManager.NameNotFoundException) { false }
+                catch (_: SecurityException) { return MediaLaunchState.Blocked }
+            if (!installed) continue
+            val intent = manager.getLaunchIntentForPackage(packageName)
+                ?: manager.getLeanbackLaunchIntentForPackage(packageName)
+            if (intent == null) {
+                installedWithoutLauncher = true
+                continue
+            }
             try {
-                val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-                    ?: continue
                 context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 return MediaLaunchState.Launched(packageName)
             } catch (_: ActivityNotFoundException) {
-                // The app may have been uninstalled after package resolution.
-                continue
-            } catch (_: SecurityException) {
+                installedWithoutLauncher = true
+            } catch (error: SecurityException) {
+                Log.w("EYA-MEDIA-UAT", "Installed MediaEngine launch blocked", error)
+                return MediaLaunchState.Blocked
+            } catch (error: RuntimeException) {
+                // Launchers may be disabled by a work profile / device policy.
+                Log.w("EYA-MEDIA-UAT", "MediaEngine launch failed", error)
                 return MediaLaunchState.Blocked
             }
         }
-        return MediaLaunchState.NotInstalled
+        return if (installedWithoutLauncher) MediaLaunchState.Blocked
+            else MediaLaunchState.NotInstalled
     }
 
     fun openOfficialApp(context: Context, site: MediaSite): Result<Unit> =
