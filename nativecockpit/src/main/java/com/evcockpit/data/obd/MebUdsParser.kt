@@ -14,19 +14,24 @@ import com.evcockpit.domain.model.MebResponseStatus
  * because there is no trustworthy ECU identity without the CAN header.
  */
 object MebUdsParser {
-    val ALLOWED_REQUESTS: Set<String> = setOf("22028C", "221E0E", "221E3D")
+    val ALLOWED_REQUESTS: Set<String> = setOf(
+        "22028C", "221E0E", "221E0F", "221E3B", "221E3D",
+        "221E33", "221E34", "221E32", "221E1B", "222AB2"
+    )
     const val REQUEST_ECU = "17FC007B"
     private const val RESPONSE_ECU = "17FE007B"
+    private const val CAPACITY_ECU = "0000077A"
     private const val MAX_RESPONSE = 4096
     private val byteToken = Regex("[0-9A-F]{2}")
 
     fun parse(request: String, response: String, nowMillis: Long): MebDiagnosticReport {
         require(request in ALLOWED_REQUESTS) { "Unsupported diagnostic request" }
+        val expectedEcu = if (request == "222AB2") CAPACITY_ECU else RESPONSE_ECU
         fun result(status: MebResponseStatus, payload: ByteArray? = null,
                    soc: Double? = null, temp: Double? = null): MebDiagnosticReport =
             MebDiagnosticReport(request, nowMillis, status,
                 if (status == MebResponseStatus.WRONG_ECU || status == MebResponseStatus.NO_DATA ||
-                    status == MebResponseStatus.ADAPTER_ERROR) null else RESPONSE_ECU,
+                    status == MebResponseStatus.ADAPTER_ERROR) null else expectedEcu,
                 payload?.joinToString("") { "%02X".format(it.toInt() and 0xFF) }, soc, temp)
 
         if (response.length !in 1..MAX_RESPONSE) return result(MebResponseStatus.MALFORMED)
@@ -42,14 +47,18 @@ object MebUdsParser {
                 trimmed.startsWith("SEARCHING")) continue
             val compact = trimmed.filterNot { it.isWhitespace() }
             if (!compact.matches(Regex("[0-9A-F]+"))) continue
-            if (compact.length < 11) continue
-            // ISO-TP response source ID (29-bit), exactly eight hex digits.
-            val source = compact.take(8)
-            if (source != RESPONSE_ECU) {
-                if (source.matches(Regex("[0-9A-F]{8}"))) foreign = true
-                continue
+            if (compact.length < 9) continue
+            // Battery ECU: 29-bit 17FE007B. Capacity 2AB2: 11-bit 77A.
+            // Refuse headerless data: never infer an ECU from payload alone.
+            val sourceLength = when {
+                compact.startsWith(expectedEcu) -> expectedEcu.length
+                expectedEcu == CAPACITY_ECU && compact.startsWith("77A") -> 3
+                else -> {
+                    foreign = true
+                    continue
+                }
             }
-            val hex = compact.drop(8)
+            val hex = compact.drop(sourceLength)
             if (hex.length !in 2..32 || hex.length % 2 != 0) return result(MebResponseStatus.MALFORMED)
             frames.add(byteToken.findAll(hex).map { it.value.toInt(16) }.toList())
         }
