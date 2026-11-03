@@ -21,6 +21,9 @@ class ManeuverGuidancePolicy {
     private var lastLevel = -1
     private var proposedLevel: Int? = null
     private var proposedAtMs = 0L
+    private var proposalSequence = 0L
+    var pendingCueToken: Long? = null
+        private set
     private var lastFixTime = 0L
     private var lastSpeechTime = 0L
 
@@ -29,13 +32,12 @@ class ManeuverGuidancePolicy {
         activeRouteId = null
         spokenStagesByStep.clear()
         lastLevel = -1
-        proposedLevel = null
-        proposedAtMs = 0L
+        clearPending()
         lastFixTime = 0L
         lastSpeechTime = 0L
     }
 
-    /** Returns a *single* Turkish announcement or null. Never synthesizes routes. */
+    /** Returns a single announcement in the route instruction language or null. Never synthesizes routes. */
     fun nextAnnouncement(route: RouteSnapshot?, fix: GpsFix?, nowMs: Long): String? {
         if (route == null || fix == null) return null
         val id = route.routeId?.trim()?.takeIf { it.isNotEmpty() && it.length <= 128 } ?: return null
@@ -58,8 +60,7 @@ class ManeuverGuidancePolicy {
         if (key != routeAndStep) {
             routeAndStep = key
             lastLevel = spokenStagesByStep[key] ?: -1
-            proposedLevel = null
-            proposedAtMs = 0L
+            clearPending()
             lastFixTime = 0L
         }
         // The Compose UI can update every second with the same GPS fix.
@@ -83,18 +84,20 @@ class ManeuverGuidancePolicy {
         // onStart. A 5s deadline avoids deadlock on broken TTS callbacks.
         if (proposedLevel != null && nowMs - proposedAtMs in 0L..4_999L) return null
         if (level <= lastLevel || (lastSpeechTime > 0 && nowMs - lastSpeechTime < 4_000L)) {
-            proposedLevel = null
+            clearPending()
             return null
         }
         // IMPORTANT: do not mark as spoken until TextToSpeech accepted the request.
         proposedLevel = level
         proposedAtMs = nowMs
+        pendingCueToken = ++proposalSequence
         return (if (level == 0) "In two hundred meters, " else "In fifty meters, ") +
             instruction
     }
 
     /** Called on the TTS engine's onStart callback, not on speak() enqueue. */
-    fun confirmSpoken(nowMs: Long) {
+    fun confirmSpoken(nowMs: Long, token: Long? = pendingCueToken) {
+        if (token == null || token != pendingCueToken) return
         proposedLevel?.let { level ->
             lastLevel = maxOf(lastLevel, level)
             routeAndStep?.let { key ->
@@ -106,14 +109,18 @@ class ManeuverGuidancePolicy {
             }
             lastSpeechTime = nowMs
         }
-        proposedLevel = null
-        proposedAtMs = 0L
+        clearPending()
     }
 
     /** A failed/interrupted utterance may be tried at the next fresh fix. */
-    fun cancelPending() {
+    fun cancelPending(token: Long? = pendingCueToken) {
+        if (token != null && token == pendingCueToken) clearPending()
+    }
+
+    private fun clearPending() {
         proposedLevel = null
         proposedAtMs = 0L
+        pendingCueToken = null
     }
 
     private fun nearest(route: List<GeoCoordinate>, p: GeoCoordinate): Projection? {
@@ -129,9 +136,10 @@ class ManeuverGuidancePolicy {
             val ay = (a.latitude-p.latitude)*metersPerLat
             val dx = (b.longitude-a.longitude)*metersPerLon
             val dy = (b.latitude-a.latitude)*metersPerLat
-            val length = hypot(dx,dy)
-            if (length < 0.1 || !length.isFinite()) continue
-            val t = (-(ax*dx + ay*dy)/(length*length)).coerceIn(0.0,1.0)
+            val planarLength = hypot(dx,dy)
+            val length = VehicleMotionMath.distanceMeters(a, b)
+            if (planarLength < 0.1 || !length.isFinite() || length < 0.1) continue
+            val t = (-(ax*dx + ay*dy)/(planarLength*planarLength)).coerceIn(0.0,1.0)
             val offset = hypot(ax+t*dx, ay+t*dy)
             if (offset < bestOffset) {
                 bestOffset = offset

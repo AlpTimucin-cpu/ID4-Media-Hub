@@ -21,6 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.evcockpit.presentation.media.MediaLauncher
+import com.evcockpit.presentation.media.MediaLaunchState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,6 +92,8 @@ fun CockpitScreen(
     var voiceSettings by remember { mutableStateOf(false) }
     var station by remember { mutableStateOf<ChargingStation?>(null) }
     var missingVoice by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var mediaLaunch by remember { mutableStateOf<MediaLaunchState?>(null) }
     val phoneMediaAllowed = rememberPhoneMediaAllowed()
     val snackbar = remember { SnackbarHostState() }
     val error = (loadStatus as? RouteLoadStatus.Error)?.message
@@ -117,8 +122,26 @@ fun CockpitScreen(
         onSimulationToggle = onSimulationToggle, onDismiss = { settings = false }
     )
     if (media) ParkedStreamingDialog(
-        playbackAllowed = phoneMediaAllowed, onDismiss = { media = false }
+        playbackAllowed = phoneMediaAllowed, onDismiss = { media = false },
+        onLaunchMediaEngine = {
+            mediaLaunch = MediaLauncher.launchMediaEngine(context)
+            if (mediaLaunch is MediaLaunchState.Launched) media = false
+        }
     )
+    if (mediaLaunch == MediaLaunchState.NotInstalled || mediaLaunch == MediaLaunchState.Blocked) {
+        AlertDialog(
+            onDismissRequest = { mediaLaunch = null },
+            containerColor = Navy,
+            title = { Text(stringResource(R.string.media_engine_unavailable_title)) },
+            text = { Text(stringResource(if (mediaLaunch == MediaLaunchState.NotInstalled)
+                R.string.media_engine_not_installed else R.string.media_engine_blocked)) },
+            confirmButton = {
+                TextButton(onClick = { mediaLaunch = null }) {
+                    Text(stringResource(R.string.native_close))
+                }
+            }
+        )
+    }
     if (missingVoice) TtsPackageWarningDialog(onDismiss = { missingVoice = false })
     if (voiceSettings) AlertDialog(
         onDismissRequest = { voiceSettings = false },

@@ -33,7 +33,7 @@ import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.LocationRepository
 import com.evcockpit.domain.repository.RouteRepository
 import com.evcockpit.domain.repository.VehicleRepository
-import com.evcockpit.domain.usecase.ManeuverGuidancePolicy
+import com.evcockpit.domain.usecase.NavigationSpeechBridge
 import com.evcockpit.domain.usecase.RouteProgressTracker
 import com.evcockpit.domain.usecase.EvBaselineEnergyEstimator
 import com.evcockpit.domain.usecase.BaselineEnergyInputs
@@ -96,9 +96,8 @@ class NavigationViewModel @Inject constructor(
         "eya_energy_calibration", Context.MODE_PRIVATE
     )
     private val guide = NativeVoiceGuide(context)
-    private val policy = ManeuverGuidancePolicy()
+    private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
-    private val ttsProgress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
     // Debug builds start in TEST mode; release builds can never enable it.
     private val _simulationEnabled = MutableStateFlow(BuildConfig.DEBUG)
@@ -364,9 +363,10 @@ class NavigationViewModel @Inject constructor(
                 _voice.update { it.copy(status = status, error = error) }
             }
         }
-        // TTS only with real OSRM route + fresh GPS + foreground Activity.
+        // TTS only with verified route + fresh effective GPS + foreground Activity.
         // Android Auto has its own owner; never speak twice simultaneously.
         viewModelScope.launch {
+            var activeSpeechRouteId: String? = null
             combine(
                 routes.currentRoute,
                 sources,
@@ -377,13 +377,19 @@ class NavigationViewModel @Inject constructor(
                 SpeechInputs(route, source.gps, foreground && !carNavigating, voice,
                     source.simulated)
             }.collect { current ->
+                if (activeSpeechRouteId != current.route?.routeId) {
+                    guide.stop()
+                    speechBridge.reset()
+                    activeSpeechRouteId = current.route?.routeId
+                }
                 if (!current.allowed || !current.voice.enabled ||
                     current.voice.status != NativeVoiceGuide.Status.READY &&
                         current.voice.status != NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED) {
                     guide.stop()
                 } else {
                     val now = System.currentTimeMillis()
-                    val route = ttsProgress.enrich(current.route, current.fix, now)
+                    val evaluation = speechBridge.evaluate(current.route, current.fix, now)
+                    val route = evaluation.route
                     if (BuildConfig.DEBUG && current.simulated) {
                         Log.d(simulationTag, "speechInput: route=${route?.routeId != null} " +
                             "fixFresh=${current.fix?.usable(now) == true} " +
@@ -391,33 +397,33 @@ class NavigationViewModel @Inject constructor(
                             "aheadMeters=${route?.nextTurnMeters?.toInt() ?: -1} " +
                             "voiceStatus=${current.voice.status}")
                     }
-                    policy.nextAnnouncement(route, current.fix, now)?.let { message ->
+                    evaluation.cue?.let { cue ->
                         if (BuildConfig.DEBUG && current.simulated)
                             Log.i(simulationTag, "TTS cue requested for " +
                                 "${route?.nextManeuver?.id ?: "unknown"} " +
                                 "ahead=${route?.nextTurnMeters?.toInt() ?: -1}m")
                         val queued = guide.speak(
-                            message,
+                            cue.message,
                             current.voice.volume,
                             onUtteranceStarted = {
                                 // A successful enqueue is NOT proof of audible speech.
                                 viewModelScope.launch {
                                     // TTS calls arrive on Binder threads; policy is main-thread owned.
-                                    policy.confirmSpoken(System.currentTimeMillis())
+                                    speechBridge.confirmStarted(cue.token, System.currentTimeMillis())
                                     if (BuildConfig.DEBUG && current.simulated)
                                         Log.i(simulationTag, "TTS onStart: stage acknowledged")
                                 }
                             },
                             onUtteranceFailed = {
                                 viewModelScope.launch {
-                                    policy.cancelPending()
+                                    speechBridge.cancel(cue.token)
                                     if (BuildConfig.DEBUG && current.simulated)
                                         Log.w(simulationTag, "TTS synthesis failed; cue retryable")
                                 }
                             }
                         )
                         if (!queued) {
-                            policy.cancelPending()
+                            speechBridge.cancel(cue.token)
                             if (BuildConfig.DEBUG && current.simulated)
                                 Log.w(simulationTag, "TTS not queued; " +
                                     "status=${current.voice.status} error=${guide.lastError}")
@@ -439,7 +445,7 @@ class NavigationViewModel @Inject constructor(
         if (isForeground) gpsWaitSinceMs = System.currentTimeMillis()
         if (!isForeground) {
             guide.stop()
-            policy.cancelPending()
+            speechBridge.cancelPending()
             locationRepository.stop()
         }
     }
@@ -452,7 +458,7 @@ class NavigationViewModel @Inject constructor(
         val next = BuildConfig.DEBUG && enabled
         if (_simulationEnabled.value == next) return
         guide.stop()
-        policy.reset()
+        speechBridge.reset()
         _simulationFrame.value = null
         _simulationEnabled.value = next
         // A DEBUG demo route must not remain as a live-navigation route.
@@ -660,13 +666,13 @@ class NavigationViewModel @Inject constructor(
             }
         }
     }
-    fun selectAlternative(index: Int) { routes.choose(index); policy.reset() }
+    fun selectAlternative(index: Int) { routes.choose(index); speechBridge.reset() }
     fun clearRoute() {
         debugDemoRouteJob?.cancel()
         debugDemoRouteAttempted = true
         debugDemoRouteActive = false
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
-        routes.clear(); policy.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
+        routes.clear(); speechBridge.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
     override fun onCleared() {
         debugDemoRouteJob?.cancel()

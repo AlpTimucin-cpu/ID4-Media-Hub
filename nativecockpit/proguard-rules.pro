@@ -2,8 +2,9 @@
 # Other modules (:app, :evlite and MediaEngine/Fermata) are untouched.
 # No device stack trace was provided: these rules do NOT prove a specific crash fix.
 #
-# While the startup crash is investigated, preserve shrinking and obfuscation but
-# disable code optimization. Remove after retraced Release UAT is successful.
+# These rules are dormant while native Release isMinifyEnabled=false.
+# If shrinking is re-enabled, diagnose a retraced FATAL EXCEPTION before adding
+# further keep rules. Layer ownership crashes require a source fix, not a keep rule.
 -dontoptimize
 -keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*,SourceFile,LineNumberTable
 -keepclasseswithmembers class * { native <methods>; }

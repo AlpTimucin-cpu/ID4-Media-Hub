@@ -4,6 +4,8 @@ import androidx.compose.ui.res.stringResource
 import com.evcockpit.R
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +23,8 @@ import androidx.compose.ui.window.DialogProperties
 fun ParkedStreamingDialog(
     playbackAllowed: Boolean,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLaunchMediaEngine: (() -> Unit)? = null
 ) {
     var selected by remember { mutableStateOf<MediaSite?>(null) }
     LaunchedEffect(playbackAllowed) {
@@ -51,13 +54,13 @@ fun ParkedStreamingDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().heightIn(max = 600.dp),
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFF0A1728),
             shadowElevation = 12.dp
         ) {
             Column(
-                Modifier.padding(18.dp),
+                Modifier.verticalScroll(rememberScrollState()).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
@@ -72,6 +75,13 @@ fun ParkedStreamingDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFABC5D5)
                 )
+                onLaunchMediaEngine?.let { launch ->
+                    OutlinedButton(
+                        onClick = launch,
+                        enabled = playbackAllowed,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(stringResource(R.string.media_engine_open)) }
+                }
                 MediaSite.entries.forEach { item ->
                     Button(
                         enabled = playbackAllowed,

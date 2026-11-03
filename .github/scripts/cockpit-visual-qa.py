@@ -41,6 +41,14 @@ def capture(name):
     assert 'EV Cockpit' in data, f'{name}: missing application brand'
     assert shell('pidof','com.evcockpit').strip(),f'{name}: application process exited'
 
+def tap_label(label):
+    shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
+    nodes=list(ET.fromstring(shell('cat','/sdcard/cockpit-ui.xml')).iter('node'))
+    node=next(n for n in nodes if n.get('text')==label)
+    x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds','')))
+    shell('input','tap',str((x1+x2)//2),str((y1+y2)//2))
+    time.sleep(1)
+
 adb('install','-r','nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk')
 adb('logcat','-c')
 try:
@@ -52,6 +60,27 @@ try:
         (out/(name+'.launch.txt')).write_text(shell('am','start','-W','-n','com.evcockpit/.MainActivity'))
         time.sleep(8)
         capture(name)
+    # Let the 200m/50m TTS callbacks run when the route and speech providers are available.
+    time.sleep(15)
+    # The companion app is absent on this clean emulator.
+    tap_label('Media')
+    tap_label('Open Media Engine')
+    shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
+    warning=shell('cat','/sdcard/cockpit-ui.xml')
+    assert 'Media Engine unavailable' in warning
+    assert 'Install the separate Media Engine application first.' in warning
+    (out/'media-engine-missing.xml').write_text(warning)
+    (out/'media-engine-missing.png').write_bytes(adb('exec-out','screencap','-p'))
+    tap_label('Close')
+    shell('input','keyevent','4')
+
+    # Install the real Release build type, signed only for this disposable emulator.
+    adb('uninstall','com.evcockpit')
+    adb('install','nativecockpit/build/outputs/apk/release/nativecockpit-release.apk')
+    shell('wm','size','1080x1920');shell('wm','density','420')
+    (out/'release.launch.txt').write_text(shell('am','start','-W','-n','com.evcockpit/.MainActivity'))
+    time.sleep(8)
+    capture('release-portrait')
     logs=adb('logcat','-d','-v','threadtime').decode(errors='replace')
     (out/'startup-logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|Fatal signal',logs),'Android reported a fatal error'
@@ -59,4 +88,4 @@ finally:
     (out/'startup-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
     (out/'activity-state.txt').write_text(shell('dumpsys','activity','activities'))
     shell('wm','size','reset');shell('wm','density','reset')
-print('PASS: actual APK cold start, dock labels and portrait/landscape captures')
+print('PASS: Debug layouts, missing companion Intent handling and non-debuggable Release cold start')

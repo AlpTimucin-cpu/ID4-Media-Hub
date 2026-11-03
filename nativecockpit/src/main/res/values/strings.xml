@@ -129,4 +129,8 @@
     <string name="cockpit_socket_summary">%1$s · %2$s · %3$s</string>
     <string name="cockpit_source_verified">EPDK: %1$s</string>
     <string name="cockpit_station_count">EPDK · %1$d / %2$d</string>
+    <string name="media_engine_open">Open Media Engine</string>
+    <string name="media_engine_unavailable_title">Media Engine unavailable</string>
+    <string name="media_engine_not_installed">Install the separate Media Engine application first. You can also choose YouTube below to use the in-app browser.</string>
+    <string name="media_engine_blocked">Android blocked the application launch. Check the installed application and its profile restrictions.</string>
 </resources>

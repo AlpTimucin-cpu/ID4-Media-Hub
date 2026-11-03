@@ -4,6 +4,7 @@ import androidx.compose.ui.res.stringResource
 import com.evcockpit.R
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.http.SslError
 import android.view.View
@@ -44,6 +45,10 @@ class MediaWebViewViewModel : ViewModel() {
     fun clear() { mutableState.value = MediaPageUiState.Empty }
 }
 
+private class MediaBrowserHost(context: Context) : FrameLayout(context) {
+    var releaseFullscreen: (() -> Unit)? = null
+}
+
 private fun WebView.pauseMedia() {
     // No JavaScript interface is exposed to websites. onPause alone does not pause HTML media.
     runCatching {
@@ -62,6 +67,7 @@ fun MediaWebViewScreen(
     onClose: () -> Unit,
     model: MediaWebViewViewModel = viewModel(key = "web-" + service.name)
 ) {
+    var fullscreenView by remember(service) { mutableStateOf<View?>(null) }
     var browser by remember(service) { mutableStateOf<WebView?>(null) }
     var exitFullscreen by remember(service) { mutableStateOf<(() -> Unit)?>(null) }
     var generation by remember(service) { mutableIntStateOf(0) }
@@ -96,6 +102,13 @@ fun MediaWebViewScreen(
         }
     }
 
+    fullscreenView?.let { customView ->
+        FullscreenVideoDialog(
+            videoView = customView,
+            onDismiss = { exitFullscreen?.invoke() }
+        )
+    }
+
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween) {
@@ -123,7 +136,7 @@ fun MediaWebViewScreen(
             AndroidView(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 factory = { context ->
-                    FrameLayout(context).apply {
+                    MediaBrowserHost(context).apply {
                         val host = this
                         val web = WebView(context)
                         with(web.settings) {
@@ -144,7 +157,7 @@ fun MediaWebViewScreen(
                             setAcceptCookie(true)
                             setAcceptThirdPartyCookies(web, service != MediaSite.YOUTUBE)
                         }
-                        web.webChromeClient = object : WebChromeClient() {
+                        val chrome = object : WebChromeClient() {
                             private var custom: View? = null
                             private var completion: CustomViewCallback? = null
                             override fun onPermissionRequest(request: PermissionRequest) {
@@ -159,20 +172,26 @@ fun MediaWebViewScreen(
                                 (view.parent as? ViewGroup)?.removeView(view)
                                 custom = view
                                 completion = callback
-                                host.addView(view, FrameLayout.LayoutParams(-1, -1))
+                                fullscreenView = view
                                 web.visibility = View.GONE
                                 exitFullscreen = { onHideCustomView() }
                             }
                             override fun onHideCustomView() {
-                                custom?.let { host.removeView(it) }
+                                val view = custom ?: return
+                                (view.parent as? ViewGroup)?.removeView(view)
                                 custom = null
                                 val callback = completion
                                 completion = null
                                 web.visibility = View.VISIBLE
-                                exitFullscreen = null
+                                if (fullscreenView === view) {
+                                    fullscreenView = null
+                                    exitFullscreen = null
+                                }
                                 callback?.onCustomViewHidden()
                             }
                         }
+                        web.webChromeClient = chrome
+                        host.releaseFullscreen = { chrome.onHideCustomView() }
                         web.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                                 if (!request.isForMainFrame) return false
@@ -219,7 +238,8 @@ fun MediaWebViewScreen(
                     }
                 },
                 onRelease = { host ->
-                    exitFullscreen?.invoke()
+                    host.releaseFullscreen?.invoke()
+                    host.releaseFullscreen = null
                     // Release the view owned by THIS host, never a replacement from a later generation.
                     val web = (0 until host.childCount).map { host.getChildAt(it) }
                         .filterIsInstance<WebView>().firstOrNull()
