@@ -22,7 +22,7 @@ assert "TextToSpeech.QUEUE_FLUSH" in welcome
 assert "AUDIOFOCUS_GAIN_TRANSIENT" in welcome
 assert "abandonAudioFocusRequest" in welcome
 assert "preferences.volume" in welcome
-assert "welcomeSettings.isWelcomeGreetingEnabled" in welcome
+assert "current.isWelcomeGreetingEnabled" in welcome
 assert "settings.settings.first()" in welcome
 assert "welcomeSettings.ttsVoiceName" in welcome
 assert "audioDucking.begin" in welcome and "audioDucking.end" in welcome
