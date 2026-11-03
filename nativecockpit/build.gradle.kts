@@ -41,8 +41,8 @@ android {
         applicationId = "com.evcockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 21
-        versionName = "2.0.4"
+        versionCode = 22
+        versionName = "2.0.5"
     }
 
     buildFeatures {
@@ -130,6 +130,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
 

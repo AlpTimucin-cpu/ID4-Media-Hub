@@ -133,4 +133,17 @@
     <string name="media_engine_unavailable_title">Media Engine unavailable</string>
     <string name="media_engine_not_installed">Install the separate Media Engine application first. You can also choose YouTube below to use the in-app browser.</string>
     <string name="media_engine_blocked">Android blocked the application launch. Check the installed application and its profile restrictions.</string>
+    <string name="media_video_tab">Video</string>
+    <string name="media_radio_tab">Radio</string>
+    <string name="radio_description">Popular stations in Türkiye, ranked by votes. HTTPS streams only. Playback stops when this screen closes.</string>
+    <string name="radio_selected">Selected: %1$s</string>
+    <string name="radio_playback_error">Unable to play this station. Retry or select another station.</string>
+    <string name="radio_load_error">Unable to load stations. Check your connection and try again.</string>
+    <string name="radio_empty">No compatible stations were found.</string>
+    <string name="radio_play">Play</string>
+    <string name="radio_pause">Pause</string>
+    <string name="radio_stop">Stop</string>
+    <string name="radio_refresh">Refresh</string>
+    <string name="radio_votes">%1$d votes</string>
+    <string name="radio_attribution">Station directory: Radio Browser · Stream availability may change.</string>
 </resources>

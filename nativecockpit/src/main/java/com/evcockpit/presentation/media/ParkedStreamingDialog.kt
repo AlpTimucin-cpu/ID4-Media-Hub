@@ -26,6 +26,7 @@ fun ParkedStreamingDialog(
     modifier: Modifier = Modifier,
     onLaunchMediaEngine: (() -> Unit)? = null
 ) {
+    var radioTab by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<MediaSite?>(null) }
     LaunchedEffect(playbackAllowed) {
         if (!playbackAllowed) { selected = null }
@@ -68,6 +69,15 @@ fun ParkedStreamingDialog(
                     color = Color.White,
                     style = MaterialTheme.typography.titleLarge
                 )
+                TabRow(selectedTabIndex = if (radioTab) 1 else 0) {
+                    Tab(selected = !radioTab, onClick = { radioTab = false },
+                        text = { Text(stringResource(R.string.media_video_tab)) })
+                    Tab(selected = radioTab, onClick = { radioTab = true },
+                        text = { Text(stringResource(R.string.media_radio_tab)) })
+                }
+                if (radioTab) {
+                    RadioScreen()
+                } else {
                 Text(
                     if (playbackAllowed) stringResource(R.string.native_in_app_media_on_the_phone)
                     else "Vehicle connection is active or its status is pending. " +
@@ -98,6 +108,7 @@ fun ParkedStreamingDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFB7CEDF)
                 )
+                }
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()

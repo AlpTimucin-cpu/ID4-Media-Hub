@@ -87,6 +87,15 @@ try:
     (out/'media-engine-missing.xml').write_text(warning)
     (out/'media-engine-missing.png').write_bytes(adb('exec-out','screencap','-p'))
     tap_label('Close')
+    tap_label('Radio')
+    time.sleep(22)
+    shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
+    radio=shell('cat','/sdcard/cockpit-ui.xml')
+    assert 'Popular stations in Türkiye' in radio
+    assert 'Refresh' in radio
+    (out/'radio.xml').write_text(radio)
+    (out/'radio.png').write_bytes(adb('exec-out','screencap','-p'))
+    assert shell('pidof','com.evcockpit').strip()
     shell('input','keyevent','4')
 
     # Install the real Release build type, signed only for this disposable emulator.
