@@ -48,7 +48,7 @@ class MebUdsParserTest {
         MebUdsParser.parse("22F190","17FE007B 04 62 F1 90 00 00 00 00>",100)
     }
     @Test fun readsRealElevenBitCapacityHeader() {
-        val sample = MebUdsParser.parse("222AB2", "77A07622AB2041C0400\\r>", 1200)
+        val sample = MebUdsParser.parse("222AB2", "77A07622AB2041C0400\r>", 1200)
         assertEquals(MebResponseStatus.VALID_RAW, sample.status)
         assertEquals("622AB2041C0400", sample.payloadHex)
         assertEquals("0000077A", sample.responder)
@@ -59,7 +59,7 @@ class MebUdsParserTest {
             "17FE007B1013621E32008116",
             "17FE007B2162FF7F230602F3",
             "17FE007B22A698FD3759E9AA"
-        ).joinToString("\\r", postfix = "\\r>"), 1200)
+        ).joinToString("\r", postfix = "\r>"), 1200)
         assertEquals(MebResponseStatus.VALID_RAW, sample.status)
         assertEquals("621E3200811662FF7F230602F3A698FD3759E9", sample.payloadHex)
     }
