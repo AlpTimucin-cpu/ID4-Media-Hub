@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
 import retrofit2.http.Query
 
+/** Radio Browser's JSON fields; blank values are rejected in RadioRepository. */
 data class RadioStation(
     @SerializedName("stationuuid") val id: String = "",
     val name: String = "",
@@ -14,12 +15,12 @@ data class RadioStation(
 )
 
 interface RadioBrowserApi {
-    @GET("json/stations/search")
+    // Radio Browser Turkish stations; ranked in descending community vote order.
+    @GET("json/stations/bycountryexact/Turkey")
     suspend fun stations(
-        @Query("countrycode") countryCode: String = "TR",
         @Query("hidebroken") hideBroken: Boolean = true,
         @Query("order") order: String = "votes",
         @Query("reverse") reverse: Boolean = true,
-        @Query("limit") limit: Int = 200
+        @Query("limit") limit: Int = 500
     ): List<RadioStation>
 }

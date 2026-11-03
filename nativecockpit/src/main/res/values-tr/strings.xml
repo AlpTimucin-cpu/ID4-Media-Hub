@@ -19,4 +19,6 @@
     <string name="radio_refresh">Yenile</string>
     <string name="radio_votes">%1$d oy</string>
     <string name="radio_attribution">Radyo rehberi: Radio Browser. Yayın bağlantıları zamanla değişebilir.</string>
+    <string name="media_external_not_installed">Uygulama cihazda yüklü değil. Resmî uygulamayı yükledikten sonra tekrar deneyin.</string>
+    <string name="media_external_launch_blocked">Uygulama cihazda yüklü ancak Android tarafından açılamadı. İş profili, izinler veya devre dışı bırakılmış uygulama ayarlarını kontrol edin.</string>
 </resources>

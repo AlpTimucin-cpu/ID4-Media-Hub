@@ -28,11 +28,15 @@ webview = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/Med
 map_code = read("nativecockpit/src/main/java/com/evcockpit/presentation/map/MapLibreCockpit.kt")
 manifest = read("nativecockpit/src/main/AndroidManifest.xml")
 
-assert '@GET("json/stations/search")' in radio_api
-assert '"TR"' in radio_api and '"votes"' in radio_api
+assert '@GET("json/stations/bycountryexact/Turkey")' in radio_api
+assert '"votes"' in radio_api
 for field in ('name', 'url_resolved', 'favicon', 'tags', 'votes'):
     assert field in radio_api, f"Radio Browser field missing: {field}"
 assert "ExoPlayer.Builder" in radio_screen and "RadioScreen()" in media_menu
+repository = read("nativecockpit/src/main/java/com/evcockpit/data/radio/RadioRepository.kt")
+assert "Flow<Result<List<RadioStation>>>" in repository
+assert "CancellationException" in repository
+assert "MediaLauncher.launchOfficialApp" in media_menu
 assert "onShowCustomView" in webview and "onHideCustomView" in webview
 assert "getLaunchIntentForPackage" in launcher and "MediaLaunchState.Blocked" in launcher
 assert "mediaEnginePackages" in launcher

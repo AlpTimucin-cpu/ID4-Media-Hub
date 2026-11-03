@@ -1,6 +1,7 @@
 package com.evcockpit.data.radio
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
@@ -23,13 +24,13 @@ class RadioRepositoryTest {
             val api = Retrofit.Builder().baseUrl(server.url("/"))
                 .addConverterFactory(GsonConverterFactory.create()).build()
                 .create(RadioBrowserApi::class.java)
-            val result = RadioRepository(api).stations()
+            val result = RadioRepository(api).stations().first().getOrThrow()
             assertEquals(listOf("b", "a"), result.map { it.id })
             assertEquals("https://a.example/icon.png", result[1].favicon)
             assertEquals("pop", result[1].tags)
             val url = server.takeRequest().requestUrl!!
-            assertEquals("/json/stations/search", url.encodedPath)
-            assertEquals("TR", url.queryParameter("countrycode"))
+            assertEquals("/json/stations/bycountryexact/Turkey", url.encodedPath)
+            assertNull(url.queryParameter("countrycode"))
             assertEquals("votes", url.queryParameter("order"))
             assertEquals("true", url.queryParameter("reverse"))
             assertEquals("true", url.queryParameter("hidebroken"))
@@ -46,4 +47,18 @@ class RadioRepositoryTest {
         )
         assertEquals(listOf("c"), RadioRepository.playableStations(stations).map { it.id })
     }
+    @Test fun serverFailuresAreReturnedAsResultInsteadOfCrashingCollector() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(MockResponse().setResponseCode(503).setBody("Unavailable"))
+            val api = Retrofit.Builder().baseUrl(server.url("/"))
+                .addConverterFactory(GsonConverterFactory.create()).build()
+                .create(RadioBrowserApi::class.java)
+            val emission = RadioRepository(api).stations().first()
+            assertTrue(emission.isFailure)
+            assertTrue(emission.exceptionOrNull() is retrofit2.HttpException)
+        } finally { server.shutdown() }
+    }
+
 }

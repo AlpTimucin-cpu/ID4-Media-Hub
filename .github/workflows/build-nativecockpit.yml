@@ -41,6 +41,8 @@ jobs:
           gradle-version: "8.14.3"
       - name: Validate radio, media, map and release settings
         run: python3 scripts/check_cockpit_radio_media_map_release.py
+      - name: Audit code XML and README brand terms
+        run: python3 scripts/audit_branding.py
       - name: Native Cockpit unit tests
         run: gradle :nativecockpit:testDebugUnitTest --stacktrace --no-daemon
       - name: Compile native debug APK
