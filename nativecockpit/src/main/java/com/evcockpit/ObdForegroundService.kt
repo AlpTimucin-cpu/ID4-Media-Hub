@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.presentation.voice.WelcomeGreetingManager
 
 /**
  * User-initiated connected-device foreground service.
@@ -31,6 +32,7 @@ import com.evcockpit.domain.repository.ObdConnectionController
 @AndroidEntryPoint
 class ObdForegroundService : Service() {
     @Inject lateinit var obd: ObdConnectionController
+    @Inject lateinit var welcome: WelcomeGreetingManager
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var connectionMonitor: Job? = null
 
@@ -76,6 +78,8 @@ class ObdForegroundService : Service() {
             obd.connection.collect { state ->
                 if (state.phase == ObdPhase.CONNECTING || state.phase == ObdPhase.CONNECTED)
                     sessionStarted = true
+                // A genuine adapter connection, never a mere Activity launch.
+                if (state.phase == ObdPhase.CONNECTED) welcome.launchWelcomeGreeting()
                 if (sessionStarted &&
                     (state.phase == ObdPhase.ERROR || state.phase == ObdPhase.DISCONNECTED))
                     stopSelf()
