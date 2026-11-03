@@ -99,6 +99,27 @@ class Elm327Session(private val transport: ObdTransport) {
         throw error
     }
 
+    /**
+     * One tolerant read for an already-connected vehicle session.
+     * A genuine ECU may reply NO DATA to an unsupported PID. Return that
+     * response to the parser without fabricating values or reconnecting.
+     * The caller owns the single CAN configuration/polling coroutine.
+     */
+    suspend fun readRawOnce(command: String): String = commands.withLock {
+        val query = command.trim().uppercase(Locale.ROOT).replace(" ", "")
+        require(query.matches(Regex("(?:01|09)[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
+            "Only read-only PID and UDS requests are allowed"
+        }
+        val token = generation
+        ensureCurrent(token)
+        check(_state.value.phase == ElmSessionPhase.READY && transport.connected) {
+            "ELM327 session is not ready"
+        }
+        val reply = transport.exchange(query, 6_000L)
+        ensureCurrent(token)
+        reply // NO DATA is a real ECU reply; caller decides whether it is useful.
+    }
+
     private suspend fun startSession(token: Long): String {
         ensureCurrent(token)
         _state.value = ElmSessionState(ElmSessionPhase.CONNECTING)

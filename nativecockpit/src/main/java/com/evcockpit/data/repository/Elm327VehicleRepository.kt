@@ -40,6 +40,9 @@ import com.evcockpit.domain.model.PairedObdDevice
 import com.evcockpit.domain.model.TimedValue
 import com.evcockpit.domain.model.VehicleTelemetry
 import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.domain.repository.ObdTransport
+import com.evcockpit.domain.usecase.Elm327Session
+import com.evcockpit.domain.usecase.ElmSessionPhase
 import com.evcockpit.domain.repository.VehicleRepository
 
 /**
@@ -163,9 +166,26 @@ class Elm327VehicleRepository @Inject constructor(
         }
         try { conn.connect() } finally { watchdog.cancel() }
         if (!conn.isConnected) throw IOException("SPP connection unavailable")
-        for (command in listOf("ATZ","ATE0","ATL0","ATS0","ATH0","ATSP0"))
-            sendAndRead(conn,command)
-        _connection.value=_connection.value.copy(phase=ObdPhase.CONNECTED,error=null)
+        // Adapt the same physical RFCOMM socket to the tested Elm327Session.
+        // The single runSession worker still owns all CAN header/filter changes.
+        val transport = object : ObdTransport {
+            override val connected: Boolean get() = conn.isConnected
+            override suspend fun connect(timeoutMillis: Long) {
+                if (!conn.isConnected) throw IOException("SPP socket is no longer connected")
+            }
+            override suspend fun exchange(command: String, timeoutMillis: Long): String =
+                sendAndRead(conn, command)
+            override fun disconnect() { conn.closeSilently() }
+        }
+        val protocol = Elm327Session(transport)
+        try {
+            protocol.initialize() // ATZ, ATE0, ATL0; READY only on real response.
+            if (protocol.state.value.phase != ElmSessionPhase.READY) {
+                throw IOException("ELM327 initialization was not acknowledged")
+            }
+            for (command in listOf("ATS0","ATH0","ATSP0"))
+                sendAndRead(conn, command)
+            _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTED, error=null)
         // Background-in-app polling starts immediately after explicit pairing.
         // A single worker owns ALL ELM I/O: no parallel CAN commands or write DIDs.
         val cycle = listOf(
@@ -177,7 +197,7 @@ class Elm327VehicleRepository @Inject constructor(
             val manual = diagnosticRequests.tryReceive().getOrNull()
             val command = manual ?: cycle[cursor++ % cycle.size]
             try {
-                val response = runMebReadOnlyQuery(conn, command)
+                val response = runMebReadOnlyQuery(conn, protocol, command)
                 val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
                 if (parsed.status == MebResponseStatus.VALID_RAW) {
                     _engineering.value = EngineeringMath.update(
@@ -209,7 +229,7 @@ class Elm327VehicleRepository @Inject constructor(
             }
 
             try {
-                val speed = ElmSpeedParser.decode(sendAndRead(conn, "010D"))
+                val speed = ElmSpeedParser.decode(protocol.readRawOnce("010D"))
                 if (speed != null) {
                     val now = System.currentTimeMillis()
                     _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
@@ -230,9 +250,14 @@ class Elm327VehicleRepository @Inject constructor(
             }
             delay(700L)
         }
+        } finally {
+            protocol.close() // Closes only the socket owned by this session.
+        }
     }
 
-    private suspend fun runMebReadOnlyQuery(conn:BluetoothSocket,command:String):String {
+    private suspend fun runMebReadOnlyQuery(
+        conn: BluetoothSocket, protocol: Elm327Session, command: String
+    ): String {
         // ELM: battery ECU 29-bit/500kbps; 2AB2 capacity is 11-bit 710/77A.
         // UDS service 22 READ ONLY; this function never sends service 2E/31/14.
         var initiated=false
@@ -255,7 +280,7 @@ class Elm327VehicleRepository @Inject constructor(
                     throw IOException("ELM protocol setting unsupported")
             }
             initiated=true
-            return sendAndRead(conn,command)
+            return protocol.readRawOnce(command)
         } finally {
             if (initiated || conn.isConnected) {
                 // Drop restrictive CAN RX filter / custom ISO-TP flow control

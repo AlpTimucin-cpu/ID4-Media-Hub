@@ -14,6 +14,7 @@ class Elm327SessionTest {
             private set
         val commands = mutableListOf<String>()
         var failOnce = false
+        var noDataNext = false
         var alwaysDropOnRead = false
         var connections = 0
         var disconnections = 0
@@ -36,6 +37,10 @@ class Elm327SessionTest {
             if (failOnce && command == "221E0E") {
                 failOnce = false
                 throw IOException("Adapter disconnected")
+            }
+            if (noDataNext && command == "221E0E") {
+                noDataNext = false
+                return "NO DATA"
             }
             return when (command) {
                 "ATZ" -> "ELM327 v1.5"
@@ -130,4 +135,31 @@ class Elm327SessionTest {
             runBlocking { session.readOnly("ATSH7E0") }
         }
     }
+    @Test fun rawOnceNeedsReadyAndReturnsGenuineNoDataWithoutReconnecting() = runBlocking {
+        val fake = FakeTransport()
+        val session = Elm327Session(fake)
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { session.readRawOnce("010D") }
+        }
+        session.initialize()
+        assertEquals("62 1E 0E 04 68", session.readRawOnce("221E0E"))
+        fake.noDataNext = true
+        assertEquals("NO DATA", session.readRawOnce("221E0E"))
+        assertEquals(1, fake.connections)
+        assertEquals(ElmSessionPhase.READY, session.state.value.phase)
+        session.close()
+    }
+
+    @Test fun rawOnceNeverAcceptsCommandsThatWriteToEcu(): Unit = runBlocking {
+        val session = Elm327Session(FakeTransport())
+        session.initialize()
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readRawOnce("2E1234") }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { session.readRawOnce("ATSH710") }
+        }
+        session.close()
+    }
+
 }
