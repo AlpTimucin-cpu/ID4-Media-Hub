@@ -63,26 +63,40 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setWelcome(value: Boolean) = viewModelScope.launch {
+    fun setWelcome(value: Boolean) {
+        viewModelScope.launch {
         repository.setWelcomeGreetingEnabled(value)
+        }
     }
-    fun setVoice(value: String?) = viewModelScope.launch {
+    fun setVoice(value: String?) {
+        viewModelScope.launch {
         repository.setTtsVoiceName(value)
+        }
     }
-    fun setRate(value: Float) = viewModelScope.launch {
+    fun setRate(value: Float) {
+        viewModelScope.launch {
         repository.setTtsSpeechRate(value)
+        }
     }
-    fun setNight(value: Boolean) = viewModelScope.launch {
+    fun setNight(value: Boolean) {
+        viewModelScope.launch {
         repository.setNightModeEnabled(value)
+        }
     }
-    fun setEngineEnabled(value: Boolean) = viewModelScope.launch {
+    fun setEngineEnabled(value: Boolean) {
+        viewModelScope.launch {
         repository.setEngineSoundEnabled(value)
+        }
     }
-    fun setEngineProfile(value: String) = viewModelScope.launch {
+    fun setEngineProfile(value: String) {
+        viewModelScope.launch {
         repository.setEngineSoundProfile(value)
+        }
     }
-    fun setEngineVolume(value: Float) = viewModelScope.launch {
+    fun setEngineVolume(value: Float) {
+        viewModelScope.launch {
         repository.setEngineVolume(value)
+        }
     }
 
     override fun onCleared() {
