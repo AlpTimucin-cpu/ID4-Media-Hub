@@ -42,7 +42,7 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
         if (term.isEmpty()) state.stations
         else state.stations.filter {
             it.name.contains(term, ignoreCase = true) ||
-                it.tags.contains(term, ignoreCase = true)
+                (it.tags?.contains(term, ignoreCase = true) == true)
         }
     }
     var currentName by remember { mutableStateOf<String?>(null) }
