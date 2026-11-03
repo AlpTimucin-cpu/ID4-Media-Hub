@@ -427,12 +427,17 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
             circleStrokeWidth(4f),
             circleStrokeColor(android.graphics.Color.rgb(255, 194, 67))
         ))
-    style.addLayer(SymbolLayer(STATION_DC_LAYER, STATION_SRC)
+    val chargingLayer = SymbolLayer(STATION_DC_LAYER, STATION_SRC)
         .withFilter(Expression.all(isSingle,
             Expression.eq(Expression.get("dc"), Expression.literal(true))))
         .withProperties(
             iconImage(STATION_ICON), iconSize(.50f), iconAllowOverlap(false)
-        ))
+        )
+    // The route ID in this project is "eya-route-line", not "route-layer".
+    // On first insertion put DC symbols above the route immediately.
+    // ensureRouteOverlayZOrder also repositions them after async source updates.
+    if (style.getLayer(ROUTE_LAYER) != null) style.addLayerAbove(chargingLayer, ROUTE_LAYER)
+    else style.addLayer(chargingLayer)
 }
 
 /** Generate a vector-like bolt locally; no external icon/font/license dependency. */

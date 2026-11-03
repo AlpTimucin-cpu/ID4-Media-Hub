@@ -7,6 +7,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.http.SslError
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
@@ -113,7 +114,11 @@ fun MediaWebViewScreen(
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween) {
             Text(service.title, color = Color.White)
-            TextButton(onClick = onClose) { Text(stringResource(R.string.native_close)) }
+            TextButton(onClick = {
+                exitFullscreen?.invoke()
+                browser?.pauseMedia()
+                onClose()
+            }) { Text(stringResource(R.string.native_close)) }
         }
         if (!playbackAllowed) {
             Text(stringResource(R.string.native_video_is_unavailable_for_this_connection), modifier = Modifier.padding(16.dp))
@@ -175,6 +180,7 @@ fun MediaWebViewScreen(
                                 fullscreenView = view
                                 web.visibility = View.GONE
                                 exitFullscreen = { onHideCustomView() }
+                                Log.d("EYA-MEDIA-UAT", "web_fullscreen_show:" + service.name)
                             }
                             override fun onHideCustomView() {
                                 val view = custom ?: return
@@ -188,6 +194,7 @@ fun MediaWebViewScreen(
                                     exitFullscreen = null
                                 }
                                 callback?.onCustomViewHidden()
+                                Log.d("EYA-MEDIA-UAT", "web_fullscreen_hide:" + service.name)
                             }
                         }
                         web.webChromeClient = chrome

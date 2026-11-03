@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Static regressions that do not require a device or release signing keys."""
+from pathlib import Path
+import re
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+props = read("gradle.properties")
+native_gradle = read("nativecockpit/build.gradle.kts")
+assert re.search(r"(?m)^android\.enableR8\.fullMode=false\s*$", props), "R8 fullMode guard missing"
+assert re.search(
+    r'getByName\("release"\)\s*\{[^}]*\bisMinifyEnabled\s*=\s*false',
+    native_gradle, flags=re.S
+), "Native release shrinker unexpectedly enabled"
+assert re.search(
+    r'getByName\("release"\)\s*\{[^}]*\bisShrinkResources\s*=\s*false',
+    native_gradle, flags=re.S
+), "Native release resource shrinking unexpectedly enabled"
+
+radio_api = read("nativecockpit/src/main/java/com/evcockpit/data/radio/RadioBrowserApi.kt")
+radio_screen = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt")
+media_menu = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/ParkedStreamingDialog.kt")
+launcher = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/MediaLauncher.kt")
+webview = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/MediaWebViewScreen.kt")
+map_code = read("nativecockpit/src/main/java/com/evcockpit/presentation/map/MapLibreCockpit.kt")
+manifest = read("nativecockpit/src/main/AndroidManifest.xml")
+
+assert '@GET("json/stations/search")' in radio_api
+assert '"TR"' in radio_api and '"votes"' in radio_api
+for field in ('name', 'url_resolved', 'favicon', 'tags', 'votes'):
+    assert field in radio_api, f"Radio Browser field missing: {field}"
+assert "ExoPlayer.Builder" in radio_screen and "RadioScreen()" in media_menu
+assert "onShowCustomView" in webview and "onHideCustomView" in webview
+assert "getLaunchIntentForPackage" in launcher and "MediaLaunchState.Blocked" in launcher
+assert "mediaEnginePackages" in launcher
+for package in ('me.app.fermataX.auto.evcockpitpreview.debug', 'me.app.fermataX.auto.evcockpitpreview'):
+    assert package in manifest, f"Package visibility query missing: {package}"
+assert 'private const val ROUTE_LAYER = "eya-route-line"' in map_code
+assert "style.addLayerAbove(weatherLayer, ROUTE_LAYER)" in map_code
+assert "style.addLayerAbove(chargingLayer, ROUTE_LAYER)" in map_code
+assert "ensureRouteOverlayZOrder(style)" in map_code
+
+print("OK: radio, video fullscreen, MediaEngine Intent, MapLibre and release guards.")

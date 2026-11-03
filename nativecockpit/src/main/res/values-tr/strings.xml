@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_video_tab">Video</string>
+    <string name="media_radio_tab">Radyo</string>
+    <string name="media_engine_open">Medya motorunu aç</string>
+    <string name="media_engine_unavailable_title">Medya motoru açılamadı</string>
+    <string name="media_engine_not_installed">Ayrı medya motoru uygulaması yüklü değil. Video sekmesinden dahili tarayıcıyı kullanabilirsiniz.</string>
+    <string name="media_engine_blocked">Medya motoru yüklü ancak Android başlatılmasına izin vermedi veya açılış etkinliği bulunamadı. Uygulama izinlerini ve iş profili kısıtlamalarını kontrol edin.</string>
+    <string name="radio_description">Türkiye radyo kanalları oy sayısına göre sıralanır. Yalnızca HTTPS yayınları listelenir. Bu ekran kapatılınca yayın durur.</string>
+    <string name="radio_search">Radyo veya müzik türü ara</string>
+    <string name="radio_results">%1$d / %2$d kanal</string>
+    <string name="radio_selected">Seçilen: %1$s</string>
+    <string name="radio_playback_error">Radyo yayını oynatılamadı. Tekrar deneyin veya başka kanal seçin.</string>
+    <string name="radio_load_error">Radyo kanalları yüklenemedi. İnternet bağlantısını kontrol edin.</string>
+    <string name="radio_empty">Uyumlu radyo kanalı bulunamadı.</string>
+    <string name="radio_play">Oynat</string>
+    <string name="radio_pause">Duraklat</string>
+    <string name="radio_stop">Durdur</string>
+    <string name="radio_refresh">Yenile</string>
+    <string name="radio_votes">%1$d oy</string>
+    <string name="radio_attribution">Radyo rehberi: Radio Browser. Yayın bağlantıları zamanla değişebilir.</string>
+</resources>
