@@ -1,55 +1,43 @@
-# :nativecockpit only — conservative, temporary R8 stabilization.
-# Other modules (:app, :evlite and MediaEngine/Fermata) are untouched.
-# No device stack trace was provided: these rules do NOT prove a specific crash fix.
-#
-# These rules are dormant while native Release isMinifyEnabled=false.
-# If shrinking is re-enabled, diagnose a retraced FATAL EXCEPTION before adding
-# further keep rules. Layer ownership crashes require a source fix, not a keep rule.
--dontoptimize
+# :nativecockpit production R8 preservation rules.
+# R8 optimization is enabled in the release build. Consumer rules from
+# AndroidX, Hilt, Retrofit, Gson, MapLibre and Media3 remain in effect.
+# Broad keeps below prioritize compatibility but reduce shrinking efficiency.
 -keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*,SourceFile,LineNumberTable
 -keepclasseswithmembers class * { native <methods>; }
 
-# Hilt/Dagger Android entrypoints and generated injection members.
-# Dagger/Hilt already package consumer ProGuard rules, so do not globally disable shrinking.
+# Hilt/Dagger: preserve generated bindings, entrypoints and reflection.
+-keep class dagger.hilt.** { *; }
 -keep class com.evcockpit.EyaApplication { *; }
 -keep class com.evcockpit.MainActivity { *; }
--keep class com.evcockpit.car.EyaCarAppService { *; }
 -keep class com.evcockpit.Hilt_* { *; }
--keep class com.evcockpit.car.Hilt_* { *; }
--keep class com.evcockpit.presentation.**.Hilt_* { *; }
+-keep class com.evcockpit.**.Hilt_* { *; }
 -keep class com.evcockpit.**_Factory { *; }
 -keep class com.evcockpit.**_MembersInjector { *; }
 -keep class com.evcockpit.Dagger* { *; }
+-keep class com.evcockpit.ObdForegroundService { *; }
+-keep class com.evcockpit.car.EyaCarAppService { *; }
 
-# Retrofit 3 (dynamic proxies, suspend and generic response signatures).
+# Retrofit and Gson: preserve reflective API interfaces, model signatures,
+# coroutine continuation and annotation-driven field mappings.
 -keep class kotlin.coroutines.Continuation
--keep interface com.evcockpit.data.routing.OsrmService { *; }
--keep interface com.evcockpit.data.routing.PhotonService { *; }
--keep interface com.evcockpit.data.remote.EpdkService { *; }
--keep interface com.evcockpit.data.radio.RadioBrowserApi { *; }
--keep class com.evcockpit.data.radio.RadioStation { *; }
-
-# Gson reflection over annotated DTO fields, plus library consumer rules.
+-keep class com.evcockpit.data.** { *; }
+-keep interface com.evcockpit.data.** { *; }
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# MapLibre JNI, lifecycle and external surface entrypoints.
--keep class org.maplibre.android.MapLibre { *; }
--keep class org.maplibre.android.maps.NativeMapView { *; }
--keep class org.maplibre.android.maps.MapView { *; }
--keep class org.maplibre.android.maps.Style { *; }
+# MapLibre native JNI / dynamic class loading.
+-keep class org.maplibre.** { *; }
+-keep class org.maplibre.android.** { *; }
 
-# Media3 already ships official consumer ProGuard rules; retain our direct
-# player integration entrypoints as a conservative compatibility guard.
-# No blanket -dontwarn or global -keep androidx.media3.**.
--keep class androidx.media3.common.MediaItem { *; }
--keep class androidx.media3.exoplayer.ExoPlayerImpl { *; }
--keep class androidx.media3.exoplayer.hls.HlsMediaSource { *; }
+# Media3 service and player internals. Preserve for conservative initial R8
+# rollout, then trim with tested consumer rules once a signed build is verified.
+-keep class androidx.media3.** { *; }
 
-# Vehicle diagnostic protocol, Bluetooth transports and Android Auto host surface.
--keep class com.evcockpit.data.obd.** { *; }
+# Real Bluetooth ELM327 state machine and Android Auto entrypoints.
 -keep class com.evcockpit.domain.usecase.Elm327Session { *; }
--keep class com.evcockpit.car.EyaCarMapSurface { *; }
+-keep class com.evcockpit.data.repository.Elm327VehicleRepository { *; }
+-keep class com.evcockpit.data.obd.** { *; }
+-keep class com.evcockpit.car.** { *; }
 
-# No blanket -dontwarn. Missing APIs should fail the build.
+# No -dontoptimize / -dontwarn. Missing classes remain build errors.
