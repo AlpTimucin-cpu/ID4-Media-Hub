@@ -64,6 +64,19 @@ private val CockpitShapes = Shapes(
 )
 
 @Composable
-fun CockpitTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Palette, typography = CockpitTypography, shapes = CockpitShapes, content = content)
+fun CockpitTheme(
+    nightMode: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    // Only change semantic theme surfaces; existing CockpitScreen layout stays intact.
+    val colors = if (nightMode) Palette.copy(
+        background = Color(0xFF020509),
+        surface = Color(0xFF08111C)
+    ) else Palette
+    MaterialTheme(
+        colorScheme = colors,
+        typography = CockpitTypography,
+        shapes = CockpitShapes,
+        content = content
+    )
 }
