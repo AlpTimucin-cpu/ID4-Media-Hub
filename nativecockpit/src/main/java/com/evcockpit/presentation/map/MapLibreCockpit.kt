@@ -315,8 +315,9 @@ private fun ensureRouteOverlayZOrder(style: Style) {
     )
     overlayOrder.forEach { id ->
         val layer = style.getLayer(id) ?: return@forEach
-        // Keep the source and all layer styling unchanged.
-        style.removeLayer(id)
+        // The Layer overload transfers native ownership back to this instance.
+        // Removing by ID invalidates the instance and cannot be re-added.
+        if (!style.removeLayer(layer)) return@forEach
         style.addLayerAbove(layer, below)
         below = id
     }
