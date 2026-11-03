@@ -5,12 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.evcockpit.data.radio.RadioRepository
 import com.evcockpit.data.radio.RadioStation
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class RadioUiState(
     val stations: List<RadioStation> = emptyList(),
@@ -19,22 +20,39 @@ data class RadioUiState(
 )
 
 @HiltViewModel
-class RadioViewModel @Inject constructor(private val repository: RadioRepository) : ViewModel() {
+class RadioViewModel @Inject constructor(
+    private val repository: RadioRepository
+) : ViewModel() {
     private val mutableState = MutableStateFlow(RadioUiState())
     val state = mutableState.asStateFlow()
     private var request: Job? = null
+
     init { refresh() }
 
     fun refresh() {
         request?.cancel()
         request = viewModelScope.launch {
-            mutableState.value = RadioUiState()
+            mutableState.value = mutableState.value.copy(loading = true, failed = false)
             try {
-                mutableState.value = RadioUiState(repository.stations(), loading = false)
+                repository.stations().collect { result ->
+                    result.fold(
+                        onSuccess = { stations ->
+                            mutableState.value = RadioUiState(
+                                stations = stations, loading = false, failed = false
+                            )
+                        },
+                        onFailure = { error ->
+                            if (error is CancellationException) throw error
+                            mutableState.value = mutableState.value.copy(
+                                loading = false, failed = true
+                            )
+                        }
+                    )
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                mutableState.value = RadioUiState(loading = false, failed = true)
+                mutableState.value = mutableState.value.copy(loading = false, failed = true)
             }
         }
     }
