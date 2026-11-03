@@ -69,7 +69,7 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
             if (playbackFailed) Text(stringResource(R.string.radio_playback_error))
             Row {
                 TextButton(onClick = {
-                    if (playing || player.playWhenReady) player.pause()
+                    if (!playbackFailed && (playing || player.playWhenReady)) player.pause()
                     else { if (player.playerError != null) player.prepare(); playbackFailed = false; player.play() }
                 }) {
                     Text(stringResource(if (playing || buffering) R.string.radio_pause else R.string.radio_play))

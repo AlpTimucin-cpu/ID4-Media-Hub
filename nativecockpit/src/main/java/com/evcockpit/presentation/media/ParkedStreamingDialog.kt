@@ -58,6 +58,7 @@ fun ParkedStreamingDialog(
             modifier = modifier.fillMaxWidth().heightIn(max = 600.dp),
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFF0A1728),
+            contentColor = Color.White,
             shadowElevation = 12.dp
         ) {
             Column(
