@@ -1,4 +1,7 @@
 import java.io.File
+import java.io.DataOutputStream
+import kotlin.math.sin
+import kotlin.math.min
 import java.util.Properties
 
 plugins {
@@ -161,7 +164,7 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
             for (accelerating in listOf(false, true)) {
                 val mode = if (accelerating) "accel" else "idle"
                 val file = raw.resolve("${profile}_${mode}.wav")
-                java.io.DataOutputStream(file.outputStream().buffered()).use { out ->
+                DataOutputStream(file.outputStream().buffered()).use { out ->
                     fun word(n: Int) {
                         out.writeByte(n and 255)
                         out.writeByte((n ushr 8) and 255)
@@ -185,16 +188,16 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
                     for (i in 0 until count) {
                         val t = i.toDouble() / sampleRate
                         val f = fundamental * if (accelerating) 1.75 else 1.0
-                        val pulse = 1.0 + 0.10 * kotlin.math.sin(
+                        val pulse = 1.0 + 0.10 * sin(
                             2.0 * Math.PI * (if (profile == "v8") 8.0 else 5.0) * t
                         )
                         val signal = (
-                            0.52 * kotlin.math.sin(2 * Math.PI * f * t) +
-                            0.24 * kotlin.math.sin(2 * Math.PI * 2 * f * t) +
-                            0.12 * kotlin.math.sin(2 * Math.PI * 3 * f * t)
+                            0.52 * sin(2 * Math.PI * f * t) +
+                            0.24 * sin(2 * Math.PI * 2 * f * t) +
+                            0.12 * sin(2 * Math.PI * 3 * f * t)
                         ) * pulse
                         // Short fades avoid audible clicks at repeat boundaries.
-                        val edge = kotlin.math.min(i, count - 1 - i)
+                        val edge = min(i, count - 1 - i)
                         val fade = (edge.toDouble() / 256).coerceIn(0.0, 1.0)
                         val pcm = (signal * fade * 0.23 * 32767)
                             .toInt().coerceIn(-32768, 32767)
