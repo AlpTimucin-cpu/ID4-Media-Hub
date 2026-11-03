@@ -86,7 +86,14 @@ object EngineeringMath {
         val soc = s.socPercent.current(nowMs, LIVE_TTL_MS)
         val discharged = s.accumulatedDischargedKwh.current(nowMs, SLOW_TTL_MS)
         val powerKw = vi?.let { it.first * it.second / 1000.0 }
-        val speed = s.speedKmh.current(nowMs, LIVE_TTL_MS)
+        val observedSpeed = s.speedKmh.current(nowMs, LIVE_TTL_MS)
+        val speedAt = s.speedKmh.measuredAtMillis
+        val voltageAt = s.packVoltageV.measuredAtMillis
+        val currentAt = s.packCurrentA.measuredAtMillis
+        val speed = if (observedSpeed != null && speedAt != null &&
+            voltageAt != null && currentAt != null &&
+            abs(speedAt - maxOf(voltageAt, currentAt)) <= PAIR_TOLERANCE_MS
+        ) observedSpeed else null
         return EngineeringMetrics(
             batteryPowerKw = powerKw,
             absoluteCrate = powerKw?.let { abs(it) / REFERENCE_NET_CAPACITY_KWH },
