@@ -66,7 +66,7 @@ class ObdForegroundService : Service() {
             .addAction(Notification.Action.Builder(null, "Bağlantıyı kes", stop).build())
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         } else startForeground(NOTIFICATION_ID, notification)
 
