@@ -21,7 +21,11 @@ assert 'UTTERANCE_ID = "welcome_greeting"' in welcome
 assert "TextToSpeech.QUEUE_FLUSH" in welcome
 assert "AUDIOFOCUS_GAIN_TRANSIENT" in welcome
 assert "abandonAudioFocusRequest" in welcome
-assert "preferences.volume" in welcome and "preferences.enabled" in welcome
+assert "preferences.volume" in welcome
+assert "welcomeSettings.isWelcomeGreetingEnabled" in welcome
+assert "settings.settings.first()" in welcome
+assert "welcomeSettings.ttsVoiceName" in welcome
+assert "audioDucking.begin" in welcome and "audioDucking.end" in welcome
 assert "WelcomeSessionGate()" in welcome and "AtomicBoolean" in gate
 assert "if (state.phase == ObdPhase.CONNECTED) welcome.launchWelcomeGreeting()" in obd
 assert car.count("welcome.launchWelcomeGreeting()") == 2
