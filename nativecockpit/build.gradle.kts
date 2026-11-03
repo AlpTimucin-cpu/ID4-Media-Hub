@@ -73,8 +73,8 @@ android {
         getByName("release") {
             isDebuggable = false
             // Diagnostic release: disable R8 code + resource shrinking until crash is reproduced.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
