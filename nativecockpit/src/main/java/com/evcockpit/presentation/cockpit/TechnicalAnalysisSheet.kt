@@ -25,7 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.evcockpit.domain.model.EngineeringMath
+import com.evcockpit.domain.model.EngineeringMetrics
 import com.evcockpit.domain.model.EngineeringSnapshot
 import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.domain.model.TimedValue
@@ -40,6 +40,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun TechnicalAnalysisSheet(
     snapshot: EngineeringSnapshot,
+    metrics: EngineeringMetrics,
     obdPhase: ObdPhase,
     onDismiss: () -> Unit
 ) {
@@ -50,7 +51,7 @@ fun TechnicalAnalysisSheet(
             delay(2_000)
         }
     }
-    val result = remember(snapshot, now) { EngineeringMath.calculate(snapshot, now) }
+    val result = if (connectedCheck(obdPhase, snapshot, now)) metrics else EngineeringMetrics()
     val connected = obdPhase == ObdPhase.CONNECTED
     val recent = snapshot.lastValidResponseAtMs?.let { now - it in 0..120_000L } == true
 
@@ -83,9 +84,13 @@ fun TechnicalAnalysisSheet(
             Metric("Paket gerilimi", snapshot.packVoltageV.valueIfFresh(now), "V", 2)
             Metric("Batarya akımı (+ şarj / − tüketim)", snapshot.packCurrentA.valueIfFresh(now), "A", 2)
             Metric("Gerilim × akım", result.batteryPowerKw, "kW", 2)
+            Metric("Batarya C-rate", result.absoluteCrate, "C", 2)
+            Metric("OBD araç hızı", snapshot.speedKmh.valueIfFresh(now), "km/sa", 1)
+            Metric("Anlık enerji / 100 km", result.instantaneousConsumptionKwh100Km, "kWh/100 km", 1)
             Metric("Dinamik şarj akım sınırı", snapshot.chargeCurrentLimitA.valueIfFresh(now), "A", 1)
             Text(
-                "Güç: P(kW) = U(V) × I(A) / 1000. Gerilim ve akım okumaları en fazla 12 saniye aralıklı olmalı.",
+                "Güç = U×I/1000; C-rate = |P|/52. Anlık tüketim yalnızca OBD hızı 20 km/sa üzerindeyse gösterilir. " +
+                    "Bu değer yolculuk ortalaması değildir; rejenerasyonda negatif olabilir.",
                 style = MaterialTheme.typography.bodySmall
             )
             HorizontalDivider()
@@ -129,6 +134,10 @@ fun TechnicalAnalysisSheet(
         }
     }
 }
+
+private fun connectedCheck(phase: ObdPhase, snapshot: EngineeringSnapshot, now: Long): Boolean =
+    phase == ObdPhase.CONNECTED &&
+        snapshot.lastValidResponseAtMs?.let { now - it in 0L..120_000L } == true
 
 private fun TimedValue<Double>.valueIfFresh(now: Long, ttl: Long = 120_000L): Double? =
     current(now, ttl)
