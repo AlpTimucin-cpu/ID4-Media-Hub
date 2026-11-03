@@ -10,6 +10,13 @@ import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.evcockpit.data.settings.UserSettings
+import com.evcockpit.data.settings.UserSettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,11 +30,15 @@ import javax.inject.Singleton
  */
 @Singleton
 class WelcomeGreetingManager @Inject constructor(
-    @ApplicationContext context: Context
+    @ApplicationContext context: Context,
+    private val settings: UserSettingsRepository,
+    private val audioDucking: AppAudioDucking
 ) {
     private val appContext = context.applicationContext
     private val logTag = "EYA-Welcome"
     private val main = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var welcomeSettings = UserSettings()
     private val sessionGate = WelcomeSessionGate()
     private val preferences = VoicePreference(appContext)
     private val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -70,11 +81,11 @@ class WelcomeGreetingManager @Inject constructor(
      */
     fun launchWelcomeGreeting() {
         if (!sessionGate.claim()) return
-        main.post {
-            if (!preferences.enabled) {
-                Log.i(logTag, "Welcome skipped: voice preference disabled")
-                return@post
-            }
+        scope.launch {
+            // DataStore is asynchronous: read the actual persisted user setting.
+            val current = runCatching { settings.settings.first() }.getOrNull() ?: return@launch
+            if (!current.isWelcomeGreetingEnabled) return@launch
+            welcomeSettings = current
             startSession()
         }
     }
@@ -94,19 +105,23 @@ class WelcomeGreetingManager @Inject constructor(
                     main.removeCallbacks(initTimeout)
                     val localEngine = engine
                     if (result != TextToSpeech.SUCCESS || localEngine == null ||
-                        !NativeVoiceGuide.selectTurkishGreetingVoice(localEngine)
+                        !NativeVoiceGuide.selectTurkishGreetingVoice(localEngine, welcomeSettings.ttsVoiceName)
                     ) {
                         Log.w(logTag, "Turkish text-to-speech voice unavailable")
                         closeSession()
                         return@post
                     }
                     localEngine.setAudioAttributes(audioAttributes)
-                    localEngine.setSpeechRate(0.94f)
+                    localEngine.setSpeechRate(welcomeSettings.ttsSpeechRate)
                     localEngine.setOnUtteranceProgressListener(
                         object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String) {
-                                if (utteranceId == UTTERANCE_ID)
-                                    Log.d(logTag, "Welcome utterance started")
+                                if (utteranceId == UTTERANCE_ID) main.post {
+                                    if (active) {
+                                        audioDucking.begin("welcome")
+                                        Log.d(logTag, "Welcome utterance started")
+                                    }
+                                }
                             }
 
                             override fun onDone(utteranceId: String) =
@@ -178,6 +193,7 @@ class WelcomeGreetingManager @Inject constructor(
     private fun closeSession() {
         if (!active) return
         active = false
+        audioDucking.end("welcome")
         initializationPending = false
         main.removeCallbacks(initTimeout)
         main.removeCallbacks(speechTimeout)
