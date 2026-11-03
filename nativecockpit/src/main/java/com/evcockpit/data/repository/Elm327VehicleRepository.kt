@@ -238,10 +238,16 @@ class Elm327VehicleRepository @Inject constructor(
         var initiated=false
         try {
             val capacityRead = command == "222AB2"
-            val configuration = listOf(
-                "ATH1", if (capacityRead) "ATSP6" else "ATSP7",
-                "ATCAF1", "ATCFC1",
-                if (capacityRead) "ATSH710" else "ATSH${MebUdsParser.REQUEST_ECU}"
+            // Match CAN settings actually observed in this vehicle's Car Scanner
+            // session. Older ELM firmware requires 6-digit ATSH + ATCP17.
+            val configuration = if (capacityRead) listOf(
+                "ATH1", "ATSP6", "ATCAF1", "ATCFC1",
+                "ATSH710", "ATCRA77A", "ATFCSH710",
+                "ATFCSD300000", "ATFCSM1"
+            ) else listOf(
+                "ATH1", "ATSP7", "ATCP17", "ATCAF1", "ATCFC1",
+                "ATSHFC007B", "ATCRA17FE007B", "ATFCSH17FC007B",
+                "ATFCSD300000", "ATFCSM1"
             )
             for (adapterCommand in configuration) {
                 val reply=sendAndRead(conn,adapterCommand)
@@ -252,9 +258,12 @@ class Elm327VehicleRepository @Inject constructor(
             return sendAndRead(conn,command)
         } finally {
             if (initiated || conn.isConnected) {
-                // Restore original 010D automatic protocol and hidden headers.
-                sendAndRead(conn,"ATSP0")
-                sendAndRead(conn,"ATH0")
+                // Drop restrictive CAN RX filter / custom ISO-TP flow control
+                // before trying generic SAE 010D across any 11-bit ECU.
+                for (reset in listOf("ATFCSM0", "ATCRA", "ATSP0", "ATH0")) {
+                    try { sendAndRead(conn, reset) }
+                    catch (_: Exception) { /* fail closed on the next read */ }
+                }
             }
         }
     }
