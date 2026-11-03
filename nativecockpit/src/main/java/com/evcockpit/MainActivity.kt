@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.presentation.navigation.NavigationViewModel
 import com.evcockpit.presentation.charging.ChargingViewModel
 import com.evcockpit.presentation.charging.RouteChargePlanViewModel
@@ -56,14 +57,17 @@ class MainActivity : ComponentActivity() {
 
     private fun connectObd(address: String) {
         try {
-            // Foreground service must be explicitly started from a visible app.
+            obd.connect(address)
+            if (obd.connection.value.phase != ObdPhase.CONNECTING &&
+                obd.connection.value.phase != ObdPhase.CONNECTED) return
+            // Explicit user action from a visible Activity; never auto-reconnect.
             ContextCompat.startForegroundService(
                 this, Intent(this, ObdForegroundService::class.java)
             )
-            obd.connect(address)
         } catch (_: Exception) {
+            obd.disconnect() // Don't leave an unsupervised background socket.
             Toast.makeText(
-                this, "OBD arka plan servisi başlatılamadı. Bağlantı açılmadı.",
+                this, "OBD arka plan servisi başlatılamadı. Bağlantı kapatıldı.",
                 Toast.LENGTH_LONG
             ).show()
         }
