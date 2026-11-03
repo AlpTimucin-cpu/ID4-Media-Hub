@@ -55,6 +55,7 @@ fun CockpitScreen(
     loadStatus: RouteLoadStatus,
     obdConnection: ObdConnectionState,
     engineering: EngineeringSnapshot,
+    engineeringMetrics: EngineeringMetrics,
     onObdRefresh: () -> Unit,
     onObdConnect: (String) -> Unit,
     onObdDisconnect: () -> Unit,
@@ -118,7 +119,8 @@ fun CockpitScreen(
         onChooseAlternative = onRouteAlternative, onClear = onRouteClear
     )
     if (engineeringOpen) TechnicalAnalysisSheet(
-        snapshot = engineering, obdPhase = obdConnection.phase,
+        snapshot = engineering, metrics = engineeringMetrics,
+        obdPhase = obdConnection.phase,
         onDismiss = { engineeringOpen = false }
     )
     if (settings) ObdSettingsDialog(
