@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,45 +18,42 @@ import java.util.Locale
  * Media ducking is requested from Android, not implemented by changing
  * another app's volume. An unavailable en-US voice fails closed.
  */
-class NativeVoiceGuide(context: Context) {
+class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDucking) {
     private val logTag = "EYA-Voice"
 
     companion object {
         private val GREETING_LOCALE = Locale.forLanguageTag("tr-TR")
 
-        /**
-         * Gender is not an Android Voice attribute. Prefer only voice names
-         * explicitly labelled female; otherwise keep the system Turkish default.
-         * Never infer a voice's gender from quality, language or engine vendor.
-         * This function is for a separate welcome TTS engine, not navigation.
-         */
-        internal fun selectTurkishGreetingVoice(engine: TextToSpeech): Boolean {
-            val result = engine.setLanguage(GREETING_LOCALE)
-            if (result < TextToSpeech.LANG_AVAILABLE) return false
+        /** Voice has no guaranteed gender property: prefer explicit engine labels only. */
+        fun availableTurkishVoices(engine: TextToSpeech): List<Voice> =
+            runCatching { engine.voices.orEmpty() }.getOrDefault(emptySet())
+                .filter { v ->
+                    v.locale.language.equals("tr", true) &&
+                        v.locale.country.equals("TR", true) &&
+                        !v.isNetworkConnectionRequired
+                }
+                .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.name })
 
-            val candidates = runCatching { engine.voices.orEmpty() }
-                .getOrDefault(emptySet())
-                .filter { voice ->
-                    voice.locale.language.equals("tr", ignoreCase = true) &&
-                        voice.locale.country.equals("TR", ignoreCase = true) &&
-                        !voice.isNetworkConnectionRequired
-                }
-            val female = candidates
-                .filter { voice ->
-                    val id = voice.name.lowercase(Locale.ROOT)
-                    listOf("female", "woman", "kadın", "kadin")
-                        .any(id::contains)
-                }
-                .maxByOrNull { it.quality }
-            if (female != null) {
-                val selected = runCatching {
-                    engine.setVoice(female) == TextToSpeech.SUCCESS
-                }.getOrDefault(false)
-                if (selected) return true
+        fun selectTurkishGreetingVoice(
+            engine: TextToSpeech,
+            preferredName: String? = null
+        ): Boolean {
+            if (engine.setLanguage(GREETING_LOCALE) < TextToSpeech.LANG_AVAILABLE) return false
+            val installed = availableTurkishVoices(engine)
+            val preferred = installed.firstOrNull { it.name == preferredName }
+            val labelledFemale = installed.firstOrNull { v ->
+                val n = v.name.lowercase(Locale.ROOT)
+                listOf("female", "woman", "kadın", "kadin").any(n::contains)
             }
-            // The default installed tr-TR voice may or may not sound feminine.
+            // When no labelled female is installed use the system Turkish default.
+            val selection = preferred ?: labelledFemale
+            if (selection != null &&
+                runCatching { engine.setVoice(selection) == TextToSpeech.SUCCESS }
+                    .getOrDefault(false)
+            ) return true
             return engine.setLanguage(GREETING_LOCALE) >= TextToSpeech.LANG_AVAILABLE
         }
+
     }
 
     enum class Status { LOADING, READY, TURKISH_VOICE_MISSING, INIT_FAILED, AUDIO_FOCUS_DENIED }
@@ -69,6 +67,7 @@ class NativeVoiceGuide(context: Context) {
     private val ducking = AudioDuckingManager(context) { stop() }
     private val attrs: AudioAttributes = ducking.attributes
     private var activeUtterance: String? = null
+    private var startedDuckOwner: String? = null
     private var onStarted: (() -> Unit)? = null
     private var onFailed: (() -> Unit)? = null
     private var sequence = 0L
@@ -102,6 +101,9 @@ class NativeVoiceGuide(context: Context) {
                         override fun onStart(utteranceId: String) {
                             main.post {
                                 if (!closed && activeUtterance == utteranceId) {
+                                    startedDuckOwner?.let(audioSignal::end)
+                                    startedDuckOwner = "navigation:" + utteranceId
+                                    audioSignal.begin(startedDuckOwner!!)
                                     Log.d(logTag, "Utterance started")
                                     TtsDebugLogger.event("utterance onStart")
                                     onStarted?.invoke()
@@ -217,6 +219,8 @@ class NativeVoiceGuide(context: Context) {
     }
 
     private fun releaseFocus() {
+        startedDuckOwner?.let(audioSignal::end)
+        startedDuckOwner = null
         ducking.release()
     }
 
