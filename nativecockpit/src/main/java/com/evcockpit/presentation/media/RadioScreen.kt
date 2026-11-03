@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -33,6 +34,15 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
             setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
+        }
+    }
+    var query by rememberSaveable { mutableStateOf("") }
+    val filteredStations = remember(state.stations, query) {
+        val term = query.trim()
+        if (term.isEmpty()) state.stations
+        else state.stations.filter {
+            it.name.contains(term, ignoreCase = true) ||
+                it.tags.contains(term, ignoreCase = true)
         }
     }
     var currentName by remember { mutableStateOf<String?>(null) }
@@ -84,11 +94,22 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
             state.failed -> Text(stringResource(R.string.radio_load_error))
             state.stations.isEmpty() -> Text(stringResource(R.string.radio_empty))
         }
-        TextButton(onClick = model::refresh, enabled = !state.loading) {
-            Text(stringResource(R.string.radio_refresh))
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it.take(80) },
+            label = { Text(stringResource(R.string.radio_search)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(R.string.radio_results, filteredStations.size, state.stations.size),
+                style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = model::refresh, enabled = !state.loading) {
+                Text(stringResource(R.string.radio_refresh))
+            }
         }
         LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
-            items(state.stations, key = { it.id }) { station ->
+            items(filteredStations, key = { it.id }) { station ->
                 Column(Modifier.fillMaxWidth().clickable {
                     currentName = station.name
                     playbackFailed = false
