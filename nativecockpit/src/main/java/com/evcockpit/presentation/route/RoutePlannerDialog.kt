@@ -97,7 +97,7 @@ fun RoutePlannerDialog(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Pencereyi kapat",
+                                    contentDescription = "Close dialog",
                                     tint = Color.White
                                 )
                             }
@@ -193,7 +193,7 @@ fun RoutePlannerDialog(
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(
                                         text = stringResource(R.string.native_osrm_alternatives) +
-                                            state.options.size + " doğrulanmış)",
+                                            state.options.size + " validated)",
                                         style = MaterialTheme.typography.titleSmall,
                                         color = Color.White
                                     )
@@ -207,8 +207,8 @@ fun RoutePlannerDialog(
                                         ) {
                                             Text(
                                                 (if (selected) "✓ " else "") +
-                                                    "Rota " + (index + 1) + " · " +
-                                                    "%.1f km · %d dk".format(
+                                                    "Route " + (index + 1) + " · " +
+                                                    "%.1f km · %d min".format(
                                                         item.distanceKm,
                                                         item.durationMinutesWithoutTraffic
                                                     )
@@ -217,7 +217,7 @@ fun RoutePlannerDialog(
                                     }
                                     Text(
                                         text = stringResource(R.string.native_estimates_exclude_traffic_arrival_soc_is_not_calculated) +
-                                            "varış SoC hesaplanmaz.",
+                                            "without GPS progress.",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = muted
                                     )

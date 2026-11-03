@@ -62,12 +62,12 @@ fun ObdSettingsDialog(
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (state.phase == ObdPhase.CONNECTED) {
-                    Text(if (state.lastPollSucceeded) "SAE 010D gerçek hız yanıtı alındı"
-                         else "010D hız yanıtı henüz doğrulanmadı")
+                    Text(if (state.lastPollSucceeded) "Actual SAE 010D speed response received"
+                         else "010D speed response not yet validated")
                     HorizontalDivider()
                     Text(stringResource(R.string.native_experimental_meb_ecu_readings),style=MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.native_test_only_while_parked_and_in_your_own_vehicle_queries_use_read_only_u) +
-                        "Topluluk PID kaynakları cihazınızda doğrulanmadı; sonuçlar navigasyondaki SoC/SoH alanına aktarılmaz.",
+                        "Community PID sources have not been validated on your device; results are not applied to navigation SoC/SoH fields.",
                         style=MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick={ { onMebDiagnostic("22028C") } },
                         enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
@@ -87,14 +87,14 @@ fun ObdSettingsDialog(
                             style=MaterialTheme.typography.bodyMedium)
                         if (item.status == MebResponseStatus.VALID_RAW) {
                             item.candidateBmsSocPercent?.let { percent ->
-                                Text(String.format(Locale.forLanguageTag("tr-TR"),
-                                    "Aday BMS SoC: %.1f %% (araç ekranıyla karşılaştırılmalı)",percent))
+                                Text(String.format(Locale.forLanguageTag("en-US"),
+                                    "Candidate BMS SoC: %.1f %% (compare with the vehicle display)",percent))
                             }
                             item.candidateMaxBatteryTempC?.let { temp ->
-                                Text(String.format(Locale.forLanguageTag("tr-TR"),
-                                    "Aday maksimum batarya sıcaklığı: %.2f °C",temp))
+                                Text(String.format(Locale.forLanguageTag("en-US"),
+                                    "Candidate maximum battery temperature: %.2f °C",temp))
                             }
-                            item.payloadHex?.let { Text("Ham payload: $it",
+                            item.payloadHex?.let { Text("Raw payload: $it",
                                 style=MaterialTheme.typography.bodySmall) }
                         } else {
                             Text(stringResource(R.string.native_no_validated_ecu_response_received_data_was_not_used),
@@ -109,7 +109,7 @@ fun ObdSettingsDialog(
                     }
                 }
                 Text(stringResource(R.string.native_bms_soc_diagnostic_candidate_dashboard_soc_and_soh_are_different_quant) +
-                     "Kokpitte batarya sağlığı/enerji/sıcaklık henüz ölçülmüş veri olarak kullanılmıyor.",
+                     "Battery health/energy/temperature are not yet used as measured data in the cockpit.",
                      style=MaterialTheme.typography.bodySmall)
                 TextButton(onClick=onDismiss,modifier=Modifier.fillMaxWidth()) { Text(stringResource(R.string.native_back_to_map)) }
             }
@@ -118,19 +118,19 @@ fun ObdSettingsDialog(
 }
 
 private fun phaseLabel(phase: ObdPhase): String = when (phase) {
-    ObdPhase.DISCONNECTED -> "Bağlı değil"
-    ObdPhase.CONNECTING -> "Bağlanıyor"
-    ObdPhase.CONNECTED -> "Bağlı"
-    ObdPhase.ERROR -> "Hata"
+    ObdPhase.DISCONNECTED -> "Disconnected"
+    ObdPhase.CONNECTING -> "Connecting"
+    ObdPhase.CONNECTED -> "Connected"
+    ObdPhase.ERROR -> "Error"
 }
 
 private fun diagnosticLabel(status: MebResponseStatus): String = when (status) {
-    MebResponseStatus.VALID_RAW -> "Geçerli ham yanıt"
-    MebResponseStatus.NO_DATA -> "Veri yok"
-    MebResponseStatus.NEGATIVE -> "ECU isteği reddetti"
-    MebResponseStatus.WRONG_ECU -> "Farklı ECU yanıtı"
-    MebResponseStatus.WRONG_IDENTIFIER -> "Farklı veri kimliği"
-    MebResponseStatus.INCOMPLETE -> "Eksik yanıt"
-    MebResponseStatus.MALFORMED -> "Geçersiz yanıt"
-    MebResponseStatus.ADAPTER_ERROR -> "Adaptör hatası"
+    MebResponseStatus.VALID_RAW -> "Valid raw response"
+    MebResponseStatus.NO_DATA -> "No data"
+    MebResponseStatus.NEGATIVE -> "ECU rejected request"
+    MebResponseStatus.WRONG_ECU -> "Unexpected ECU"
+    MebResponseStatus.WRONG_IDENTIFIER -> "Unexpected data identifier"
+    MebResponseStatus.INCOMPLETE -> "Incomplete response"
+    MebResponseStatus.MALFORMED -> "Invalid response"
+    MebResponseStatus.ADAPTER_ERROR -> "Adapter error"
 }

@@ -14,7 +14,7 @@ class CarGuidancePolicyTest {
         totalKm = .46, osrmDurationSeconds = 60.0,
         routePoints = listOf(a,b,c),
         maneuvers = listOf(
-            NavigationManeuver("next","Sağa dönün",b,"turn","right")
+            NavigationManeuver("next","Turn right",b,"turn","right")
         )
     )
     private fun fix(time: Long = t) = GpsFix(a, 5f, time)

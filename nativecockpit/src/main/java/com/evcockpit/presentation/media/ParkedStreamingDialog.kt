@@ -67,7 +67,7 @@ fun ParkedStreamingDialog(
                 )
                 Text(
                     if (playbackAllowed) stringResource(R.string.native_in_app_media_on_the_phone)
-                    else "Araç bağlantısı etkin veya bağlantı durumu bekleniyor. " +
+                    else "Vehicle connection is active or its status is pending. " +
                          stringResource(R.string.native_video_is_unavailable_on_this_screen),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFABC5D5)

@@ -133,11 +133,14 @@ fun CockpitScreen(
                     NativeVoiceGuide.Status.INIT_FAILED -> R.string.native_could_not_initialize_the_speech_engine
                     NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> R.string.native_could_not_obtain_audio_focus
                 }))
+                Text(stringResource(R.string.cockpit_voice_volume))
                 Slider(
-                    value = voiceVolume.coerceIn(.15f, 1f),
+                    value = voiceVolume.takeIf { it.isFinite() }?.coerceIn(.15f, 1f) ?: 1f,
                     onValueChange = onVoiceVolumeChange, valueRange = .15f..1f
                 )
-                OutlinedButton(onClick = onVoiceTest, enabled = voiceEnabled) {
+                OutlinedButton(onClick = onVoiceTest, enabled = voiceEnabled &&
+                    (voiceStatus == NativeVoiceGuide.Status.READY ||
+                        voiceStatus == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
                     Text(stringResource(R.string.native_english_speech_test))
                 }
             }
@@ -155,20 +158,26 @@ fun CockpitScreen(
         )
     }
     station?.let { selected ->
+        val fallbackName = stringResource(R.string.cockpit_station_name)
+        val fallbackOperator = stringResource(R.string.cockpit_operator_unknown)
+        val fallbackAddress = stringResource(R.string.cockpit_address_unknown)
+        val unknownValue = stringResource(R.string.cockpit_unknown_value)
         AlertDialog(
             onDismissRequest = { station = null }, containerColor = Navy,
-            title = { Text(selected.name.ifBlank { "Şarj istasyonu" }) },
+            title = { Text(selected.name.ifBlank { fallbackName }) },
             text = {
                 Column(
                     Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(selected.operator.ifBlank { "Operatör belirtilmedi" })
-                    Text(selected.address.ifBlank { "Adres belirtilmedi" })
+                    Text(selected.operator.ifBlank { fallbackOperator })
+                    Text(selected.address.ifBlank { fallbackAddress })
                     selected.sockets.forEach { socket ->
-                        Text("${socket.kind} · ${socket.type} · ${socket.powerRaw.ifBlank { "—" }}")
+                        Text(stringResource(R.string.cockpit_socket_summary,
+                            socket.kind.toString(), socket.type.toString(),
+                            socket.powerRaw.ifBlank { unknownValue }))
                     }
-                    Text("EPDK: ${selected.sourceVerifiedAtUtc}", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.cockpit_source_verified, selected.sourceVerifiedAtUtc), style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.native_live_availability_price_and_road_access_are_unknown))
                 }
             },
@@ -210,36 +219,24 @@ fun CockpitScreen(
             horizontalAlignment = Alignment.End
         ) {
             Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
-                @Composable
-                fun VoiceButton() {
-                    TextButton(onClick = { voiceSettings = true }) {
-                        Text(stringResource(R.string.native_voice), color = NeonGreen)
-                    }
-                }
-                @Composable
-                fun QuickActions() {
-                    Row {
-                        IconButton(onClick = onGpsClick, enabled = !state.simulationEnabled) {
-                            Icon(Icons.Default.GpsFixed,
-                                contentDescription = stringResource(R.string.cockpit_gps),
-                                tint = if (state.gpsFix != null) NeonGreen else SoftText)
-                        }
-                        IconButton(onClick = onVoiceToggle) {
-                            Icon(
-                                if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                                contentDescription = stringResource(if (voiceEnabled)
-                                    R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
-                                tint = if (voiceEnabled) NeonGreen else SoftText
-                            )
-                        }
-                    }
-                }
                 if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
-                    VoiceButton()
-                    QuickActions()
+                    VoiceButton(onClick = { voiceSettings = true })
+                    QuickActions(
+                        gpsEnabled = !state.simulationEnabled,
+                        hasGpsFix = state.gpsFix != null,
+                        voiceEnabled = voiceEnabled,
+                        onGpsClick = onGpsClick,
+                        onVoiceToggle = onVoiceToggle
+                    )
                 } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    VoiceButton()
-                    QuickActions()
+                    VoiceButton(onClick = { voiceSettings = true })
+                    QuickActions(
+                        gpsEnabled = !state.simulationEnabled,
+                        hasGpsFix = state.gpsFix != null,
+                        voiceEnabled = voiceEnabled,
+                        onGpsClick = onGpsClick,
+                        onVoiceToggle = onVoiceToggle
+                    )
                 }
             }
         }
@@ -277,6 +274,39 @@ fun CockpitScreen(
 }
 
 @Composable
+private fun VoiceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Text(stringResource(R.string.native_voice), color = NeonGreen)
+    }
+}
+
+@Composable
+private fun QuickActions(
+    gpsEnabled: Boolean,
+    hasGpsFix: Boolean,
+    voiceEnabled: Boolean,
+    onGpsClick: () -> Unit,
+    onVoiceToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier) {
+        IconButton(onClick = onGpsClick, enabled = gpsEnabled) {
+            Icon(Icons.Default.GpsFixed,
+                contentDescription = stringResource(R.string.cockpit_gps),
+                tint = if (hasGpsFix) NeonGreen else SoftText)
+        }
+        IconButton(onClick = onVoiceToggle) {
+            Icon(
+                if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                contentDescription = stringResource(if (voiceEnabled)
+                    R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
+                tint = if (voiceEnabled) NeonGreen else SoftText
+            )
+        }
+    }
+}
+
+@Composable
 private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
     Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
         Column(Modifier.padding(12.dp)) {
@@ -307,15 +337,17 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
 
 @Composable
 private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier = Modifier) {
+    val percentSymbol = stringResource(R.string.cockpit_percent_symbol)
+    val unknownValue = stringResource(R.string.cockpit_unknown_value)
     val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
-        ?.let { CockpitFormat.percent(it).removeSuffix("%") } ?: "—"
+        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: unknownValue
     Row(modifier, verticalAlignment = Alignment.Bottom) {
         Text(number,
             fontSize = if (compact) 72.sp else 96.sp,
             lineHeight = if (compact) 80.sp else 104.sp,
-            fontWeight = FontWeight.Medium, color = Color.White,
+            fontWeight = FontWeight.Light, color = Color.White,
             maxLines = 1, softWrap = false)
-        Text("%", Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
+        Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
             fontSize = if (compact) 30.sp else 40.sp,
             lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
     }
@@ -323,12 +355,13 @@ private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier 
 
 @Composable
 private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
+    val unit = stringResource(R.string.cockpit_distance_unit)
     Column(modifier) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(CockpitFormat.distance(km).removeSuffix(" km"),
+            Text(CockpitFormat.distance(km).removeSuffix(" $unit"),
                 Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
-                color = NeonGreen, maxLines = 1, softWrap = false)
-            Text("km", Modifier.alignByBaseline(),
+                fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false)
+            Text(unit, Modifier.alignByBaseline(),
                 style = MaterialTheme.typography.labelMedium, color = SoftText)
         }
         Text(stringResource(R.string.cockpit_estimated_range),
@@ -415,12 +448,12 @@ private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit
     ) {
         Text(stringResource(R.string.native_epdk_station_filters), style = MaterialTheme.typography.headlineSmall)
         StationFilter.entries.forEach { filter ->
-            val title = when (filter) {
-                StationFilter.ALL -> "Tümü"
-                StationFilter.DC -> "DC"
-                StationFilter.ROUTE_CCS -> "Rota CCS"
-                StationFilter.ROUTE_DC -> "Rota DC"
-            }
+            val title = stringResource(when (filter) {
+                StationFilter.ALL -> R.string.cockpit_filter_all
+                StationFilter.DC -> R.string.cockpit_filter_dc
+                StationFilter.ROUTE_CCS -> R.string.cockpit_filter_route_ccs
+                StationFilter.ROUTE_DC -> R.string.cockpit_filter_route_dc
+            })
             FilterChip(selected = ui.selectedFilter == filter,
                 onClick = { onFilter(filter) }, label = { Text(title) },
                 enabled = ui.routeProvided || filter == StationFilter.ALL || filter == StationFilter.DC)
@@ -428,8 +461,8 @@ private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit
         TextButton(onClick = onRefresh) { Text(stringResource(R.string.native_refresh)) }
         if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         ui.error?.let { Text(it, color = SoftText) }
-        Text("EPDK · ${ui.visible.size} / ${ui.total}", style = MaterialTheme.typography.bodySmall)
-        Text(ui.verifiedAtUtc ?: "Kaynak tarihi bilinmiyor", style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.cockpit_station_count, ui.visible.size, ui.total), style = MaterialTheme.typography.bodySmall)
+        Text(ui.verifiedAtUtc ?: stringResource(R.string.cockpit_source_date_unknown), style = MaterialTheme.typography.bodySmall)
         ui.visible.take(100).forEach { candidate ->
             TextButton(onClick = { onStation(candidate) }, modifier = Modifier.fillMaxWidth()) {
                 Text(candidate.name, modifier = Modifier.fillMaxWidth(), maxLines = 2)

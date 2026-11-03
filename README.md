@@ -1,6 +1,6 @@
 # EV Cockpit
 
-The application interface and voice guidance are in Turkish. Repository documentation is in English.
+The application interface, voice guidance, and repository documentation are in English.
 
 A map-first electric-vehicle cockpit built with Kotlin, Jetpack Compose, MapLibre, OSRM, and read-only vehicle diagnostics.
 

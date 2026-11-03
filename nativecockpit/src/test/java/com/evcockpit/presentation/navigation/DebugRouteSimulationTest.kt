@@ -63,7 +63,7 @@ class DebugRouteSimulationTest {
             routeId = "osrm-simulation-test",
             routePoints = geometry,
             maneuvers = listOf(NavigationManeuver(
-                "step-7", "sağa dönün", GeoCoordinate(37.005, 34.0)
+                "step-7", "turn right", GeoCoordinate(37.005, 34.0)
             )),
             totalKm = 1.11,
             osrmDurationSeconds = 90.0
@@ -89,7 +89,7 @@ class DebugRouteSimulationTest {
                 GeoCoordinate(37.0, 34.0), GeoCoordinate(37.01, 34.0)
             ),
             maneuvers = listOf(NavigationManeuver(
-                "step-7", "sağa dönün", GeoCoordinate(37.005, 34.0)
+                "step-7", "turn right", GeoCoordinate(37.005, 34.0)
             )),
             totalKm = 1.11,
             osrmDurationSeconds = 90.0
@@ -103,10 +103,10 @@ class DebugRouteSimulationTest {
         }
 
         assertNull(speech(300.0, time)) // 250 m remaining
-        assertEquals("İki yüz metre sonra, sağa dönün", speech(385.0, time + 1_000L))
+        assertEquals("In two hundred meters, turn right", speech(385.0, time + 1_000L))
         policy.confirmSpoken(time + 1_000L) // TextToSpeech.onStart
         assertNull(speech(400.0, time + 2_000L))
-        assertEquals("Elli metre sonra, sağa dönün", speech(520.0, time + 6_000L))
+        assertEquals("In fifty meters, turn right", speech(520.0, time + 6_000L))
         policy.confirmSpoken(time + 6_000L)
         assertNull(speech(530.0, time + 7_000L))
     }

@@ -7,7 +7,7 @@ import java.util.Locale
 
 /** UI-only formatting: unknown input never becomes 0 or an invented value. */
 object CockpitFormat {
-    private val turkish = Locale.forLanguageTag("tr-TR")
+    private val turkish = Locale.forLanguageTag("en-US")
 
     fun percent(v: Double?): String =
         v?.takeIf { it.isFinite() && it in 0.0..100.0 }
@@ -19,7 +19,7 @@ object CockpitFormat {
 
     fun speed(kmh: Double?): String =
         kmh?.takeIf { it.isFinite() && it in 0.0..260.0 }
-            ?.let { "%.0f km/sa".format(turkish, it) } ?: "— km/sa"
+            ?.let { "%.0f km/h".format(turkish, it) } ?: "— km/h"
 
     fun voltage(v: Double?): String =
         v?.takeIf { it.isFinite() && it in 0.0..1000.0 }
@@ -34,7 +34,7 @@ object CockpitFormat {
             ?.let { "%.1f kW".format(turkish, it) } ?: "— kW"
 
     fun minutes(min: Long?): String =
-        min?.takeIf { it in 0L..100_000L }?.let { "$it dk" } ?: "—"
+        min?.takeIf { it in 0L..100_000L }?.let { "$it min" } ?: "—"
 
     fun eta(epochMs: Long?): String = try {
         epochMs?.takeIf { it > 0L }?.let {

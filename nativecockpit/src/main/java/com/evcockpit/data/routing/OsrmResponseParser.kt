@@ -9,11 +9,11 @@ import kotlin.math.ceil
 /** Parses only verifiable OSRM fields. Unknown maneuvers are dropped, not guessed. */
 object OsrmResponseParser {
     fun parse(json: String, targetLabel: String): List<RouteOption> {
-        require(json.length in 30..6_000_000) { "OSRM yanıt boyutu geçersiz" }
+        require(json.length in 30..6_000_000) { "Invalid OSRM response size" }
         val root=JsonParser.parseString(json).asJsonObject
-        require(root.string("code")=="Ok") { "OSRM kullanılabilir rota döndürmedi" }
-        val routes=root.getAsJsonArray("routes") ?: error("Rota yok")
-        require(routes.size() in 1..12) { "Alternatif sayısı geçersiz" }
+        require(root.string("code")=="Ok") { "OSRM returned no usable route" }
+        val routes=root.getAsJsonArray("routes") ?: error("No route")
+        require(routes.size() in 1..12) { "Invalid number of alternatives" }
         val sessionId=UUID.randomUUID().toString()
         val result=routes.mapIndexedNotNull { index, el ->
             try {
@@ -77,7 +77,7 @@ object OsrmResponseParser {
                 RouteOption(snap,distance/1000,ceil(seconds/60).toLong())
             }catch(_: RuntimeException){null}
         }
-        require(result.isNotEmpty()) { "OSRM verisi geçerli değil" }
+        require(result.isNotEmpty()) { "Invalid OSRM data" }
         return result
     }
     private fun JsonObject.string(key:String):String? =
@@ -91,25 +91,25 @@ object OsrmResponseParser {
 object OsrmTurkishInstructions {
     fun speak(type:String?,modifier:String?,name:String?):String? {
         val direction=when(modifier){
-            "left"->"sola";"right"->"sağa";"slight left"->"hafif sola"
-            "slight right"->"hafif sağa";"sharp left"->"keskin sola"
-            "sharp right"->"keskin sağa";"uturn"->"geri";"straight"->"düz"
+            "left"->"left";"right"->"right";"slight left"->"slightly left"
+            "slight right"->"slightly right";"sharp left"->"sharply left"
+            "sharp right"->"sharply right";"uturn"->"back";"straight"->"straight"
             else->null
         }
         val message=when(type){
-            "turn", "end of road"->direction?.let { if(it=="düz")"Düz devam edin" else "$it dönün" }
-            "new name", "continue"->"Düz devam edin"
-            "fork"->direction?.let {"$it ayrılan yolu takip edin"}
-            "merge"->direction?.let {"$it birleşen yola katılın"}
-            "on ramp"->direction?.let {"$it bağlantı yoluna girin"}
-            "off ramp"->direction?.let {"$it çıkış yoluna girin"}
-            "roundabout","rotary"->"Döner kavşağa girin"
-            "exit roundabout", "exit rotary"->"Döner kavşaktan çıkın"
+            "turn", "end of road"->direction?.let { if(it=="straight")"Continue straight" else "Turn $it" }
+            "new name", "continue"->"Continue straight"
+            "fork"->direction?.let {"Take the fork $it"}
+            "merge"->direction?.let {"Merge $it"}
+            "on ramp"->direction?.let {"Take the connecting road $it"}
+            "off ramp"->direction?.let {"Take the exit $it"}
+            "roundabout","rotary"->"Enter the roundabout"
+            "exit roundabout", "exit rotary"->"Exit the roundabout"
             else->null // OSRM unknown type: stay silent
         }?:return null
         val road=name.orEmpty().trim().takeIf {
             it.length in 2..55 && it.none { c -> c.isISOControl() || c=='<' || c=='>' }
         }
-        return (if(road==null)message else "$message, $road yönüne").take(140)
+        return (if(road==null)message else "$message, toward $road").take(140)
     }
 }

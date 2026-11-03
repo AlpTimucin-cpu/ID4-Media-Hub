@@ -11,7 +11,7 @@ sealed interface AutomaticChargePlan {
         val stops: List<ProposedDcStop>,
         val totalSuggestedChargeKwh: Double,
         val assumedChargeTargetPercent: Double = 80.0,
-        val source: String = "MODEL/TAHMİN · gerçek sürüş sapması ve şarj doluluğu doğrulanmadı"
+        val source: String = "MODEL/ESTIMATE · actual driving detour and charger availability are unverified"
     ) : AutomaticChargePlan
 }
 
@@ -70,7 +70,7 @@ object AutomaticDcChargingPlanner {
             !startSocPercent.isFinite() || startSocPercent !in 0.0..100.0 ||
             !reserveSocPercent.isFinite() || reserveSocPercent !in 0.0..100.0 ||
             !baseline.effectiveWhPerKm.isValidPositive()
-        ) return AutomaticChargePlan.Unavailable("Doğrulanmış rota ve enerji kalibrasyonu yok")
+        ) return AutomaticChargePlan.Unavailable("No validated route and energy calibration")
 
         val energyPerKm = baseline.effectiveWhPerKm / 1000.0
         val batteryReserve = reserveSocPercent / 100.0 * usableBatteryKwh
@@ -96,7 +96,7 @@ object AutomaticDcChargingPlanner {
                 }
                 .maxByOrNull { it.distanceFromStartKm }
                 ?: return AutomaticChargePlan.Unavailable(
-                    "Rezerv korunarak ulaşılabilecek doğrulanmış DC adayı bulunamadı"
+                    "No validated DC candidate is reachable while preserving the reserve"
                 )
 
             val driveEnergy = (reachable.distanceFromStartKm - lastKm) * energyPerKm
@@ -104,7 +104,7 @@ object AutomaticDcChargingPlanner {
             val targetKwh = usableBatteryKwh * 0.8
             val chargeKwh = (targetKwh - arrivalKwh).coerceAtLeast(0.0)
             if (chargeKwh < 0.1) return AutomaticChargePlan.Unavailable(
-                "80% şarj varsayımıyla devam eden rota güvenilir değil"
+                "The onward route is unreliable with an assumed 80% charge"
             )
 
             planned += ProposedDcStop(
@@ -121,7 +121,7 @@ object AutomaticDcChargingPlanner {
             energyKwh = targetKwh
             lastKm = reachable.distanceFromStartKm
         }
-        return AutomaticChargePlan.Unavailable("Rota çok fazla şarj durağı gerektiriyor")
+        return AutomaticChargePlan.Unavailable("The route requires too many charging stops")
     }
 
     /** '150' is ambiguous; '150 kW' is usable metadata, not a charging-time guarantee. */

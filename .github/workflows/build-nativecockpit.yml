@@ -102,6 +102,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$EYA_SIGNING_BUNDLE_BASE64" ]; then
+            {
+              echo "### Production signing is blocked"
+              echo 'Required repository secret: `EYA_SIGNING_BUNDLE_BASE64`.'
+              echo 'Restore the existing owner signing bundle under Settings → Secrets and variables → Actions.'
+              echo 'The debug APK is published separately. No unsigned or debug-signed APK is substituted for Release.'
+              echo 'Keep the existing signing identity for updates; do not regenerate it for each build.'
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "::error::Missing EYA_SIGNING_BUNDLE_BASE64 GitHub Secret"
             exit 1
           fi

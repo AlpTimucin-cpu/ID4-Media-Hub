@@ -18,7 +18,7 @@ object MediaLauncher {
                 MediaSite.YOUTUBE -> error("YouTube uses internal WebView")
             }
             val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-                ?: error("Resmi uygulama bulunamadı: " + site.title)
+                ?: error("Official application not found: " + site.title)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
             Log.i("EYA-MEDIA-UAT", "External app launched: " + site.name +

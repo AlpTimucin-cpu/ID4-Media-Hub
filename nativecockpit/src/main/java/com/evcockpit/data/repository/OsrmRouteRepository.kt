@@ -41,18 +41,18 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
     override val selectedIndex: StateFlow<Int?> = index.asStateFlow()
 
     override suspend fun search(query: String): List<RoutePlace> = withContext(Dispatchers.IO) {
-        require(query.trim().length in 3..100) { "En az 3 harf gerekli" }
+        require(query.trim().length in 3..100) { "Enter at least 3 characters" }
         val result = photon.search(query.trim())
         if (!result.isSuccessful) {
             result.errorBody()?.close()
             throw IOException(when (result.code()) {
-                400 -> "Photon isteği reddedildi (HTTP 400)."
-                429 -> "Adres sorgu sınırı doldu (HTTP 429); biraz sonra tekrar dene."
-                in 500..599 -> "Photon sunucusu yanıt vermiyor (HTTP ${result.code()})."
-                else -> "Adres servisi HTTP ${result.code()} hatası döndürdü."
+                400 -> "Photon request rejected (HTTP 400)."
+                429 -> "Address query rate limit reached (HTTP 429); try again later."
+                in 500..599 -> "Photon server is unavailable (HTTP ${result.code()})."
+                else -> "Address service returned HTTP ${result.code()}."
             })
         }
-        val body = result.body() ?: throw IOException("Adres servisi boş cevap verdi")
+        val body = result.body() ?: throw IOException("Address service returned an empty response")
         body.use { PhotonResponseParser.parse(it.string()) }
     }
 
@@ -62,7 +62,7 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         val url = try {
             OsrmRequestFormat.url(origin, destination.coordinate)
         } catch (error: IllegalArgumentException) {
-            return@withContext RouteCalculationResult.Failure(null, error.message ?: "Koordinat hatası")
+            return@withContext RouteCalculationResult.Failure(null, error.message ?: "Coordinate error")
         }
         try {
             val response = osrm.route(url)
@@ -77,12 +77,12 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
                 )
             }
             val body = response.body()
-                ?: return@withContext RouteCalculationResult.Failure(null, "OSRM boş yanıt verdi")
+                ?: return@withContext RouteCalculationResult.Failure(null, "OSRM returned an empty response")
             val alternatives = try {
                 body.use { OsrmResponseParser.parse(it.string(), destination.label) }
             } catch (error: RuntimeException) {
                 return@withContext RouteCalculationResult.Failure(null,
-                    "OSRM rota verisi okunamadı: ${error.message?.take(80) ?: "invalid JSON"}")
+                    "Could not read OSRM route data: ${error.message?.take(80) ?: "invalid JSON"}")
             }
             // Publish only a completely validated response. Do not publish a partial route.
             variants.value = alternatives
@@ -92,14 +92,14 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: UnknownHostException) {
-            RouteCalculationResult.Failure(null, "İnternet bağlantısı yok veya OSRM adresi çözümlenemiyor")
+            RouteCalculationResult.Failure(null, "No internet connection or OSRM address could not be resolved")
         } catch (_: SocketTimeoutException) {
-            RouteCalculationResult.Failure(null, "OSRM zaman aşımı. İnternet bağlantısını kontrol et")
+            RouteCalculationResult.Failure(null, "OSRM timed out. Check your internet connection")
         } catch (_: IOException) {
-            RouteCalculationResult.Failure(null, "OSRM bağlantısı kurulamadı. Yeniden dene")
+            RouteCalculationResult.Failure(null, "Could not connect to OSRM. Try again")
         } catch (error: RuntimeException) {
             RouteCalculationResult.Failure(null,
-                "Rota yanıtı işlenemedi: ${error.message?.take(90) ?: "beklenmeyen hata"}")
+                "Could not process the route response: ${error.message?.take(90) ?: "beklenmeyen hata"}")
         }
     }
 
@@ -118,11 +118,11 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         fun explainStatus(status: Int, code: String?): String {
             val suffix = code?.let { " · OSRM: $it" } ?: ""
             return when (status) {
-                400 -> "OSRM HTTP 400: koordinatlar veya sorgu parametreleri reddedildi$suffix"
-                404 -> "OSRM HTTP 404: rota servisi bulunamadı$suffix"
-                429 -> "OSRM HTTP 429: sorgu sınırı aşıldı$suffix"
-                in 500..599 -> "OSRM HTTP $status: sunucu geçici olarak kullanılamıyor$suffix"
-                else -> "OSRM HTTP $status: istek başarısız$suffix"
+                400 -> "OSRM HTTP 400: coordinates or query parameters rejected$suffix"
+                404 -> "OSRM HTTP 404: routing service not found$suffix"
+                429 -> "OSRM HTTP 429: query rate limit exceeded$suffix"
+                in 500..599 -> "OSRM HTTP $status: server temporarily unavailable$suffix"
+                else -> "OSRM HTTP $status: request failed$suffix"
             }
         }
         /** Only expose the OSRM machine-readable error code, not arbitrary server text. */
