@@ -109,26 +109,21 @@ class NavigationViewModel @Inject constructor(
     private var debugDemoRouteActive = false
     private var gpsWaitSinceMs = System.currentTimeMillis()
 
-    private data class DataSources(
-        val telemetry: VehicleTelemetry,
-        val gps: GpsFix?,
-        val simulated: Boolean
-    )
-
-    // Real OBD and real FusedLocation are never overwritten by test data.
+    // Single fail-closed selector for simulation vs measured GPS/OBD.
+    // Route id and frame belong to the same combine emission: a stale frame
+    // cannot drive the new route's map progress or TTS announcements.
     private val sources = combine(
         vehicleRepository.telemetry, locationRepository.gpsFix,
         _simulationEnabled, _simulationFrame, routes.currentRoute
     ) { telemetry, gps, enabled, frame, route ->
-        // A frame from the previous route must NEVER drive a new route's
-        // progress or trigger an announcement while collectLatest switches.
-        val matchingFrame = frame?.takeIf {
-            route?.routeId != null && it.routeId == route.routeId
-        }
-        if (BuildConfig.DEBUG && enabled) DataSources(
-            matchingFrame?.telemetry ?: VehicleTelemetry(),
-            matchingFrame?.fix, true
-        ) else DataSources(telemetry, gps, false)
+        NavigationSourceSelector.select(
+            liveTelemetry = telemetry,
+            liveGps = gps,
+            simulationEnabled = enabled,
+            debugBuild = BuildConfig.DEBUG,
+            frame = frame,
+            currentRouteId = route?.routeId
+        )
     }
     // Exposed effective location, sourced from the same flow as cockpit and TTS.
     // Do not inject synthetic locations into FusedLocationProviderClient.
