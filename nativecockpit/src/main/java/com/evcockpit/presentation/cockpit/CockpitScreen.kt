@@ -237,25 +237,13 @@ fun CockpitScreen(
                     start = if (landscape) 0.dp else 16.dp,
                     end = 16.dp,
                     top = if (landscape) 80.dp else 0.dp,
-                    bottom = if (landscape) 0.dp else 88.dp
+                    bottom = if (landscape) 0.dp else 112.dp
                 ).width(arrivalWidth)
         ) {
             ArrivalHud(
                 route = route, state = state, loading = loadStatus is RouteLoadStatus.Loading,
                 compact = short, onOpen = { routePlanner = true }
             )
-        }
-        if (state.simulationEnabled && BuildConfig.DEBUG) {
-            Surface(
-                modifier = Modifier.align(Alignment.CenterStart).padding(16.dp),
-                color = Navy, shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    stringResource(R.string.native_simulation_test_data),
-                    Modifier.padding(10.dp), style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFFFFC18D)
-                )
-            }
         }
         SnackbarHost(
             hostState = snackbar,
