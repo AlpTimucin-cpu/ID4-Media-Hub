@@ -57,3 +57,14 @@ The media build workflow is `.github/workflows/build-ev-cockpit.yml`. The source
 5. Open the repository branch list and use Rename branch for the historical branches: the legacy native-media branch to `feature/media-engine-native`, and the legacy 32-bit migration branch to `feature/media-engine-32-migration`. The active implementation is on `feature/ev-cockpit`; the old branches are historical snapshots.
 
 The connected GitHub tool cannot rename repository branches or administer the repository name. Repository/branch URLs and third-party application IDs are externally defined identities. Existing URLs/Android IDs must not be replaced with fictitious names. `EXTERNAL_COMPATIBILITY.json` lists retained contracts. Renaming the repository itself requires the owner's repository settings and a subsequent update of data/source URLs.
+
+## Mobile repository rename: owner action
+
+1. On a phone browser, open the current GitHub repository and sign in as its owner.
+2. Select **Settings → General → Repository name** (use the browser's Desktop site option if the tab is hidden).
+3. Enter `ev-cockpit`, tap **Rename**, and verify the new canonical URL.
+4. After the new URL is live, migrate the raw snapshot endpoints and every repository URL used by CI, radio/charging modules, and documentation; test successful HTTP responses before removing the old URL references.
+5. Keep third-party Android package names unchanged until a separately installed package with a new ID is actually available. A different Java/Kotlin label cannot rename an installed app's package ID.
+6. Repeat the source/manifest/Gradle audit, and verify the data downloads and MediaEngine Intent launches on a phone.
+
+Removing legacy words from source literals before those external resources are renamed would break live station and tariff downloads or installed media-app discovery. The production build must preserve functionality instead of making an inaccurate zero-occurrence assertion.
