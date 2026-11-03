@@ -12,13 +12,13 @@ props = read("gradle.properties")
 native_gradle = read("nativecockpit/build.gradle.kts")
 assert re.search(r"(?m)^android\.enableR8\.fullMode=false\s*$", props), "R8 fullMode guard missing"
 assert re.search(
-    r'getByName\("release"\)\s*\{[^}]*\bisMinifyEnabled\s*=\s*false',
+    r'getByName\("release"\)\s*\{[^}]*\bisMinifyEnabled\s*=\s*true',
     native_gradle, flags=re.S
-), "Native release shrinker unexpectedly enabled"
+), "Native release R8 minification must be enabled"
 assert re.search(
-    r'getByName\("release"\)\s*\{[^}]*\bisShrinkResources\s*=\s*false',
+    r'getByName\("release"\)\s*\{[^}]*\bisShrinkResources\s*=\s*true',
     native_gradle, flags=re.S
-), "Native release resource shrinking unexpectedly enabled"
+), "Native release resource shrinking must be enabled"
 
 radio_api = read("nativecockpit/src/main/java/com/evcockpit/data/radio/RadioBrowserApi.kt")
 radio_screen = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt")
