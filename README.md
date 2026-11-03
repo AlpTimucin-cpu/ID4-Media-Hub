@@ -32,7 +32,7 @@ The active Android implementation is maintained on `feature/ev-cockpit`. Its nat
 Open **Actions** and select the workflow for the application you need, using the `feature/ev-cockpit` branch:
 
 - **Native Cockpit · Kotlin Compose APK** publishes `EV-Cockpit-Native-Kotlin-Debug-APK`, containing the native Compose cockpit.
-- **EV Cockpit APK (TV ve rota koruma)** uses `.github/workflows/build-ev-cockpit.yml` and builds the separate media-engine preview.
+- **The media-engine APK workflow** uses `.github/workflows/build-ev-cockpit.yml` and builds the separate media-engine preview.
 - **EV Cockpit · Android visual QA** records native startup and layout checks at multiple screen sizes.
 
 Download an artifact from a successful run, extract its ZIP archive, and install the intended APK. The separate applications are not interchangeable.
