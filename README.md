@@ -1,36 +1,54 @@
-# Elektrikli Yol Arkadaşım
+# EV Cockpit
 
-**Elektrikli araçlar için rota, şarj planlaması, canlı trafik katmanı, güvenilir telemetri ve medya.**
+**Routes, charging plans, vehicle telemetry, and media for electric journeys.**
 
-Türkiye'deki elektrikli yolculuklar için geliştirilen bağımsız Android uygulaması. Koyu lacivert, turkuaz ve elektrik yeşili arayüzle tek ekranda güzergâh, batarya ölçümleri, şarj durakları ve yol üzeri hava durumunu bir araya getirir.
+EV Cockpit is an independent experimental Android project for electric-vehicle travel. A dark navy interface, a single neon-green cockpit accent, and large typography bring navigation, battery information, charging candidates, and weather estimates together.
 
-> **Geliştirme sürümüdür.** Aşağıdaki ekran görüntüleri yazılımın HTML/CSS tarayıcı önizlemeleridir; fiziksel araç testi veya doğrulanmış canlı trafik anlamına gelmez. Kullanıcıya gösterilen sayılar gerçek kaynaklardan gelmedikçe ölçüm gibi gösterilmez.
+The active Android implementation is maintained on `feature/ev-cockpit`. Its native namespace and application ID are `com.evcockpit`. The application interface, voice guidance, and development-branch documentation are in English.
 
-## Uygulama önizlemesi
+> This is a development project. Browser previews are not physical vehicle tests. Compilation and emulator checks do not establish real-vehicle compatibility, live traffic accuracy, or validated ECU calibration. Unknown measurements remain unavailable rather than appearing as measured values.
 
-![Elektrikli Yol Arkadaşım — Kokpit](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-browser-preview.png)
+## Features
 
-| Telefon rota görünümü | Kompakt yatay kokpit |
+| Area | Function |
 |---|---|
-| ![Telefon görünümü](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/route-phone-browser-preview.png) | ![Yatay görünüm](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/raw/refs/heads/feature/mola-native-id4/docs/screenshots/cockpit-compact-browser-preview.png) |
+| Routes | Road geometry, route alternatives, and estimated travel times from OSRM |
+| Charging | Turkish charging-station records, AC/DC filters, route-corridor candidates, and model-based planning |
+| Traffic | Optional provider-dependent layers require an owner-supplied service key; OSRM routing-profile speeds are not live traffic |
+| Vehicle data | Fresh, validated OBD readings where supported; missing measurements remain unavailable |
+| Journey | GPS-based route progress and a map-focused interface |
+| Media | A separately licensed open-source media foundation and service routing, with playback restrictions retained |
 
-## Özellikler
+## Interface
 
-| Bölüm | İşlev |
-|---|---|
-| **Rota** | Açık yol geometrisine dayalı gerçek güzergâh, alternatif yollar ve tahmini süre |
-| **Şarj** | Türkiye istasyonları, AC/DC türü, güzergâh üzeri durak adayları ve model maliyeti |
-| **Canlı trafik** | Kullanıcının kendi servis anahtarıyla çalışan trafik çizgileri; başarısızsa açık hata durumu |
-| **Araç verileri** | Doğrulanmış, taze OBD verileri; ölçüm yoksa boş değer |
-| **Yolculuk** | Gerçek GPS ile rota ilerlemesi ve sürüş odaklı arayüz |
-| **Medya** | Açık kaynak medya çekirdeği ve resmî servis yönlendirmeleri; hareket/güvenlik kısıtları korunur |
+- Full-screen MapLibre map.
+- Large battery and range numerals in the upper-left corner.
+- A compact arrival and maneuver panel.
+- A slim Route / Charging / Media / Settings dock.
+- Explicit simulation labels and clear separation between measurements and estimates.
 
-## APK ve teknik belgeler
+## APK builds and technical documentation
 
-**[En yeni APK derleme ve test sonucunu aç](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)** → başarılı çalışmanın **Artifacts** bölümünden `Elektrikli-Yol-Arkadasim-APK` ZIP dosyasını indirip içindeki APK'yı kur.
+Open **Actions** and select the workflow for the application you need, using the `feature/ev-cockpit` branch:
 
-En güncel Android entegrasyon kodu ve testler [**aktif geliştirme dalında**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4) tutulur. [Harita, OBD ve gerçek GPS entegrasyon rehberi](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/blob/feature/mola-native-id4/docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md) kaynak uygulamaya özelleştirilmiştir.
+- **Native Cockpit · Kotlin Compose APK** publishes `EV-Cockpit-Native-Kotlin-Debug-APK`, containing the native Compose cockpit.
+- **EV Cockpit APK (TV ve rota koruma)** uses `.github/workflows/build-ev-cockpit.yml` and builds the separate media-engine preview.
+- **EV Cockpit · Android visual QA** records native startup and layout checks at multiple screen sizes.
 
-**Telif ve lisanslar:** Uygulamanın açık kaynak medya tabanı ve üçüncü taraf bileşenleri için [lisans](LICENSE), [attribution](NOTICE.md) ve [güvenlik notları](SECURITY_TOMTOM.md) geçerlidir. Telif ve kaynak proje bilgileri ürünün görünen marka adından ayrı olarak korunur.
+Download an artifact from a successful run, extract its ZIP archive, and install the intended APK. The separate applications are not interchangeable.
 
-**Dağıtım notu:** Kaynak kodun kamusal görünürlüğü, fiziksel araç kullanımı veya üçüncü taraf servislerin ticari şartları açısından ayrıca değerlendirilmelidir.
+The development branch contains `docs/BRAND_MIGRATION.md`, integration documentation, and tests. Select that branch to inspect the current source and package structure.
+
+## Build stability and signing
+
+The native diagnostic Release configuration disables code and resource shrinking. The root Gradle properties include `android.enableR8.fullMode=false`.
+
+Production signing requires the existing owner bundle in the repository Actions secret `EYA_SIGNING_BUNDLE_BASE64`. Without it, the signed Release job stops explicitly. A debug-signed or unsigned APK is never substituted for an owner-signed Release.
+
+A different application ID installs as a separate application. Private preferences, permissions, cookies, and saved data are not automatically transferred.
+
+## Licensing and distribution
+
+The open-source media foundation and third-party components retain their original licensing obligations. See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md), and [security notes](SECURITY_TOMTOM.md). Product branding does not change upstream copyright or source attribution.
+
+Distribution, physical vehicle use, and third-party service access require their own validation and compliance with the applicable terms.
