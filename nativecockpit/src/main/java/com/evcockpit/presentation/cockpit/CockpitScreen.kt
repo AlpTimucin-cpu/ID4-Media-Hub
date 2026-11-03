@@ -181,7 +181,9 @@ fun CockpitScreen(
     BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
         val landscape = maxWidth > maxHeight
         val short = maxHeight < 480.dp
-        val batteryWidth = if (landscape && short) 172.dp else 208.dp.coerceAtMost(maxWidth * .56f)
+        val compactBattery = landscape && short
+        val batteryWidth = if (compactBattery) maxWidth * .49f
+            else 256.dp.coerceAtMost(maxWidth * .64f)
         val arrivalWidth = if (landscape) 294.dp.coerceAtMost(maxWidth * .43f) else maxWidth - 32.dp
 
         MapLibreCockpit(
@@ -195,7 +197,7 @@ fun CockpitScreen(
             modifier = Modifier.fillMaxSize()
         )
         BatteryHud(
-            state = state, compact = short,
+            state = state, compact = compactBattery,
             modifier = Modifier.align(Alignment.TopStart)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
                 .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
@@ -207,23 +209,37 @@ fun CockpitScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End
         ) {
-            Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(10.dp)) {
-                Row {
+            Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
+                @Composable
+                fun VoiceButton() {
                     TextButton(onClick = { voiceSettings = true }) {
-                        Text(stringResource(R.string.native_voice), color = Turquoise)
+                        Text(stringResource(R.string.native_voice), color = NeonGreen)
                     }
-                    IconButton(onClick = onGpsClick, enabled = !state.simulationEnabled) {
-                        Icon(Icons.Default.GpsFixed, contentDescription = stringResource(R.string.cockpit_gps),
-                            tint = if (state.gpsFix != null) Turquoise else SoftText)
+                }
+                @Composable
+                fun QuickActions() {
+                    Row {
+                        IconButton(onClick = onGpsClick, enabled = !state.simulationEnabled) {
+                            Icon(Icons.Default.GpsFixed,
+                                contentDescription = stringResource(R.string.cockpit_gps),
+                                tint = if (state.gpsFix != null) NeonGreen else SoftText)
+                        }
+                        IconButton(onClick = onVoiceToggle) {
+                            Icon(
+                                if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                                contentDescription = stringResource(if (voiceEnabled)
+                                    R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
+                                tint = if (voiceEnabled) NeonGreen else SoftText
+                            )
+                        }
                     }
-                    IconButton(onClick = onVoiceToggle) {
-                        Icon(
-                            if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                            contentDescription = stringResource(if (voiceEnabled)
-                                R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
-                            tint = if (voiceEnabled) Turquoise else SoftText
-                        )
-                    }
+                }
+                if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
+                    VoiceButton()
+                    QuickActions()
+                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    VoiceButton()
+                    QuickActions()
                 }
             }
         }
@@ -262,26 +278,27 @@ fun CockpitScreen(
 
 @Composable
 private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
-    Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(10.dp)) {
-        Column(Modifier.padding(if (compact) 14.dp else 18.dp)) {
+    Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
+        Column(Modifier.padding(12.dp)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
                 color = SoftText, maxLines = 1)
-            Spacer(Modifier.height(8.dp))
-            Text(CockpitFormat.percent(state.socPercent),
-                fontSize = if (compact) 48.sp else 64.sp,
-                lineHeight = if (compact) 52.sp else 68.sp,
-                fontWeight = FontWeight.Medium, color = Color.White,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(4.dp))
+            if (compact) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BatteryPercent(state.socPercent, true, Modifier.weight(.58f))
+                    RangeValue(state.estimatedRangeKm, Modifier.weight(.42f))
+                }
+            } else {
+                BatteryPercent(state.socPercent, false)
+                RangeValue(state.estimatedRangeKm)
+            }
             LinearProgressIndicator(
                 progress = { state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
                     ?.div(100.0)?.toFloat() ?: 0f },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp).height(3.dp),
-                color = Turquoise, trackColor = GlassLine
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(3.dp),
+                color = NeonGreen, trackColor = GlassLine
             )
-            Text(CockpitFormat.distance(state.estimatedRangeKm),
-                style = MaterialTheme.typography.headlineSmall, color = Turquoise)
-            Text(stringResource(R.string.cockpit_estimated_range),
-                style = MaterialTheme.typography.labelMedium, color = SoftText)
             if (state.socPercent == null) Text(stringResource(R.string.cockpit_measurement_unavailable),
                 style = MaterialTheme.typography.labelSmall, color = SoftText)
         }
@@ -289,10 +306,41 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
 }
 
 @Composable
+private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier = Modifier) {
+    val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
+        ?.let { CockpitFormat.percent(it).removeSuffix("%") } ?: "—"
+    Row(modifier, verticalAlignment = Alignment.Bottom) {
+        Text(number,
+            fontSize = if (compact) 72.sp else 96.sp,
+            lineHeight = if (compact) 80.sp else 104.sp,
+            fontWeight = FontWeight.Medium, color = Color.White,
+            maxLines = 1, softWrap = false)
+        Text("%", Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
+            fontSize = if (compact) 30.sp else 40.sp,
+            lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
+    }
+}
+
+@Composable
+private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(CockpitFormat.distance(km).removeSuffix(" km"),
+                Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
+                color = NeonGreen, maxLines = 1, softWrap = false)
+            Text("km", Modifier.alignByBaseline(),
+                style = MaterialTheme.typography.labelMedium, color = SoftText)
+        }
+        Text(stringResource(R.string.cockpit_estimated_range),
+            style = MaterialTheme.typography.labelSmall, color = SoftText)
+    }
+}
+
+@Composable
 private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Boolean, compact: Boolean, onOpen: () -> Unit) {
     Surface(
         Modifier.fillMaxWidth().clickable(onClick = onOpen),
-        color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(10.dp)
+        color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)
     ) {
         Column(Modifier.padding(if (compact) 12.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
@@ -312,7 +360,7 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
                 }
                 Column(Modifier.weight(1f)) {
                     Text(CockpitFormat.percent(route?.estimatedArrivalSocPercent),
-                        style = MaterialTheme.typography.headlineSmall, color = Turquoise)
+                        style = MaterialTheme.typography.headlineSmall, color = NeonGreen)
                     Text(stringResource(R.string.cockpit_arrival_soc),
                         style = MaterialTheme.typography.labelMedium, color = SoftText)
                 }
@@ -335,7 +383,7 @@ private fun CockpitDock(
     modifier: Modifier = Modifier,
     onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit, onSettings: () -> Unit
 ) {
-    Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(10.dp)) {
+    Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
             DockAction(Icons.Default.Map, stringResource(R.string.native_route), onRoute, Modifier.weight(1f))
             DockAction(Icons.Default.Bolt, stringResource(R.string.native_charging), onCharging, Modifier.weight(1f))
@@ -352,7 +400,7 @@ private fun DockAction(icon: ImageVector, title: String, onClick: () -> Unit, mo
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = Turquoise, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(20.dp))
         Text(title, color = SoftText, fontSize = 11.sp, lineHeight = 14.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
     }

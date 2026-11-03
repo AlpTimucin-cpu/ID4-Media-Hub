@@ -8,7 +8,7 @@ on:
     paths:
       - 'media-engine/**'
       - 'nativecockpit/**'
-      - '.github/workflows/build-media-engine.yml'
+      - '.github/workflows/build-ev-cockpit.yml'
 permissions:
   contents: read
 concurrency:
@@ -374,10 +374,15 @@ jobs:
           assert 'EV Cockpit' in s
           print('PASS: EV Cockpit label and launcher alias in binary manifest')
           PY
-          if grep -q "package: name='me.app.fermataX.auto.mola32.debug'" /tmp/mediaengine-preview-package.txt; then
-            echo "::error::Refusing APK that could overwrite the original media player"
-            exit 1
-          fi
+          # Require the independent preview namespace, never an upstream app ID.
+          python3 - <<'PYCODE'
+          import re
+          from pathlib import Path
+          info = Path('/tmp/mediaengine-preview-package.txt').read_text()
+          package = re.search(r"^package: name='([^']+)'", info, re.M)
+          assert package and package.group(1).removesuffix('.debug').endswith('.evcockpitpreview'), \
+              'Refusing APK without the independent preview application ID'
+          PYCODE
           test "$(stat -c %s "$APK")" -gt 10000000
           mkdir -p output
           cp "$APK" output/EV-Cockpit.apk

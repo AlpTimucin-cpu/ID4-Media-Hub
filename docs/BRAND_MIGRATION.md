@@ -36,8 +36,24 @@ These external identities are compatibility data, not first-party product brandi
 
 ## Interface
 
-The Compose screen owns one full-size map. Critical values live in two small overlays: battery/range and arrival guidance. Charging, media, OBD, and voice controls remain available through dedicated panels. Navy/turquoise styling, larger type, 10 dp overlay corners, and 48 dp minimum action targets are used throughout the cockpit.
+The Compose screen owns one full-size map. Critical values live in two small overlays: battery/range and arrival guidance. Charging, media, OBD, and voice controls remain available through dedicated panels. Navy/neon-green styling, larger type, 6 dp overlay corners, and 48 dp minimum action targets are used throughout the cockpit.
 
 ## Build outputs
 
 Use the native cockpit APK for the Compose interface. The other modules remain separate applications. A successful build verifies compilation and automated checks; it does not certify physical vehicle behavior, live PID calibration, or third-party DRM playback.
+
+## Neon UI revision (2.0.2)
+
+The cockpit uses a single neon-green accent (#39FF88) over navy surfaces. Battery numerals grow from 64 to 96 sp on normal screens and from 48 to 72 sp on compact landscape screens. Range numerals grow from 26 to 39 sp. Units remain smaller for readability. Compact landscape places the two values side by side; portrait uses a narrow voice-control column. Map coverage remains fillMaxSize. The cockpit overlay corners are 6 dp.
+
+The media build workflow is `.github/workflows/build-ev-cockpit.yml`. The source archive is `EV_Cockpit_v0.8_Source.zip`. The native namespace remains `com.evcockpit`.
+
+## GitHub mobile handoff
+
+1. Open the repository in a mobile browser and select `feature/ev-cockpit`.
+2. Review the Kotlin files and the renamed build workflow. These changes are already committed on this branch.
+3. Open Actions and inspect the Native Cockpit and Android visual QA runs. The native debug APK contains the Compose UI; the media-engine APK is a separate application.
+4. To make these changes visible on the default branch, open a pull request from `feature/ev-cockpit` to the default branch and merge after reviewing its checks and changes.
+5. Open the repository branch list and use Rename branch for the historical branches: the legacy native-media branch to `feature/media-engine-native`, and the legacy 32-bit migration branch to `feature/media-engine-32-migration`. The active implementation is on `feature/ev-cockpit`; the old branches are historical snapshots.
+
+The connected GitHub tool cannot rename repository branches or administer the repository name. Repository/branch URLs and third-party application IDs are externally defined identities. Existing URLs/Android IDs must not be replaced with fictitious names. `EXTERNAL_COMPATIBILITY.json` lists retained contracts. Renaming the repository itself requires the owner's repository settings and a subsequent update of data/source URLs.

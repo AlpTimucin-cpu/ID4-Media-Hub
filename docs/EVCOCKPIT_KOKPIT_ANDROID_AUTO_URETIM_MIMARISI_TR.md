@@ -40,7 +40,7 @@ flowchart LR
 | [`evcockpit-tesla-cockpit.js`](../media-engine/overlay/fermata/src/main/assets/evcockpit/evcockpit-tesla-cockpit.js) | Salt-okunur SoC/hız/vites/hava gözlemcisi |
 | [`EvCockpitCarPoiService.java`](../media-engine/overlay/fermata/src/auto/java/me/aap/fermata/ev/EvCockpitCarPoiService.java) | Android Auto POI istasyon listesi, yerel OBD ekranına erişim |
 | [`patch_mediaengine.py`](../media-engine/patch_mediaengine.py) | Pinlenmiş MediaEngine kaynağına kontrollü overlay |
-| [`build-media-engine.yml`](../.github/workflows/build-media-engine.yml) | Test → Gradle → compiled APK doğrulama → ZIP artifact |
+| [`build-ev-cockpit.yml`](../.github/workflows/build-ev-cockpit.yml) | Test → Gradle → compiled APK doğrulama → ZIP artifact |
 
 ## 2) Android Auto Manifest ve `automotive_app_desc.xml`
 

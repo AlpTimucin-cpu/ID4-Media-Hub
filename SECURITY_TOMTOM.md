@@ -2,7 +2,7 @@
 
 ## Status (October 26, 2026)
 
-**Earlier releases require review.** `build-media-engine.yml` previously passed `secrets.EVCOCKPIT_TOMTOM_API_KEY` to the build, and `patch_mediaengine.py` could write it into `assets/evcockpit/traffic-config.js`. Since GitHub Actions artifacts are downloadable, the key may have been extractable from an older APK if that secret was configured.
+**Earlier releases require review.** `build-ev-cockpit.yml` previously passed `secrets.EVCOCKPIT_TOMTOM_API_KEY` to the build, and `patch_mediaengine.py` could write it into `assets/evcockpit/traffic-config.js`. Since GitHub Actions artifacts are downloadable, the key may have been extractable from an older APK if that secret was configured.
 
 **New approach:** The shared key is not supplied to the build environment. `patch_mediaengine.py` always writes an empty key to `traffic-config.js` and rejects the build if the legacy `EVCOCKPIT_TOMTOM_API_KEY` environment variable is populated. GitHub Actions validates the configuration file in the final APK.
 

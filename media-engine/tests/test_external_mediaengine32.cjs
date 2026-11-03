@@ -5,7 +5,7 @@ const base=path.join(__dirname,'../overlay/fermata/src/main');
 const src=fs.readFileSync(path.join(base,'java/me/aap/fermata/ev/EvCockpitNavigatorActivity.java'),'utf8');
 const media=fs.readFileSync(path.join(base,'assets/evcockpit/evcockpit-mediaengine-media.js'),'utf8');
 const css=fs.readFileSync(path.join(base,'assets/evcockpit/evcockpit-mediaengine-media.css'),'utf8');
-const workflow=fs.readFileSync(path.join(__dirname,'../../.github/workflows/build-media-engine.yml'),'utf8');
+const workflow=fs.readFileSync(path.join(__dirname,'../../.github/workflows/build-ev-cockpit.yml'),'utf8');
 const patch=fs.readFileSync(path.join(__dirname,'../patch_mediaengine.py'),'utf8');
 assert(src.includes('"me.app.fermataX.auto.mola32.debug"'));
 assert(src.includes('"me.app.fermatax.auto.PhoneLauncherActivity"'));
