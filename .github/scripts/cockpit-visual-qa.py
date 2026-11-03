@@ -77,24 +77,27 @@ try:
         capture(name)
     # Let the 200m/50m TTS callbacks run when the route and speech providers are available.
     time.sleep(15)
+    # Test media controls in portrait; the preceding checks cover compact layouts.
+    shell('wm','size','1080x1920');shell('wm','density','420')
+    time.sleep(3)
     # The companion app is absent on this clean emulator.
     tap_label('Media')
     tap_label('Open Media Engine')
     shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
     warning=shell('cat','/sdcard/cockpit-ui.xml')
-    assert 'Media Engine unavailable' in warning
-    assert 'Install the separate Media Engine application first.' in warning
     (out/'media-engine-missing.xml').write_text(warning)
     (out/'media-engine-missing.png').write_bytes(adb('exec-out','screencap','-p'))
+    assert 'Media Engine unavailable' in warning
+    assert 'Install the separate Media Engine application first.' in warning
     tap_label('Close')
     tap_label('Radio')
     time.sleep(22)
     shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
     radio=shell('cat','/sdcard/cockpit-ui.xml')
-    assert 'Popular stations in Türkiye' in radio
-    assert 'Refresh' in radio
     (out/'radio.xml').write_text(radio)
     (out/'radio.png').write_bytes(adb('exec-out','screencap','-p'))
+    assert 'Popular stations in Türkiye' in radio
+    assert 'Refresh' in radio
     assert shell('pidof','com.evcockpit').strip()
     shell('input','keyevent','4')
 
