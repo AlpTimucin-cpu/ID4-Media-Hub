@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Map
@@ -53,6 +54,7 @@ fun CockpitScreen(
     routeState: NavigationRouteState,
     loadStatus: RouteLoadStatus,
     obdConnection: ObdConnectionState,
+    engineering: EngineeringSnapshot,
     onObdRefresh: () -> Unit,
     onObdConnect: (String) -> Unit,
     onObdDisconnect: () -> Unit,
@@ -89,6 +91,7 @@ fun CockpitScreen(
     var charging by remember { mutableStateOf(false) }
     var media by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
+    var engineeringOpen by remember { mutableStateOf(false) }
     var voiceSettings by remember { mutableStateOf(false) }
     var station by remember { mutableStateOf<ChargingStation?>(null) }
     var missingVoice by remember { mutableStateOf(false) }
@@ -113,6 +116,10 @@ fun CockpitScreen(
         onOriginSelected = onRouteOriginSelected, onDestinationSelected = onRouteDestinationSelected,
         onGps = onRouteFromGps, onPlan = onRoutePlan,
         onChooseAlternative = onRouteAlternative, onClear = onRouteClear
+    )
+    if (engineeringOpen) TechnicalAnalysisSheet(
+        snapshot = engineering, obdPhase = obdConnection.phase,
+        onDismiss = { engineeringOpen = false }
     )
     if (settings) ObdSettingsDialog(
         state = obdConnection, onRefresh = onObdRefresh, onConnect = onObdConnect,
@@ -291,7 +298,8 @@ fun CockpitScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             onRoute = { routePlanner = true }, onCharging = { charging = true },
-            onMedia = { media = true }, onSettings = { settings = true; onObdRefresh() }
+            onMedia = { media = true }, onEngineering = { engineeringOpen = true },
+            onSettings = { settings = true; onObdRefresh() }
         )
     }
 }
@@ -437,13 +445,15 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
 @Composable
 private fun CockpitDock(
     modifier: Modifier = Modifier,
-    onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit, onSettings: () -> Unit
+    onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit,
+    onEngineering: () -> Unit, onSettings: () -> Unit
 ) {
     Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
             DockAction(Icons.Default.Map, stringResource(R.string.native_route), onRoute, Modifier.weight(1f))
             DockAction(Icons.Default.Bolt, stringResource(R.string.native_charging), onCharging, Modifier.weight(1f))
             DockAction(Icons.Default.SmartDisplay, stringResource(R.string.native_media), onMedia, Modifier.weight(1f))
+            DockAction(Icons.Default.Analytics, "Hesaplar", onEngineering, Modifier.weight(1f))
             DockAction(Icons.Default.Settings, stringResource(R.string.native_settings), onSettings, Modifier.weight(1f))
         }
     }
