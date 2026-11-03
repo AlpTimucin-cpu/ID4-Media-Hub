@@ -1,20 +1,37 @@
 package com.evcockpit.data.radio
 
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @Singleton
 class RadioRepository @Inject constructor(private val api: RadioBrowserApi) {
-    suspend fun stations(): List<RadioStation> = playableStations(api.stations())
+    /** Cold stream; each refresh fetches current radio listings and wraps failures. */
+    fun stations(): Flow<Result<List<RadioStation>>> = flow {
+        emit(Result.success(playableStations(api.stations())))
+    }.catch { error ->
+        if (error is CancellationException) throw error
+        emit(Result.failure(error))
+    }.flowOn(Dispatchers.IO)
 
     companion object {
-        // Preserve the application's HTTPS-only network policy. Never rewrite
-        // HTTP URLs to HTTPS: the station might not support TLS on that port.
+        // AndroidManifest usesCleartextTraffic=false: never silently upgrade an
+        // HTTP-only stream to HTTPS or relax app-wide network security.
         internal fun playableStations(stations: List<RadioStation>): List<RadioStation> =
-            stations.filter {
-                !it.id.isNullOrBlank() && !it.name.isNullOrBlank() &&
-                    it.urlResolved?.toHttpUrlOrNull()?.isHttps == true
-            }.sortedByDescending { it.votes }.distinctBy { it.urlResolved }.distinctBy { it.id }
+            stations.asSequence()
+                .filter {
+                    !it.id.isNullOrBlank() && !it.name.isNullOrBlank() &&
+                        it.urlResolved?.toHttpUrlOrNull()?.isHttps == true
+                }
+                .sortedByDescending { it.votes }
+                .distinctBy { it.urlResolved }
+                .distinctBy { it.id }
+                .toList()
     }
 }
