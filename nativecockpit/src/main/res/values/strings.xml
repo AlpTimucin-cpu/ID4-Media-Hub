@@ -148,4 +148,6 @@
     <string name="radio_results">%1$d / %2$d stations</string>
     <string name="radio_votes">%1$d votes</string>
     <string name="radio_attribution">Station directory: Radio Browser · Stream availability may change.</string>
+    <string name="media_external_not_installed">The application is not installed on this device. Install the official application to continue.</string>
+    <string name="media_external_launch_blocked">The application is installed but Android could not launch it. Check app availability, disabled apps, and profile restrictions.</string>
 </resources>
