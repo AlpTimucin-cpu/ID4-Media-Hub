@@ -32,13 +32,13 @@ object MediaLauncher {
                 catch (_: android.content.pm.PackageManager.NameNotFoundException) { false }
                 catch (_: SecurityException) { return MediaLaunchState.Blocked }
             if (!installed) continue
-            val intent = manager.getLaunchIntentForPackage(packageName)
-                ?: manager.getLeanbackLaunchIntentForPackage(packageName)
-            if (intent == null) {
-                installedWithoutLauncher = true
-                continue
-            }
             try {
+                val intent = manager.getLaunchIntentForPackage(packageName)
+                    ?: manager.getLeanbackLaunchIntentForPackage(packageName)
+                if (intent == null) {
+                    installedWithoutLauncher = true
+                    continue
+                }
                 context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 return MediaLaunchState.Launched(packageName)
             } catch (_: ActivityNotFoundException) {
