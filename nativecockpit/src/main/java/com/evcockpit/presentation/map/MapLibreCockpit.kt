@@ -313,6 +313,10 @@ private fun ensureRouteOverlayZOrder(style: Style) {
         STATION_ALL_LAYER, STATION_RING_LAYER, STATION_PLANNED_LAYER,
         STATION_DC_LAYER, WEATHER_LAYER
     )
+    // Avoid repeated native remove/re-add cycles when the asynchronous map
+    // updates do not actually change the visible layer order.
+    val existingOrder = style.layers.map { it.id }
+    if (OverlayZOrder.isCorrect(existingOrder, ROUTE_LAYER, overlayOrder)) return
     overlayOrder.forEach { id ->
         val layer = style.getLayer(id) ?: return@forEach
         // The Layer overload transfers native ownership back to this instance.
@@ -321,7 +325,7 @@ private fun ensureRouteOverlayZOrder(style: Style) {
         style.addLayerAbove(layer, below)
         below = id
     }
-    Log.d("EYA-MAP-UAT", "overlayZOrder top=$below aboveRoute=$ROUTE_LAYER")
+    Log.d("EYA-MAP-UAT", "overlayZOrder repaired; top=$below aboveRoute=$ROUTE_LAYER")
 }
 
 private fun updateRoute(style: Style, points: List<GeoCoordinate>) {

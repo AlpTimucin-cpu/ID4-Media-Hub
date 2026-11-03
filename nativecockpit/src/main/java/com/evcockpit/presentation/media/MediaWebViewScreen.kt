@@ -99,7 +99,11 @@ fun MediaWebViewScreen(
         when {
             exitFullscreen != null -> exitFullscreen?.invoke()
             !rendererLost && browser?.canGoBack() == true -> browser?.goBack()
-            else -> onClose()
+            else -> {
+                // Back must release HTML media before closing the Compose host.
+                browser?.pauseMedia()
+                onClose()
+            }
         }
     }
 
@@ -193,7 +197,11 @@ fun MediaWebViewScreen(
                                     fullscreenView = null
                                     exitFullscreen = null
                                 }
-                                callback?.onCustomViewHidden()
+                                // A destroyed renderer may invalidate this callback.
+                                runCatching { callback?.onCustomViewHidden() }
+                                    .onFailure {
+                                        Log.w("EYA-MEDIA-UAT", "Fullscreen callback invalidated", it)
+                                    }
                                 Log.d("EYA-MEDIA-UAT", "web_fullscreen_hide:" + service.name)
                             }
                         }
