@@ -26,6 +26,8 @@
 -keep interface com.evcockpit.data.routing.OsrmService { *; }
 -keep interface com.evcockpit.data.routing.PhotonService { *; }
 -keep interface com.evcockpit.data.remote.EpdkService { *; }
+-keep interface com.evcockpit.data.radio.RadioBrowserApi { *; }
+-keep class com.evcockpit.data.radio.RadioStation { *; }
 
 # Gson reflection over annotated DTO fields, plus library consumer rules.
 -keepclassmembers class * {
@@ -37,6 +39,13 @@
 -keep class org.maplibre.android.maps.NativeMapView { *; }
 -keep class org.maplibre.android.maps.MapView { *; }
 -keep class org.maplibre.android.maps.Style { *; }
+
+# Media3 already ships official consumer ProGuard rules; retain our direct
+# player integration entrypoints as a conservative compatibility guard.
+# No blanket -dontwarn or global -keep androidx.media3.**.
+-keep class androidx.media3.common.MediaItem { *; }
+-keep class androidx.media3.exoplayer.ExoPlayerImpl { *; }
+-keep class androidx.media3.exoplayer.hls.HlsMediaSource { *; }
 
 # Vehicle diagnostic protocol, Bluetooth transports and Android Auto host surface.
 -keep class com.evcockpit.data.obd.** { *; }
