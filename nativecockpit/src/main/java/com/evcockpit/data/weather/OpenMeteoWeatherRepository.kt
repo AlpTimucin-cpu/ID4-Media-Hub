@@ -49,7 +49,7 @@ class OpenMeteoWeatherRepository @Inject constructor() {
                 sample(route.routePoints)
             }
             if (positions.isEmpty()) {
-                Result.failure(IllegalArgumentException("No valid OSRM route geometry"))
+                Result.failure(IllegalArgumentException("Geçerli OSRM rota geometrisi yok"))
             } else {
                 val data = withContext(Dispatchers.IO) {
                     val latitudes = positions.joinToString(",") {
@@ -63,13 +63,13 @@ class OpenMeteoWeatherRepository @Inject constructor() {
                         response.errorBody()?.close()
                         throw IOException("Open-Meteo HTTP ${response.code()}")
                     }
-                    response.body() ?: throw IOException("Open-Meteo returned an empty response")
+                    response.body() ?: throw IOException("Open-Meteo boş yanıt")
                 }
                 val objects = if (data.isJsonArray) {
                     data.asJsonArray.map { it.asJsonObject }
                 } else listOf(data.asJsonObject)
                 if (objects.size != positions.size)
-                    throw IOException("Weather waypoint count does not match")
+                    throw IOException("Hava durumu nokta sayısı uyuşmuyor")
                 val points = objects.mapIndexedNotNull { i, obj ->
                     val current = obj.getAsJsonObject("current")
                     val legacy = obj.getAsJsonObject("current_weather")
@@ -93,13 +93,13 @@ class OpenMeteoWeatherRepository @Inject constructor() {
                         observedAt = at
                     )
                 }
-                if (points.isEmpty()) throw IOException("Could not obtain valid weather data")
+                if (points.isEmpty()) throw IOException("Geçerli hava durumu alınamadı")
                 Result.success(RouteWeatherState(
                     routeId = route.routeId,
                     routeLengthKm = positions.last().second / 1000.0,
                     points = points,
                     fetchedAtMillis = System.currentTimeMillis(),
-                    error = if (points.size < positions.size) "Some weather waypoints are unavailable" else null
+                    error = if (points.size < positions.size) "Bazı hava noktaları alınamadı" else null
                 ))
             }
         } catch (cancel: CancellationException) {

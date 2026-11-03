@@ -157,14 +157,14 @@ fun CockpitScreen(
     station?.let { selected ->
         AlertDialog(
             onDismissRequest = { station = null }, containerColor = Navy,
-            title = { Text(selected.name.ifBlank { "Charging station" }) },
+            title = { Text(selected.name.ifBlank { "Şarj istasyonu" }) },
             text = {
                 Column(
                     Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(selected.operator.ifBlank { "Operator not specified" })
-                    Text(selected.address.ifBlank { "Address not specified" })
+                    Text(selected.operator.ifBlank { "Operatör belirtilmedi" })
+                    Text(selected.address.ifBlank { "Adres belirtilmedi" })
                     selected.sockets.forEach { socket ->
                         Text("${socket.kind} · ${socket.type} · ${socket.powerRaw.ifBlank { "—" }}")
                     }
@@ -368,10 +368,10 @@ private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit
         Text(stringResource(R.string.native_epdk_station_filters), style = MaterialTheme.typography.headlineSmall)
         StationFilter.entries.forEach { filter ->
             val title = when (filter) {
-                StationFilter.ALL -> "All"
+                StationFilter.ALL -> "Tümü"
                 StationFilter.DC -> "DC"
-                StationFilter.ROUTE_CCS -> "Route CCS"
-                StationFilter.ROUTE_DC -> "Route DC"
+                StationFilter.ROUTE_CCS -> "Rota CCS"
+                StationFilter.ROUTE_DC -> "Rota DC"
             }
             FilterChip(selected = ui.selectedFilter == filter,
                 onClick = { onFilter(filter) }, label = { Text(title) },
@@ -381,7 +381,7 @@ private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit
         if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         ui.error?.let { Text(it, color = SoftText) }
         Text("EPDK · ${ui.visible.size} / ${ui.total}", style = MaterialTheme.typography.bodySmall)
-        Text(ui.verifiedAtUtc ?: "Source date unknown", style = MaterialTheme.typography.bodySmall)
+        Text(ui.verifiedAtUtc ?: "Kaynak tarihi bilinmiyor", style = MaterialTheme.typography.bodySmall)
         ui.visible.take(100).forEach { candidate ->
             TextButton(onClick = { onStation(candidate) }, modifier = Modifier.fillMaxWidth()) {
                 Text(candidate.name, modifier = Modifier.fillMaxWidth(), maxLines = 2)

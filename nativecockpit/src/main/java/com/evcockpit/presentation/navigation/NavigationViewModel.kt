@@ -176,20 +176,20 @@ class NavigationViewModel @Inject constructor(
             chargingEnergyKwh = (energy as? BaselineEnergyResult.Estimate)?.requiredChargingEnergyKwh,
             energyEstimateStatus = (energy as? BaselineEnergyResult.Unavailable)?.reason,
             socSourceLabel = when {
-                source.simulated -> "SIMULATION · TEST DATA"
+                source.simulated -> "SİMÜLASYON · TEST VERİSİ"
                 energy is BaselineEnergyResult.Estimate && energy.usedLiveObd ->
-                    "LIVE OBD starting SoC · MODEL/ESTIMATE"
+                    "CANLI OBD başlangıç SoC · MODEL/TAHMİN"
                 energy is BaselineEnergyResult.Estimate &&
                     !modelPrefs.contains("explicitAssumedSocPct") ->
-                    "Default starting SoC 80% · MODEL/ESTIMATE"
+                    "Varsayılan Başlangıç %80 · MODEL/TAHMİN"
                 energy is BaselineEnergyResult.Estimate ->
-                    "Selected starting SoC · MODEL/ESTIMATE"
+                    "Seçilmiş başlangıç SoC · MODEL/TAHMİN"
                 else -> null
             },
             simulationEnabled = source.simulated,
             gpsWarning = if (!source.simulated && _foreground.value &&
                 now - lastGpsAt > 10_000L && usableGps == null
-            ) "Waiting for GPS signal..." else null,
+            ) "GPS Sinyali Bekleniyor..." else null,
             route = visualRoute,
             gpsFix = usableGps
         )
@@ -218,7 +218,7 @@ class NavigationViewModel @Inject constructor(
         if (!capacity.isFinite() || capacity <= 0.0 ||
             !consumption.isFinite() || consumption <= 0.0 ||
             !reserve.isFinite() || reserve !in 0.0..100.0
-        ) return BaselineEnergyResult.Unavailable("No calibrated capacity/consumption/reserve data")
+        ) return BaselineEnergyResult.Unavailable("Kalibre edilmiş kapasite/tüketim/rezerv verisi yok")
 
         val fresh = telemetry.socPercent.current(now)
         val timed = telemetry.socPercent.measuredAtMillis
@@ -298,7 +298,7 @@ class NavigationViewModel @Inject constructor(
                     try {
                         val start = GeoCoordinate(37.9663, 34.6824) // Niğde, TEST only
                         val destination = RoutePlace(
-                            "TEST ROUTE · Kayseri",
+                            "TEST ROTA · Kayseri",
                             GeoCoordinate(38.7205, 35.4826),
                             source = "DEBUG UAT"
                         )
@@ -321,7 +321,7 @@ class NavigationViewModel @Inject constructor(
                             is RouteCalculationResult.Failure -> {
                                 Log.w(simulationTag, "DEBUG demo route unavailable: " + result.message)
                                 _planner.update { it.copy(
-                                    error = "Could not load the TEST route: " + result.message.take(90)
+                                    error = "TEST rotası alınamadı: " + result.message.take(90)
                                 ) }
                             }
                         }
@@ -330,7 +330,7 @@ class NavigationViewModel @Inject constructor(
                     } catch (error: Exception) {
                         Log.w(simulationTag, "DEBUG OSRM demo failed: " + error.javaClass.simpleName)
                         _planner.update { it.copy(error =
-                            "Could not load the TEST route: check the internet/OSRM connection") }
+                            "TEST rotası alınamadı: internet/OSRM bağlantısını kontrol et") }
                     }
                 }
             }
@@ -478,7 +478,7 @@ class NavigationViewModel @Inject constructor(
     fun acceptLastLocation(location: android.location.Location?) {
         if (_simulationEnabled.value) return
         if (location == null || location.isFromMockProvider || !location.hasAccuracy()) {
-            reportGpsError("Could not read location. Check GPS and precise location settings.")
+            reportGpsError("Konum okunamadı. GPS'i ve hassas konumu kontrol et.")
             return
         }
         val fix = GpsFix(
@@ -491,7 +491,7 @@ class NavigationViewModel @Inject constructor(
         if (fix.usable(System.currentTimeMillis())) {
             locationRepository.acceptFix(fix)
             _gpsError.value = null
-        } else _gpsError.value = "Location is not sufficiently recent or accurate."
+        } else _gpsError.value = "Konum yeterince güncel veya hassas değil."
 
     }
     fun reportGpsError(message: String) {
@@ -514,7 +514,7 @@ class NavigationViewModel @Inject constructor(
         if (_foreground.value && voice.enabled &&
             (voice.status == NativeVoiceGuide.Status.READY ||
                  voice.status == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
-            guide.speak("EV Cockpit. English speech test.", voice.volume)
+            guide.speak("EV Cockpit. Türkçe ses testi.", voice.volume)
         }
     }
 
@@ -552,16 +552,16 @@ class NavigationViewModel @Inject constructor(
             else it.copy(searchingDestination = true) }
         try {
             val found = routes.searchResult(value).getOrThrow()
-            val error = if (found.isEmpty()) "Address not found. Enter a more specific location." else null
+            val error = if (found.isEmpty()) "Adres bulunamadı. Daha açık bir konum yaz." else null
             _planner.update { if (origin) it.copy(originMatches = found, searchingOrigin = false, error = error)
                 else it.copy(destinationMatches = found, searchingDestination = false, error = error) }
         } catch (cancel: CancellationException) { throw cancel }
         catch (error: Exception) {
             val message = when (error) {
-                is UnknownHostException -> "No internet connection"
-                is SocketTimeoutException -> "Photon server timed out"
-                is IOException -> error.message ?: "Could not reach the address service"
-                else -> "Address search failed: ${error.message?.take(80) ?: "bilinmeyen hata"}"
+                is UnknownHostException -> "İnternet bağlantısı yok"
+                is SocketTimeoutException -> "Photon sunucusu zaman aşımına uğradı"
+                is IOException -> error.message ?: "Adres servisine ulaşılamadı"
+                else -> "Adres araması başarısız: ${error.message?.take(80) ?: "bilinmeyen hata"}"
             }
             _planner.update { if (origin) it.copy(searchingOrigin = false, error = message)
                 else it.copy(searchingDestination = false, error = message) }
@@ -587,7 +587,7 @@ class NavigationViewModel @Inject constructor(
     /** Activity first verifies fine/coarse runtime permission. */
     fun useCurrentGps() {
         if (_simulationEnabled.value) {
-            _planner.update { it.copy(error = "Select origin and destination using address search in simulation mode.") }
+            _planner.update { it.copy(error = "Simülasyonda başlangıç ve varışı adres aramasından seç.") }
             return
         }
         gpsJob?.cancel(); originJob?.cancel(); planningJob?.cancel(); routes.clear()
@@ -610,18 +610,18 @@ class NavigationViewModel @Inject constructor(
                     if (result.isSuccess) state.copy(
                         locatingGps = false, originFromGps = true,
                         gpsOrigin = result.getOrNull()?.first,
-                        originText = "My current GPS location", error = null
+                        originText = "Güncel GPS konumum", error = null
                     ) else state.copy(locatingGps = false, originFromGps = false,
-                        error = result.exceptionOrNull()?.message ?: "Could not obtain GPS location")
+                        error = result.exceptionOrNull()?.message ?: "GPS konumu alınamadı")
                 }
             } catch (cancel: CancellationException) { throw cancel }
         }
     }
     fun locationPermissionDenied() {
-        _gpsError.value = "Location permission was not granted."
+        _gpsError.value = "Konum izni verilmedi."
         gpsJob?.cancel()
         _planner.update { it.copy(locatingGps = false, originFromGps = false,
-            gpsOrigin = null, error = "Location permission was not granted; you can select the origin manually") }
+            gpsOrigin = null, error = "Konum izni verilmedi; başlangıç adresini elle seçebilirsin") }
     }
     fun plan() {
         debugDemoRouteJob?.cancel()
@@ -634,7 +634,7 @@ class NavigationViewModel @Inject constructor(
             val start = state.startLocation
             val target = state.destinationSelected
             if (start == null || target == null) {
-                _planner.update { it.copy(error = "Origin and destination have not been selected") }
+                _planner.update { it.copy(error = "Kalkış ve varış seçilmedi") }
                 return@launch
             }
             _planner.update { it.copy(planning = true, error = null) }
@@ -648,15 +648,15 @@ class NavigationViewModel @Inject constructor(
                             planning = false,
                             error = when {
                                 result.message.contains("internet", ignoreCase = true) ->
-                                    "No Internet Connection"
-                                else -> "Could Not Calculate Route (OSRM Error): " + result.message.take(90)
+                                    "İnternet Bağlantısı Yok"
+                                else -> "Rota Hesaplanamadı (OSRM Hatası): " + result.message.take(90)
                             }
                         ) }
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
                 _planner.update { it.copy(planning = false,
-                    error = "Route error: ${error.message?.take(100) ?: "beklenmeyen hata"}") }
+                    error = "Rota hatası: ${error.message?.take(100) ?: "beklenmeyen hata"}") }
             }
         }
     }

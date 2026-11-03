@@ -177,13 +177,13 @@ fun MediaWebViewScreen(
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                                 if (!request.isForMainFrame) return false
                                 if (allowed && MediaSitePolicy.allows(service, request.url.toString())) return false
-                                model.error("This link cannot be opened within the site.")
+                                model.error("Bu bağlantı site içinde açılamıyor.")
                                 return true
                             }
                             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                                 if (!allowed || !MediaSitePolicy.allows(service, url)) {
                                     view.stopLoading()
-                                    model.error("Could not validate the page address.")
+                                    model.error("Sayfa adresi doğrulanamadı.")
                                 } else model.start()
                             }
                             override fun onPageFinished(view: WebView, url: String?) {
@@ -193,15 +193,15 @@ fun MediaWebViewScreen(
                                 }
                             }
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                if (request.isForMainFrame) model.error("Could not load the page. Check your connection.")
+                                if (request.isForMainFrame) model.error("Sayfa yüklenemedi. Bağlantıyı kontrol edin.")
                             }
                             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
                                 if (request.isForMainFrame && response.statusCode >= 400)
-                                    model.error("The site returned HTTP ${response.statusCode}.")
+                                    model.error("Site HTTP ${response.statusCode} hatası verdi.")
                             }
                             override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
                                 handler.cancel()
-                                model.error("Could not verify the secure connection.")
+                                model.error("Güvenli bağlantı doğrulanamadı.")
                             }
                             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                                 exitFullscreen?.invoke()
@@ -209,7 +209,7 @@ fun MediaWebViewScreen(
                                 host.removeView(view)
                                 view.destroy()
                                 browser = null
-                                model.error("Web content closed. You can try again.")
+                                model.error("Web içeriği kapandı. Yeniden deneyebilirsiniz.")
                                 return true
                             }
                         }

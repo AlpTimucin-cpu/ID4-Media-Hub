@@ -17,7 +17,7 @@ import com.evcockpit.domain.usecase.*
 data class RouteChargingUiState(
     val routeId: String? = null,
     val plan: AutomaticChargePlan = AutomaticChargePlan.Empty,
-    val socSource: String = "MODEL/ESTIMATE",
+    val socSource: String = "MODEL/TAHMİN",
     val catalogIsStale: Boolean = false
 )
 
@@ -79,7 +79,7 @@ class RouteChargePlanViewModel @Inject constructor(
         ) return@combine RouteChargingUiState(
             routeId = route.routeId,
             plan = AutomaticChargePlan.Unavailable(
-                "Validated capacity, consumption, and arrival-reserve calibration is required"
+                "Onaylı kapasite, tüketim ve varış rezervi kalibrasyonu gerekli"
             ),
             catalogIsStale = selected.cacheStale
         )
@@ -110,9 +110,9 @@ class RouteChargePlanViewModel @Inject constructor(
         RouteChargingUiState(
             routeId = route.routeId,
             plan = plan,
-            socSource = if (source is DepartureSoc.FreshObd) "LIVE OBD · MODEL/ESTIMATE"
-                else if (stored == null) "Default starting SoC 80% · MODEL/ESTIMATE"
-                else "Selected starting SoC · MODEL/ESTIMATE",
+            socSource = if (source is DepartureSoc.FreshObd) "CANLI OBD · MODEL/TAHMİN"
+                else if (stored == null) "Varsayılan Başlangıç %80 · MODEL/TAHMİN"
+                else "Seçilmiş başlangıç SoC · MODEL/TAHMİN",
             catalogIsStale = selected.cacheStale
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RouteChargingUiState())

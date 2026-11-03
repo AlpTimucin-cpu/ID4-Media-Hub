@@ -26,6 +26,6 @@ class CarRouteSummaryTest {
     }
     @Test fun oldFixNeverClaimsCurrentGps() {
         val fix = GpsFix(GeoCoordinate(38.0,35.0),8f,80_000)
-        assertTrue(CarRouteSummary.from(null,fix,100_000).locationStatus.contains("No GPS reading"))
+        assertTrue(CarRouteSummary.from(null,fix,100_000).locationStatus.contains("GPS ölçümü yok"))
     }
 }

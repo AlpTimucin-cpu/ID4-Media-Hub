@@ -15,7 +15,7 @@ import java.util.Locale
 
 /** Activity-scoped TTS: foregound-only, focus-safe, no stream-volume changes.
  * Media ducking is requested from Android, not implemented by changing
- * another app's volume. An unavailable en-US voice fails closed.
+ * another app's volume. An unavailable tr-TR voice fails closed.
  */
 class NativeVoiceGuide(context: Context) {
     private val logTag = "EYA-Voice"
@@ -43,19 +43,19 @@ class NativeVoiceGuide(context: Context) {
                 val engine = tts
                 if (result != TextToSpeech.SUCCESS || engine == null) {
                     status = Status.INIT_FAILED
-                    lastError = "Could not initialize the TTS engine"
+                    lastError = "TTS motoru başlatılamadı"
                     Log.e(logTag, "TextToSpeech initialization failed: result=$result")
                     return@post
                 }
-                val locale = Locale("en", "US")
+                val locale = Locale("tr", "TR")
                 val supported = TtsDebugLogger.languageAvailability(engine)
                 val selected = if (supported >= TextToSpeech.LANG_AVAILABLE)
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
                 TtsDebugLogger.selectedLanguage(selected)
                 if (selected < TextToSpeech.LANG_AVAILABLE) {
                     status = Status.TURKISH_VOICE_MISSING
-                    lastError = "English TTS Data Missing"
-                    Log.e(logTag, "en-US voice unavailable: supported=$supported selected=$selected")
+                    lastError = "Türkçe TTS Paketi Eksik"
+                    Log.e(logTag, "tr-TR voice unavailable: supported=$supported selected=$selected")
                 } else {
                     engine.setAudioAttributes(attrs)
                     engine.setSpeechRate(1.0f)
@@ -75,11 +75,11 @@ class NativeVoiceGuide(context: Context) {
                         }
                         override fun onDone(utteranceId: String) { finish(utteranceId) }
                         override fun onError(utteranceId: String) {
-                            synthesisError(utteranceId, "TTS speech failed")
+                            synthesisError(utteranceId, "TTS seslendirme başarısız")
                         }
                         override fun onError(utteranceId: String, errorCode: Int) {
                             TtsDebugLogger.utteranceError(errorCode)
-                            synthesisError(utteranceId, "TTS speech error: $errorCode")
+                            synthesisError(utteranceId, "TTS ses hatası: $errorCode")
                         }
                         override fun onStop(utteranceId: String, interrupted: Boolean) {
                             finish(utteranceId)
@@ -105,7 +105,7 @@ class NativeVoiceGuide(context: Context) {
         stopCurrent(notifyFailure = false) // Replace old utterance without canceling the NEW cue.
         if (!ducking.acquire()) {
             status = Status.AUDIO_FOCUS_DENIED
-            lastError = "Could not obtain audio focus"
+            lastError = "Ses odağı alınamadı"
             Log.w(logTag, "Navigation audio focus was not granted")
             return false
         }
@@ -124,7 +124,7 @@ class NativeVoiceGuide(context: Context) {
             false
         }
         if (!accepted) {
-            lastError = "Could not queue the TTS announcement"
+            lastError = "TTS anonsu kuyruğa alınamadı"
             Log.e(logTag, "TextToSpeech.speak() rejected the utterance")
             stop()
             return false

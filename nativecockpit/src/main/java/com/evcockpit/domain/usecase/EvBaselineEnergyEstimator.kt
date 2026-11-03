@@ -107,32 +107,32 @@ object EvBaselineEnergyEstimator {
         if (route.routeId.isNullOrBlank() ||
             !validRouteGeometry(route.routePoints) ||
             km == null || !km.isFinite() || km <= 0.0
-        ) return BaselineEnergyResult.Unavailable("A validated OSRM route distance is required")
+        ) return BaselineEnergyResult.Unavailable("Doğrulanmış OSRM rota mesafesi gerekli")
 
         if (!input.usableBatteryKwh.isFinite() || input.usableBatteryKwh <= 0.0 ||
             !input.consumptionWhPerKm.isFinite() || input.consumptionWhPerKm <= 0.0 ||
             !input.requiredArrivalSocPercent.isFinite() ||
             input.requiredArrivalSocPercent !in 0.0..100.0
-        ) return BaselineEnergyResult.Unavailable("Invalid battery, consumption, or reserve data")
+        ) return BaselineEnergyResult.Unavailable("Batarya, tüketim veya rezerv bilgisi geçersiz")
 
         val soc = when (val source = input.departureSoc) {
             is DepartureSoc.FreshObd -> {
                 if (source.measuredAtMs > input.nowMs ||
                     input.nowMs - source.measuredAtMs > MAX_OBD_AGE_MS
-                ) return BaselineEnergyResult.Unavailable("OBD SoC reading is stale")
+                ) return BaselineEnergyResult.Unavailable("OBD SoC ölçümü güncel değil")
                 source.percent
             }
             is DepartureSoc.ExplicitAssumption -> source.percent
         }
         if (!soc.isFinite() || soc !in 0.0..100.0)
-            return BaselineEnergyResult.Unavailable("Invalid starting SoC")
+            return BaselineEnergyResult.Unavailable("Başlangıç SoC değeri geçersiz")
 
         if (!input.calibration.valid() ||
             (input.speedKmh != null && (!input.speedKmh.isFinite() ||
                 input.speedKmh !in 0.0..250.0)) ||
             (input.outsideTemperatureC != null && (!input.outsideTemperatureC.isFinite() ||
                 input.outsideTemperatureC !in -40.0..65.0))
-        ) return BaselineEnergyResult.Unavailable("Invalid speed/temperature calibration input")
+        ) return BaselineEnergyResult.Unavailable("Hız/sıcaklık kalibrasyon girdisi geçersiz")
 
         val (speedFactor, climateFactor) = calculateConsumptionFactors(
             input.speedKmh,
@@ -144,7 +144,7 @@ object EvBaselineEnergyEstimator {
         val effectiveWhPerKm = input.consumptionWhPerKm * speedFactor * climateFactor
         val driveKwh = km * effectiveWhPerKm / 1000.0
         if (!driveKwh.isFinite())
-            return BaselineEnergyResult.Unavailable("Route energy calculation overflowed")
+            return BaselineEnergyResult.Unavailable("Rota enerji hesabı taşma yaptı")
         val arrivalPercent = soc - 100.0 * driveKwh / input.usableBatteryKwh
         val deficit = (input.requiredArrivalSocPercent - arrivalPercent).coerceAtLeast(0.0)
         val chargingKwh = deficit * input.usableBatteryKwh / 100.0

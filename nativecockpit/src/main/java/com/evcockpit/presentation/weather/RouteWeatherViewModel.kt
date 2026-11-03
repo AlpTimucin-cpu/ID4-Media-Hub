@@ -32,9 +32,9 @@ class RouteWeatherViewModel @Inject constructor(
                     val next = result.fold(
                         onSuccess = { it },
                         onFailure = {
-                            previous?.copy(error = "Could not refresh weather data (previous estimate)")
+                            previous?.copy(error = "Hava verisi güncellenemedi (önceki tahmin)")
                                 ?: RouteWeatherState(routeId = route.routeId,
-                                    error = "Weather unavailable; routing and TTS remain available")
+                                    error = "Hava durumu alınamadı; rota ve TTS kullanılabilir")
                         }
                     )
                     previous = next.takeIf { it.points.isNotEmpty() }

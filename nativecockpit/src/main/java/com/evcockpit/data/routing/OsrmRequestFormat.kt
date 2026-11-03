@@ -9,8 +9,8 @@ object OsrmRequestFormat {
     private const val PARAMETERS = "?alternatives=true&steps=true&geometries=geojson&overview=full&annotations=speed"
 
     fun coordinates(origin: GeoCoordinate, destination: GeoCoordinate): String {
-        require(origin.valid() && destination.valid()) { "Invalid coordinates" }
-        require(origin != destination) { "Origin and destination cannot be the same" }
+        require(origin.valid() && destination.valid()) { "Geçersiz koordinat" }
+        require(origin != destination) { "Başlangıç ve varış aynı olamaz" }
         fun point(value: GeoCoordinate): String = String.format(
             Locale.US, "%.6f,%.6f", value.longitude, value.latitude
         )

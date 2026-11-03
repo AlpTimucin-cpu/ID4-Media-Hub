@@ -29,7 +29,7 @@ class FusedCurrentLocationProvider @Inject constructor(
     suspend fun getCurrentMeasurement():Result<Pair<GeoCoordinate,GpsFix?>> {
         val fine=ContextCompat.checkSelfPermission(context,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED
         val coarse=ContextCompat.checkSelfPermission(context,Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED
-        if(!fine&&!coarse) return Result.failure(SecurityException("Location permission was not granted."))
+        if(!fine&&!coarse) return Result.failure(SecurityException("Konum izni verilmedi."))
         return try{
             val location=withTimeoutOrNull(17_000L){
                 suspendCancellableCoroutine<Location?> { continuation ->
@@ -44,17 +44,17 @@ class FusedCurrentLocationProvider @Inject constructor(
                         .addOnFailureListener { if(continuation.isActive) continuation.resume(null) }
                     continuation.invokeOnCancellation{token.cancel()}
                 }
-            }?:return Result.failure(IllegalStateException("Could not get location. Enable GPS and try again."))
+            }?:return Result.failure(IllegalStateException("Konum alınamadı. GPS'i açıp tekrar dene."))
             @Suppress("DEPRECATION")
             val isMock=if(Build.VERSION.SDK_INT>=31) location.isMock else location.isFromMockProvider
-            if(isMock) return Result.failure(IllegalStateException("Mock location cannot be used."))
+            if(isMock) return Result.failure(IllegalStateException("Test konumu kullanılamaz."))
             val age=(SystemClock.elapsedRealtimeNanos()-location.elapsedRealtimeNanos)/1_000_000L
-            if(age !in 0L..15_000L) return Result.failure(IllegalStateException("GPS location is stale."))
+            if(age !in 0L..15_000L) return Result.failure(IllegalStateException("GPS konumu güncel değil."))
             if(!location.hasAccuracy()||!location.accuracy.isFinite()||
                 location.accuracy>(if(fine)100f else 1_500f))
-                return Result.failure(IllegalStateException("GPS accuracy is insufficient. Try again."))
+                return Result.failure(IllegalStateException("GPS doğruluğu yetersiz. Tekrar dene."))
             val point=GeoCoordinate(location.latitude,location.longitude)
-            if(!point.valid()) Result.failure(IllegalStateException("GPS returned invalid coordinates."))
+            if(!point.valid()) Result.failure(IllegalStateException("GPS geçersiz koordinat döndürdü."))
             else {
                 // Preserve approximate origins, but only publish a genuine, usable fix
                 // to the shared map/vehicle telemetry state.
@@ -68,8 +68,8 @@ class FusedCurrentLocationProvider @Inject constructor(
                 Result.success(point to fix)
             }
         }catch(c:kotlinx.coroutines.CancellationException){throw c}
-        catch(e:SecurityException){Result.failure(SecurityException("Location permission was not granted."))}
-        catch(e:Exception){Result.failure(IllegalStateException("Could not get location: ${e.message?:"GPS error"}"))}
+        catch(e:SecurityException){Result.failure(SecurityException("Konum izni verilmedi."))}
+        catch(e:Exception){Result.failure(IllegalStateException("Konum alınamadı: ${e.message?:"GPS error"}"))}
     }
 
     /** Existing location API remains compatible with all previous callers. */

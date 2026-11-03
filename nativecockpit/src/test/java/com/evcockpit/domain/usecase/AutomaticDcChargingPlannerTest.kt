@@ -36,7 +36,7 @@ class AutomaticDcChargingPlannerTest {
         val estimate = plan as AutomaticChargePlan.Estimate
         assertEquals("verified-dc", estimate.stops.single().station.id)
         assertTrue(estimate.stops.single().suggestedEnergyKwh > 0)
-        assertTrue(estimate.source.contains("MODEL/ESTIMATE"))
+        assertTrue(estimate.source.contains("MODEL/TAHMİN"))
     }
 
     @Test fun powerRequiresExplicitKilowattUnit() {

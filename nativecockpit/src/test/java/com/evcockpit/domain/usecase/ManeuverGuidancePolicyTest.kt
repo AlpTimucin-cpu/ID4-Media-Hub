@@ -9,7 +9,7 @@ class ManeuverGuidancePolicyTest {
     private val a = GeoCoordinate(38.00, 35.00)
     private val b = GeoCoordinate(38.00, 35.03)
     private val destination = GeoCoordinate(38.00, 35.029)
-    private val turn = NavigationManeuver("step-1", "turn right", destination)
+    private val turn = NavigationManeuver("step-1", "sağa dönün", destination)
     private val route = RouteSnapshot(
         routeId = "real-route-id",
         nextManeuver = turn,
@@ -37,7 +37,7 @@ class ManeuverGuidancePolicyTest {
         assertNull(p.nextAnnouncement(route, fix(35.019), now))
 
         val first = fix(35.027, now + 1_000)
-        assertEquals("In two hundred meters, turn right",
+        assertEquals("İki yüz metre sonra, sağa dönün",
             p.nextAnnouncement(route, first, now + 1_000))
         assertNull(p.nextAnnouncement(route, first, now + 1_500))
 
@@ -48,7 +48,7 @@ class ManeuverGuidancePolicyTest {
         assertNull(p.nextAnnouncement(route, fix(35.0272, now + 3_000), now + 3_000))
 
         val final = fix(35.0285, now + 7_000)
-        assertEquals("In fifty meters, turn right",
+        assertEquals("Elli metre sonra, sağa dönün",
             p.nextAnnouncement(route, final, now + 7_000))
         p.confirmSpoken(now + 7_000)
         assertNull(p.nextAnnouncement(route, fix(35.0286, now + 8_000), now + 8_000))
@@ -59,7 +59,7 @@ class ManeuverGuidancePolicyTest {
         assertNotNull(p.nextAnnouncement(route, fix(35.027, now), now))
         p.cancelPending() // TextToSpeech.onError / onStop / focus denied
         assertEquals(
-            "In two hundred meters, turn right",
+            "İki yüz metre sonra, sağa dönün",
             p.nextAnnouncement(route, fix(35.0271, now + 1_000), now + 1_000)
         )
     }
@@ -69,7 +69,7 @@ class ManeuverGuidancePolicyTest {
         assertNotNull(p.nextAnnouncement(route, fix(35.027, now), now))
         assertNull(p.nextAnnouncement(route, fix(35.0271, now + 1_000), now + 1_000))
         assertEquals(
-            "In two hundred meters, turn right",
+            "İki yüz metre sonra, sağa dönün",
             p.nextAnnouncement(route, fix(35.0272, now + 6_000), now + 6_000)
         )
     }
@@ -78,7 +78,7 @@ class ManeuverGuidancePolicyTest {
         val p = ManeuverGuidancePolicy()
         assertNull(p.nextAnnouncement(route, fix(35.028, lat = 38.001), now))
         val near = ManeuverGuidancePolicy()
-        assertEquals("In fifty meters, turn right",
+        assertEquals("Elli metre sonra, sağa dönün",
             near.nextAnnouncement(route, fix(35.0289), now))
         near.confirmSpoken(now)
         assertNull(near.nextAnnouncement(route, fix(35.029, now + 5_000), now + 5_000))
@@ -99,7 +99,7 @@ class ManeuverGuidancePolicyTest {
         assertNotNull(policy.nextAnnouncement(route, fix(35.027, now), now))
         policy.confirmSpoken(now)
         val stepTwo = route.copy(
-            nextManeuver = turn.copy(id = "step-2", instructionTr = "continue straight")
+            nextManeuver = turn.copy(id = "step-2", instructionTr = "düz devam edin")
         )
         assertNotNull(policy.nextAnnouncement(
             stepTwo, fix(35.0271, now + 5_000), now + 5_000

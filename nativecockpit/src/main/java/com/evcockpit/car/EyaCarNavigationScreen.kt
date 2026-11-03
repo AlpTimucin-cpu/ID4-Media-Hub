@@ -204,22 +204,22 @@ class EyaCarNavigationScreen(
         if (active) {
             val step = g?.nextCue
             val meters = g?.nextMeters
-            pane.addRow(Row.Builder().setTitle("Next maneuver")
+            pane.addRow(Row.Builder().setTitle("Sıradaki manevra")
                 .addText(if (step != null && meters != null) {
                     "$step · ${meters.roundToInt()} m"
-                } else "Waiting for current GPS and maneuver data").build())
-            pane.addRow(Row.Builder().setTitle("End navigation")
+                } else "Güncel GPS ve manevra bekleniyor").build())
+            pane.addRow(Row.Builder().setTitle("Navigasyonu bitir")
                 .setOnClickListener { endNavigation() }.build())
         } else if (guidance != null) {
-            pane.addRow(Row.Builder().setTitle("Start navigation")
+            pane.addRow(Row.Builder().setTitle("Navigasyonu başlat")
                 .setOnClickListener { beginNavigation() }.build())
         } else {
-            pane.addRow(Row.Builder().setTitle("To get started")
-                .addText("Select a route and grant location permission on the phone").build())
+            pane.addRow(Row.Builder().setTitle("Başlatmak için")
+                .addText("Telefonda rota seçip konum izni verin").build())
         }
         if (autoDriveTestRequested) {
-            pane.addRow(Row.Builder().setTitle("DHU test request")
-                .addText("Simulation is off: actual GPS validation is required").build())
+            pane.addRow(Row.Builder().setTitle("DHU test isteği")
+                .addText("Simülasyon kapalı: gerçek GPS doğrulaması gerekir").build())
         }
         val content = PaneTemplate.Builder(pane.build())
         if (carContext.carAppApiLevel < 7) {

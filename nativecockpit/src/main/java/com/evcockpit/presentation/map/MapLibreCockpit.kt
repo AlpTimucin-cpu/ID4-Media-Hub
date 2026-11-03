@@ -96,7 +96,7 @@ fun MapLibreCockpit(
     val latestStationIndex by rememberUpdatedState(stationIndex)
     val latestViewport by rememberUpdatedState(onViewportChanged)
     val latestTap by rememberUpdatedState(onStationTapped)
-    var mapStatus by remember { mutableStateOf("Loading map…") }
+    var mapStatus by remember { mutableStateOf("Harita yükleniyor…") }
     var mapObject by remember { mutableStateOf<MapLibreMap?>(null) }
     var activeStyle by remember { mutableStateOf<Style?>(null) }
     var fallback by remember { mutableStateOf(false) }
@@ -157,13 +157,13 @@ fun MapLibreCockpit(
         val failed = MapView.OnDidFailLoadingMapListener { message ->
             if (!fallback) {
                 fallback = true
-                mapStatus = "Retrying the dark map…"
+                mapStatus = "Koyu harita yeniden deneniyor…"
                 mapObject?.setStyle(Style.Builder().fromUri(FALLBACK_STYLE)) { style ->
                     activeStyle = style
-                    mapStatus = "Map ready · Fiord fallback style"
+                    mapStatus = "Harita hazır · Fiord yedek stili"
                 }
             } else {
-                mapStatus = "Map connection failed · route not drawn"
+                mapStatus = "Harita bağlantısı başarısız · yol çizilmiyor"
             }
         }
         view.addOnDidFailLoadingMapListener(failed)
@@ -210,7 +210,7 @@ fun MapLibreCockpit(
                 .target(LatLng(39.0, 35.0)).zoom(5.2).build()
             map.setStyle(Style.Builder().fromUri(DARK_STYLE)) { style ->
                 activeStyle = style
-                mapStatus = "Map ready · OpenFreeMap"
+                mapStatus = "Harita hazır · OpenFreeMap"
                 publishViewport()
             }
         }
@@ -276,7 +276,7 @@ fun MapLibreCockpit(
 
     Box(modifier.background(Color(0xFF0A0F1A))) {
         AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
-        if (!mapStatus.startsWith("Map ready")) {
+        if (!mapStatus.startsWith("Harita hazır")) {
             Text(mapStatus, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xDF0B2032), RoundedCornerShape(12.dp))
                 .padding(14.dp), color = Color.White, fontSize = 12.sp)

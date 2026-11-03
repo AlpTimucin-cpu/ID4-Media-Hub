@@ -18,10 +18,10 @@ def capture(name):
     (out/(name+'.xml')).write_text(data)
     tree=ET.fromstring(data)
     nodes=list(tree.iter('node'))
-    for label in ['Route','Charging','Media','Settings']:
+    for label in ['Rota','Şarj','Medya','Ayarlar']:
         assert any(n.get('text')==label for n in nodes),f'{name}: missing {label} action'
     for n in nodes:
-        if n.get('text') in ['Route','Charging','Media','Settings']:
+        if n.get('text') in ['Rota','Şarj','Medya','Ayarlar']:
             coords=[int(x) for x in re.findall(r'\d+',n.get('bounds',''))]
             assert len(coords)==4 and coords[2]>coords[0] and coords[3]>coords[1]
     assert 'EV Cockpit' in data, f'{name}: missing application brand'

@@ -45,7 +45,7 @@ class BluetoothClassicObdTransport(
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.BLUETOOTH_CONNECT
             ) != PackageManager.PERMISSION_GRANTED
-        ) throw SecurityException("Bluetooth connection permission is required")
+        ) throw SecurityException("Bluetooth bağlantı izni gerekli")
     }
 
     @SuppressLint("MissingPermission")
@@ -79,11 +79,11 @@ class BluetoothClassicObdTransport(
                 try {
                     while (isActive) {
                         val count = next.inputStream.read(bytes)
-                        if (count < 0) throw IOException("OBD disconnected")
+                        if (count < 0) throw IOException("OBD bağlantısı kesildi")
                         if (count > 0) receiveChannel.send(bytes.copyOf(count))
                     }
                 } catch (error: Exception) {
-                    receiveChannel.close(IOException("SPP read connection closed", error))
+                    receiveChannel.close(IOException("SPP okuma bağlantısı kesildi", error))
                     // A late callback from an old socket cannot drop a new link.
                     if (socket === next) ready = false
                 }
@@ -96,16 +96,16 @@ class BluetoothClassicObdTransport(
 
     override suspend fun exchange(command: String, timeoutMillis: Long): String =
         lock.withLock {
-            if (!connected) throw IOException("No SPP connection")
+            if (!connected) throw IOException("SPP bağlantısı yok")
             require(command.matches(Regex("[A-Z0-9]{2,20}"))) {
-                "Only validated ELM ASCII commands are allowed"
+                "Yalnız doğrulanmış ELM ASCII komutu"
             }
             require(timeoutMillis in 250L..15_000L)
             try {
                 // Remove late bytes from an earlier response; only one request at a time.
                 while (incoming.tryReceive().isSuccess) Unit
                 withTimeout(timeoutMillis) {
-                    val active = socket ?: throw IOException("SPP socket is closed")
+                    val active = socket ?: throw IOException("SPP soketi kapalı")
                     withContext(Dispatchers.IO) {
                         active.outputStream.write((command + "\r").toByteArray(Charsets.US_ASCII))
                         active.outputStream.flush()
@@ -116,7 +116,7 @@ class BluetoothClassicObdTransport(
                         for (byte in chunk) {
                             val ch = (byte.toInt() and 0xff).toChar()
                             if (ch == '>') return@withTimeout reply.toString().trim()
-                            if (reply.length >= MAX_RESPONSE) throw IOException("ELM response is too large")
+                            if (reply.length >= MAX_RESPONSE) throw IOException("ELM yanıtı çok büyük")
                             reply.append(ch)
                         }
                     }

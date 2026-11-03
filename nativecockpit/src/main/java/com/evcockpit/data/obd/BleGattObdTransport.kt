@@ -57,7 +57,7 @@ class BleGattObdTransport(
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.BLUETOOTH_CONNECT
             ) != PackageManager.PERMISSION_GRANTED
-        ) throw SecurityException("Bluetooth connection permission is required")
+        ) throw SecurityException("Bluetooth bağlantı izni gerekli")
     }
 
     @SuppressLint("MissingPermission") // Checked before invoking GATT.
@@ -86,43 +86,43 @@ class BleGattObdTransport(
                 if (status != BluetoothGatt.GATT_SUCCESS ||
                     newState == BluetoothProfile.STATE_DISCONNECTED
                 ) {
-                    fail("BLE GATT disconnected: $status")
+                    fail("BLE GATT bağlantısı kesildi: $status")
                 } else if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    if (!gatt.discoverServices()) fail("BLE service discovery did not start")
+                    if (!gatt.discoverServices()) fail("BLE servis keşfi başlamadı")
                 }
             }
 
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 if (active !== session) return
                 if (status != BluetoothGatt.GATT_SUCCESS) {
-                    fail("BLE service discovery failed")
+                    fail("BLE servis keşfi başarısız")
                     return
                 }
                 val service = gatt.getService(profile.service)
                 val writer = service?.getCharacteristic(profile.writeCharacteristic)
                 val reader = service?.getCharacteristic(profile.notifyCharacteristic)
                 if (writer == null || reader == null) {
-                    fail("Dongle BLE UART UUID profile does not match")
+                    fail("Dongle BLE UART UUID profili uyuşmuyor")
                     return
                 }
                 val canWrite = writer.properties and
                     (BluetoothGattCharacteristic.PROPERTY_WRITE or
                         BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0
-                if (!canWrite) { fail("BLE UART TX is not writable"); return }
+                if (!canWrite) { fail("BLE UART TX yazılamıyor"); return }
                 session.tx = writer
                 val canNotify =
                     reader.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0
                 val canIndicate =
                     reader.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE != 0
                 if (!canNotify && !canIndicate) {
-                    fail("BLE UART RX does not support notifications")
+                    fail("BLE UART RX bildirim desteklemiyor")
                     return
                 }
                 if (!gatt.setCharacteristicNotification(reader, true)) {
-                    fail("Could not enable BLE notifications"); return
+                    fail("BLE bildirim açılamadı"); return
                 }
                 val cccd = reader.getDescriptor(CCCD)
-                if (cccd == null) { fail("BLE CCCD descriptor is missing"); return }
+                if (cccd == null) { fail("BLE CCCD descriptor eksik"); return }
                 val value = if (canNotify) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                     else BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
                 val started = if (Build.VERSION.SDK_INT >= 33) {
@@ -133,7 +133,7 @@ class BleGattObdTransport(
                     @Suppress("DEPRECATION")
                     gatt.writeDescriptor(cccd)
                 }
-                if (!started) fail("BLE notification registration failed")
+                if (!started) fail("BLE bildirim kaydı başarısız")
             }
 
             override fun onDescriptorWrite(
@@ -143,7 +143,7 @@ class BleGattObdTransport(
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     session.ready = true
                     if (!session.startup.isCompleted) session.startup.complete(Unit)
-                } else fail("BLE notification descriptor error: $status")
+                } else fail("BLE bildirim descriptor hatası: $status")
             }
 
             override fun onCharacteristicWrite(
@@ -155,7 +155,7 @@ class BleGattObdTransport(
                 session.writeAck?.let { ack ->
                     if (!ack.isCompleted) {
                         if (status == BluetoothGatt.GATT_SUCCESS) ack.complete(Unit)
-                        else ack.completeExceptionally(IOException("BLE UART write error $status"))
+                        else ack.completeExceptionally(IOException("BLE UART yazma hatası $status"))
                     }
                 }
             }
@@ -187,7 +187,7 @@ class BleGattObdTransport(
         try {
             session.gatt = device.connectGatt(
                 context, false, callback, BluetoothDevice.TRANSPORT_LE
-            ) ?: throw IOException("Could not create a BLE GATT session")
+            ) ?: throw IOException("BLE GATT oturumu oluşturulamadı")
             withTimeout(timeoutMillis) { session.startup.await() }
         } catch (error: Exception) {
             disconnect()
@@ -200,9 +200,9 @@ class BleGattObdTransport(
         lock.withLock {
             checkPermission()
             val session = active?.takeIf { it.ready }
-                ?: throw IOException("No BLE UART connection")
-            val gatt = session.gatt ?: throw IOException("BLE GATT is closed")
-            val tx = session.tx ?: throw IOException("BLE TX characteristic is missing")
+                ?: throw IOException("BLE UART bağlantısı yok")
+            val gatt = session.gatt ?: throw IOException("BLE GATT kapalı")
+            val tx = session.tx ?: throw IOException("BLE TX karakteristiği yok")
             require(command.matches(Regex("[A-Z0-9]{2,16}")))
             require(timeoutMillis in 250L..15_000L)
             try {
@@ -228,7 +228,7 @@ class BleGattObdTransport(
                         @Suppress("DEPRECATION")
                         gatt.writeCharacteristic(tx)
                     }
-                    if (!submitted) throw IOException("Could not send the BLE UART command")
+                    if (!submitted) throw IOException("BLE UART komutu gönderilemedi")
                     if (waitForAck) ack.await()
                     val response = StringBuilder()
                     while (true) {
@@ -237,7 +237,7 @@ class BleGattObdTransport(
                             val ch = (byte.toInt() and 0xff).toChar()
                             if (ch == '>') return@withTimeout response.toString().trim()
                             if (response.length >= 32_768) {
-                                throw IOException("ELM response is too large")
+                                throw IOException("ELM yanıtı çok büyük")
                             }
                             response.append(ch)
                         }
@@ -260,10 +260,10 @@ class BleGattObdTransport(
         old.ready = false
         old.incoming.close()
         if (!old.startup.isCompleted) {
-            old.startup.completeExceptionally(IOException("BLE connection closed"))
+            old.startup.completeExceptionally(IOException("BLE bağlantısı kapatıldı"))
         }
         old.writeAck?.let {
-            if (!it.isCompleted) it.completeExceptionally(IOException("BLE connection closed"))
+            if (!it.isCompleted) it.completeExceptionally(IOException("BLE bağlantısı kapatıldı"))
         }
         runCatching { old.gatt?.disconnect() }
         runCatching { old.gatt?.close() }

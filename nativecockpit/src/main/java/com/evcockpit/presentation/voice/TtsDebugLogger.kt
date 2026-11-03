@@ -21,7 +21,7 @@ object TtsDebugLogger {
     private const val TAG = "EYA-TTS-UAT"
 
     fun languageAvailability(tts: TextToSpeech): Int {
-        val result = tts.isLanguageAvailable(Locale("en", "US"))
+        val result = tts.isLanguageAvailable(Locale("tr", "TR"))
         val label = when (result) {
             TextToSpeech.LANG_MISSING_DATA -> "LANG_MISSING_DATA"
             TextToSpeech.LANG_NOT_SUPPORTED -> "LANG_NOT_SUPPORTED"
@@ -31,15 +31,15 @@ object TtsDebugLogger {
             else -> "UNKNOWN(" + result + ")"
         }
         if (result < TextToSpeech.LANG_AVAILABLE)
-            Log.e(TAG, "en-US availability: " + label)
-        else Log.i(TAG, "en-US availability: " + label)
+            Log.e(TAG, "tr-TR availability: " + label)
+        else Log.i(TAG, "tr-TR availability: " + label)
         return result
     }
 
     fun selectedLanguage(code: Int) {
         if (code < TextToSpeech.LANG_AVAILABLE)
-            Log.e(TAG, "setLanguage(en-US) failed: " + code)
-        else Log.i(TAG, "setLanguage(en-US) ready: " + code)
+            Log.e(TAG, "setLanguage(tr-TR) failed: " + code)
+        else Log.i(TAG, "setLanguage(tr-TR) ready: " + code)
     }
 
     fun utteranceError(code: Int) {
@@ -66,7 +66,7 @@ fun TtsPackageWarningDialog(onDismiss: () -> Unit) {
             ) {
                 Text(stringResource(R.string.native_english_tts_data_missing), style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(R.string.native_download_english_voice_data_from_settings_language_and_input_text_to_s) +
-                    "Menu names may vary by device.")
+                    "paketini indirin. Menü adı cihazınıza göre değişebilir.")
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.native_ok), color = Color(0xFF00E676))
                 }

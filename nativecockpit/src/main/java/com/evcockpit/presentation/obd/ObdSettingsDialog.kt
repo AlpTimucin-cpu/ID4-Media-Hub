@@ -49,7 +49,7 @@ fun ObdSettingsDialog(
                 }
                 Text(stringResource(R.string.native_bluetooth_classic_spp_elm327_pair_the_adapter_in_android_bluetooth_set),
                     style=MaterialTheme.typography.bodySmall)
-                Text("Status: ${state.phase}")
+                Text("Durum: ${phaseLabel(state.phase)}")
                 state.error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
                 OutlinedButton(onClick=onRefresh, enabled=!simulationEnabled, modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.native_refresh_paired_devices_request_permission))
@@ -62,12 +62,12 @@ fun ObdSettingsDialog(
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (state.phase == ObdPhase.CONNECTED) {
-                    Text(if (state.lastPollSucceeded) "Actual SAE 010D speed response received"
-                         else "010D speed response not yet validated")
+                    Text(if (state.lastPollSucceeded) "SAE 010D gerçek hız yanıtı alındı"
+                         else "010D hız yanıtı henüz doğrulanmadı")
                     HorizontalDivider()
                     Text(stringResource(R.string.native_experimental_meb_ecu_readings),style=MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.native_test_only_while_parked_and_in_your_own_vehicle_queries_use_read_only_u) +
-                        "Community PID sources have not been validated on your device; results are not applied to navigation SoC/SoH fields.",
+                        "Topluluk PID kaynakları cihazınızda doğrulanmadı; sonuçlar navigasyondaki SoC/SoH alanına aktarılmaz.",
                         style=MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick={ { onMebDiagnostic("22028C") } },
                         enabled=!simulationEnabled && !state.diagnosticBusy,modifier=Modifier.fillMaxWidth()) {
@@ -83,18 +83,18 @@ fun ObdSettingsDialog(
                     }
                     if (state.diagnosticBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     state.diagnosticResult?.let { item ->
-                        Text("Last query: ${item.request} · ${item.status}",
+                        Text("Son sorgu: ${item.request} · ${diagnosticLabel(item.status)}",
                             style=MaterialTheme.typography.bodyMedium)
                         if (item.status == MebResponseStatus.VALID_RAW) {
                             item.candidateBmsSocPercent?.let { percent ->
-                                Text(String.format(Locale.forLanguageTag("en-US"),
-                                    "Candidate BMS SoC: %.1f %% (compare with the vehicle display)",percent))
+                                Text(String.format(Locale.forLanguageTag("tr-TR"),
+                                    "Aday BMS SoC: %.1f %% (araç ekranıyla karşılaştırılmalı)",percent))
                             }
                             item.candidateMaxBatteryTempC?.let { temp ->
-                                Text(String.format(Locale.forLanguageTag("en-US"),
-                                    "Candidate maximum battery temperature: %.2f °C",temp))
+                                Text(String.format(Locale.forLanguageTag("tr-TR"),
+                                    "Aday maksimum batarya sıcaklığı: %.2f °C",temp))
                             }
-                            item.payloadHex?.let { Text("Raw payload: $it",
+                            item.payloadHex?.let { Text("Ham payload: $it",
                                 style=MaterialTheme.typography.bodySmall) }
                         } else {
                             Text(stringResource(R.string.native_no_validated_ecu_response_received_data_was_not_used),
@@ -109,10 +109,28 @@ fun ObdSettingsDialog(
                     }
                 }
                 Text(stringResource(R.string.native_bms_soc_diagnostic_candidate_dashboard_soc_and_soh_are_different_quant) +
-                     "Battery health/energy/temperature are not yet used as measured data in the cockpit.",
+                     "Kokpitte batarya sağlığı/enerji/sıcaklık henüz ölçülmüş veri olarak kullanılmıyor.",
                      style=MaterialTheme.typography.bodySmall)
                 TextButton(onClick=onDismiss,modifier=Modifier.fillMaxWidth()) { Text(stringResource(R.string.native_back_to_map)) }
             }
         }
     }
+}
+
+private fun phaseLabel(phase: ObdPhase): String = when (phase) {
+    ObdPhase.DISCONNECTED -> "Bağlı değil"
+    ObdPhase.CONNECTING -> "Bağlanıyor"
+    ObdPhase.CONNECTED -> "Bağlı"
+    ObdPhase.ERROR -> "Hata"
+}
+
+private fun diagnosticLabel(status: MebResponseStatus): String = when (status) {
+    MebResponseStatus.VALID_RAW -> "Geçerli ham yanıt"
+    MebResponseStatus.NO_DATA -> "Veri yok"
+    MebResponseStatus.NEGATIVE -> "ECU isteği reddetti"
+    MebResponseStatus.WRONG_ECU -> "Farklı ECU yanıtı"
+    MebResponseStatus.WRONG_IDENTIFIER -> "Farklı veri kimliği"
+    MebResponseStatus.INCOMPLETE -> "Eksik yanıt"
+    MebResponseStatus.MALFORMED -> "Geçersiz yanıt"
+    MebResponseStatus.ADAPTER_ERROR -> "Adaptör hatası"
 }
