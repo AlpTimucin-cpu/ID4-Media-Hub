@@ -98,27 +98,30 @@ class ActiveSoundManager @Inject constructor(
                 return@post
             }
             selectProfile(EngineProfile.from(settings.engineSoundProfile))
-            val dt = lastSpeedAtMs?.let { (speedAtMs - it) / 1000.0 } ?: 0.0
-            val dv = speedKmh - (lastSpeedKmh ?: speedKmh)
-            val accelerationKmhPerSecond =
-                if (dt > 0.1 && dt < 20.0) dv / dt else 0.0
+            if (lastSpeedAtMs == speedAtMs) {
+                // Poll tick without a new CAN measurement: do not reset accel mode.
+                applyVolumes()
+                return@post
+            }
+            val deltaSeconds =
+                lastSpeedAtMs?.let { (speedAtMs - it).toDouble() / 1000.0 } ?: 0.0
+            val decision = EngineMotionPolicy.decide(
+                speedKmh, lastSpeedKmh, deltaSeconds
+            )
             lastSpeedKmh = speedKmh
             lastSpeedAtMs = speedAtMs
-            val roar = accelerationKmhPerSecond > 10.0 // km/h/s, not m/s²
-            val accelerating = accelerationKmhPerSecond > 0.4 && speedKmh >= 5.0
-            val useAcceleration = accelerating || roar
-
-            // Max pitch for a rapid increase; pitch 0.8..1.9 otherwise.
-            val pitch = if (roar) 1.9f
-                else (0.85f + (speedKmh.coerceIn(0.0, 130.0) / 130.0 * 0.95)).toFloat()
-            acceleration?.playbackParameters = PlaybackParameters(1f, pitch)
+            acceleration?.playbackParameters = PlaybackParameters(1f, decision.pitch)
             idle?.playbackParameters = PlaybackParameters(1f, 0.95f)
-            if (useAcceleration) {
-                idle?.pause()
-                acceleration?.play()
-            } else {
-                acceleration?.pause()
-                idle?.play()
+            when (decision.mode) {
+                EngineMotionPolicy.Mode.ACCELERATING -> {
+                    idle?.pause()
+                    acceleration?.play()
+                }
+                EngineMotionPolicy.Mode.IDLE -> {
+                    acceleration?.pause()
+                    idle?.play()
+                }
+                EngineMotionPolicy.Mode.SILENT -> pausePlayers()
             }
             applyVolumes()
         }
