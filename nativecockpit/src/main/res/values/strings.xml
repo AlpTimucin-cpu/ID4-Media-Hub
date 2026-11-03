@@ -144,6 +144,8 @@
     <string name="radio_pause">Pause</string>
     <string name="radio_stop">Stop</string>
     <string name="radio_refresh">Refresh</string>
+    <string name="radio_search">Search Turkish stations or genres</string>
+    <string name="radio_results">%1$d / %2$d stations</string>
     <string name="radio_votes">%1$d votes</string>
     <string name="radio_attribution">Station directory: Radio Browser · Stream availability may change.</string>
 </resources>
