@@ -54,7 +54,7 @@ class WelcomeGreetingManager @Inject constructor(
         ) main.post { closeSession() }
     }
     private val focusRequest = AudioFocusRequest.Builder(
-        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
     )
         .setAudioAttributes(audioAttributes)
         .setOnAudioFocusChangeListener(focusListener, main)
