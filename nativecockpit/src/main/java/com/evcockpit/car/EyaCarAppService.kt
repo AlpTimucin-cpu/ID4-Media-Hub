@@ -10,11 +10,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.evcockpit.BuildConfig
 import com.evcockpit.domain.repository.RouteRepository
+import com.evcockpit.presentation.voice.WelcomeGreetingManager
 
 /** Android Auto Car App Library entry point. Does NOT start an Activity or play video. */
 @AndroidEntryPoint
 class EyaCarAppService : CarAppService() {
     @Inject lateinit var routes: RouteRepository
+    @Inject lateinit var welcome: WelcomeGreetingManager
 
     override fun createHostValidator(): HostValidator =
         if (BuildConfig.DEBUG) HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
@@ -22,8 +24,16 @@ class EyaCarAppService : CarAppService() {
             .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
             .build()
 
-    override fun onCreateSession(): Session = EyaCarSession(routes)
-    override fun onCreateSession(sessionInfo: SessionInfo): Session = EyaCarSession(routes)
+    override fun onCreateSession(): Session {
+        // Shared singleton gate prevents duplicates if OBD connects as well.
+        welcome.launchWelcomeGreeting()
+        return EyaCarSession(routes)
+    }
+
+    override fun onCreateSession(sessionInfo: SessionInfo): Session {
+        welcome.launchWelcomeGreeting()
+        return EyaCarSession(routes)
+    }
 }
 
 private class EyaCarSession(private val routes: RouteRepository) : Session() {

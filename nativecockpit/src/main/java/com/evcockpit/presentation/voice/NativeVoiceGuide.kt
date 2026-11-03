@@ -19,6 +19,45 @@ import java.util.Locale
  */
 class NativeVoiceGuide(context: Context) {
     private val logTag = "EYA-Voice"
+
+    companion object {
+        private val GREETING_LOCALE = Locale.forLanguageTag("tr-TR")
+
+        /**
+         * Gender is not an Android Voice attribute. Prefer only voice names
+         * explicitly labelled female; otherwise keep the system Turkish default.
+         * Never infer a voice's gender from quality, language or engine vendor.
+         * This function is for a separate welcome TTS engine, not navigation.
+         */
+        internal fun selectTurkishGreetingVoice(engine: TextToSpeech): Boolean {
+            val result = engine.setLanguage(GREETING_LOCALE)
+            if (result < TextToSpeech.LANG_AVAILABLE) return false
+
+            val candidates = runCatching { engine.voices.orEmpty() }
+                .getOrDefault(emptySet())
+                .filter { voice ->
+                    voice.locale.language.equals("tr", ignoreCase = true) &&
+                        voice.locale.country.equals("TR", ignoreCase = true) &&
+                        !voice.isNetworkConnectionRequired
+                }
+            val female = candidates
+                .filter { voice ->
+                    val id = voice.name.lowercase(Locale.ROOT)
+                    listOf("female", "woman", "kadın", "kadin")
+                        .any(id::contains)
+                }
+                .maxByOrNull { it.quality }
+            if (female != null) {
+                val selected = runCatching {
+                    engine.setVoice(female) == TextToSpeech.SUCCESS
+                }.getOrDefault(false)
+                if (selected) return true
+            }
+            // The default installed tr-TR voice may or may not sound feminine.
+            return engine.setLanguage(GREETING_LOCALE) >= TextToSpeech.LANG_AVAILABLE
+        }
+    }
+
     enum class Status { LOADING, READY, TURKISH_VOICE_MISSING, INIT_FAILED, AUDIO_FOCUS_DENIED }
 
     var status: Status by mutableStateOf(Status.LOADING)
