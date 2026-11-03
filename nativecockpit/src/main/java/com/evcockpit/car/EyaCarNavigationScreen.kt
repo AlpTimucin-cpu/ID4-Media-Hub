@@ -56,7 +56,6 @@ class EyaCarNavigationScreen(
     private var summary = CarRouteSummary.from(route, null, System.currentTimeMillis())
     private var activeRouteId: String? = null
     private var withoutGpsSinceMs: Long = 0L
-    private var autoDriveTestRequested = false
     private var closed = false
 
     private val callbacks = object : NavigationManagerCallback {
@@ -65,10 +64,8 @@ class EyaCarNavigationScreen(
             endNavigation()
         }
         override fun onAutoDriveEnabled() {
-            // Google Play requires a separate, conspicuously labelled test-only simulation.
-            // This build never injects mock GPS into real driving or presents it as measured.
-            autoDriveTestRequested = true
-            invalidate()
+            // No mock GPS or Auto Drive mode is available in this build.
+            Log.w("EYA-CAR", "Auto Drive request ignored: real location required")
         }
     }
 
@@ -218,10 +215,6 @@ class EyaCarNavigationScreen(
         } else {
             pane.addRow(Row.Builder().setTitle("To get started")
                 .addText("Select a route and grant location permission on the phone").build())
-        }
-        if (autoDriveTestRequested) {
-            pane.addRow(Row.Builder().setTitle("DHU test request")
-                .addText("Simulation is off: actual GPS validation is required").build())
         }
         val content = PaneTemplate.Builder(pane.build())
         if (carContext.carAppApiLevel < 7) {
