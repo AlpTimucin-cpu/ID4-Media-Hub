@@ -1,5 +1,6 @@
 package com.evcockpit.presentation.voice
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,3 +27,6 @@ class AppAudioDucking @Inject constructor() {
         state.value = activeSpeakers.isNotEmpty()
     }
 }
+
+/** Shared by the phone radio without adding DI to a Composable. */
+val LocalAppAudioDucking = staticCompositionLocalOf<AppAudioDucking?> { null }
