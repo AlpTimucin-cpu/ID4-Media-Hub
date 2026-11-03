@@ -10,7 +10,7 @@ A map-first electric-vehicle cockpit built with Kotlin, Jetpack Compose, MapLibr
 - A large state-of-charge indicator and modeled range in the upper-left corner.
 - A compact arrival panel with the next maneuver, ETA, and estimated arrival SoC.
 - A slim Route / Charging / Media / Settings dock.
-- Dark navy surfaces, one turquoise accent, larger typography, and restrained corner radii.
+- Dark navy surfaces, one neon-green accent, larger typography, and restrained corner radii.
 - Unknown vehicle measurements remain `—`; simulation data is explicitly labeled.
 
 ## Modules
