@@ -6,6 +6,7 @@ package com.evcockpit.domain.model
  */
 data class EngineeringSnapshot(
     val socPercent: TimedValue<Double> = TimedValue(),
+    val speedKmh: TimedValue<Double> = TimedValue(),
     val packVoltageV: TimedValue<Double> = TimedValue(),
     val packCurrentA: TimedValue<Double> = TimedValue(),
     val temperatureMaxC: TimedValue<Double> = TimedValue(),
@@ -23,6 +24,8 @@ data class EngineeringSnapshot(
 data class EngineeringMetrics(
     /** Positive = energy entering the battery, negative = battery discharge. */
     val batteryPowerKw: Double? = null,
+    val absoluteCrate: Double? = null,
+    val instantaneousConsumptionKwh100Km: Double? = null,
     val batteryCellSpreadMv: Double? = null,
     val batteryTemperatureSpreadC: Double? = null,
     /** Energy-throughput equivalent; NOT full depth-of-discharge cycle count. */
