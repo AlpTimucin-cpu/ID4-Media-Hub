@@ -37,6 +37,12 @@ assert "locationRepository.start()" in nav
 assert "isFromMockProvider" in nav
 assert "createRfcommSocketToServiceRecord(spp)" in repo
 assert "conn.connect()" in repo
+assert "Elm327Session(transport)" in repo
+assert "ElmSessionPhase.READY" in repo
+assert 'protocol.readRawOnce("010D")' in repo
+assert "runMebReadOnlyQuery(conn, protocol, command)" in repo
+assert "protocol.close()" in repo
+
 assert "withContext(Dispatchers.IO) { runSession(device) }" in repo
 assert "_telemetry.value = VehicleTelemetry()" in repo
 assert "ObdPhase.CONNECTED" in fg
