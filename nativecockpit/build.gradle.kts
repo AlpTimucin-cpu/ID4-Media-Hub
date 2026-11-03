@@ -1,4 +1,7 @@
 import java.io.File
+import java.io.DataOutputStream
+import kotlin.math.sin
+import kotlin.math.min
 import java.util.Properties
 
 plugins {
@@ -121,6 +124,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
 
     implementation("com.google.dagger:hilt-android:2.58")
     ksp("com.google.dagger:hilt-compiler:2.58")
@@ -139,3 +143,69 @@ dependencies {
     testImplementation("org.json:json:20250517")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
+
+// Generate ten original, copyright-free mono WAV loops during Gradle builds.
+// GitHub's text-only mobile workflow does not require uploading binary assets.
+val generatedSoundRes = layout.buildDirectory.dir("generated/active-sound/res")
+android.sourceSets.getByName("main").res.srcDir(generatedSoundRes)
+
+val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavAssets") {
+    val output = generatedSoundRes
+    outputs.dir(output)
+    doLast {
+        val raw = output.get().asFile.resolve("raw").apply { mkdirs() }
+        val sampleRate = 22_050
+        val count = sampleRate * 2
+        val profiles = linkedMapOf(
+            "v8" to 64.0, "f1" to 175.0, "futuristic" to 115.0,
+            "turbine" to 93.0, "stealth" to 42.0
+        )
+        for ((profile, fundamental) in profiles) {
+            for (accelerating in listOf(false, true)) {
+                val mode = if (accelerating) "accel" else "idle"
+                val file = raw.resolve("${profile}_${mode}.wav")
+                DataOutputStream(file.outputStream().buffered()).use { out ->
+                    fun word(n: Int) {
+                        out.writeByte(n and 255)
+                        out.writeByte((n ushr 8) and 255)
+                    }
+                    fun dword(n: Int) {
+                        word(n and 0xffff)
+                        word(n ushr 16)
+                    }
+                    out.writeBytes("RIFF")
+                    dword(36 + count * 2)
+                    out.writeBytes("WAVEfmt ")
+                    dword(16)
+                    word(1)  // signed 16-bit PCM, mono
+                    word(1)
+                    dword(sampleRate)
+                    dword(sampleRate * 2)
+                    word(2)
+                    word(16)
+                    out.writeBytes("data")
+                    dword(count * 2)
+                    for (i in 0 until count) {
+                        val t = i.toDouble() / sampleRate
+                        val f = fundamental * if (accelerating) 1.75 else 1.0
+                        val pulse = 1.0 + 0.10 * sin(
+                            2.0 * Math.PI * (if (profile == "v8") 8.0 else 5.0) * t
+                        )
+                        val signal = (
+                            0.52 * sin(2 * Math.PI * f * t) +
+                            0.24 * sin(2 * Math.PI * 2 * f * t) +
+                            0.12 * sin(2 * Math.PI * 3 * f * t)
+                        ) * pulse
+                        // Short fades avoid audible clicks at repeat boundaries.
+                        val edge = min(i, count - 1 - i)
+                        val fade = (edge.toDouble() / 256).coerceIn(0.0, 1.0)
+                        val pcm = (signal * fade * 0.23 * 32767)
+                            .toInt().coerceIn(-32768, 32767)
+                        word(pcm and 0xffff)
+                    }
+                }
+            }
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn(generateOriginalEngineWavAssets) }

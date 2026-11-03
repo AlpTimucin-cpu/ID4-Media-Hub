@@ -30,18 +30,20 @@ import com.evcockpit.domain.repository.RouteRepository
 import com.evcockpit.domain.usecase.ManeuverGuidancePolicy
 import com.evcockpit.domain.usecase.RouteProgressTracker
 import com.evcockpit.presentation.voice.NativeVoiceGuide
+import com.evcockpit.presentation.voice.AppAudioDucking
 import com.evcockpit.presentation.voice.VoicePreference
 import kotlin.math.roundToInt
 
 /** Real OSRM geometry + measured GPS only. Foreground Android Auto session, not a navigation FGS. */
 class EyaCarNavigationScreen(
     context: CarContext,
-    private val routes: RouteRepository
+    private val routes: RouteRepository,
+    ducking: AppAudioDucking
 ) : Screen(context) {
     private val tracker = CarGpsTracker(context.applicationContext)
     private val surface = EyaCarMapSurface(context)
     private val manager = context.getCarService(NavigationManager::class.java)
-    private val voice = NativeVoiceGuide(context.applicationContext)
+    private val voice = NativeVoiceGuide(context.applicationContext, ducking)
     private val voicePrefs = VoicePreference(context.applicationContext)
     private val speechPolicy = ManeuverGuidancePolicy()
     private val progress = RouteProgressTracker()

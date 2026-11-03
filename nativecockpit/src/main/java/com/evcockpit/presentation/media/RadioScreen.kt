@@ -25,18 +25,26 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.evcockpit.R
+import com.evcockpit.presentation.voice.LocalAppAudioDucking
 
 @Composable
 fun RadioScreen(model: RadioViewModel = viewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current.applicationContext
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val audioDucking = LocalAppAudioDucking.current
+    val voiceDucked = if (audioDucking != null)
+        audioDucking.ducked.collectAsStateWithLifecycle().value else false
     val player = remember(context) {
         ExoPlayer.Builder(context).build().apply {
             setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
         }
+    }
+    LaunchedEffect(player, voiceDucked) {
+        // TTS navigation/welcome reduces only our radio player to 20%.
+        player.volume = if (voiceDucked) 0.2f else 1f
     }
     var query by rememberSaveable { mutableStateOf("") }
     val filteredStations = remember(state.stations, query) {

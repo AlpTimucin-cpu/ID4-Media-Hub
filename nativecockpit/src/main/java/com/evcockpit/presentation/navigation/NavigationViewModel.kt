@@ -42,6 +42,7 @@ import com.evcockpit.domain.usecase.DepartureSoc
 import com.evcockpit.domain.usecase.ConsumptionBasis
 import com.evcockpit.presentation.cockpit.CockpitUiState
 import com.evcockpit.presentation.route.RoutePlannerUiState
+import com.evcockpit.presentation.voice.AppAudioDucking
 import com.evcockpit.presentation.voice.NativeVoiceGuide
 import com.evcockpit.presentation.voice.VoicePreference
 
@@ -87,7 +88,8 @@ class NavigationViewModel @Inject constructor(
     private val routes: RouteRepository,
     private val locationRepository: LocationRepository,
     private val currentLocation: FusedCurrentLocationProvider,
-    private val vehicleRepository: VehicleRepository
+    private val vehicleRepository: VehicleRepository,
+    audioDucking: AppAudioDucking
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
     // Read only explicitly provisioned, independently verified calibration inputs.
@@ -95,7 +97,7 @@ class NavigationViewModel @Inject constructor(
     private val modelPrefs = context.applicationContext.getSharedPreferences(
         "eya_energy_calibration", Context.MODE_PRIVATE
     )
-    private val guide = NativeVoiceGuide(context)
+    private val guide = NativeVoiceGuide(context, audioDucking)
     private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)

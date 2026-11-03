@@ -18,12 +18,41 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.domain.repository.VehicleRepository
+import com.evcockpit.domain.model.VehicleTelemetry
+import com.evcockpit.data.settings.UserSettings
+import com.evcockpit.data.settings.UserSettingsRepository
+import com.evcockpit.presentation.settings.SettingsScreen
+import com.evcockpit.presentation.settings.SettingsViewModel
+import com.evcockpit.presentation.sound.ActiveSoundManager
+import com.evcockpit.presentation.voice.AppAudioDucking
+import com.evcockpit.presentation.voice.LocalAppAudioDucking
 import com.evcockpit.domain.model.ObdPhase
 import com.evcockpit.presentation.navigation.NavigationViewModel
 import com.evcockpit.presentation.charging.ChargingViewModel
@@ -35,11 +64,23 @@ import com.evcockpit.presentation.media.enterOwnVideoPipWhenParked
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val settingsViewModel: SettingsViewModel by viewModels()
     private val navigation: NavigationViewModel by viewModels()
     private val charging: ChargingViewModel by viewModels()
     private val chargePlan: RouteChargePlanViewModel by viewModels()
     private val weather: RouteWeatherViewModel by viewModels()
     @Inject lateinit var obd: ObdConnectionController
+    @Inject lateinit var vehicleRepository: VehicleRepository
+    @Inject lateinit var settingsRepository: UserSettingsRepository
+    @Inject lateinit var activeSound: ActiveSoundManager
+    @Inject lateinit var audioDucking: AppAudioDucking
+
+    private data class SoundFrame(
+        val settings: UserSettings,
+        val speed: Double?,
+        val sampleAt: Long?,
+        val ducked: Boolean
+    )
 
     private val bluetoothPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -90,6 +131,39 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Observe real telemetry only while the phone UI is resumed.
+        // Freshness check prevents stale/absent OBD readings producing sound.
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                val ticker = flow {
+                    while (true) {
+                        emit(System.currentTimeMillis())
+                        delay(1_000L)
+                    }
+                }
+                combine(
+                    settingsRepository.settings,
+                    vehicleRepository.telemetry,
+                    obd.connection,
+                    audioDucking.ducked,
+                    ticker
+                ) { settings, telemetry, connection, ducked, now ->
+                    SoundFrame(
+                        settings = settings,
+                        speed = if (connection.phase == ObdPhase.CONNECTED)
+                            telemetry.speedKmh.current(now, 10_000L)
+                        else null,
+                        sampleAt = telemetry.speedKmh.measuredAtMillis,
+                        ducked = ducked
+                    )
+                }.collect { frame ->
+                    activeSound.setSpeechDucking(frame.ducked)
+                    activeSound.update(frame.settings, frame.speed, frame.sampleAt, true)
+                }
+            }
+        }
+
         setContent {
             val context = LocalContext.current
             val fused = remember(context) {
@@ -184,8 +258,12 @@ class MainActivity : ComponentActivity() {
             val obdConnection by obd.connection.collectAsStateWithLifecycle()
             val engineering by obd.engineering.collectAsStateWithLifecycle()
             val engineeringMetrics by obd.engineeringMetrics.collectAsStateWithLifecycle()
-            CockpitTheme {
-                CockpitScreen(
+            val soundSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
+            var audioSettingsOpen by rememberSaveable { mutableStateOf(false) }
+            CompositionLocalProvider(LocalAppAudioDucking provides audioDucking) {
+                CockpitTheme(nightMode = soundSettings.isNightModeEnabled) {
+                    Box(Modifier.fillMaxSize()) {
+                        CockpitScreen(
                     state = ui.cockpit,
                     routeState = ui.routeState,
                     loadStatus = ui.loadStatus,
@@ -227,11 +305,27 @@ class MainActivity : ComponentActivity() {
                         navigation.setSimulationEnabled(enabled)
                     }
                 )
+                        // Separate settings affordance: original CockpitScreen untouched.
+                        IconButton(
+                            modifier = Modifier.align(Alignment.TopEnd)
+                                .padding(top = 42.dp, end = 8.dp),
+                            onClick = { audioSettingsOpen = true }
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = "Ses ayarları")
+                        }
+                        if (audioSettingsOpen) SettingsScreen(
+                            viewModel = settingsViewModel,
+                            activeSound = activeSound,
+                            onClose = { audioSettingsOpen = false }
+                        )
+                    }
+                }
             }
         }
     }
     override fun onResume() {
         super.onResume()
+        activeSound.onResume()
         navigation.setForeground(true)
         val allowed = listOf(Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION).any {
@@ -240,6 +334,7 @@ class MainActivity : ComponentActivity() {
         if (allowed) navigation.startGps()
     }
     override fun onPause() {
+        activeSound.onPause()
         navigation.setForeground(false)
         // OBD is retained only while the user-started connectedDevice FGS runs.
         super.onPause()

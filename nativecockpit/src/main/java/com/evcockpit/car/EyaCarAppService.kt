@@ -11,12 +11,14 @@ import javax.inject.Inject
 import com.evcockpit.BuildConfig
 import com.evcockpit.domain.repository.RouteRepository
 import com.evcockpit.presentation.voice.WelcomeGreetingManager
+import com.evcockpit.presentation.voice.AppAudioDucking
 
 /** Android Auto Car App Library entry point. Does NOT start an Activity or play video. */
 @AndroidEntryPoint
 class EyaCarAppService : CarAppService() {
     @Inject lateinit var routes: RouteRepository
     @Inject lateinit var welcome: WelcomeGreetingManager
+    @Inject lateinit var ducking: AppAudioDucking
 
     override fun createHostValidator(): HostValidator =
         if (BuildConfig.DEBUG) HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
@@ -27,16 +29,19 @@ class EyaCarAppService : CarAppService() {
     override fun onCreateSession(): Session {
         // Shared singleton gate prevents duplicates if OBD connects as well.
         welcome.launchWelcomeGreeting()
-        return EyaCarSession(routes)
+        return EyaCarSession(routes, ducking)
     }
 
     override fun onCreateSession(sessionInfo: SessionInfo): Session {
         welcome.launchWelcomeGreeting()
-        return EyaCarSession(routes)
+        return EyaCarSession(routes, ducking)
     }
 }
 
-private class EyaCarSession(private val routes: RouteRepository) : Session() {
+private class EyaCarSession(
+    private val routes: RouteRepository,
+    private val ducking: AppAudioDucking
+) : Session() {
     override fun onCreateScreen(intent: Intent): Screen =
-        EyaCarNavigationScreen(carContext, routes)
+        EyaCarNavigationScreen(carContext, routes, ducking)
 }
