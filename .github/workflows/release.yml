@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Optional version tag, e.g. v1.0.0. Leave blank for automatic version.'
+        description: 'Enter v1.0.0, latest, or leave blank to select the next available tag.'
         required: false
         type: string
-        default: ''
+        default: 'latest'
   workflow_call:
     inputs:
       release_tag:
         required: false
         type: string
-        default: ''
+        default: 'latest'
       allow_temporary_signing:
         required: false
         type: boolean
@@ -35,6 +35,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: feature/ev-cockpit
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Select unique release version
@@ -55,21 +57,24 @@ jobs:
 
           major, minor, patch = (int(ver.group(i)) for i in (2, 3, 4))
           requested = os.environ.get('REQUESTED_TAG', '').strip()
-          if requested and not re.fullmatch(r'v\d+\.\d+\.\d+', requested):
-              raise SystemExit('Requested tag must look like v1.0.0')
+          if requested and requested.lower() != 'latest' and not re.fullmatch(r'v\d+\.\d+\.\d+', requested):
+              raise SystemExit('HATA: release_tag geçersiz. v1.0.0 yazın veya latest/boş bırakın.')
 
+          # Checkout fetched all tags, including those in private repositories.
+          # Avoid git ls-remote because checkout clears Git credentials.
+          try:
+              known_tags = set(subprocess.check_output(
+                  ['git', 'tag', '--list'], text=True
+              ).splitlines())
+          except subprocess.CalledProcessError as error:
+              raise SystemExit('HATA: Git etiketleri okunamadı.') from error
           def exists(tag):
-              result = subprocess.run(['git', 'ls-remote', '--tags', '--exit-code',
-                                       'origin', 'refs/tags/' + tag],
-                                      capture_output=True, text=True)
-              if result.returncode not in (0, 2):
-                  raise SystemExit('Could not check existing remote tags: ' + result.stderr)
-              return result.returncode == 0
+              return tag in known_tags
 
-          if requested:
+          if requested and requested.lower() != 'latest':
               tag = requested
               if exists(tag):
-                  raise SystemExit('Release tag already exists: ' + tag)
+                  raise SystemExit('HATA: Sürüm etiketi zaten var: ' + tag + '. latest seçin.')
           else:
               tag = f'v{major}.{minor}.{patch}'
               if exists(tag):
@@ -119,6 +124,18 @@ jobs:
           gradle-version: '8.14.3'
           cache-provider: basic
 
+      - name: Check signing secret availability
+        shell: bash
+        env:
+          BUNDLE: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+          ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
+        run: |
+          if [ -z "${BUNDLE//[[:space:]]/}" ] && [ "$ALLOW_TEMPORARY" != "true" ]; then
+            echo '::error title=HATA::Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64'
+            exit 1
+          fi
+          echo 'OK: İmzalama girişi doğrulandı (gizli anahtar yazdırılmadı).'
+
       - name: Restore single signing bundle or generate test key
         shell: bash
         env:
@@ -130,18 +147,28 @@ jobs:
           python3 - <<'PY'
           import base64, hashlib, json, os, pathlib, secrets, subprocess
           path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'release.jks'
-          encoded = os.environ.get('EYA_SIGNING_BUNDLE_BASE64', '').strip()
+          # Remove spaces, tabs and line breaks from pasted Base64 text.
+          encoded = ''.join(os.environ.get('EYA_SIGNING_BUNDLE_BASE64', '').split())
           if encoded:
-              bundle = json.loads(base64.b64decode(encoded, validate=True).decode('utf-8'))
+              try:
+                  bundle = json.loads(base64.b64decode(encoded, validate=True).decode('utf-8'))
+              except (ValueError, UnicodeDecodeError) as error:
+                  raise SystemExit('HATA: Secret Base64 veya JSON imzalama paketi geçersiz. EYA_GitHub_TEK_SECRET.txt içeriğinin tamamını girin.') from error
               if bundle.get('schema') != 'eya-signing-v1':
                   raise SystemExit('Unsupported signing bundle format')
-              raw = base64.b64decode(bundle['keystore_base64'], validate=True)
-              if hashlib.sha256(raw).hexdigest() != bundle['keystore_sha256']:
-                  raise SystemExit('Signing bundle checksum mismatch')
+              try:
+                  raw = base64.b64decode(''.join(bundle['keystore_base64'].split()), validate=True)
+              except (KeyError, ValueError) as error:
+                  raise SystemExit('HATA: Secret içindeki keystore_base64 alanı eksik veya hatalı.') from error
+              if hashlib.sha256(raw).hexdigest() != bundle.get('keystore_sha256'):
+                  raise SystemExit('HATA: Keystore SHA-256 doğrulaması başarısız. Secret yanlış veya bozulmuş.')
               path.write_bytes(raw)
-              password = bundle['store_password']
-              keypass = bundle['key_password']
-              alias = bundle['key_alias']
+              try:
+                  password = bundle['store_password']
+                  keypass = bundle['key_password']
+                  alias = bundle['key_alias']
+              except KeyError as error:
+                  raise SystemExit('HATA: Secret paketindeki store_password/key_password/key_alias alanları eksik.') from error
               mode = 'permanent'
           elif os.environ.get('ALLOW_TEMPORARY') == 'true':
               password = secrets.token_urlsafe(36)
@@ -158,7 +185,7 @@ jobs:
               mode = 'temporary'
               print('::warning::A temporary signing key was generated. This APK cannot update an app signed with another key.')
           else:
-              raise SystemExit('EYA_SIGNING_BUNDLE_BASE64 is missing. Use Auto-Release for a temporary test build, or configure the single permanent secret.')
+              raise SystemExit('HATA: Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64. Repository Settings > Secrets and variables > Actions bölümünü kontrol edin.')
 
           path.chmod(0o600)
           values = {
@@ -178,6 +205,22 @@ jobs:
                   envfile.write(key + '=' + value + '\n')
           print('Signing mode:', mode)
           PY
+
+      - name: Check decoded keystore and alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s "$EYA_RELEASE_STORE_FILE" ]; then
+            echo '::error title=HATA::release.jks dosyası eksik veya boş.'
+            exit 1
+          fi
+          if ! keytool -list -keystore "$EYA_RELEASE_STORE_FILE" \
+               -storepass:env EYA_RELEASE_STORE_PASSWORD \
+               -alias "$EYA_RELEASE_KEY_ALIAS" >/dev/null 2>&1; then
+            echo '::error title=HATA::Keystore şifresi, alias veya JKS dosyası hatalı.'
+            exit 1
+          fi
+          echo 'OK: Keystore ve alias doğrulandı.'
 
       - name: Run tests and build R8-optimized signed APK
         shell: bash
