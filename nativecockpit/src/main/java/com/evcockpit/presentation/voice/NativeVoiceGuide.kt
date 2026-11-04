@@ -16,7 +16,7 @@ import java.util.Locale
 
 /** Activity-scoped TTS: foregound-only, focus-safe, no stream-volume changes.
  * Media ducking is requested from Android, not implemented by changing
- * another app's volume. An unavailable en-US voice fails closed.
+ * another app's volume. An unavailable tr-TR voice fails closed.
  */
 class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDucking) {
     private val logTag = "EYA-Voice"
@@ -86,15 +86,15 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                     Log.e(logTag, "TextToSpeech initialization failed: result=$result")
                     return@post
                 }
-                val locale = Locale("en", "US")
+                val locale = GREETING_LOCALE
                 val supported = TtsDebugLogger.languageAvailability(engine)
                 val selected = if (supported >= TextToSpeech.LANG_AVAILABLE)
                     engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
                 TtsDebugLogger.selectedLanguage(selected)
                 if (selected < TextToSpeech.LANG_AVAILABLE) {
                     status = Status.TURKISH_VOICE_MISSING
-                    lastError = "English TTS Data Missing"
-                    Log.e(logTag, "en-US voice unavailable: supported=$supported selected=$selected")
+                    lastError = "Türkçe ses verisi bulunamadı"
+                    Log.e(logTag, "tr-TR voice unavailable: supported=$supported selected=$selected")
                 } else {
                     engine.setAudioAttributes(attrs)
                     engine.setSpeechRate(1.0f)
