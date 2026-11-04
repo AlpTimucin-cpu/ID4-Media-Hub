@@ -29,6 +29,7 @@ The Release configuration enables R8 code shrinking and resource shrinking. Sign
 - [Verification Report](docs/VERIFICATION_REPORT.md)
 - [Production Test Checklist](docs/TEST_CHECKLIST.md)
 - [Android Auto Platform Status](docs/ANDROID_AUTO_PLATFORM_STATUS.md)
+- [Product Experience and Release Guide](docs/PRODUCT_EXPERIENCE_AND_RELEASE.md)
 
 ## Validation and safety
 
