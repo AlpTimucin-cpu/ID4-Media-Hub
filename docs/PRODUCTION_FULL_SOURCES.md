@@ -1,543 +1,10 @@
-# EV Cockpit — Final Production Source Files
+# EV Cockpit — Full Production Source Snapshot
 
-All source files below are complete snapshots from the final release-hardening branch. Use GitHub's web editor on mobile if any adjustment is needed. Real-world signed-release verification requires the original owner's signing key and physical-device installation.
+Source versions below are taken from branch `feature/production-brand-docs-r8-final` after the November 4 production hardening changes. The source of truth remains the Kotlin, Gradle, ProGuard, and YAML files at these paths. A source snapshot is not a signed APK or physical-device certification.
 
-## 1. `nativecockpit/src/main/java/com/evcockpit/presentation/cockpit/CockpitScreen.kt`
+## 1. `nativecockpit/src/main/java/com/evcockpit/presentation/navigation/NavigationViewModel.kt`
 
-````kotlin
-package com.evcockpit.presentation.cockpit
-
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SmartDisplay
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalContext
-import com.evcockpit.presentation.media.MediaLauncher
-import com.evcockpit.presentation.media.MediaLaunchState
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.evcockpit.BuildConfig
-import com.evcockpit.R
-import com.evcockpit.domain.model.*
-import com.evcockpit.domain.usecase.AutomaticChargePlan
-import com.evcockpit.presentation.charging.ChargingUiState
-import com.evcockpit.presentation.charging.RouteChargingUiState
-import com.evcockpit.presentation.map.MapLibreCockpit
-import com.evcockpit.presentation.media.ParkedStreamingDialog
-import com.evcockpit.presentation.media.rememberPhoneMediaAllowed
-import com.evcockpit.presentation.navigation.NavigationRouteState
-import com.evcockpit.presentation.navigation.RouteLoadStatus
-import com.evcockpit.presentation.obd.ObdSettingsDialog
-import com.evcockpit.presentation.route.RoutePlannerDialog
-import com.evcockpit.presentation.route.RoutePlannerUiState
-import com.evcockpit.presentation.voice.NativeVoiceGuide
-import com.evcockpit.presentation.voice.TtsPackageWarningDialog
-
-/** One full-size map, with compact overlays for the essential driving information. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CockpitScreen(
-    state: CockpitUiState,
-    routeState: NavigationRouteState,
-    loadStatus: RouteLoadStatus,
-    obdConnection: ObdConnectionState,
-    engineering: EngineeringSnapshot,
-    engineeringMetrics: EngineeringMetrics,
-    onObdRefresh: () -> Unit,
-    onObdConnect: (String) -> Unit,
-    onObdDisconnect: () -> Unit,
-    onObdMebDiagnostic: (String) -> Unit,
-    onObdClearDiagnostic: () -> Unit,
-    routePlannerUi: RoutePlannerUiState,
-    onRouteOriginChange:(String)->Unit,
-    onRouteDestinationChange:(String)->Unit,
-    onRouteOriginSelected:(RoutePlace)->Unit,
-    onRouteDestinationSelected:(RoutePlace)->Unit,
-    onRouteFromGps:()->Unit,
-    onRoutePlan:()->Unit,
-    onRouteAlternative:(Int)->Unit,
-    onRouteClear:()->Unit,
-    onGpsClick: () -> Unit,
-    gpsError: String? = null,
-    chargingUi: ChargingUiState,
-    automaticChargePlan: RouteChargingUiState,
-    weatherUi: RouteWeatherState,
-    onStationFilter: (StationFilter) -> Unit,
-    onMapViewport: (GeoViewport) -> Unit,
-    onRefreshStations: () -> Unit,
-    voiceEnabled: Boolean,
-    onVoiceToggle: () -> Unit,
-    voiceVolume: Float,
-    onVoiceVolumeChange: (Float) -> Unit,
-    voiceStatus: NativeVoiceGuide.Status,
-    voiceError: String?,
-    onVoiceTest: () -> Unit
-) {
-    val route = state.route ?: routeState.routeResult
-    var routePlanner by remember { mutableStateOf(false) }
-    var charging by remember { mutableStateOf(false) }
-    var media by remember { mutableStateOf(false) }
-    var settings by remember { mutableStateOf(false) }
-    var engineeringOpen by remember { mutableStateOf(false) }
-    var voiceSettings by remember { mutableStateOf(false) }
-    var station by remember { mutableStateOf<ChargingStation?>(null) }
-    var missingVoice by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    var mediaLaunch by remember { mutableStateOf<MediaLaunchState?>(null) }
-    val phoneMediaAllowed = rememberPhoneMediaAllowed()
-    val snackbar = remember { SnackbarHostState() }
-    val error = (loadStatus as? RouteLoadStatus.Error)?.message
-        ?: gpsError ?: voiceError ?: chargingUi.error
-        ?: weatherUi.error?.takeIf { weatherUi.routeId == route?.routeId }
-
-    LaunchedEffect(error) {
-        if (!error.isNullOrBlank()) snackbar.showSnackbar(error.take(160))
-    }
-    LaunchedEffect(voiceStatus) {
-        if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) missingVoice = true
-    }
-
-    if (routePlanner) RoutePlannerDialog(
-        state = routePlannerUi, onDismiss = { routePlanner = false },
-        onOriginChange = onRouteOriginChange, onDestinationChange = onRouteDestinationChange,
-        onOriginSelected = onRouteOriginSelected, onDestinationSelected = onRouteDestinationSelected,
-        onGps = onRouteFromGps, onPlan = onRoutePlan,
-        onChooseAlternative = onRouteAlternative, onClear = onRouteClear
-    )
-    if (engineeringOpen) TechnicalAnalysisSheet(
-        snapshot = engineering, metrics = engineeringMetrics,
-        obdPhase = obdConnection.phase,
-        onDismiss = { engineeringOpen = false }
-    )
-    if (settings) ObdSettingsDialog(
-        state = obdConnection, onRefresh = onObdRefresh, onConnect = onObdConnect,
-        onDisconnect = onObdDisconnect, onMebDiagnostic = onObdMebDiagnostic,
-        onClearDiagnostic = onObdClearDiagnostic,
-        onDismiss = { settings = false }
-    )
-    if (media) ParkedStreamingDialog(
-        playbackAllowed = phoneMediaAllowed, onDismiss = { media = false },
-        onLaunchMediaEngine = {
-            mediaLaunch = MediaLauncher.launchMediaEngine(context)
-            if (mediaLaunch is MediaLaunchState.Launched) media = false
-        }
-    )
-    if (mediaLaunch == MediaLaunchState.NotInstalled || mediaLaunch == MediaLaunchState.Blocked) {
-        AlertDialog(
-            onDismissRequest = { mediaLaunch = null },
-            containerColor = Navy,
-            title = { Text(stringResource(R.string.media_engine_unavailable_title)) },
-            text = { Text(stringResource(if (mediaLaunch == MediaLaunchState.NotInstalled)
-                R.string.media_engine_not_installed else R.string.media_engine_blocked)) },
-            confirmButton = {
-                TextButton(onClick = { mediaLaunch = null }) {
-                    Text(stringResource(R.string.native_close))
-                }
-            }
-        )
-    }
-    if (missingVoice) TtsPackageWarningDialog(onDismiss = { missingVoice = false })
-    if (voiceSettings) AlertDialog(
-        onDismissRequest = { voiceSettings = false },
-        containerColor = Navy,
-        title = { Text(stringResource(R.string.native_voice_guidance)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(stringResource(when (voiceStatus) {
-                    NativeVoiceGuide.Status.LOADING -> R.string.native_preparing_english_speech
-                    NativeVoiceGuide.Status.READY -> R.string.native_english_speech_ready
-                    NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> R.string.native_english_tts_data_missing
-                    NativeVoiceGuide.Status.INIT_FAILED -> R.string.native_could_not_initialize_the_speech_engine
-                    NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> R.string.native_could_not_obtain_audio_focus
-                }))
-                Text(stringResource(R.string.cockpit_voice_volume))
-                Slider(
-                    value = voiceVolume.takeIf { it.isFinite() }?.coerceIn(.15f, 1f) ?: 1f,
-                    onValueChange = onVoiceVolumeChange, valueRange = .15f..1f
-                )
-                OutlinedButton(onClick = onVoiceTest, enabled = voiceEnabled &&
-                    (voiceStatus == NativeVoiceGuide.Status.READY ||
-                        voiceStatus == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
-                    Text(stringResource(R.string.native_english_speech_test))
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { voiceSettings = false }) { Text(stringResource(R.string.native_close)) }
-        }
-    )
-    if (charging) ModalBottomSheet(
-        onDismissRequest = { charging = false }, containerColor = Navy
-    ) {
-        ChargingPanel(
-            ui = chargingUi, onFilter = onStationFilter, onRefresh = onRefreshStations,
-            onStation = { station = it; charging = false }
-        )
-    }
-    station?.let { selected ->
-        val fallbackName = stringResource(R.string.cockpit_station_name)
-        val fallbackOperator = stringResource(R.string.cockpit_operator_unknown)
-        val fallbackAddress = stringResource(R.string.cockpit_address_unknown)
-        val unknownValue = stringResource(R.string.cockpit_unknown_value)
-        AlertDialog(
-            onDismissRequest = { station = null }, containerColor = Navy,
-            title = { Text(selected.name.ifBlank { fallbackName }) },
-            text = {
-                Column(
-                    Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(selected.operator.ifBlank { fallbackOperator })
-                    Text(selected.address.ifBlank { fallbackAddress })
-                    selected.sockets.forEach { socket ->
-                        Text(stringResource(R.string.cockpit_socket_summary,
-                            socket.kind.toString(), socket.type.toString(),
-                            socket.powerRaw.ifBlank { unknownValue }))
-                    }
-                    Text(stringResource(R.string.cockpit_source_verified, selected.sourceVerifiedAtUtc), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.native_live_availability_price_and_road_access_are_unknown))
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { station = null }) { Text(stringResource(R.string.native_close)) }
-            }
-        )
-    }
-
-    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
-        val landscape = maxWidth > maxHeight
-        val short = maxHeight < 480.dp
-        val compactBattery = landscape && short
-        val batteryWidth = if (compactBattery) maxWidth * .49f
-            else 256.dp.coerceAtMost(maxWidth * .64f)
-        val arrivalWidth = if (landscape) 294.dp.coerceAtMost(maxWidth * .43f) else maxWidth - 32.dp
-
-        MapLibreCockpit(
-            gpsFix = state.gpsFix, routePoints = route?.routePoints.orEmpty(),
-            stations = chargingUi.visible,
-            plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
-                ?.stops?.map { it.station.id }?.toSet().orEmpty(),
-            weatherPoints = weatherUi.points.takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
-            speedProfile = route?.profileSpeeds.orEmpty(),
-            onViewportChanged = onMapViewport, onStationTapped = { station = it },
-            modifier = Modifier.fillMaxSize()
-        )
-        if (obdConnection.phase != com.evcockpit.domain.model.ObdPhase.CONNECTED) {
-            Surface(
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom = 90.dp),
-                color = Navy.copy(alpha = .94f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    "OBD Bağlantısı Bekleniyor",
-                    color = SoftText,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                )
-            }
-        }
-        BatteryHud(
-            state = state, compact = compactBattery,
-            modifier = Modifier.align(Alignment.TopStart)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
-                .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
-        )
-        Column(
-            Modifier.align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End))
-                .padding(top = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
-                if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
-                    VoiceButton(onClick = { voiceSettings = true })
-                    QuickActions(
-                        gpsEnabled = true,
-                        hasGpsFix = state.gpsFix != null,
-                        voiceEnabled = voiceEnabled,
-                        onGpsClick = onGpsClick,
-                        onVoiceToggle = onVoiceToggle
-                    )
-                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    VoiceButton(onClick = { voiceSettings = true })
-                    QuickActions(
-                        gpsEnabled = true,
-                        hasGpsFix = state.gpsFix != null,
-                        voiceEnabled = voiceEnabled,
-                        onGpsClick = onGpsClick,
-                        onVoiceToggle = onVoiceToggle
-                    )
-                }
-            }
-        }
-        Column(
-            Modifier.align(if (landscape) Alignment.TopEnd else Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(
-                    if (landscape) WindowInsetsSides.Top + WindowInsetsSides.End
-                    else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
-                ))
-                .padding(
-                    start = if (landscape) 0.dp else 16.dp,
-                    end = 16.dp,
-                    top = if (landscape) 80.dp else 0.dp,
-                    bottom = if (landscape) 0.dp else 112.dp
-                ).width(arrivalWidth)
-        ) {
-            ArrivalHud(
-                route = route, state = state, loading = loadStatus is RouteLoadStatus.Loading,
-                compact = short, onOpen = { routePlanner = true }
-            )
-        }
-        SnackbarHost(
-            hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .navigationBarsPadding().padding(bottom = if (landscape) 80.dp else 260.dp)
-        )
-        CockpitDock(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            onRoute = { routePlanner = true }, onCharging = { charging = true },
-            onMedia = { media = true }, onEngineering = { engineeringOpen = true },
-            onSettings = { settings = true; onObdRefresh() }
-        )
-    }
-}
-
-@Composable
-private fun VoiceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(onClick = onClick, modifier = modifier) {
-        Text(stringResource(R.string.native_voice), color = NeonGreen)
-    }
-}
-
-@Composable
-private fun QuickActions(
-    gpsEnabled: Boolean,
-    hasGpsFix: Boolean,
-    voiceEnabled: Boolean,
-    onGpsClick: () -> Unit,
-    onVoiceToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(modifier) {
-        IconButton(onClick = onGpsClick, enabled = gpsEnabled) {
-            Icon(Icons.Default.GpsFixed,
-                contentDescription = stringResource(R.string.cockpit_gps),
-                tint = if (hasGpsFix) NeonGreen else SoftText)
-        }
-        IconButton(onClick = onVoiceToggle) {
-            Icon(
-                if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                contentDescription = stringResource(if (voiceEnabled)
-                    R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
-                tint = if (voiceEnabled) NeonGreen else SoftText
-            )
-        }
-    }
-}
-
-@Composable
-private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
-    Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
-        Column(Modifier.padding(12.dp)) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
-                color = SoftText, maxLines = 1)
-            Spacer(Modifier.height(4.dp))
-            if (compact) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BatteryPercent(state.socPercent, true, Modifier.weight(.58f))
-                    RangeValue(state.estimatedRangeKm, Modifier.weight(.42f))
-                }
-            } else {
-                BatteryPercent(state.socPercent, false)
-                RangeValue(state.estimatedRangeKm)
-            }
-            // No fake zero-percent bar when ELM327/BMS data is unavailable.
-            val validSoc = state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
-            if (validSoc != null) {
-                LinearProgressIndicator(
-                    progress = { (validSoc / 100.0).toFloat() },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(3.dp),
-                    color = NeonGreen, trackColor = GlassLine
-                )
-            } else {
-                Text(
-                    stringResource(R.string.cockpit_measurement_unavailable),
-                    style = MaterialTheme.typography.labelSmall, color = SoftText
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier = Modifier) {
-    val percentSymbol = stringResource(R.string.cockpit_percent_symbol)
-    val unknownValue = stringResource(R.string.cockpit_unknown_value)
-    val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
-        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: unknownValue
-    Row(modifier, verticalAlignment = Alignment.Bottom) {
-        Text(number,
-            fontSize = if (compact) 72.sp else 96.sp,
-            lineHeight = if (compact) 80.sp else 104.sp,
-            fontWeight = FontWeight.Light, color = Color.White,
-            maxLines = 1, softWrap = false)
-        if (number != unknownValue) {
-            Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
-                fontSize = if (compact) 30.sp else 40.sp,
-                lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
-        }
-    }
-}
-
-@Composable
-private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
-    val unit = stringResource(R.string.cockpit_distance_unit)
-    Column(modifier) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(CockpitFormat.distance(km).removeSuffix(" $unit"),
-                Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
-                fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false)
-            Text(unit, Modifier.alignByBaseline(),
-                style = MaterialTheme.typography.labelMedium, color = SoftText)
-        }
-        Text(stringResource(R.string.cockpit_estimated_range),
-            style = MaterialTheme.typography.labelSmall, color = SoftText)
-    }
-}
-
-@Composable
-private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Boolean, compact: Boolean, onOpen: () -> Unit) {
-    Surface(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen),
-        color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)
-    ) {
-        Column(Modifier.padding(if (compact) 12.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
-            Text(
-                route?.nextTurnInstruction?.takeIf { it.isNotBlank() }
-                    ?: stringResource(if (loading) R.string.native_calculating_route
-                        else R.string.native_waiting_for_maneuver),
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(CockpitFormat.eta(route?.estimatedArrivalEpochMs),
-                        style = MaterialTheme.typography.headlineSmall, color = Color.White)
-                    Text(stringResource(R.string.cockpit_arrival),
-                        style = MaterialTheme.typography.labelMedium, color = SoftText)
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(CockpitFormat.percent(route?.estimatedArrivalSocPercent),
-                        style = MaterialTheme.typography.headlineSmall, color = NeonGreen)
-                    Text(stringResource(R.string.cockpit_arrival_soc),
-                        style = MaterialTheme.typography.labelMedium, color = SoftText)
-                }
-            }
-            if (!compact) Text(
-                route?.destination?.takeIf { it.isNotBlank() } ?: stringResource(R.string.cockpit_plan_route),
-                style = MaterialTheme.typography.bodySmall, color = SoftText,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            state.socSourceLabel?.let { source ->
-                Text(source, style = MaterialTheme.typography.labelSmall, color = SoftText,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CockpitDock(
-    modifier: Modifier = Modifier,
-    onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit,
-    onEngineering: () -> Unit, onSettings: () -> Unit
-) {
-    Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(6.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-            DockAction(Icons.Default.Map, stringResource(R.string.native_route), onRoute, Modifier.weight(1f))
-            DockAction(Icons.Default.Bolt, stringResource(R.string.native_charging), onCharging, Modifier.weight(1f))
-            DockAction(Icons.Default.SmartDisplay, stringResource(R.string.native_media), onMedia, Modifier.weight(1f))
-            DockAction(Icons.Default.Analytics, "Hesaplar", onEngineering, Modifier.weight(1f))
-            DockAction(Icons.Default.Settings, stringResource(R.string.native_settings), onSettings, Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun DockAction(icon: ImageVector, title: String, onClick: () -> Unit, modifier: Modifier) {
-    Column(
-        modifier.heightIn(min = 48.dp).clickable(onClick = onClick).padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Icon(icon, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(20.dp))
-        Text(title, color = SoftText, fontSize = 11.sp, lineHeight = 14.sp,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit,
-    onRefresh: () -> Unit, onStation: (ChargingStation) -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().heightIn(max = 540.dp).verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(stringResource(R.string.native_epdk_station_filters), style = MaterialTheme.typography.headlineSmall)
-        StationFilter.entries.forEach { filter ->
-            val title = stringResource(when (filter) {
-                StationFilter.ALL -> R.string.cockpit_filter_all
-                StationFilter.DC -> R.string.cockpit_filter_dc
-                StationFilter.ROUTE_CCS -> R.string.cockpit_filter_route_ccs
-                StationFilter.ROUTE_DC -> R.string.cockpit_filter_route_dc
-            })
-            FilterChip(selected = ui.selectedFilter == filter,
-                onClick = { onFilter(filter) }, label = { Text(title) },
-                enabled = ui.routeProvided || filter == StationFilter.ALL || filter == StationFilter.DC)
-        }
-        TextButton(onClick = onRefresh) { Text(stringResource(R.string.native_refresh)) }
-        if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        ui.error?.let { Text(it, color = SoftText) }
-        Text(stringResource(R.string.cockpit_station_count, ui.visible.size, ui.total), style = MaterialTheme.typography.bodySmall)
-        Text(ui.verifiedAtUtc ?: stringResource(R.string.cockpit_source_date_unknown), style = MaterialTheme.typography.bodySmall)
-        ui.visible.take(100).forEach { candidate ->
-            TextButton(onClick = { onStation(candidate) }, modifier = Modifier.fillMaxWidth()) {
-                Text(candidate.name, modifier = Modifier.fillMaxWidth(), maxLines = 2)
-            }
-        }
-    }
-}
-````
-
-## 2. `nativecockpit/src/main/java/com/evcockpit/presentation/navigation/NavigationViewModel.kt`
-
-````kotlin
+```kotlin
 package com.evcockpit.presentation.navigation
 
 import android.content.Context
@@ -1023,14 +490,554 @@ class NavigationViewModel @Inject constructor(
         super.onCleared()
     }
 }
-````
+```
+
+## 2. `nativecockpit/src/main/java/com/evcockpit/presentation/cockpit/CockpitScreen.kt`
+
+```kotlin
+package com.evcockpit.presentation.cockpit
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SmartDisplay
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.evcockpit.presentation.media.MediaLauncher
+import com.evcockpit.presentation.media.MediaLaunchState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.evcockpit.BuildConfig
+import com.evcockpit.R
+import com.evcockpit.domain.model.*
+import com.evcockpit.domain.usecase.AutomaticChargePlan
+import com.evcockpit.presentation.charging.ChargingUiState
+import com.evcockpit.presentation.charging.RouteChargingUiState
+import com.evcockpit.presentation.map.MapLibreCockpit
+import com.evcockpit.presentation.media.ParkedStreamingDialog
+import com.evcockpit.presentation.media.rememberPhoneMediaAllowed
+import com.evcockpit.presentation.navigation.NavigationRouteState
+import com.evcockpit.presentation.navigation.RouteLoadStatus
+import com.evcockpit.presentation.obd.ObdSettingsDialog
+import com.evcockpit.presentation.route.RoutePlannerDialog
+import com.evcockpit.presentation.route.RoutePlannerUiState
+import com.evcockpit.presentation.voice.NativeVoiceGuide
+import com.evcockpit.presentation.voice.TtsPackageWarningDialog
+
+/** One full-size map, with compact overlays for the essential driving information. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CockpitScreen(
+    state: CockpitUiState,
+    routeState: NavigationRouteState,
+    loadStatus: RouteLoadStatus,
+    obdConnection: ObdConnectionState,
+    engineering: EngineeringSnapshot,
+    engineeringMetrics: EngineeringMetrics,
+    onObdRefresh: () -> Unit,
+    onObdConnect: (String) -> Unit,
+    onObdDisconnect: () -> Unit,
+    onObdMebDiagnostic: (String) -> Unit,
+    onObdClearDiagnostic: () -> Unit,
+    routePlannerUi: RoutePlannerUiState,
+    onRouteOriginChange:(String)->Unit,
+    onRouteDestinationChange:(String)->Unit,
+    onRouteOriginSelected:(RoutePlace)->Unit,
+    onRouteDestinationSelected:(RoutePlace)->Unit,
+    onRouteFromGps:()->Unit,
+    onRoutePlan:()->Unit,
+    onRouteAlternative:(Int)->Unit,
+    onRouteClear:()->Unit,
+    onGpsClick: () -> Unit,
+    gpsError: String? = null,
+    chargingUi: ChargingUiState,
+    automaticChargePlan: RouteChargingUiState,
+    weatherUi: RouteWeatherState,
+    onStationFilter: (StationFilter) -> Unit,
+    onMapViewport: (GeoViewport) -> Unit,
+    onRefreshStations: () -> Unit,
+    voiceEnabled: Boolean,
+    onVoiceToggle: () -> Unit,
+    voiceVolume: Float,
+    onVoiceVolumeChange: (Float) -> Unit,
+    voiceStatus: NativeVoiceGuide.Status,
+    voiceError: String?,
+    onVoiceTest: () -> Unit
+) {
+    val route = state.route ?: routeState.routeResult
+    var routePlanner by remember { mutableStateOf(false) }
+    var charging by remember { mutableStateOf(false) }
+    var media by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
+    var engineeringOpen by remember { mutableStateOf(false) }
+    var voiceSettings by remember { mutableStateOf(false) }
+    var station by remember { mutableStateOf<ChargingStation?>(null) }
+    var missingVoice by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var mediaLaunch by remember { mutableStateOf<MediaLaunchState?>(null) }
+    val phoneMediaAllowed = rememberPhoneMediaAllowed()
+    val snackbar = remember { SnackbarHostState() }
+    val error = (loadStatus as? RouteLoadStatus.Error)?.message
+        ?: gpsError ?: voiceError ?: chargingUi.error
+        ?: weatherUi.error?.takeIf { weatherUi.routeId == route?.routeId }
+
+    LaunchedEffect(error) {
+        if (!error.isNullOrBlank()) snackbar.showSnackbar(error.take(160))
+    }
+    LaunchedEffect(voiceStatus) {
+        if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) missingVoice = true
+    }
+
+    if (routePlanner) RoutePlannerDialog(
+        state = routePlannerUi, onDismiss = { routePlanner = false },
+        onOriginChange = onRouteOriginChange, onDestinationChange = onRouteDestinationChange,
+        onOriginSelected = onRouteOriginSelected, onDestinationSelected = onRouteDestinationSelected,
+        onGps = onRouteFromGps, onPlan = onRoutePlan,
+        onChooseAlternative = onRouteAlternative, onClear = onRouteClear
+    )
+    if (engineeringOpen) TechnicalAnalysisSheet(
+        snapshot = engineering, metrics = engineeringMetrics,
+        obdPhase = obdConnection.phase,
+        onDismiss = { engineeringOpen = false }
+    )
+    if (settings) ObdSettingsDialog(
+        state = obdConnection, onRefresh = onObdRefresh, onConnect = onObdConnect,
+        onDisconnect = onObdDisconnect, onMebDiagnostic = onObdMebDiagnostic,
+        onClearDiagnostic = onObdClearDiagnostic,
+        onDismiss = { settings = false }
+    )
+    if (media) ParkedStreamingDialog(
+        playbackAllowed = phoneMediaAllowed, onDismiss = { media = false },
+        onLaunchMediaEngine = {
+            mediaLaunch = MediaLauncher.launchMediaEngine(context)
+            if (mediaLaunch is MediaLaunchState.Launched) media = false
+        }
+    )
+    if (mediaLaunch == MediaLaunchState.NotInstalled || mediaLaunch == MediaLaunchState.Blocked) {
+        AlertDialog(
+            onDismissRequest = { mediaLaunch = null },
+            containerColor = Navy,
+            title = { Text(stringResource(R.string.media_engine_unavailable_title)) },
+            text = { Text(stringResource(if (mediaLaunch == MediaLaunchState.NotInstalled)
+                R.string.media_engine_not_installed else R.string.media_engine_blocked)) },
+            confirmButton = {
+                TextButton(onClick = { mediaLaunch = null }) {
+                    Text(stringResource(R.string.native_close))
+                }
+            }
+        )
+    }
+    if (missingVoice) TtsPackageWarningDialog(onDismiss = { missingVoice = false })
+    if (voiceSettings) AlertDialog(
+        onDismissRequest = { voiceSettings = false },
+        containerColor = Navy,
+        title = { Text(stringResource(R.string.native_voice_guidance)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(stringResource(when (voiceStatus) {
+                    NativeVoiceGuide.Status.LOADING -> R.string.native_preparing_english_speech
+                    NativeVoiceGuide.Status.READY -> R.string.native_english_speech_ready
+                    NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> R.string.native_english_tts_data_missing
+                    NativeVoiceGuide.Status.INIT_FAILED -> R.string.native_could_not_initialize_the_speech_engine
+                    NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> R.string.native_could_not_obtain_audio_focus
+                }))
+                Text(stringResource(R.string.cockpit_voice_volume))
+                Slider(
+                    value = voiceVolume.takeIf { it.isFinite() }?.coerceIn(.15f, 1f) ?: 1f,
+                    onValueChange = onVoiceVolumeChange, valueRange = .15f..1f
+                )
+                OutlinedButton(onClick = onVoiceTest, enabled = voiceEnabled &&
+                    (voiceStatus == NativeVoiceGuide.Status.READY ||
+                        voiceStatus == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
+                    Text(stringResource(R.string.native_english_speech_test))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { voiceSettings = false }) { Text(stringResource(R.string.native_close)) }
+        }
+    )
+    if (charging) ModalBottomSheet(
+        onDismissRequest = { charging = false }, containerColor = Navy
+    ) {
+        ChargingPanel(
+            ui = chargingUi, onFilter = onStationFilter, onRefresh = onRefreshStations,
+            onStation = { station = it; charging = false }
+        )
+    }
+    station?.let { selected ->
+        val fallbackName = stringResource(R.string.cockpit_station_name)
+        val fallbackOperator = stringResource(R.string.cockpit_operator_unknown)
+        val fallbackAddress = stringResource(R.string.cockpit_address_unknown)
+        val unknownValue = stringResource(R.string.cockpit_unknown_value)
+        AlertDialog(
+            onDismissRequest = { station = null }, containerColor = Navy,
+            title = { Text(selected.name.ifBlank { fallbackName }) },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(selected.operator.ifBlank { fallbackOperator })
+                    Text(selected.address.ifBlank { fallbackAddress })
+                    selected.sockets.forEach { socket ->
+                        Text(stringResource(R.string.cockpit_socket_summary,
+                            socket.kind.toString(), socket.type.toString(),
+                            socket.powerRaw.ifBlank { unknownValue }))
+                    }
+                    Text(stringResource(R.string.cockpit_source_verified, selected.sourceVerifiedAtUtc), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.native_live_availability_price_and_road_access_are_unknown))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { station = null }) { Text(stringResource(R.string.native_close)) }
+            }
+        )
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
+        val landscape = maxWidth > maxHeight
+        val short = maxHeight < 480.dp
+        val compactBattery = landscape && short
+        val batteryWidth = if (compactBattery) maxWidth * .49f
+            else 256.dp.coerceAtMost(maxWidth * .64f)
+        val arrivalWidth = if (landscape) 294.dp.coerceAtMost(maxWidth * .43f) else maxWidth - 32.dp
+
+        MapLibreCockpit(
+            gpsFix = state.gpsFix, routePoints = route?.routePoints.orEmpty(),
+            stations = chargingUi.visible,
+            plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
+                ?.stops?.map { it.station.id }?.toSet().orEmpty(),
+            weatherPoints = weatherUi.points.takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
+            speedProfile = route?.profileSpeeds.orEmpty(),
+            onViewportChanged = onMapViewport, onStationTapped = { station = it },
+            modifier = Modifier.fillMaxSize()
+        )
+        if (obdConnection.phase != com.evcockpit.domain.model.ObdPhase.CONNECTED) {
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = 90.dp),
+                color = Navy.copy(alpha = .94f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    "OBD Bağlantısı Bekleniyor",
+                    color = SoftText,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+        }
+        BatteryHud(
+            state = state, compact = compactBattery,
+            modifier = Modifier.align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
+                .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
+        )
+        Column(
+            Modifier.align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End))
+                .padding(top = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
+                if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
+                    VoiceButton(onClick = { voiceSettings = true })
+                    QuickActions(
+                        gpsEnabled = true,
+                        hasGpsFix = state.gpsFix != null,
+                        voiceEnabled = voiceEnabled,
+                        onGpsClick = onGpsClick,
+                        onVoiceToggle = onVoiceToggle
+                    )
+                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    VoiceButton(onClick = { voiceSettings = true })
+                    QuickActions(
+                        gpsEnabled = true,
+                        hasGpsFix = state.gpsFix != null,
+                        voiceEnabled = voiceEnabled,
+                        onGpsClick = onGpsClick,
+                        onVoiceToggle = onVoiceToggle
+                    )
+                }
+            }
+        }
+        Column(
+            Modifier.align(if (landscape) Alignment.TopEnd else Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    if (landscape) WindowInsetsSides.Top + WindowInsetsSides.End
+                    else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                ))
+                .padding(
+                    start = if (landscape) 0.dp else 16.dp,
+                    end = 16.dp,
+                    top = if (landscape) 80.dp else 0.dp,
+                    bottom = if (landscape) 0.dp else 112.dp
+                ).width(arrivalWidth)
+        ) {
+            ArrivalHud(
+                route = route, state = state, loading = loadStatus is RouteLoadStatus.Loading,
+                compact = short, onOpen = { routePlanner = true }
+            )
+        }
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .navigationBarsPadding().padding(bottom = if (landscape) 80.dp else 260.dp)
+        )
+        CockpitDock(
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            onRoute = { routePlanner = true }, onCharging = { charging = true },
+            onMedia = { media = true }, onEngineering = { engineeringOpen = true },
+            onSettings = { settings = true; onObdRefresh() }
+        )
+    }
+}
+
+@Composable
+private fun VoiceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Text(stringResource(R.string.native_voice), color = NeonGreen)
+    }
+}
+
+@Composable
+private fun QuickActions(
+    gpsEnabled: Boolean,
+    hasGpsFix: Boolean,
+    voiceEnabled: Boolean,
+    onGpsClick: () -> Unit,
+    onVoiceToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier) {
+        IconButton(onClick = onGpsClick, enabled = gpsEnabled) {
+            Icon(Icons.Default.GpsFixed,
+                contentDescription = stringResource(R.string.cockpit_gps),
+                tint = if (hasGpsFix) NeonGreen else SoftText)
+        }
+        IconButton(onClick = onVoiceToggle) {
+            Icon(
+                if (voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                contentDescription = stringResource(if (voiceEnabled)
+                    R.string.native_mute_voice_guidance else R.string.native_unmute_voice_guidance),
+                tint = if (voiceEnabled) NeonGreen else SoftText
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
+    Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
+                color = SoftText, maxLines = 1)
+            Spacer(Modifier.height(4.dp))
+            if (compact) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BatteryPercent(state.socPercent, true, Modifier.weight(.58f))
+                    RangeValue(state.estimatedRangeKm, Modifier.weight(.42f))
+                }
+            } else {
+                BatteryPercent(state.socPercent, false)
+                RangeValue(state.estimatedRangeKm)
+            }
+            // No fake zero-percent bar when ELM327/BMS data is unavailable.
+            val validSoc = state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
+            if (validSoc != null) {
+                LinearProgressIndicator(
+                    progress = { (validSoc / 100.0).toFloat() },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(3.dp),
+                    color = NeonGreen, trackColor = GlassLine
+                )
+            } else {
+                Text(
+                    stringResource(R.string.cockpit_measurement_unavailable),
+                    style = MaterialTheme.typography.labelSmall, color = SoftText
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier = Modifier) {
+    val percentSymbol = stringResource(R.string.cockpit_percent_symbol)
+    val unknownValue = stringResource(R.string.cockpit_unknown_value)
+    val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
+        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: unknownValue
+    Row(modifier, verticalAlignment = Alignment.Bottom) {
+        Text(number,
+            fontSize = if (compact) 72.sp else 96.sp,
+            lineHeight = if (compact) 80.sp else 104.sp,
+            fontWeight = FontWeight.Light, color = Color.White,
+            maxLines = 1, softWrap = false)
+        if (number != unknownValue) {
+            Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
+                fontSize = if (compact) 30.sp else 40.sp,
+                lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
+        }
+    }
+}
+
+@Composable
+private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
+    val unit = stringResource(R.string.cockpit_distance_unit)
+    Column(modifier) {
+        val knownRange = km?.takeIf { it.isFinite() && it >= 0.0 }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                knownRange?.let { CockpitFormat.distance(it).removeSuffix(" $unit") }
+                    ?: stringResource(R.string.cockpit_unknown_value),
+                Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
+                fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false
+            )
+            if (knownRange != null) {
+                Text(unit, Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.labelMedium, color = SoftText)
+            }
+        }
+        Text(stringResource(R.string.cockpit_estimated_range),
+            style = MaterialTheme.typography.labelSmall, color = SoftText)
+    }
+}
+
+@Composable
+private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Boolean, compact: Boolean, onOpen: () -> Unit) {
+    Surface(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)
+    ) {
+        Column(Modifier.padding(if (compact) 12.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
+            Text(
+                route?.nextTurnInstruction?.takeIf { it.isNotBlank() }
+                    ?: stringResource(if (loading) R.string.native_calculating_route
+                        else R.string.native_waiting_for_maneuver),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(CockpitFormat.eta(route?.estimatedArrivalEpochMs),
+                        style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                    Text(stringResource(R.string.cockpit_arrival),
+                        style = MaterialTheme.typography.labelMedium, color = SoftText)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(CockpitFormat.percent(route?.estimatedArrivalSocPercent),
+                        style = MaterialTheme.typography.headlineSmall, color = NeonGreen)
+                    Text(stringResource(R.string.cockpit_arrival_soc),
+                        style = MaterialTheme.typography.labelMedium, color = SoftText)
+                }
+            }
+            if (!compact) Text(
+                route?.destination?.takeIf { it.isNotBlank() } ?: stringResource(R.string.cockpit_plan_route),
+                style = MaterialTheme.typography.bodySmall, color = SoftText,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            state.socSourceLabel?.let { source ->
+                Text(source, style = MaterialTheme.typography.labelSmall, color = SoftText,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CockpitDock(
+    modifier: Modifier = Modifier,
+    onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit,
+    onEngineering: () -> Unit, onSettings: () -> Unit
+) {
+    Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(6.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+            DockAction(Icons.Default.Map, stringResource(R.string.native_route), onRoute, Modifier.weight(1f))
+            DockAction(Icons.Default.Bolt, stringResource(R.string.native_charging), onCharging, Modifier.weight(1f))
+            DockAction(Icons.Default.SmartDisplay, stringResource(R.string.native_media), onMedia, Modifier.weight(1f))
+            DockAction(Icons.Default.Analytics, "Hesaplar", onEngineering, Modifier.weight(1f))
+            DockAction(Icons.Default.Settings, stringResource(R.string.native_settings), onSettings, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun DockAction(icon: ImageVector, title: String, onClick: () -> Unit, modifier: Modifier) {
+    Column(
+        modifier.heightIn(min = 48.dp).clickable(onClick = onClick).padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(20.dp))
+        Text(title, color = SoftText, fontSize = 11.sp, lineHeight = 14.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit,
+    onRefresh: () -> Unit, onStation: (ChargingStation) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().heightIn(max = 540.dp).verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(stringResource(R.string.native_epdk_station_filters), style = MaterialTheme.typography.headlineSmall)
+        StationFilter.entries.forEach { filter ->
+            val title = stringResource(when (filter) {
+                StationFilter.ALL -> R.string.cockpit_filter_all
+                StationFilter.DC -> R.string.cockpit_filter_dc
+                StationFilter.ROUTE_CCS -> R.string.cockpit_filter_route_ccs
+                StationFilter.ROUTE_DC -> R.string.cockpit_filter_route_dc
+            })
+            FilterChip(selected = ui.selectedFilter == filter,
+                onClick = { onFilter(filter) }, label = { Text(title) },
+                enabled = ui.routeProvided || filter == StationFilter.ALL || filter == StationFilter.DC)
+        }
+        TextButton(onClick = onRefresh) { Text(stringResource(R.string.native_refresh)) }
+        if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        ui.error?.let { Text(it, color = SoftText) }
+        Text(stringResource(R.string.cockpit_station_count, ui.visible.size, ui.total), style = MaterialTheme.typography.bodySmall)
+        Text(ui.verifiedAtUtc ?: stringResource(R.string.cockpit_source_date_unknown), style = MaterialTheme.typography.bodySmall)
+        ui.visible.take(100).forEach { candidate ->
+            TextButton(onClick = { onStation(candidate) }, modifier = Modifier.fillMaxWidth()) {
+                Text(candidate.name, modifier = Modifier.fillMaxWidth(), maxLines = 2)
+            }
+        }
+    }
+}
+```
 
 ## 3. `nativecockpit/src/main/java/com/evcockpit/presentation/sound/ActiveSoundManager.kt`
 
-````kotlin
+```kotlin
 package com.evcockpit.presentation.sound
 
 import android.content.Context
+import android.content.res.Resources
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.PlaybackException
@@ -1089,7 +1096,9 @@ class ActiveSoundManager @Inject constructor(
     private fun player(resourceId: Int): ExoPlayer? {
         var candidate: ExoPlayer? = null
         return try {
-            // Resource existence is checked before Media3 starts asynchronous loading.
+            if (resourceId <= 0) return null
+            // Resources may be stripped from a damaged install or an asset task
+            // may fail to generate them. Audio must never crash the cockpit.
             context.resources.openRawResource(resourceId).use { /* readable */ }
             candidate = ExoPlayer.Builder(context).build()
             candidate.apply {
@@ -1111,8 +1120,12 @@ class ActiveSoundManager @Inject constructor(
                 repeatMode = Player.REPEAT_MODE_ONE
                 prepare()
             }
+        } catch (error: Resources.NotFoundException) {
+            Log.w("EYA-ActiveSound", "Optional engine sound resource not installed", error)
+            runCatching { candidate?.release() }
+            null
         } catch (error: Exception) {
-            Log.e("EYA-ActiveSound", "Engine WAV could not be loaded", error)
+            Log.w("EYA-ActiveSound", "Engine WAV unavailable; continuing silently", error)
             runCatching { candidate?.release() }
             null
         }
@@ -1271,11 +1284,115 @@ class ActiveSoundManager @Inject constructor(
         }
     }
 }
-````
+```
 
-## 4. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/AppAudioDucking.kt`
+## 4. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/AudioDuckingManager.kt`
 
-````kotlin
+```kotlin
+package com.evcockpit.presentation.voice
+
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
+
+/**
+ * One audio focus owner for short navigation speech.
+ * Android ducks cooperative media apps; no stream volume or DRM manipulation.
+ */
+class AudioDuckingManager(
+    context: Context,
+    private val onFocusLost: () -> Unit
+) : AutoCloseable {
+    val attributes: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+
+    // A broken/disabled audio service must not crash the navigation screen.
+    private val manager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private val main = Handler(Looper.getMainLooper())
+    private val listener: AudioManager.OnAudioFocusChangeListener =
+        AudioManager.OnAudioFocusChangeListener { change ->
+        if (change == AudioManager.AUDIOFOCUS_LOSS ||
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+        ) {
+            main.post {
+                // Late callbacks must not resurrect/interrupt closed TTS.
+                if (lease.shouldStopAfterLoss()) onFocusLost()
+            }
+        }
+    }
+    private val focusRequest: AudioFocusRequest = AudioFocusRequest.Builder(
+        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+    )
+        .setAudioAttributes(attributes)
+        .setOnAudioFocusChangeListener(listener, main)
+        .build()
+
+    private val lease: AudioFocusLease = AudioFocusLease(
+        requestFocus = {
+            manager?.requestAudioFocus(focusRequest) ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        },
+        abandonFocus = { manager?.abandonAudioFocusRequest(focusRequest); Unit }
+    )
+
+    fun acquire(): Boolean = lease.acquire()
+    fun release() = lease.release()
+    override fun close() = lease.close()
+}
+```
+
+## 5. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/AudioFocusLease.kt`
+
+```kotlin
+package com.evcockpit.presentation.voice
+
+/**
+ * Pure Kotlin lifecycle guard for a single short navigation utterance.
+ * Android AudioFocus and third-party media behavior remain OS responsibilities.
+ */
+internal class AudioFocusLease(
+    private val requestFocus: () -> Boolean,
+    private val abandonFocus: () -> Unit
+) {
+    private var held = false
+    private var closed = false
+
+    @Synchronized
+    fun acquire(): Boolean {
+        if (closed) return false
+        if (held) return true
+        held = runCatching(requestFocus).getOrDefault(false)
+        return held
+    }
+
+    /** An old queued focus event must never stop a released/closed utterance. */
+    @Synchronized
+    fun shouldStopAfterLoss(): Boolean = held && !closed
+
+    @Synchronized
+    fun release() {
+        if (held) runCatching(abandonFocus)
+        held = false
+    }
+
+    @Synchronized
+    fun close() {
+        if (closed) return
+        closed = true
+        release()
+    }
+}
+```
+
+## 6. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/AppAudioDucking.kt`
+
+```kotlin
 package com.evcockpit.presentation.voice
 
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -1308,11 +1425,11 @@ class AppAudioDucking @Inject constructor() {
 
 /** Shared by the phone radio without adding DI to a Composable. */
 val LocalAppAudioDucking = staticCompositionLocalOf<AppAudioDucking?> { null }
-````
+```
 
-## 5. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/NativeVoiceGuide.kt`
+## 7. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/NativeVoiceGuide.kt`
 
-````kotlin
+```kotlin
 package com.evcockpit.presentation.voice
 
 import android.content.Context
@@ -1390,7 +1507,8 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
 
     private var tts: TextToSpeech? = null
     init {
-        tts = TextToSpeech(context.applicationContext) { result ->
+        tts = try {
+            TextToSpeech(context.applicationContext) { result ->
         main.post {
                 if (closed) return@post
                 val engine = tts
@@ -1418,7 +1536,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                                 if (!closed && activeUtterance == utteranceId) {
                                     startedDuckOwner?.let(audioSignal::end)
                                     startedDuckOwner = "navigation:" + utteranceId
-                                    audioSignal.begin(startedDuckOwner!!)
+                                    startedDuckOwner?.let(audioSignal::begin)
                                     Log.d(logTag, "Utterance started")
                                     TtsDebugLogger.event("utterance onStart")
                                     onStarted?.invoke()
@@ -1444,6 +1562,12 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                     status = Status.READY
                 }
             }
+            }
+        } catch (error: RuntimeException) {
+            status = Status.INIT_FAILED
+            lastError = "Text-to-speech engine unavailable"
+            Log.w(logTag, "TextToSpeech constructor failed; speech disabled", error)
+            null
         }
     }
 
@@ -1491,7 +1615,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
     fun stop() = stopCurrent(notifyFailure = true)
 
     private fun stopCurrent(notifyFailure: Boolean) {
-        tts?.stop()
+        runCatching { tts?.stop() }
         activeUtterance = null
         onStarted = null
         val fail = onFailed
@@ -1543,16 +1667,236 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
         if (closed) return
         closed = true
         stop()
-        tts?.shutdown()
+        runCatching { tts?.shutdown() }
         tts = null
         ducking.close()
     }
 }
-````
+```
 
-## 6. `nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt`
+## 8. `nativecockpit/src/main/java/com/evcockpit/presentation/voice/WelcomeGreetingManager.kt`
 
-````kotlin
+```kotlin
+package com.evcockpit.presentation.voice
+
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.util.Log
+import com.evcockpit.data.settings.UserSettings
+import com.evcockpit.data.settings.UserSettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * One brief Turkish greeting after a real user-initiated OBD connection or
+ * Android Auto Session creation. Android TTS / AudioFocus only: no sound assets.
+ *
+ * The singleton is shared across Activity and CarAppService within one process.
+ * It is NOT a vehicle ignition signal; no greeting on ordinary Activity launch.
+ */
+@Singleton
+class WelcomeGreetingManager @Inject constructor(
+    @ApplicationContext context: Context,
+    private val settings: UserSettingsRepository,
+    private val audioDucking: AppAudioDucking
+) {
+    private val appContext = context.applicationContext
+    private val logTag = "EYA-Welcome"
+    private val main = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var welcomeSettings = UserSettings()
+    private val sessionGate = WelcomeSessionGate()
+    private val preferences = VoicePreference(appContext)
+    private val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        if (change == AudioManager.AUDIOFOCUS_LOSS ||
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+        ) main.post { closeSession() }
+    }
+    private val focusRequest = AudioFocusRequest.Builder(
+        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+    )
+        .setAudioAttributes(audioAttributes)
+        .setOnAudioFocusChangeListener(focusListener, main)
+        .build()
+
+    private var engine: TextToSpeech? = null
+    private var initializationPending = false
+    private var focusGranted = false
+    private var active = false
+    private val initTimeout = Runnable {
+        if (initializationPending) {
+            Log.w(logTag, "Turkish TTS initialization timed out")
+            closeSession()
+        }
+    }
+    private val speechTimeout = Runnable {
+        Log.w(logTag, "Welcome synthesis timed out")
+        closeSession()
+    }
+
+    /**
+     * Thread-safe and idempotent. Call only after the OBD phase is CONNECTED
+     * or from a real CarAppService.onCreateSession callback.
+     */
+    fun launchWelcomeGreeting() {
+        if (!sessionGate.claim()) return
+        scope.launch {
+            // DataStore is asynchronous: read the actual persisted user setting.
+            val current = runCatching { settings.settings.first() }.getOrNull() ?: return@launch
+            if (!current.isWelcomeGreetingEnabled) return@launch
+            welcomeSettings = current
+            startSession()
+        }
+    }
+
+    private fun startSession() {
+        if (active) return
+        active = true
+        initializationPending = true
+        main.postDelayed(initTimeout, 8_000L)
+
+        // This engine is separate from en-US navigation TTS and is short-lived.
+        try {
+            engine = TextToSpeech(appContext) { result ->
+                main.post {
+                    if (!active || !initializationPending) return@post
+                    initializationPending = false
+                    main.removeCallbacks(initTimeout)
+                    val localEngine = engine
+                    if (result != TextToSpeech.SUCCESS || localEngine == null ||
+                        !NativeVoiceGuide.selectTurkishGreetingVoice(localEngine, welcomeSettings.ttsVoiceName)
+                    ) {
+                        Log.w(logTag, "Turkish text-to-speech voice unavailable")
+                        closeSession()
+                        return@post
+                    }
+                    localEngine.setAudioAttributes(audioAttributes)
+                    localEngine.setSpeechRate(welcomeSettings.ttsSpeechRate)
+                    localEngine.setOnUtteranceProgressListener(
+                        object : UtteranceProgressListener() {
+                            override fun onStart(utteranceId: String) {
+                                if (utteranceId == UTTERANCE_ID) main.post {
+                                    if (active) {
+                                        audioDucking.begin("welcome")
+                                        Log.d(logTag, "Welcome utterance started")
+                                    }
+                                }
+                            }
+
+                            override fun onDone(utteranceId: String) =
+                                finishIfWelcome(utteranceId)
+
+                            override fun onError(utteranceId: String) =
+                                finishIfWelcome(utteranceId)
+
+                            override fun onError(utteranceId: String, errorCode: Int) =
+                                finishIfWelcome(utteranceId)
+
+                            override fun onStop(
+                                utteranceId: String, interrupted: Boolean
+                            ) = finishIfWelcome(utteranceId)
+                        }
+                    )
+                    // Let the voice service finish preparation / audio routing.
+                    main.postDelayed({
+                        if (active) speakGreeting()
+                    }, 1_000L)
+                }
+            }
+        } catch (error: RuntimeException) {
+            Log.w(logTag, "Could not create TTS engine", error)
+            closeSession()
+        }
+    }
+
+    private fun speakGreeting() {
+        val tts = engine ?: return closeSession()
+        val granted = runCatching {
+            audio.requestAudioFocus(focusRequest) ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }.getOrDefault(false)
+        if (!granted) {
+            Log.w(logTag, "Welcome audio focus denied")
+            closeSession()
+            return
+        }
+        focusGranted = true
+
+        val params = Bundle().apply {
+            putFloat(
+                TextToSpeech.Engine.KEY_PARAM_VOLUME,
+                preferences.volume.coerceIn(0.15f, 1.0f)
+            )
+        }
+        // Exactly one TTS request, with its required stable utterance ID.
+        val queued = runCatching {
+            tts.speak(
+                "Merhaba yol arkadaşım. İyi yolculuklar.",
+                TextToSpeech.QUEUE_FLUSH,
+                params,
+                UTTERANCE_ID
+            ) == TextToSpeech.SUCCESS
+        }.getOrDefault(false)
+        if (queued) {
+            main.postDelayed(speechTimeout, 15_000L)
+        } else {
+            Log.w(logTag, "TTS did not accept the greeting")
+            closeSession()
+        }
+    }
+
+    private fun finishIfWelcome(id: String) {
+        if (id == UTTERANCE_ID) main.post { closeSession() }
+    }
+
+    private fun closeSession() {
+        if (!active) return
+        active = false
+        audioDucking.end("welcome")
+        initializationPending = false
+        main.removeCallbacks(initTimeout)
+        main.removeCallbacks(speechTimeout)
+
+        val old = engine
+        engine = null
+        runCatching { old?.stop() }
+        runCatching { old?.shutdown() }
+
+        if (focusGranted) {
+            focusGranted = false
+            runCatching { audio.abandonAudioFocusRequest(focusRequest) }
+        }
+    }
+
+    companion object {
+        private const val UTTERANCE_ID = "welcome_greeting"
+    }
+}
+```
+
+## 9. `nativecockpit/src/main/java/com/evcockpit/presentation/media/RadioScreen.kt`
+
+```kotlin
 package com.evcockpit.presentation.media
 
 import androidx.compose.foundation.clickable
@@ -1590,16 +1934,23 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
     val audioDucking = LocalAppAudioDucking.current
     val voiceDucked = if (audioDucking != null)
         audioDucking.ducked.collectAsStateWithLifecycle().value else false
-    val player = remember(context) {
-        ExoPlayer.Builder(context).build().apply {
-            setAudioAttributes(AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
-            setHandleAudioBecomingNoisy(true)
-        }
+    val player: ExoPlayer? = remember(context) {
+        // A media service failure should not prevent the screen from opening.
+        runCatching {
+            ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true
+                )
+                setHandleAudioBecomingNoisy(true)
+            }
+        }.getOrNull()
     }
     LaunchedEffect(player, voiceDucked) {
-        // TTS navigation/welcome reduces only our radio player to 20%.
-        player.volume = if (voiceDucked) 0.2f else 1f
+        // Only the application-owned radio is lowered; restore the user level.
+        player?.let { activePlayer ->
+            runCatching { activePlayer.volume = if (voiceDucked) 0.2f else 1f }
+        }
     }
     var query by rememberSaveable { mutableStateOf("") }
     val filteredStations = remember(state.stations, query) {
@@ -1615,41 +1966,64 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
     var buffering by remember { mutableStateOf(false) }
     var playbackFailed by remember { mutableStateOf(false) }
     DisposableEffect(player, lifecycle) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                buffering = playbackState == Player.STATE_BUFFERING
+        val activePlayer = player
+        if (activePlayer == null) {
+            onDispose { }
+        } else {
+            val listener = object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    buffering = playbackState == Player.STATE_BUFFERING
+                }
+                override fun onPlayerError(error: PlaybackException) {
+                    playbackFailed = true
+                    buffering = false
+                }
             }
-            override fun onPlayerError(error: PlaybackException) {
-                playbackFailed = true
-                buffering = false
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) {
+                    runCatching { activePlayer.pause() }
+                }
             }
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) player.pause()
-        }
-        player.addListener(listener)
-        lifecycle.addObserver(observer)
-        onDispose {
-            lifecycle.removeObserver(observer)
-            player.removeListener(listener)
-            player.release()
+            runCatching { activePlayer.addListener(listener) }
+            lifecycle.addObserver(observer)
+            onDispose {
+                lifecycle.removeObserver(observer)
+                runCatching { activePlayer.removeListener(listener) }
+                runCatching { activePlayer.release() }
+            }
         }
     }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.radio_description), style = MaterialTheme.typography.bodySmall)
+        if (player == null) {
+            Text(stringResource(R.string.radio_playback_error))
+        }
         currentName?.let { name ->
             Text(stringResource(R.string.radio_selected, name))
             if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (playbackFailed) Text(stringResource(R.string.radio_playback_error))
             Row {
                 TextButton(onClick = {
-                    if (!playbackFailed && (playing || player.playWhenReady)) player.pause()
-                    else { if (player.playerError != null) player.prepare(); playbackFailed = false; player.play() }
-                }) {
+                    player?.let { activePlayer ->
+                        runCatching {
+                            if (!playbackFailed && (playing || activePlayer.playWhenReady)) {
+                                activePlayer.pause()
+                            } else {
+                                if (activePlayer.playerError != null) activePlayer.prepare()
+                                playbackFailed = false
+                                activePlayer.play()
+                            }
+                        }.onFailure { playbackFailed = true }
+                    }
+                }, enabled = player != null) {
                     Text(stringResource(if (playing || buffering) R.string.radio_pause else R.string.radio_play))
                 }
-                TextButton(onClick = { player.stop(); currentName = null; playbackFailed = false }) {
+                TextButton(onClick = {
+                    runCatching { player?.stop() }
+                    currentName = null
+                    playbackFailed = false
+                }, enabled = player != null) {
                     Text(stringResource(R.string.radio_stop))
                 }
             }
@@ -1677,11 +2051,15 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
         LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
             items(filteredStations, key = { it.id }) { station ->
                 Column(Modifier.fillMaxWidth().clickable {
-                    currentName = station.name
-                    playbackFailed = false
-                    player.setMediaItem(MediaItem.fromUri(station.urlResolved))
-                    player.prepare()
-                    player.play()
+                    player?.let { activePlayer ->
+                        runCatching {
+                            currentName = station.name
+                            playbackFailed = false
+                            activePlayer.setMediaItem(MediaItem.fromUri(station.urlResolved))
+                            activePlayer.prepare()
+                            activePlayer.play()
+                        }.onFailure { playbackFailed = true }
+                    } ?: run { playbackFailed = true }
                 }.padding(vertical = 12.dp, horizontal = 8.dp)) {
                     Text(station.name, style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.radio_votes, station.votes),
@@ -1695,11 +2073,11 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
         Text(stringResource(R.string.radio_attribution), style = MaterialTheme.typography.labelSmall)
     }
 }
-````
+```
 
-## 7. `nativecockpit/build.gradle.kts`
+## 10. `nativecockpit/build.gradle.kts`
 
-````kotlin
+```kotlin
 import java.io.File
 import java.io.DataOutputStream
 import kotlin.math.sin
@@ -1911,11 +2289,11 @@ val generateOriginalEngineWavAssets = tasks.register("generateOriginalEngineWavA
     }
 }
 tasks.named("preBuild").configure { dependsOn(generateOriginalEngineWavAssets) }
-````
+```
 
-## 8. `nativecockpit/proguard-rules.pro`
+## 11. `nativecockpit/proguard-rules.pro`
 
-````proguard
+```proguard
 # :nativecockpit production R8 preservation rules.
 # R8 optimization is enabled in the release build. Consumer rules from
 # AndroidX, Hilt, Retrofit, Gson, MapLibre and Media3 remain in effect.
@@ -1956,6 +2334,9 @@ tasks.named("preBuild").configure { dependsOn(generateOriginalEngineWavAssets) }
 # The current implementation also has concrete data.obd and domain.usecase keeps.
 -keep class com.evcockpit.obd.** { *; }
 
+# Retain volatile state used by Kotlin coroutines under R8.
+-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }
+
 # Real Bluetooth ELM327 state machine and Android Auto entrypoints.
 -keep class com.evcockpit.domain.usecase.Elm327Session { *; }
 -keep class com.evcockpit.data.repository.Elm327VehicleRepository { *; }
@@ -1963,11 +2344,11 @@ tasks.named("preBuild").configure { dependsOn(generateOriginalEngineWavAssets) }
 -keep class com.evcockpit.car.** { *; }
 
 # No -dontoptimize / -dontwarn. Missing classes remain build errors.
-````
+```
 
-## 9. `.github/workflows/build-nativecockpit.yml`
+## 12. `.github/workflows/build-nativecockpit.yml`
 
-````yaml
+```yaml
 name: Native Cockpit · Kotlin Compose APK
 
 on:
@@ -2213,11 +2594,11 @@ jobs:
         shell: bash
         run: |
           rm -f "$RUNNER_TEMP/eya-release.jks" "$RUNNER_TEMP/eya-release.jks.enc" "$RUNNER_TEMP/owner-cert.der" "$RUNNER_TEMP/apk-certs.txt"
-````
+```
 
-## 10. `scripts/check_final_release_hardening.py`
+## 13. `scripts/check_final_release_hardening.py`
 
-````python
+```python
 #!/usr/bin/env python3
 """Regression checks for release signing, null-safe HUD, and in-app TTS ducking."""
 from pathlib import Path
@@ -2244,9 +2625,13 @@ assert "vehicleRepository.telemetry" in app and "obd.connection" in app
 assert "speed = if (connection.phase == ObdPhase.CONNECTED)" in app
 assert "now - speedAtMs in 0L..10_000L" in sound
 assert "openRawResource(resourceId)" in sound
+assert "catch (error: Resources.NotFoundException)" in sound
+assert "val knownRange" in hud
 assert "catch (error: Exception)" in sound
 assert "multiplier = if (ducked) 0.2f else 1f" in sound
-assert "player.volume = if (voiceDucked) 0.2f else 1f" in radio
+assert "activePlayer.volume = if (voiceDucked) 0.2f else 1f" in radio
+assert "runCatching { activePlayer.release() }" in radio
+assert "runCatching { activePlayer.play()" not in radio  # playback is protected in a broader block
 assert "audioSignal.begin" in voice and "audioSignal::end" in voice
 assert 'audioDucking.begin("welcome")' in welcome
 assert 'audioDucking.end("welcome")' in welcome
@@ -2263,10 +2648,11 @@ for rule in (
 ):
     assert rule in rules, f"Missing compatibility rule: {rule}"
 
+assert "-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }" in rules
 assert "EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}" in workflow
 assert "APK signer does not match the existing owner keystore" in workflow
 assert "apksigner\" verify --verbose" in workflow
 assert "EV-Cockpit-Signed-Stable-Release" in workflow
 print("OK: null-safe HUD, ducked players, R8 and signing identity verification")
-````
+```
 
