@@ -11,6 +11,10 @@ EV Cockpit is an independent Android application for electric-vehicle navigation
 - Configurable Turkish greeting, audio preferences and optional in-cabin engine sound.
 - Android Auto navigation integration, subject to host and safety restrictions.
 
+## Download
+
+Approved, owner-signed Android APKs will be published on [GitHub Releases](https://github.com/AlpTimucin-cpu/ev-cockpit/releases), together with their SHA-256 checksums. A public APK is not available until the existing signing key and real-device checks are confirmed.
+
 ## Build
 
 The maintained Android application lives in `nativecockpit` on the `feature/ev-cockpit` branch. Java 17, Android SDK 36 and Gradle 8.14.3 are required.
@@ -30,6 +34,8 @@ The Release configuration enables R8 code shrinking and resource shrinking. Sign
 - [Production Test Checklist](docs/TEST_CHECKLIST.md)
 - [Android Auto Platform Status](docs/ANDROID_AUTO_PLATFORM_STATUS.md)
 - [Product Experience and Release Guide](docs/PRODUCT_EXPERIENCE_AND_RELEASE.md)
+- [Full Kotlin UX Sources](docs/PRODUCTION_UX_KOTLIN_SOURCES.md)
+- [Splash XML and Release YAML Sources](docs/PRODUCTION_UX_RESOURCES_RELEASE.md)
 
 ## Validation and safety
 
