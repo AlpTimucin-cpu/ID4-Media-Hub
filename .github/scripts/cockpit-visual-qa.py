@@ -33,12 +33,29 @@ def capture(name):
         data=shell('cat','/sdcard/cockpit-ui.xml')
         (out/(name+'.xml')).write_text(data)
         nodes=list(ET.fromstring(data).iter('node'))
-    # A clean emulator may lack English TTS data. Keep evidence of the warning,
-    # dismiss only this known first-run dialog, then inspect the cockpit.
-    if any(n.get('text') == 'English TTS Data Missing' for n in nodes):
+    # On a clean installation, first-run consent must be presented before
+    # the cockpit. Preserve visual evidence, then exercise the explicit skip.
+    onboarding_close = next((n for n in nodes if n.get('text') ==
+        'Use app without completing setup'), None)
+    if onboarding_close is not None:
+        (out/(name+'.onboarding.png')).write_bytes(adb('exec-out','screencap','-p'))
+        (out/(name+'.onboarding.xml')).write_text(data)
+        x1,y1,x2,y2=map(int,re.findall(r'\\d+',onboarding_close.get('bounds','')))
+        shell('input','tap',str((x1+x2)//2),str((y1+y2)//2))
+        time.sleep(3)
+        (out/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
+        shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
+        data=shell('cat','/sdcard/cockpit-ui.xml')
+        (out/(name+'.xml')).write_text(data)
+        nodes=list(ET.fromstring(data).iter('node'))
+    # The clean emulator may lack Turkish TTS data. Capture a warning
+    # and dismiss it; the warning is not a product crash.
+    if any(n.get('text') in ('Turkish voice data is missing',
+                            'Sesli asistan için Türkçe dil paketi gerekli',
+                            'English TTS Data Missing') for n in nodes):
         (out/(name+'.voice-warning.png')).write_bytes(adb('exec-out','screencap','-p'))
         (out/(name+'.voice-warning.xml')).write_text(data)
-        button=next(n for n in nodes if n.get('text') == 'OK')
+        button=next(n for n in nodes if n.get('text') in ('OK','Tamam'))
         x1,y1,x2,y2=map(int,re.findall(r'\d+',button.get('bounds','')))
         shell('input','tap',str((x1+x2)//2),str((y1+y2)//2))
         time.sleep(1)
