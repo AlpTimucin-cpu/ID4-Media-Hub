@@ -262,7 +262,6 @@ jobs:
           retention-days: 30
 
       - name: Erase temporary signing material
-        if: env.SIGNING_AVAILABLE == 'true'
         if: always()
         shell: bash
         run: |
