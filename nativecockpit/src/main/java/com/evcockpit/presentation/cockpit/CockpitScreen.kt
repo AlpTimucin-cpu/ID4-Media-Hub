@@ -239,7 +239,7 @@ fun CockpitScreen(
         )
         Column(
             modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, bottom = 92.dp).widthIn(max = 340.dp),
+                .padding(horizontal = 16.dp).padding(bottom = 92.dp).widthIn(max = 340.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             if (obdConnection.phase != ObdPhase.CONNECTED) {
