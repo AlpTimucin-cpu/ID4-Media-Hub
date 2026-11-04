@@ -84,7 +84,9 @@ fun CockpitScreen(
     onVoiceVolumeChange: (Float) -> Unit,
     voiceStatus: NativeVoiceGuide.Status,
     voiceError: String?,
-    onVoiceTest: () -> Unit
+    onVoiceTest: () -> Unit,
+    soundUnavailable: Boolean = false,
+    onOpenSoundSettings: () -> Unit = {}
 ) {
     val route = state.route ?: routeState.routeResult
     var routePlanner by remember { mutableStateOf(false) }
@@ -235,18 +237,43 @@ fun CockpitScreen(
             onViewportChanged = onMapViewport, onStationTapped = { station = it },
             modifier = Modifier.fillMaxSize()
         )
-        if (obdConnection.phase != com.evcockpit.domain.model.ObdPhase.CONNECTED) {
-            Surface(
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom = 90.dp),
-                color = Navy.copy(alpha = .94f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    "OBD Bağlantısı Bekleniyor",
-                    color = SoftText,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, bottom = 92.dp).widthIn(max = 340.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (obdConnection.phase != ObdPhase.CONNECTED) {
+                HardwareNotice(
+                    stringResource(R.string.ux_obd_unavailable),
+                    stringResource(R.string.ux_obd_help),
+                    onClick = { settings = true; onObdRefresh() }
+                )
+            } else if (state.socPercent == null) {
+                HardwareNotice(
+                    stringResource(R.string.ux_battery_unavailable),
+                    stringResource(R.string.ux_battery_help),
+                    onClick = { settings = true }
+                )
+            }
+            if (state.gpsFix == null) {
+                HardwareNotice(
+                    stringResource(R.string.ux_gps_waiting),
+                    stringResource(R.string.ux_gps_help),
+                    onClick = onGpsClick
+                )
+            }
+            if (soundUnavailable) {
+                HardwareNotice(
+                    stringResource(R.string.ux_sound_unavailable),
+                    stringResource(R.string.ux_sound_help),
+                    onClick = onOpenSoundSettings
+                )
+            }
+            if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) {
+                HardwareNotice(
+                    stringResource(R.string.ux_tts_missing),
+                    stringResource(R.string.ux_tts_help),
+                    onClick = { missingVoice = true }
                 )
             }
         }
