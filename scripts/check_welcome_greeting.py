@@ -19,6 +19,7 @@ assert '"female"' in guide
 assert "class WelcomeGreetingManager" in welcome
 assert 'UTTERANCE_ID = "welcome_greeting"' in welcome
 assert "TextToSpeech.QUEUE_FLUSH" in welcome
+assert '"Merhaba. EV Cockpit hazır. İyi yolculuklar."' in welcome
 assert "AUDIOFOCUS_GAIN_TRANSIENT" in welcome
 assert "abandonAudioFocusRequest" in welcome
 assert "preferences.volume" in welcome
