@@ -2632,7 +2632,7 @@ assert "multiplier = if (ducked) 0.2f else 1f" in sound
 assert "activePlayer.volume = if (voiceDucked) 0.2f else 1f" in radio
 assert "runCatching { activePlayer.release() }" in radio
 assert "runCatching { activePlayer.play()" not in radio  # playback is protected in a broader block
-assert "audioSignal.begin" in voice and "audioSignal::end" in voice
+assert "startedDuckOwner?.let(audioSignal::begin)" in voice and "audioSignal::end" in voice
 assert 'audioDucking.begin("welcome")' in welcome
 assert 'audioDucking.end("welcome")' in welcome
 
