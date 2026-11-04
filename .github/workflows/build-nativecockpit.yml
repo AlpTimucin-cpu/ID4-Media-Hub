@@ -97,14 +97,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
+      - name: Detect signing configuration
+        shell: bash
+        env:
+          EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+        run: |
+          if [ -n "$EYA_SIGNING_BUNDLE_BASE64" ]; then
+            echo "SIGNING_AVAILABLE=true" >> "$GITHUB_ENV"
+          else
+            echo "SIGNING_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "::notice::No permanent signing secret. Signed CI artifact skipped; use One Click Auto Release for a temporary test prerelease."
+          fi
+
       - name: Checkout
+        if: env.SIGNING_AVAILABLE == 'true'
         uses: actions/checkout@v6
       - name: Java 17
+        if: env.SIGNING_AVAILABLE == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
       - name: Install Android SDK
+        if: env.SIGNING_AVAILABLE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -113,12 +128,14 @@ jobs:
           echo "$(dirname "$sdkmanager_bin")" >> "$GITHUB_PATH"
           "$sdkmanager_bin" "platforms;android-36" "build-tools;36.0.0"
       - name: Gradle 8.14.3
+        if: env.SIGNING_AVAILABLE == 'true'
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.14.3"
           cache-provider: basic
 
       - name: Restore owner keystore from one GitHub Secret
+        if: env.SIGNING_AVAILABLE == 'true'
         shell: bash
         env:
           EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
@@ -175,6 +192,7 @@ jobs:
           PY
 
       - name: Validate owner certificate
+        if: env.SIGNING_AVAILABLE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -184,12 +202,14 @@ jobs:
           echo "Owner certificate verified"
 
       - name: Build signed production Release APK (R8 enabled)
+        if: env.SIGNING_AVAILABLE == 'true'
         shell: bash
         run: |
           set -euo pipefail
           gradle :nativecockpit:assembleRelease --stacktrace --no-daemon
 
       - name: Verify APK certificate matches owner's keystore
+        if: env.SIGNING_AVAILABLE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -231,6 +251,7 @@ jobs:
           rm -f "$RUNNER_TEMP/owner-cert.der" "$RUNNER_TEMP/apk-certs.txt"
 
       - name: Publish signed Release APK
+        if: env.SIGNING_AVAILABLE == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: EV-Cockpit-Signed-Stable-Release
@@ -241,6 +262,7 @@ jobs:
           retention-days: 30
 
       - name: Erase temporary signing material
+        if: env.SIGNING_AVAILABLE == 'true'
         if: always()
         shell: bash
         run: |
