@@ -129,7 +129,7 @@ jobs:
           umask 077
           python3 - <<'PY'
           import base64, hashlib, json, os, pathlib, secrets, subprocess
-          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'keystore.jks'
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'release.jks'
           encoded = os.environ.get('EYA_SIGNING_BUNDLE_BASE64', '').strip()
           if encoded:
               bundle = json.loads(base64.b64decode(encoded, validate=True).decode('utf-8'))
@@ -253,5 +253,5 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -f "$RUNNER_TEMP/keystore.jks" "$RUNNER_TEMP/apk-certs.txt" \
+          rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/apk-certs.txt" \
                 "$RUNNER_TEMP/expected-cert.der" "$RUNNER_TEMP/release-notes.md"
