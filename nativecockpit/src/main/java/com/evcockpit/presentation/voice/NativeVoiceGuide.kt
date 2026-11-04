@@ -75,7 +75,8 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
 
     private var tts: TextToSpeech? = null
     init {
-        tts = TextToSpeech(context.applicationContext) { result ->
+        tts = try {
+            TextToSpeech(context.applicationContext) { result ->
         main.post {
                 if (closed) return@post
                 val engine = tts
@@ -103,7 +104,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                                 if (!closed && activeUtterance == utteranceId) {
                                     startedDuckOwner?.let(audioSignal::end)
                                     startedDuckOwner = "navigation:" + utteranceId
-                                    audioSignal.begin(startedDuckOwner!!)
+                                    startedDuckOwner?.let(audioSignal::begin)
                                     Log.d(logTag, "Utterance started")
                                     TtsDebugLogger.event("utterance onStart")
                                     onStarted?.invoke()
@@ -129,6 +130,12 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                     status = Status.READY
                 }
             }
+            }
+        } catch (error: RuntimeException) {
+            status = Status.INIT_FAILED
+            lastError = "Text-to-speech engine unavailable"
+            Log.w(logTag, "TextToSpeech constructor failed; speech disabled", error)
+            null
         }
     }
 
@@ -176,7 +183,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
     fun stop() = stopCurrent(notifyFailure = true)
 
     private fun stopCurrent(notifyFailure: Boolean) {
-        tts?.stop()
+        runCatching { tts?.stop() }
         activeUtterance = null
         onStarted = null
         val fail = onFailed
@@ -228,7 +235,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
         if (closed) return
         closed = true
         stop()
-        tts?.shutdown()
+        runCatching { tts?.shutdown() }
         tts = null
         ducking.close()
     }

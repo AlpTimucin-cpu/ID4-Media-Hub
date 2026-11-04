@@ -24,10 +24,14 @@ assert "vehicleRepository.telemetry" in app and "obd.connection" in app
 assert "speed = if (connection.phase == ObdPhase.CONNECTED)" in app
 assert "now - speedAtMs in 0L..10_000L" in sound
 assert "openRawResource(resourceId)" in sound
+assert "catch (error: Resources.NotFoundException)" in sound
+assert "val knownRange" in hud
 assert "catch (error: Exception)" in sound
 assert "multiplier = if (ducked) 0.2f else 1f" in sound
-assert "player.volume = if (voiceDucked) 0.2f else 1f" in radio
-assert "audioSignal.begin" in voice and "audioSignal::end" in voice
+assert "activePlayer.volume = if (voiceDucked) 0.2f else 1f" in radio
+assert "runCatching { activePlayer.release() }" in radio
+assert "runCatching { activePlayer.play()" not in radio  # playback is protected in a broader block
+assert "startedDuckOwner?.let(audioSignal::begin)" in voice and "audioSignal::end" in voice
 assert 'audioDucking.begin("welcome")' in welcome
 assert 'audioDucking.end("welcome")' in welcome
 
@@ -43,6 +47,7 @@ for rule in (
 ):
     assert rule in rules, f"Missing compatibility rule: {rule}"
 
+assert "-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }" in rules
 assert "EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}" in workflow
 assert "APK signer does not match the existing owner keystore" in workflow
 assert "apksigner\" verify --verbose" in workflow

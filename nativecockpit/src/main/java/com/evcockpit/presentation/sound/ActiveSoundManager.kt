@@ -1,6 +1,7 @@
 package com.evcockpit.presentation.sound
 
 import android.content.Context
+import android.content.res.Resources
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.PlaybackException
@@ -59,7 +60,9 @@ class ActiveSoundManager @Inject constructor(
     private fun player(resourceId: Int): ExoPlayer? {
         var candidate: ExoPlayer? = null
         return try {
-            // Resource existence is checked before Media3 starts asynchronous loading.
+            if (resourceId <= 0) return null
+            // Resources may be stripped from a damaged install or an asset task
+            // may fail to generate them. Audio must never crash the cockpit.
             context.resources.openRawResource(resourceId).use { /* readable */ }
             candidate = ExoPlayer.Builder(context).build()
             candidate.apply {
@@ -81,8 +84,12 @@ class ActiveSoundManager @Inject constructor(
                 repeatMode = Player.REPEAT_MODE_ONE
                 prepare()
             }
+        } catch (error: Resources.NotFoundException) {
+            Log.w("EYA-ActiveSound", "Optional engine sound resource not installed", error)
+            runCatching { candidate?.release() }
+            null
         } catch (error: Exception) {
-            Log.e("EYA-ActiveSound", "Engine WAV could not be loaded", error)
+            Log.w("EYA-ActiveSound", "Engine WAV unavailable; continuing silently", error)
             runCatching { candidate?.release() }
             null
         }

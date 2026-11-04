@@ -20,8 +20,8 @@ class AudioDuckingManager(
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    private val manager =
-        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    // A broken/disabled audio service must not crash the navigation screen.
+    private val manager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private val main = Handler(Looper.getMainLooper())
     private val listener: AudioManager.OnAudioFocusChangeListener =
         AudioManager.OnAudioFocusChangeListener { change ->
@@ -44,10 +44,10 @@ class AudioDuckingManager(
 
     private val lease: AudioFocusLease = AudioFocusLease(
         requestFocus = {
-            manager.requestAudioFocus(focusRequest) ==
+            manager?.requestAudioFocus(focusRequest) ==
                 AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         },
-        abandonFocus = { manager.abandonAudioFocusRequest(focusRequest) }
+        abandonFocus = { manager?.abandonAudioFocusRequest(focusRequest); Unit }
     )
 
     fun acquire(): Boolean = lease.acquire()

@@ -411,12 +411,18 @@ private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier 
 private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
     val unit = stringResource(R.string.cockpit_distance_unit)
     Column(modifier) {
+        val knownRange = km?.takeIf { it.isFinite() && it >= 0.0 }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(CockpitFormat.distance(km).removeSuffix(" $unit"),
+            Text(
+                knownRange?.let { CockpitFormat.distance(it).removeSuffix(" $unit") }
+                    ?: stringResource(R.string.cockpit_unknown_value),
                 Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
-                fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false)
-            Text(unit, Modifier.alignByBaseline(),
-                style = MaterialTheme.typography.labelMedium, color = SoftText)
+                fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false
+            )
+            if (knownRange != null) {
+                Text(unit, Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.labelMedium, color = SoftText)
+            }
         }
         Text(stringResource(R.string.cockpit_estimated_range),
             style = MaterialTheme.typography.labelSmall, color = SoftText)
