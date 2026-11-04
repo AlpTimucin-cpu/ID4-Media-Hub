@@ -48,4 +48,7 @@
     <string name="ux_tts_missing">Sesli asistan için Türkçe dil paketi gerekli</string>
     <string name="ux_tts_help">Android Ayarları içinde Türkçe metin okuma sesini indirin ve tekrar deneyin.</string>
     <string name="ux_open_tts_settings">Ses ayarlarını aç</string>
+    <string name="ux_tts_loading">Türkçe ses hazırlanıyor…</string>
+    <string name="ux_tts_ready">Türkçe ses hazır</string>
+    <string name="ux_tts_test">Türkçe sesi test et</string>
 </resources>
