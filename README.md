@@ -23,6 +23,13 @@ gradle :nativecockpit:minifyReleaseWithR8
 
 The Release configuration enables R8 code shrinking and resource shrinking. Signed APKs require the repository owner's existing keystore and GitHub Actions signing bundle; a debug APK is not a signed production release.
 
+## Documentation
+
+- [Mobile APK Build Guide](docs/APK_BUILD_GUIDE.md)
+- [Verification Report](docs/VERIFICATION_REPORT.md)
+- [Production Test Checklist](docs/TEST_CHECKLIST.md)
+- [Android Auto Platform Status](docs/ANDROID_AUTO_PLATFORM_STATUS.md)
+
 ## Validation and safety
 
 This software has not been certified through full physical-device acceptance testing. Test GPS permissions and accuracy, ELM327 connectivity and disconnects, TTS and audio focus, charging data, Android Auto, and release installation before regular use. Estimated values are not real sensor measurements. In-cabin synthetic audio does not replace a vehicle's external acoustic warning system. Do not interact with video while driving.
