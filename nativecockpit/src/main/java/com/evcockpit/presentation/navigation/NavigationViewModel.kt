@@ -345,7 +345,7 @@ class NavigationViewModel @Inject constructor(
         if (_foreground.value && voice.enabled &&
             (voice.status == NativeVoiceGuide.Status.READY ||
                  voice.status == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
-            guide.speak("EV Cockpit. English speech test.", voice.volume)
+            guide.speak("EV Cockpit. Türkçe ses testi.", voice.volume)
         }
     }
 
