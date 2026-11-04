@@ -1851,7 +1851,7 @@ class WelcomeGreetingManager @Inject constructor(
         // Exactly one TTS request, with its required stable utterance ID.
         val queued = runCatching {
             tts.speak(
-                "Merhaba yol arkadaşım. İyi yolculuklar.",
+                "Merhaba. EV Cockpit hazır. İyi yolculuklar.",
                 TextToSpeech.QUEUE_FLUSH,
                 params,
                 UTTERANCE_ID
