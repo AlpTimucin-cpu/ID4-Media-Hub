@@ -119,8 +119,12 @@ class ActiveSoundManager @Inject constructor(
             volume = settings.engineVolume.coerceIn(0f, 1.5f)
             lastSpeedInput = speedKmh
             lastInputTime = speedAtMs
-            if (!foreground || !enabled || previewing ||
-                speedKmh == null || speedAtMs == null) {
+            val now = System.currentTimeMillis()
+            // Even if the ViewModel supplies bad/stale data, never play audio.
+            val validSpeed = speedKmh?.takeIf { it.isFinite() && it in 0.0..300.0 }
+            val fresh = speedAtMs != null && speedAtMs <= now + 2_000L &&
+                now - speedAtMs in 0L..10_000L
+            if (!foreground || !enabled || previewing || validSpeed == null || !fresh) {
                 if (!previewing) pausePlayers()
                 return@post
             }
@@ -167,12 +171,13 @@ class ActiveSoundManager @Inject constructor(
     }
 
     private fun applyVolumes() {
-        // Media3 player's volume is 0..1. UI 150% means max permitted app gain,
-        // NOT boosting above device/system maximum (which risks clipping).
+        // Existing level is restored after TTS; no system stream is modified.
         val normalized = (volume / 1.5f).coerceIn(0f, 1f)
         val multiplier = if (ducked) 0.2f else 1f
-        idle?.volume = normalized * multiplier * 0.75f
-        acceleration?.volume = normalized * multiplier
+        runCatching { idle?.volume = normalized * multiplier * 0.75f }
+            .onFailure { Log.w("EYA-ActiveSound", "Idle volume unavailable", it) }
+        runCatching { acceleration?.volume = normalized * multiplier }
+            .onFailure { Log.w("EYA-ActiveSound", "Acceleration volume unavailable", it) }
     }
 
     fun preview(settings: UserSettings) {
@@ -228,8 +233,8 @@ class ActiveSoundManager @Inject constructor(
     fun release() {
         main.post {
             pausePlayers()
-            idle?.release()
-            acceleration?.release()
+            runCatching { idle?.release() }
+            runCatching { acceleration?.release() }
             idle = null
             acceleration = null
             currentProfile = null
