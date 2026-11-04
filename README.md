@@ -1,23 +1,34 @@
-# Electric Vehicle Journey Companion
+# EV Cockpit
 
-An independent, experimental Android application for planning and following electric-vehicle journeys.
+EV Cockpit is an independent Android application for electric-vehicle navigation, charging planning, real vehicle telemetry, spoken guidance, and optional in-cabin audio.
 
 ## Features
 
-- Road navigation with route alternatives and spoken maneuver guidance.
-- Charging station discovery, route-based charging candidates, and estimated energy needs.
-- A map-focused cockpit with weather, trip progress, and available vehicle telemetry.
-- Optional media and radio access, subject to platform and playback restrictions.
-- An explicitly labelled debug simulation mode for testing navigation without real vehicle data.
+- MapLibre navigation, route alternatives, real GPS positioning and voice guidance.
+- Read-only vehicle measurements from a paired Bluetooth ELM327 adapter. Missing or expired readings remain unavailable.
+- Charging station discovery, route energy estimates and weather overlays.
+- Internet radio, web media and launches of installed official streaming applications.
+- Configurable Turkish greeting, audio preferences and optional in-cabin engine sound.
+- Android Auto navigation integration, subject to host and safety restrictions.
 
-## Development
+## Build
 
-The active Android implementation is maintained on the `feature/ev-cockpit` branch. Source code, automated tests, and build workflows are available in this repository.
+The maintained Android application lives in `nativecockpit` on the `feature/ev-cockpit` branch. Java 17, Android SDK 36 and Gradle 8.14.3 are required.
 
-## Safety and data quality
+```bash
+gradle :nativecockpit:testDebugUnitTest
+gradle :nativecockpit:assembleDebug
+gradle :nativecockpit:minifyReleaseWithR8
+```
 
-This software is experimental. Estimates are not measurements; unavailable sensor values remain unavailable. Navigation, charging, speech, and vehicle diagnostics require real-device validation before operational use. Do not interact with video controls while driving.
+The Release configuration enables R8 code shrinking and resource shrinking. Signed APKs require the repository owner's existing keystore and GitHub Actions signing bundle; a debug APK is not a signed production release.
+
+## Validation and safety
+
+This software has not been certified through full physical-device acceptance testing. Test GPS permissions and accuracy, ELM327 connectivity and disconnects, TTS and audio focus, charging data, Android Auto, and release installation before regular use. Estimated values are not real sensor measurements. In-cabin synthetic audio does not replace a vehicle's external acoustic warning system. Do not interact with video while driving.
 
 ## Licensing
 
-Third-party software and media components retain their original copyrights and licence requirements. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+Third-party components and Android package identifiers retain their required notices. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+EV Cockpit is an independent project and does not claim affiliation with any vehicle or streaming manufacturer.
