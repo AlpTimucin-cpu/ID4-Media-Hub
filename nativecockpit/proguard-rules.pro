@@ -38,6 +38,9 @@
 # The current implementation also has concrete data.obd and domain.usecase keeps.
 -keep class com.evcockpit.obd.** { *; }
 
+# Retain volatile state used by Kotlin coroutines under R8.
+-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }
+
 # Real Bluetooth ELM327 state machine and Android Auto entrypoints.
 -keep class com.evcockpit.domain.usecase.Elm327Session { *; }
 -keep class com.evcockpit.data.repository.Elm327VehicleRepository { *; }
