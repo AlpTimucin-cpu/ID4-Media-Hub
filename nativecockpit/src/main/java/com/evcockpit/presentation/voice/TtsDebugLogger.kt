@@ -4,6 +4,9 @@ import androidx.compose.ui.res.stringResource
 import com.evcockpit.R
 
 import android.speech.tts.TextToSpeech
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -21,7 +24,7 @@ object TtsDebugLogger {
     private const val TAG = "EYA-TTS-UAT"
 
     fun languageAvailability(tts: TextToSpeech): Int {
-        val result = tts.isLanguageAvailable(Locale("en", "US"))
+        val result = tts.isLanguageAvailable(Locale.forLanguageTag("tr-TR"))
         val label = when (result) {
             TextToSpeech.LANG_MISSING_DATA -> "LANG_MISSING_DATA"
             TextToSpeech.LANG_NOT_SUPPORTED -> "LANG_NOT_SUPPORTED"
@@ -31,15 +34,15 @@ object TtsDebugLogger {
             else -> "UNKNOWN(" + result + ")"
         }
         if (result < TextToSpeech.LANG_AVAILABLE)
-            Log.e(TAG, "en-US availability: " + label)
-        else Log.i(TAG, "en-US availability: " + label)
+            Log.e(TAG, "tr-TR availability: " + label)
+        else Log.i(TAG, "tr-TR availability: " + label)
         return result
     }
 
     fun selectedLanguage(code: Int) {
         if (code < TextToSpeech.LANG_AVAILABLE)
-            Log.e(TAG, "setLanguage(en-US) failed: " + code)
-        else Log.i(TAG, "setLanguage(en-US) ready: " + code)
+            Log.e(TAG, "setLanguage(tr-TR) failed: " + code)
+        else Log.i(TAG, "setLanguage(tr-TR) ready: " + code)
     }
 
     fun utteranceError(code: Int) {
@@ -53,6 +56,7 @@ object TtsDebugLogger {
 
 @Composable
 fun TtsPackageWarningDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -64,9 +68,26 @@ fun TtsPackageWarningDialog(onDismiss: () -> Unit) {
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(stringResource(R.string.native_english_tts_data_missing), style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.native_download_english_voice_data_from_settings_language_and_input_text_to_s) +
-                    "Menu names may vary by device.")
+                Text(stringResource(R.string.ux_tts_missing), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.ux_tts_help))
+                Button(onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent("com.android.settings.TTS_SETTINGS")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }.onFailure {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                    onDismiss()
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.ux_open_tts_settings))
+                }
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.native_ok), color = Color(0xFF00E676))
                 }
