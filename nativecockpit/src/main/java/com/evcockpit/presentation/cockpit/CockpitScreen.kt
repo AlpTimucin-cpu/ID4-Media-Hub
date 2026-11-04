@@ -159,9 +159,9 @@ fun CockpitScreen(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(stringResource(when (voiceStatus) {
-                    NativeVoiceGuide.Status.LOADING -> R.string.native_preparing_english_speech
-                    NativeVoiceGuide.Status.READY -> R.string.native_english_speech_ready
-                    NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> R.string.native_english_tts_data_missing
+                    NativeVoiceGuide.Status.LOADING -> R.string.ux_tts_loading
+                    NativeVoiceGuide.Status.READY -> R.string.ux_tts_ready
+                    NativeVoiceGuide.Status.TURKISH_VOICE_MISSING -> R.string.ux_tts_missing
                     NativeVoiceGuide.Status.INIT_FAILED -> R.string.native_could_not_initialize_the_speech_engine
                     NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED -> R.string.native_could_not_obtain_audio_focus
                 }))
@@ -173,7 +173,7 @@ fun CockpitScreen(
                 OutlinedButton(onClick = onVoiceTest, enabled = voiceEnabled &&
                     (voiceStatus == NativeVoiceGuide.Status.READY ||
                         voiceStatus == NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED)) {
-                    Text(stringResource(R.string.native_english_speech_test))
+                    Text(stringResource(R.string.ux_tts_test))
                 }
             }
         },
