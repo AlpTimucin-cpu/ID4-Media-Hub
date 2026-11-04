@@ -177,4 +177,7 @@
     <string name="ux_tts_missing">Turkish speech pack required</string>
     <string name="ux_tts_help">Install Turkish text-to-speech data in Android Settings, then try again.</string>
     <string name="ux_open_tts_settings">Open speech settings</string>
+    <string name="ux_tts_loading">Preparing Turkish speech…</string>
+    <string name="ux_tts_ready">Turkish speech ready</string>
+    <string name="ux_tts_test">Test Turkish speech</string>
 </resources>
