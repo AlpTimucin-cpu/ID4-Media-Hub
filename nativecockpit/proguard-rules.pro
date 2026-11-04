@@ -6,6 +6,8 @@
 -keepclasseswithmembers class * { native <methods>; }
 
 # Hilt/Dagger: preserve generated bindings, entrypoints and reflection.
+-keep @dagger.hilt.android.AndroidEntryPoint class * { *; }
+-keep @dagger.hilt.android.HiltAndroidApp class * { *; }
 -keep class dagger.hilt.** { *; }
 -keep class com.evcockpit.EyaApplication { *; }
 -keep class com.evcockpit.MainActivity { *; }
@@ -22,7 +24,7 @@
 -keep class kotlin.coroutines.Continuation
 -keep class com.evcockpit.data.** { *; }
 -keep interface com.evcockpit.data.** { *; }
--keepclassmembers class * {
+-keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
