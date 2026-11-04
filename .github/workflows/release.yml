@@ -1,3 +1,4 @@
+
 name: EV Cockpit - Signed GitHub Release
 
 on:
@@ -30,14 +31,34 @@ jobs:
   signed-release:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+
     steps:
       - name: Checkout maintained EV Cockpit sources
         uses: actions/checkout@v6
         with:
-          ref: feature/ev-cockpit
+          ref: ${{ github.ref_name || 'main' }}
           fetch-depth: 0
           fetch-tags: true
-          persist-credentials: false
+          persist-credentials: true
+
+      - name: Resolve Android source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f nativecockpit/build.gradle.kts ]; then
+            echo '::notice::Seçili dalda nativecockpit yok; feature/ev-cockpit dalından derleme yapılacak.'
+            if git show-ref --verify --quiet refs/remotes/origin/feature/ev-cockpit; then
+              git switch -C feature/ev-cockpit origin/feature/ev-cockpit
+            else
+              echo '::error title=HATA::nativecockpit/build.gradle.kts ve feature/ev-cockpit dalı bulunamadı.'
+              exit 1
+            fi
+          fi
+          test -f nativecockpit/build.gradle.kts || {
+            echo '::error title=HATA::Android modülü bulunamadı.'
+            exit 1
+          }
+          echo "OK: Derleme kaynak dalı $(git branch --show-current)"
 
       - name: Select unique release version
         shell: bash
@@ -48,60 +69,163 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import os, pathlib, re, subprocess
+
           p = pathlib.Path('nativecockpit/build.gradle.kts')
           src = p.read_text(encoding='utf-8')
-          ver = re.search(r'(?m)^([ \t]*versionName[ \t]*=[ \t]*)"(\d+)\.(\d+)\.(\d+)"[ \t]*$', src)
-          code = re.search(r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)[ \t]*$', src)
-          if not ver or not code:
-              raise SystemExit('Expected numeric versionName and versionCode in nativecockpit')
 
-          major, minor, patch = (int(ver.group(i)) for i in (2, 3, 4))
-          requested = os.environ.get('REQUESTED_TAG', '').strip()
-          if requested and requested.lower() != 'latest' and not re.fullmatch(r'v\d+\.\d+\.\d+', requested):
-              raise SystemExit('HATA: release_tag geçersiz. v1.0.0 yazın veya latest/boş bırakın.')
+          ver = re.search(
+              r"""(?m)^([ \t]*versionName[ \t]*=[ \t]*)(['"])(\d+)\.(\d+)\.(\d+)\2([ \t]*(?://[^\r\n]*)?)$""",
+              src
+          )
+          code = re.search(
+              r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)([ \t]*(?://[^\r\n]*)?),
+              src
+          )
 
-          # Checkout fetched all tags, including those in private repositories.
-          # Avoid git ls-remote because checkout clears Git credentials.
+          if not ver:
+              print("HATA: build.gradle.kts içinde versionName bulunamadı!")
+              raise SystemExit(1)
+          if not code:
+              print("HATA: build.gradle.kts içinde versionCode bulunamadı!")
+              raise SystemExit(1)
+
+          major, minor, patch = (
+              int(ver.group(i)) for i in (3, 4, 5)
+          )
+
+          requested = os.environ.get(
+              'REQUESTED_TAG', ''
+          ).strip()
+
+          if (
+              requested
+              and requested.lower() != 'latest'
+              and not re.fullmatch(
+                  r'v\d+\.\d+\.\d+', requested
+              )
+          ):
+              raise SystemExit(
+                  'HATA: release_tag geçersiz. '
+                  'v1.0.0 yazın veya latest/boş bırakın.'
+              )
+
+          # Tags are already fetched by checkout.
+          # Avoid unauthenticated git ls-remote requests.
           try:
-              known_tags = set(subprocess.check_output(
-                  ['git', 'tag', '--list'], text=True
-              ).splitlines())
+              known_tags = set(
+                  subprocess.check_output(
+                      ['git', 'tag', '--list'],
+                      text=True
+                  ).splitlines()
+              )
           except subprocess.CalledProcessError as error:
-              raise SystemExit('HATA: Git etiketleri okunamadı.') from error
+              raise SystemExit(
+                  'HATA: Git etiketleri okunamadı.'
+              ) from error
+
           def exists(tag):
               return tag in known_tags
 
           if requested and requested.lower() != 'latest':
               tag = requested
+
               if exists(tag):
-                  raise SystemExit('HATA: Sürüm etiketi zaten var: ' + tag + '. latest seçin.')
+                  raise SystemExit(
+                      'HATA: Sürüm etiketi zaten var: '
+                      + tag
+                      + '. latest seçin.'
+                  )
           else:
               tag = f'v{major}.{minor}.{patch}'
+
               if exists(tag):
-                  candidate = patch + int(os.environ['RUN_NUMBER'])
+                  candidate = (
+                      patch + int(os.environ['RUN_NUMBER'])
+                  )
+
                   for _ in range(100):
-                      tag = f'v{major}.{minor}.{candidate}'
+                      tag = (
+                          f'v{major}.{minor}.{candidate}'
+                      )
+
                       if not exists(tag):
                           break
+
                       candidate += 1
                   else:
-                      raise SystemExit('No unused release tag found')
+                      raise SystemExit(
+                          'HATA: Kullanılabilir sürüm etiketi bulunamadı.'
+                      )
 
           version = tag[1:]
-          vm, vn, vp = map(int, version.split('.'))
+          vm, vn, vp = map(
+              int, version.split('.')
+          )
+
           if vm > 199 or vn > 999 or vp > 9999:
-              raise SystemExit('Version segments exceed Android versionCode encoding limits')
-          new_code = vm * 10000000 + vn * 10000 + vp
+              raise SystemExit(
+                  'HATA: Android sürüm sınırı aşıldı.'
+              )
+
+          new_code = (
+              vm * 10000000
+              + vn * 10000
+              + vp
+          )
+
           if not (0 < new_code < 2100000000):
-              raise SystemExit('Android versionCode limit exceeded')
-          src = src[:ver.start(0)] + ver.group(1) + '"' + version + '"' + src[ver.end(0):]
-          code = re.search(r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)[ \t]*$', src)
-          src = src[:code.start(0)] + code.group(1) + str(new_code) + src[code.end(0):]
-          p.write_text(src, encoding='utf-8')
-          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
-              f.write(f'RELEASE_TAG={tag}\n')
-              f.write(f'SOURCE_SHA={subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()}\n')
-          print('Selected release:', tag, 'versionCode:', new_code)
+              raise SystemExit(
+                  'HATA: Android versionCode geçersiz.'
+              )
+
+          src = (
+              src[:ver.start(0)]
+              + ver.group(1)
+              + '"' + version + '"'
+              + ver.group(6)
+              + src[ver.end(0):]
+          )
+
+          code = re.search(
+              r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)[ \t]*$',
+              src
+          )
+
+          src = (
+              src[:code.start(0)]
+              + code.group(1)
+              + str(new_code)
+              + code.group(3)
+              + src[code.end(0):]
+          )
+
+          p.write_text(
+              src, encoding='utf-8'
+          )
+
+          source_sha = subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD'],
+              text=True
+          ).strip()
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as f:
+              f.write(
+                  f'RELEASE_TAG={tag}\n'
+              )
+              f.write(
+                  f'SOURCE_SHA={source_sha}\n'
+              )
+
+          print(
+              'OK: Release version:',
+              tag,
+              'versionCode:',
+              new_code
+          )
           PY
 
       - name: Set up Java 17
@@ -114,9 +238,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' -print -quit)"
-          test -x "$sdkmanager_bin"
-          "$sdkmanager_bin" 'platforms;android-36' 'build-tools;36.0.0'
+
+          sdkmanager_bin="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -path '*/bin/sdkmanager' \
+              -print -quit
+          )"
+
+          if [ -z "$sdkmanager_bin" ]; then
+            echo 'HATA: Android SDK bulunamadı.'
+            exit 1
+          fi
+
+          "$sdkmanager_bin" \
+            'platforms;android-36' \
+            'build-tools;36.0.0'
 
       - name: Set up Gradle 8.14.3
         uses: gradle/actions/setup-gradle@v6
@@ -130,11 +267,15 @@ jobs:
           BUNDLE: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
           ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
         run: |
-          if [ -z "${BUNDLE//[[:space:]]/}" ] && [ "$ALLOW_TEMPORARY" != "true" ]; then
+          if [ -z "${BUNDLE//[[:space:]]/}" ] \
+             && [ "$ALLOW_TEMPORARY" != "true" ]; then
+
             echo '::error title=HATA::Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64'
             exit 1
           fi
-          echo 'OK: İmzalama girişi doğrulandı (gizli anahtar yazdırılmadı).'
+
+          echo 'OK: İmzalama girişi doğrulandı.'
+          echo 'Gizli anahtar loglara yazdırılmadı.'
 
       - name: Restore single signing bundle or generate test key
         shell: bash
@@ -144,138 +285,357 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+
           python3 - <<'PY'
-          import base64, hashlib, json, os, pathlib, secrets, subprocess
-          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'release.jks'
-          # Remove spaces, tabs and line breaks from pasted Base64 text.
-          encoded = ''.join(os.environ.get('EYA_SIGNING_BUNDLE_BASE64', '').split())
+          import base64
+          import binascii
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import secrets
+          import subprocess
+
+          path = (
+              pathlib.Path(
+                  os.environ['RUNNER_TEMP']
+              ) / 'release.jks'
+          )
+
+          # Remove whitespace and line breaks.
+          encoded = ''.join(
+              os.environ.get(
+                  'EYA_SIGNING_BUNDLE_BASE64', ''
+              ).split()
+          )
+
           if encoded:
               try:
-                  bundle = json.loads(base64.b64decode(encoded, validate=True).decode('utf-8'))
-              except (ValueError, UnicodeDecodeError) as error:
-                  raise SystemExit('HATA: Secret Base64 veya JSON imzalama paketi geçersiz. EYA_GitHub_TEK_SECRET.txt içeriğinin tamamını girin.') from error
+                  # Accept the generated Base64 JSON bundle, or pasted JSON.
+                  if encoded.startswith('{'):
+                      bundle = json.loads(
+                          os.environ['EYA_SIGNING_BUNDLE_BASE64'].strip()
+                      )
+                  else:
+                      decoded = base64.b64decode(encoded, validate=True)
+                      bundle = json.loads(decoded.decode('utf-8'))
+              except (ValueError, UnicodeError, binascii.Error) as error:
+                  print(
+                      '::error title=HATA::Secret JSON formatında değil. '
+                      'Lütfen generate-keystore çıktısını kullanın.'
+                  )
+                  raise SystemExit(1) from error
+
+              if not isinstance(bundle, dict):
+                  print('::error title=HATA::Secret JSON nesnesi değil.')
+                  raise SystemExit(1)
+
               if bundle.get('schema') != 'eya-signing-v1':
-                  raise SystemExit('Unsupported signing bundle format')
+                  raise SystemExit(
+                      'HATA: İmzalama paketi şeması '
+                      'geçersiz.'
+                  )
+
               try:
-                  raw = base64.b64decode(''.join(bundle['keystore_base64'].split()), validate=True)
-              except (KeyError, ValueError) as error:
-                  raise SystemExit('HATA: Secret içindeki keystore_base64 alanı eksik veya hatalı.') from error
-              if hashlib.sha256(raw).hexdigest() != bundle.get('keystore_sha256'):
-                  raise SystemExit('HATA: Keystore SHA-256 doğrulaması başarısız. Secret yanlış veya bozulmuş.')
+                  raw = base64.b64decode(
+                      ''.join(
+                          bundle[
+                              'keystore_base64'
+                          ].split()
+                      ),
+                      validate=True
+                  )
+              except (KeyError, TypeError, ValueError, binascii.Error) as error:
+                  raise SystemExit(
+                      'HATA: keystore_base64 '
+                      'alanı eksik veya hatalı.'
+                  ) from error
+
+              actual_sha = hashlib.sha256(
+                  raw
+              ).hexdigest()
+
+              expected_sha = bundle.get(
+                  'keystore_sha256'
+              )
+
+              if actual_sha != expected_sha:
+                  raise SystemExit(
+                      'HATA: Keystore SHA-256 '
+                      'doğrulaması başarısız.'
+                  )
+
               path.write_bytes(raw)
+
               try:
-                  password = bundle['store_password']
-                  keypass = bundle['key_password']
-                  alias = bundle['key_alias']
+                  password = bundle[
+                      'store_password'
+                  ]
+                  keypass = bundle[
+                      'key_password'
+                  ]
+                  alias = bundle[
+                      'key_alias'
+                  ]
               except KeyError as error:
-                  raise SystemExit('HATA: Secret paketindeki store_password/key_password/key_alias alanları eksik.') from error
+                  raise SystemExit(
+                      'HATA: İmzalama paketi '
+                      'şifre veya alias alanı eksik.'
+                  ) from error
+
               mode = 'permanent'
-          elif os.environ.get('ALLOW_TEMPORARY') == 'true':
-              password = secrets.token_urlsafe(36)
+
+          elif os.environ.get(
+              'ALLOW_TEMPORARY'
+          ) == 'true':
+
+              password = secrets.token_urlsafe(
+                  36
+              )
               keypass = password
               alias = 'evcockpit-temporary'
-              env = dict(os.environ, EYA_TEMP_PASS=password)
-              subprocess.run([
-                  'keytool', '-genkeypair', '-noprompt', '-storetype', 'JKS',
-                  '-keystore', str(path), '-storepass:env', 'EYA_TEMP_PASS',
-                  '-keypass:env', 'EYA_TEMP_PASS', '-alias', alias,
-                  '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000',
-                  '-dname', 'CN=EV Cockpit Temporary Test Signing, C=TR',
-              ], check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+              env = dict(
+                  os.environ,
+                  EYA_TEMP_PASS=password
+              )
+
+              subprocess.run(
+                  [
+                      'keytool',
+                      '-genkeypair',
+                      '-noprompt',
+                      '-storetype',
+                      'JKS',
+                      '-keystore',
+                      str(path),
+                      '-storepass:env',
+                      'EYA_TEMP_PASS',
+                      '-keypass:env',
+                      'EYA_TEMP_PASS',
+                      '-alias',
+                      alias,
+                      '-keyalg',
+                      'RSA',
+                      '-keysize',
+                      '3072',
+                      '-validity',
+                      '10000',
+                      '-dname',
+                      'CN=EV Cockpit Temporary Test Signing, C=TR'
+                  ],
+                  check=True,
+                  env=env,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL
+              )
+
               mode = 'temporary'
-              print('::warning::A temporary signing key was generated. This APK cannot update an app signed with another key.')
+
+              print(
+                  'UYARI: Geçici imzalama '
+                  'anahtarı oluşturuldu.'
+              )
+
           else:
-              raise SystemExit('HATA: Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64. Repository Settings > Secrets and variables > Actions bölümünü kontrol edin.')
+              raise SystemExit(
+                  'HATA: Secret bulunamadı '
+                  'veya boş: '
+                  'EYA_SIGNING_BUNDLE_BASE64'
+              )
 
           path.chmod(0o600)
+
           values = {
-              'EYA_RELEASE_STORE_FILE': str(path),
-              'EYA_RELEASE_STORE_PASSWORD': password,
-              'EYA_RELEASE_KEY_ALIAS': alias,
-              'EYA_RELEASE_KEY_PASSWORD': keypass,
-              'SIGNING_MODE': mode,
+              'EYA_RELEASE_STORE_FILE':
+                  str(path),
+              'EYA_RELEASE_STORE_PASSWORD':
+                  password,
+              'EYA_RELEASE_KEY_ALIAS':
+                  alias,
+              'EYA_RELEASE_KEY_PASSWORD':
+                  keypass,
+              'SIGNING_MODE':
+                  mode,
           }
+
           for key, value in values.items():
-              if not isinstance(value, str) or not value or '\n' in value or '\r' in value:
-                  raise SystemExit('Invalid signing bundle field: ' + key)
-          for secret in (password, keypass):
-              print('::add-mask::' + secret)
-          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as envfile:
+              if (
+                  not isinstance(value, str)
+                  or not value
+                  or '\n' in value
+                  or '\r' in value
+              ):
+                  raise SystemExit(
+                      'HATA: İmzalama alanı geçersiz: '
+                      + key
+                  )
+
+          for secret in (
+              password,
+              keypass
+          ):
+              print(
+                  '::add-mask::' + secret
+              )
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as envfile:
+
               for key, value in values.items():
-                  envfile.write(key + '=' + value + '\n')
-          print('Signing mode:', mode)
+                  envfile.write(
+                      key + '=' + value + '\n'
+                  )
+
+          print(
+              'OK: İmzalama modu:',
+              mode
+          )
           PY
 
       - name: Check decoded keystore and alias
         shell: bash
         run: |
           set -euo pipefail
+
           if [ ! -s "$EYA_RELEASE_STORE_FILE" ]; then
             echo '::error title=HATA::release.jks dosyası eksik veya boş.'
             exit 1
           fi
-          if ! keytool -list -keystore "$EYA_RELEASE_STORE_FILE" \
+
+          if ! keytool -list \
+               -keystore "$EYA_RELEASE_STORE_FILE" \
                -storepass:env EYA_RELEASE_STORE_PASSWORD \
-               -alias "$EYA_RELEASE_KEY_ALIAS" >/dev/null 2>&1; then
+               -alias "$EYA_RELEASE_KEY_ALIAS" \
+               >/dev/null 2>&1; then
+
             echo '::error title=HATA::Keystore şifresi, alias veya JKS dosyası hatalı.'
             exit 1
           fi
+
           echo 'OK: Keystore ve alias doğrulandı.'
 
       - name: Run tests and build R8-optimized signed APK
         shell: bash
         run: |
           set -euo pipefail
+
           python3 scripts/check_production_hardware.py
+
           python3 scripts/check_final_release_hardening.py
+
           python3 scripts/check_welcome_greeting.py
-          keytool -list -keystore "$EYA_RELEASE_STORE_FILE" \
-            -storepass:env EYA_RELEASE_STORE_PASSWORD \
-            -alias "$EYA_RELEASE_KEY_ALIAS" >/dev/null
-          gradle :nativecockpit:testDebugUnitTest :nativecockpit:assembleRelease \
-            --no-daemon --stacktrace
+
+          gradle \
+            :nativecockpit:testDebugUnitTest \
+            :nativecockpit:assembleRelease \
+            --no-daemon \
+            --stacktrace
 
       - name: Verify signing identity, APK, and checksum
         shell: bash
         run: |
           set -euo pipefail
+
           apk='nativecockpit/build/outputs/apk/release/nativecockpit-release.apk'
-          test -s "$apk"
+
+          if [ ! -s "$apk" ]; then
+            echo '::error title=HATA::Release APK bulunamadı.'
+            exit 1
+          fi
+
           signer="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+
           "$signer" verify --verbose "$apk"
-          "$signer" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-certs.txt"
-          keytool -exportcert -keystore "$EYA_RELEASE_STORE_FILE" \
+
+          "$signer" verify --print-certs "$apk" \
+            > "$RUNNER_TEMP/apk-certs.txt"
+
+          keytool -exportcert \
+            -keystore "$EYA_RELEASE_STORE_FILE" \
             -storepass:env EYA_RELEASE_STORE_PASSWORD \
             -alias "$EYA_RELEASE_KEY_ALIAS" \
-            -file "$RUNNER_TEMP/expected-cert.der" >/dev/null
+            -file "$RUNNER_TEMP/expected-cert.der" \
+            >/dev/null
+
           python3 - <<'PY'
-          import hashlib, os, pathlib, re
-          tmp = pathlib.Path(os.environ['RUNNER_TEMP'])
-          output = (tmp / 'apk-certs.txt').read_text()
-          match = re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F:]+)', output)
+          import hashlib
+          import os
+          import pathlib
+          import re
+
+          tmp = pathlib.Path(
+              os.environ['RUNNER_TEMP']
+          )
+
+          output = (
+              tmp / 'apk-certs.txt'
+          ).read_text()
+
+          match = re.search(
+              r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F:]+)',
+              output
+          )
+
           if not match:
-              raise SystemExit('Could not locate APK signer certificate fingerprint')
-          got = match.group(1).replace(':', '').lower()
-          expected = hashlib.sha256((tmp / 'expected-cert.der').read_bytes()).hexdigest()
+              raise SystemExit(
+                  'HATA: APK imza bilgisi bulunamadı.'
+              )
+
+          got = match.group(1).replace(
+              ':', ''
+          ).lower()
+
+          expected = hashlib.sha256(
+              (
+                  tmp / 'expected-cert.der'
+              ).read_bytes()
+          ).hexdigest()
+
           if got != expected:
-              raise SystemExit('APK signer does not match generated/restored keystore')
+              raise SystemExit(
+                  'HATA: APK sertifikası '
+                  'keystore sertifikasıyla eşleşmiyor.'
+              )
+
+          print(
+              'OK: APK imzası doğrulandı.'
+          )
           PY
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | \
-            grep -q "package: name='com.evcockpit'"
+
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+
+          "$aapt" dump badging "$apk" \
+            | grep -q "package: name='com.evcockpit'"
+
           mkdir -p dist
-          cp "$apk" "dist/EV-Cockpit-${RELEASE_TAG}.apk"
-          (cd dist && sha256sum "EV-Cockpit-${RELEASE_TAG}.apk" > \
-            "EV-Cockpit-${RELEASE_TAG}.apk.sha256")
+
+          cp "$apk" \
+            "dist/EV-Cockpit-${RELEASE_TAG}.apk"
+
+          (
+            cd dist
+            sha256sum \
+              "EV-Cockpit-${RELEASE_TAG}.apk" \
+              > "EV-Cockpit-${RELEASE_TAG}.apk.sha256"
+          )
+
           {
             echo "# EV Cockpit ${RELEASE_TAG}"
             echo
-            echo 'Signed R8-optimized Android build. Automated checks passed.'
+            echo 'Signed R8-optimized Android build.'
+            echo 'Automated checks completed.'
+
             if [ "$SIGNING_MODE" = temporary ]; then
-              echo 'TEMPORARY KEY: Fresh-install test prerelease. Not compatible with previous signing identities.'
+              echo 'TEMPORARY KEY: Fresh-install test prerelease.'
             else
-              echo 'PERMANENT KEY: Signed with the configured repository owner key.'
+              echo 'PERMANENT KEY: Signed with the configured owner key.'
             fi
-            echo 'Physical-device validation (GPS/OBD/Android Auto) is still required.'
+
+            echo 'Physical-device validation is still required.'
           } > "$RUNNER_TEMP/release-notes.md"
 
       - name: Publish APK on GitHub Releases
@@ -296,5 +656,1048 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/apk-certs.txt" \
-                "$RUNNER_TEMP/expected-cert.der" "$RUNNER_TEMP/release-notes.md"
+          rm -f \
+            "$RUNNER_TEMP/release.jks" \
+            "$RUNNER_TEMP/apk-certs.txt" \
+            "$RUNNER_TEMP/expected-cert.der" \
+            "$RUNNER_TEMP/release-notes.md"
+,
+              src
+          )
+
+          if not ver or not code:
+              raise SystemExit(
+                  'HATA: Gradle versionName veya versionCode bulunamadı.'
+              )
+
+          major, minor, patch = (
+              int(ver.group(i)) for i in (2, 3, 4)
+          )
+
+          requested = os.environ.get(
+              'REQUESTED_TAG', ''
+          ).strip()
+
+          if (
+              requested
+              and requested.lower() != 'latest'
+              and not re.fullmatch(
+                  r'v\d+\.\d+\.\d+', requested
+              )
+          ):
+              raise SystemExit(
+                  'HATA: release_tag geçersiz. '
+                  'v1.0.0 yazın veya latest/boş bırakın.'
+              )
+
+          # Tags are already fetched by checkout.
+          # Avoid unauthenticated git ls-remote requests.
+          try:
+              known_tags = set(
+                  subprocess.check_output(
+                      ['git', 'tag', '--list'],
+                      text=True
+                  ).splitlines()
+              )
+          except subprocess.CalledProcessError as error:
+              raise SystemExit(
+                  'HATA: Git etiketleri okunamadı.'
+              ) from error
+
+          def exists(tag):
+              return tag in known_tags
+
+          if requested and requested.lower() != 'latest':
+              tag = requested
+
+              if exists(tag):
+                  raise SystemExit(
+                      'HATA: Sürüm etiketi zaten var: '
+                      + tag
+                      + '. latest seçin.'
+                  )
+          else:
+              tag = f'v{major}.{minor}.{patch}'
+
+              if exists(tag):
+                  candidate = (
+                      patch + int(os.environ['RUN_NUMBER'])
+                  )
+
+                  for _ in range(100):
+                      tag = (
+                          f'v{major}.{minor}.{candidate}'
+                      )
+
+                      if not exists(tag):
+                          break
+
+                      candidate += 1
+                  else:
+                      raise SystemExit(
+                          'HATA: Kullanılabilir sürüm etiketi bulunamadı.'
+                      )
+
+          version = tag[1:]
+          vm, vn, vp = map(
+              int, version.split('.')
+          )
+
+          if vm > 199 or vn > 999 or vp > 9999:
+              raise SystemExit(
+                  'HATA: Android sürüm sınırı aşıldı.'
+              )
+
+          new_code = (
+              vm * 10000000
+              + vn * 10000
+              + vp
+          )
+
+          if not (0 < new_code < 2100000000):
+              raise SystemExit(
+                  'HATA: Android versionCode geçersiz.'
+              )
+
+          src = (
+              src[:ver.start(0)]
+              + ver.group(1)
+              + '"' + version + '"'
+              + src[ver.end(0):]
+          )
+
+          code = re.search(
+              r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)([ \t]*(?://[^\r\n]*)?),
+              src
+          )
+
+          src = (
+              src[:code.start(0)]
+              + code.group(1)
+              + str(new_code)
+              + src[code.end(0):]
+          )
+
+          p.write_text(
+              src, encoding='utf-8'
+          )
+
+          source_sha = subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD'],
+              text=True
+          ).strip()
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as f:
+              f.write(
+                  f'RELEASE_TAG={tag}\n'
+              )
+              f.write(
+                  f'SOURCE_SHA={source_sha}\n'
+              )
+
+          print(
+              'OK: Release version:',
+              tag,
+              'versionCode:',
+              new_code
+          )
+          PY
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sdkmanager_bin="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -path '*/bin/sdkmanager' \
+              -print -quit
+          )"
+
+          if [ -z "$sdkmanager_bin" ]; then
+            echo 'HATA: Android SDK bulunamadı.'
+            exit 1
+          fi
+
+          "$sdkmanager_bin" \
+            'platforms;android-36' \
+            'build-tools;36.0.0'
+
+      - name: Set up Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.14.3'
+          cache-provider: basic
+
+      - name: Check signing secret availability
+        shell: bash
+        env:
+          BUNDLE: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+          ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
+        run: |
+          if [ -z "${BUNDLE//[[:space:]]/}" ] \
+             && [ "$ALLOW_TEMPORARY" != "true" ]; then
+
+            echo '::error title=HATA::Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64'
+            exit 1
+          fi
+
+          echo 'OK: İmzalama girişi doğrulandı.'
+          echo 'Gizli anahtar loglara yazdırılmadı.'
+
+      - name: Restore single signing bundle or generate test key
+        shell: bash
+        env:
+          EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+          ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import secrets
+          import subprocess
+
+          path = (
+              pathlib.Path(
+                  os.environ['RUNNER_TEMP']
+              ) / 'release.jks'
+          )
+
+          # Remove whitespace and line breaks.
+          encoded = ''.join(
+              os.environ.get(
+                  'EYA_SIGNING_BUNDLE_BASE64', ''
+              ).split()
+          )
+
+          if encoded:
+              try:
+                  bundle = json.loads(
+                      base64.b64decode(
+                          encoded,
+                          validate=True
+                      ).decode('utf-8')
+                  )
+              except (ValueError, UnicodeDecodeError) as error:
+                  raise SystemExit(
+                      'HATA: Secret Base64 veya JSON '
+                      'imzalama paketi geçersiz. '
+                      'EYA_GitHub_TEK_SECRET.txt '
+                      'içeriğinin tamamını girin.'
+                  ) from error
+
+              if bundle.get('schema') != 'eya-signing-v1':
+                  raise SystemExit(
+                      'HATA: İmzalama paketi şeması '
+                      'geçersiz.'
+                  )
+
+              try:
+                  raw = base64.b64decode(
+                      ''.join(
+                          bundle[
+                              'keystore_base64'
+                          ].split()
+                      ),
+                      validate=True
+                  )
+              except (KeyError, ValueError) as error:
+                  raise SystemExit(
+                      'HATA: keystore_base64 '
+                      'alanı eksik veya hatalı.'
+                  ) from error
+
+              actual_sha = hashlib.sha256(
+                  raw
+              ).hexdigest()
+
+              expected_sha = bundle.get(
+                  'keystore_sha256'
+              )
+
+              if actual_sha != expected_sha:
+                  raise SystemExit(
+                      'HATA: Keystore SHA-256 '
+                      'doğrulaması başarısız.'
+                  )
+
+              path.write_bytes(raw)
+
+              try:
+                  password = bundle[
+                      'store_password'
+                  ]
+                  keypass = bundle[
+                      'key_password'
+                  ]
+                  alias = bundle[
+                      'key_alias'
+                  ]
+              except KeyError as error:
+                  raise SystemExit(
+                      'HATA: İmzalama paketi '
+                      'şifre veya alias alanı eksik.'
+                  ) from error
+
+              mode = 'permanent'
+
+          elif os.environ.get(
+              'ALLOW_TEMPORARY'
+          ) == 'true':
+
+              password = secrets.token_urlsafe(
+                  36
+              )
+              keypass = password
+              alias = 'evcockpit-temporary'
+
+              env = dict(
+                  os.environ,
+                  EYA_TEMP_PASS=password
+              )
+
+              subprocess.run(
+                  [
+                      'keytool',
+                      '-genkeypair',
+                      '-noprompt',
+                      '-storetype',
+                      'JKS',
+                      '-keystore',
+                      str(path),
+                      '-storepass:env',
+                      'EYA_TEMP_PASS',
+                      '-keypass:env',
+                      'EYA_TEMP_PASS',
+                      '-alias',
+                      alias,
+                      '-keyalg',
+                      'RSA',
+                      '-keysize',
+                      '3072',
+                      '-validity',
+                      '10000',
+                      '-dname',
+                      'CN=EV Cockpit Temporary Test Signing, C=TR'
+                  ],
+                  check=True,
+                  env=env,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL
+              )
+
+              mode = 'temporary'
+
+              print(
+                  'UYARI: Geçici imzalama '
+                  'anahtarı oluşturuldu.'
+              )
+
+          else:
+              raise SystemExit(
+                  'HATA: Secret bulunamadı '
+                  'veya boş: '
+                  'EYA_SIGNING_BUNDLE_BASE64'
+              )
+
+          path.chmod(0o600)
+
+          values = {
+              'EYA_RELEASE_STORE_FILE':
+                  str(path),
+              'EYA_RELEASE_STORE_PASSWORD':
+                  password,
+              'EYA_RELEASE_KEY_ALIAS':
+                  alias,
+              'EYA_RELEASE_KEY_PASSWORD':
+                  keypass,
+              'SIGNING_MODE':
+                  mode,
+          }
+
+          for key, value in values.items():
+              if (
+                  not isinstance(value, str)
+                  or not value
+                  or '\n' in value
+                  or '\r' in value
+              ):
+                  raise SystemExit(
+                      'HATA: İmzalama alanı geçersiz: '
+                      + key
+                  )
+
+          for secret in (
+              password,
+              keypass
+          ):
+              print(
+                  '::add-mask::' + secret
+              )
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as envfile:
+
+              for key, value in values.items():
+                  envfile.write(
+                      key + '=' + value + '\n'
+                  )
+
+          print(
+              'OK: İmzalama modu:',
+              mode
+          )
+          PY
+
+      - name: Check decoded keystore and alias
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -s "$EYA_RELEASE_STORE_FILE" ]; then
+            echo '::error title=HATA::release.jks dosyası eksik veya boş.'
+            exit 1
+          fi
+
+          if ! keytool -list \
+               -keystore "$EYA_RELEASE_STORE_FILE" \
+               -storepass:env EYA_RELEASE_STORE_PASSWORD \
+               -alias "$EYA_RELEASE_KEY_ALIAS" \
+               >/dev/null 2>&1; then
+
+            echo '::error title=HATA::Keystore şifresi, alias veya JKS dosyası hatalı.'
+            exit 1
+          fi
+
+          echo 'OK: Keystore ve alias doğrulandı.'
+
+      - name: Run tests and build R8-optimized signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 scripts/check_production_hardware.py
+
+          python3 scripts/check_final_release_hardening.py
+
+          python3 scripts/check_welcome_greeting.py
+
+          gradle \
+            :nativecockpit:testDebugUnitTest \
+            :nativecockpit:assembleRelease \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verify signing identity, APK, and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk='nativecockpit/build/outputs/apk/release/nativecockpit-release.apk'
+
+          if [ ! -s "$apk" ]; then
+            echo '::error title=HATA::Release APK bulunamadı.'
+            exit 1
+          fi
+
+          signer="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+
+          "$signer" verify --verbose "$apk"
+
+          "$signer" verify --print-certs "$apk" \
+            > "$RUNNER_TEMP/apk-certs.txt"
+
+          keytool -exportcert \
+            -keystore "$EYA_RELEASE_STORE_FILE" \
+            -storepass:env EYA_RELEASE_STORE_PASSWORD \
+            -alias "$EYA_RELEASE_KEY_ALIAS" \
+            -file "$RUNNER_TEMP/expected-cert.der" \
+            >/dev/null
+
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import re
+
+          tmp = pathlib.Path(
+              os.environ['RUNNER_TEMP']
+          )
+
+          output = (
+              tmp / 'apk-certs.txt'
+          ).read_text()
+
+          match = re.search(
+              r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F:]+)',
+              output
+          )
+
+          if not match:
+              raise SystemExit(
+                  'HATA: APK imza bilgisi bulunamadı.'
+              )
+
+          got = match.group(1).replace(
+              ':', ''
+          ).lower()
+
+          expected = hashlib.sha256(
+              (
+                  tmp / 'expected-cert.der'
+              ).read_bytes()
+          ).hexdigest()
+
+          if got != expected:
+              raise SystemExit(
+                  'HATA: APK sertifikası '
+                  'keystore sertifikasıyla eşleşmiyor.'
+              )
+
+          print(
+              'OK: APK imzası doğrulandı.'
+          )
+          PY
+
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+
+          "$aapt" dump badging "$apk" \
+            | grep -q "package: name='com.evcockpit'"
+
+          mkdir -p dist
+
+          cp "$apk" \
+            "dist/EV-Cockpit-${RELEASE_TAG}.apk"
+
+          (
+            cd dist
+            sha256sum \
+              "EV-Cockpit-${RELEASE_TAG}.apk" \
+              > "EV-Cockpit-${RELEASE_TAG}.apk.sha256"
+          )
+
+          {
+            echo "# EV Cockpit ${RELEASE_TAG}"
+            echo
+            echo 'Signed R8-optimized Android build.'
+            echo 'Automated checks completed.'
+
+            if [ "$SIGNING_MODE" = temporary ]; then
+              echo 'TEMPORARY KEY: Fresh-install test prerelease.'
+            else
+              echo 'PERMANENT KEY: Signed with the configured owner key.'
+            fi
+
+            echo 'Physical-device validation is still required.'
+          } > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Publish APK on GitHub Releases
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ env.SOURCE_SHA }}
+          name: EV Cockpit ${{ env.RELEASE_TAG }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          prerelease: ${{ env.SIGNING_MODE == 'temporary' }}
+          overwrite_files: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/EV-Cockpit-*.apk
+            dist/EV-Cockpit-*.apk.sha256
+
+      - name: Delete sensitive temporary files
+        if: always()
+        shell: bash
+        run: |
+          rm -f \
+            "$RUNNER_TEMP/release.jks" \
+            "$RUNNER_TEMP/apk-certs.txt" \
+            "$RUNNER_TEMP/expected-cert.der" \
+            "$RUNNER_TEMP/release-notes.md"
+,
+              src
+          )
+
+          src = (
+              src[:code.start(0)]
+              + code.group(1)
+              + str(new_code)
+              + src[code.end(0):]
+          )
+
+          p.write_text(
+              src, encoding='utf-8'
+          )
+
+          source_sha = subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD'],
+              text=True
+          ).strip()
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as f:
+              f.write(
+                  f'RELEASE_TAG={tag}\n'
+              )
+              f.write(
+                  f'SOURCE_SHA={source_sha}\n'
+              )
+
+          print(
+              'OK: Release version:',
+              tag,
+              'versionCode:',
+              new_code
+          )
+          PY
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sdkmanager_bin="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -path '*/bin/sdkmanager' \
+              -print -quit
+          )"
+
+          if [ -z "$sdkmanager_bin" ]; then
+            echo 'HATA: Android SDK bulunamadı.'
+            exit 1
+          fi
+
+          "$sdkmanager_bin" \
+            'platforms;android-36' \
+            'build-tools;36.0.0'
+
+      - name: Set up Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.14.3'
+          cache-provider: basic
+
+      - name: Check signing secret availability
+        shell: bash
+        env:
+          BUNDLE: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+          ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
+        run: |
+          if [ -z "${BUNDLE//[[:space:]]/}" ] \
+             && [ "$ALLOW_TEMPORARY" != "true" ]; then
+
+            echo '::error title=HATA::Secret bulunamadı veya boş: EYA_SIGNING_BUNDLE_BASE64'
+            exit 1
+          fi
+
+          echo 'OK: İmzalama girişi doğrulandı.'
+          echo 'Gizli anahtar loglara yazdırılmadı.'
+
+      - name: Restore single signing bundle or generate test key
+        shell: bash
+        env:
+          EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}
+          ALLOW_TEMPORARY: ${{ inputs.allow_temporary_signing }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import secrets
+          import subprocess
+
+          path = (
+              pathlib.Path(
+                  os.environ['RUNNER_TEMP']
+              ) / 'release.jks'
+          )
+
+          # Remove whitespace and line breaks.
+          encoded = ''.join(
+              os.environ.get(
+                  'EYA_SIGNING_BUNDLE_BASE64', ''
+              ).split()
+          )
+
+          if encoded:
+              try:
+                  bundle = json.loads(
+                      base64.b64decode(
+                          encoded,
+                          validate=True
+                      ).decode('utf-8')
+                  )
+              except (ValueError, UnicodeDecodeError) as error:
+                  raise SystemExit(
+                      'HATA: Secret Base64 veya JSON '
+                      'imzalama paketi geçersiz. '
+                      'EYA_GitHub_TEK_SECRET.txt '
+                      'içeriğinin tamamını girin.'
+                  ) from error
+
+              if bundle.get('schema') != 'eya-signing-v1':
+                  raise SystemExit(
+                      'HATA: İmzalama paketi şeması '
+                      'geçersiz.'
+                  )
+
+              try:
+                  raw = base64.b64decode(
+                      ''.join(
+                          bundle[
+                              'keystore_base64'
+                          ].split()
+                      ),
+                      validate=True
+                  )
+              except (KeyError, ValueError) as error:
+                  raise SystemExit(
+                      'HATA: keystore_base64 '
+                      'alanı eksik veya hatalı.'
+                  ) from error
+
+              actual_sha = hashlib.sha256(
+                  raw
+              ).hexdigest()
+
+              expected_sha = bundle.get(
+                  'keystore_sha256'
+              )
+
+              if actual_sha != expected_sha:
+                  raise SystemExit(
+                      'HATA: Keystore SHA-256 '
+                      'doğrulaması başarısız.'
+                  )
+
+              path.write_bytes(raw)
+
+              try:
+                  password = bundle[
+                      'store_password'
+                  ]
+                  keypass = bundle[
+                      'key_password'
+                  ]
+                  alias = bundle[
+                      'key_alias'
+                  ]
+              except KeyError as error:
+                  raise SystemExit(
+                      'HATA: İmzalama paketi '
+                      'şifre veya alias alanı eksik.'
+                  ) from error
+
+              mode = 'permanent'
+
+          elif os.environ.get(
+              'ALLOW_TEMPORARY'
+          ) == 'true':
+
+              password = secrets.token_urlsafe(
+                  36
+              )
+              keypass = password
+              alias = 'evcockpit-temporary'
+
+              env = dict(
+                  os.environ,
+                  EYA_TEMP_PASS=password
+              )
+
+              subprocess.run(
+                  [
+                      'keytool',
+                      '-genkeypair',
+                      '-noprompt',
+                      '-storetype',
+                      'JKS',
+                      '-keystore',
+                      str(path),
+                      '-storepass:env',
+                      'EYA_TEMP_PASS',
+                      '-keypass:env',
+                      'EYA_TEMP_PASS',
+                      '-alias',
+                      alias,
+                      '-keyalg',
+                      'RSA',
+                      '-keysize',
+                      '3072',
+                      '-validity',
+                      '10000',
+                      '-dname',
+                      'CN=EV Cockpit Temporary Test Signing, C=TR'
+                  ],
+                  check=True,
+                  env=env,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL
+              )
+
+              mode = 'temporary'
+
+              print(
+                  'UYARI: Geçici imzalama '
+                  'anahtarı oluşturuldu.'
+              )
+
+          else:
+              raise SystemExit(
+                  'HATA: Secret bulunamadı '
+                  'veya boş: '
+                  'EYA_SIGNING_BUNDLE_BASE64'
+              )
+
+          path.chmod(0o600)
+
+          values = {
+              'EYA_RELEASE_STORE_FILE':
+                  str(path),
+              'EYA_RELEASE_STORE_PASSWORD':
+                  password,
+              'EYA_RELEASE_KEY_ALIAS':
+                  alias,
+              'EYA_RELEASE_KEY_PASSWORD':
+                  keypass,
+              'SIGNING_MODE':
+                  mode,
+          }
+
+          for key, value in values.items():
+              if (
+                  not isinstance(value, str)
+                  or not value
+                  or '\n' in value
+                  or '\r' in value
+              ):
+                  raise SystemExit(
+                      'HATA: İmzalama alanı geçersiz: '
+                      + key
+                  )
+
+          for secret in (
+              password,
+              keypass
+          ):
+              print(
+                  '::add-mask::' + secret
+              )
+
+          with open(
+              os.environ['GITHUB_ENV'],
+              'a',
+              encoding='utf-8'
+          ) as envfile:
+
+              for key, value in values.items():
+                  envfile.write(
+                      key + '=' + value + '\n'
+                  )
+
+          print(
+              'OK: İmzalama modu:',
+              mode
+          )
+          PY
+
+      - name: Check decoded keystore and alias
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -s "$EYA_RELEASE_STORE_FILE" ]; then
+            echo '::error title=HATA::release.jks dosyası eksik veya boş.'
+            exit 1
+          fi
+
+          if ! keytool -list \
+               -keystore "$EYA_RELEASE_STORE_FILE" \
+               -storepass:env EYA_RELEASE_STORE_PASSWORD \
+               -alias "$EYA_RELEASE_KEY_ALIAS" \
+               >/dev/null 2>&1; then
+
+            echo '::error title=HATA::Keystore şifresi, alias veya JKS dosyası hatalı.'
+            exit 1
+          fi
+
+          echo 'OK: Keystore ve alias doğrulandı.'
+
+      - name: Run tests and build R8-optimized signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 scripts/check_production_hardware.py
+
+          python3 scripts/check_final_release_hardening.py
+
+          python3 scripts/check_welcome_greeting.py
+
+          gradle \
+            :nativecockpit:testDebugUnitTest \
+            :nativecockpit:assembleRelease \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verify signing identity, APK, and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk='nativecockpit/build/outputs/apk/release/nativecockpit-release.apk'
+
+          if [ ! -s "$apk" ]; then
+            echo '::error title=HATA::Release APK bulunamadı.'
+            exit 1
+          fi
+
+          signer="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+
+          "$signer" verify --verbose "$apk"
+
+          "$signer" verify --print-certs "$apk" \
+            > "$RUNNER_TEMP/apk-certs.txt"
+
+          keytool -exportcert \
+            -keystore "$EYA_RELEASE_STORE_FILE" \
+            -storepass:env EYA_RELEASE_STORE_PASSWORD \
+            -alias "$EYA_RELEASE_KEY_ALIAS" \
+            -file "$RUNNER_TEMP/expected-cert.der" \
+            >/dev/null
+
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import re
+
+          tmp = pathlib.Path(
+              os.environ['RUNNER_TEMP']
+          )
+
+          output = (
+              tmp / 'apk-certs.txt'
+          ).read_text()
+
+          match = re.search(
+              r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F:]+)',
+              output
+          )
+
+          if not match:
+              raise SystemExit(
+                  'HATA: APK imza bilgisi bulunamadı.'
+              )
+
+          got = match.group(1).replace(
+              ':', ''
+          ).lower()
+
+          expected = hashlib.sha256(
+              (
+                  tmp / 'expected-cert.der'
+              ).read_bytes()
+          ).hexdigest()
+
+          if got != expected:
+              raise SystemExit(
+                  'HATA: APK sertifikası '
+                  'keystore sertifikasıyla eşleşmiyor.'
+              )
+
+          print(
+              'OK: APK imzası doğrulandı.'
+          )
+          PY
+
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+
+          "$aapt" dump badging "$apk" \
+            | grep -q "package: name='com.evcockpit'"
+
+          mkdir -p dist
+
+          cp "$apk" \
+            "dist/EV-Cockpit-${RELEASE_TAG}.apk"
+
+          (
+            cd dist
+            sha256sum \
+              "EV-Cockpit-${RELEASE_TAG}.apk" \
+              > "EV-Cockpit-${RELEASE_TAG}.apk.sha256"
+          )
+
+          {
+            echo "# EV Cockpit ${RELEASE_TAG}"
+            echo
+            echo 'Signed R8-optimized Android build.'
+            echo 'Automated checks completed.'
+
+            if [ "$SIGNING_MODE" = temporary ]; then
+              echo 'TEMPORARY KEY: Fresh-install test prerelease.'
+            else
+              echo 'PERMANENT KEY: Signed with the configured owner key.'
+            fi
+
+            echo 'Physical-device validation is still required.'
+          } > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Publish APK on GitHub Releases
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ env.SOURCE_SHA }}
+          name: EV Cockpit ${{ env.RELEASE_TAG }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          prerelease: ${{ env.SIGNING_MODE == 'temporary' }}
+          overwrite_files: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/EV-Cockpit-*.apk
+            dist/EV-Cockpit-*.apk.sha256
+
+      - name: Delete sensitive temporary files
+        if: always()
+        shell: bash
+        run: |
+          rm -f \
+            "$RUNNER_TEMP/release.jks" \
+            "$RUNNER_TEMP/apk-certs.txt" \
+            "$RUNNER_TEMP/expected-cert.der" \
+            "$RUNNER_TEMP/release-notes.md"
