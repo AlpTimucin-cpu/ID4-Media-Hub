@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.evcockpit.presentation.onboarding.WelcomeOnboarding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -130,6 +132,7 @@ class MainActivity : ComponentActivity() {
     ): Boolean = enterOwnVideoPipWhenParked(verifiedParked, ownVideoPlaying)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         // Observe real telemetry only while the phone UI is resumed.
@@ -260,9 +263,24 @@ class MainActivity : ComponentActivity() {
             val engineeringMetrics by obd.engineeringMetrics.collectAsStateWithLifecycle()
             val soundSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
             var audioSettingsOpen by rememberSaveable { mutableStateOf(false) }
+            val introPreferences = remember(context) {
+                context.applicationContext.getSharedPreferences(
+                    "ev_cockpit_onboarding_v1", Context.MODE_PRIVATE
+                )
+            }
+            var onboardingCompleted by rememberSaveable {
+                mutableStateOf(introPreferences.getBoolean("completed", false))
+            }
+            val soundUnavailable by activeSound.audioUnavailable.collectAsStateWithLifecycle()
             CompositionLocalProvider(LocalAppAudioDucking provides audioDucking) {
                 CockpitTheme(nightMode = soundSettings.isNightModeEnabled) {
                     Box(Modifier.fillMaxSize()) {
+                        if (!onboardingCompleted) {
+                            WelcomeOnboarding(onFinish = {
+                                introPreferences.edit().putBoolean("completed", true).apply()
+                                onboardingCompleted = true
+                            })
+                        } else {
                         CockpitScreen(
                     state = ui.cockpit,
                     routeState = ui.routeState,
@@ -298,7 +316,9 @@ class MainActivity : ComponentActivity() {
                     onVoiceVolumeChange = navigation::setVoiceVolume,
                     voiceStatus = ui.voice.status,
                     voiceError = ui.voice.error,
-                    onVoiceTest = navigation::testVoice
+                    onVoiceTest = navigation::testVoice,
+                    soundUnavailable = soundUnavailable,
+                    onOpenSoundSettings = { audioSettingsOpen = true }
                 )
                         // Separate settings affordance: original CockpitScreen untouched.
                         IconButton(
@@ -313,6 +333,7 @@ class MainActivity : ComponentActivity() {
                             activeSound = activeSound,
                             onClose = { audioSettingsOpen = false }
                         )
+                        }
                     }
                 }
             }
