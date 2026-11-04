@@ -18,6 +18,9 @@ import com.evcockpit.data.settings.UserSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class EngineProfile(val label: String, val idle: Int, val accel: Int) {
     V8("V8", R.raw.v8_idle, R.raw.v8_accel),
@@ -56,11 +59,16 @@ class ActiveSoundManager @Inject constructor(
     private var activeInForeground = false
     private var lastSpeedInput: Double? = null
     private var lastInputTime: Long? = null
+    private val _audioUnavailable = MutableStateFlow(false)
+    val audioUnavailable: StateFlow<Boolean> = _audioUnavailable.asStateFlow()
 
     private fun player(resourceId: Int): ExoPlayer? {
         var candidate: ExoPlayer? = null
         return try {
-            if (resourceId <= 0) return null
+            if (resourceId <= 0) {
+                _audioUnavailable.value = true
+                return null
+            }
             // Resources may be stripped from a damaged install or an asset task
             // may fail to generate them. Audio must never crash the cockpit.
             context.resources.openRawResource(resourceId).use { /* readable */ }
@@ -74,6 +82,7 @@ class ActiveSoundManager @Inject constructor(
                 setHandleAudioBecomingNoisy(true)
                 addListener(object : Player.Listener {
                     override fun onPlayerError(error: PlaybackException) {
+                        _audioUnavailable.value = true
                         Log.e("EYA-ActiveSound", "Engine audio decoder/source unavailable", error)
                         pausePlayers()
                     }
@@ -85,10 +94,12 @@ class ActiveSoundManager @Inject constructor(
                 prepare()
             }
         } catch (error: Resources.NotFoundException) {
+            _audioUnavailable.value = true
             Log.w("EYA-ActiveSound", "Optional engine sound resource not installed", error)
             runCatching { candidate?.release() }
             null
         } catch (error: Exception) {
+            _audioUnavailable.value = true
             Log.w("EYA-ActiveSound", "Engine WAV unavailable; continuing silently", error)
             runCatching { candidate?.release() }
             null
@@ -110,6 +121,7 @@ class ActiveSoundManager @Inject constructor(
             return false // Missing assets fail closed; never crash the UI.
         }
         currentProfile = profile
+        _audioUnavailable.value = false
         return true
     }
 
