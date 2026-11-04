@@ -34,6 +34,10 @@
 # rollout, then trim with tested consumer rules once a signed build is verified.
 -keep class androidx.media3.** { *; }
 
+# Compatibility for old integrations that used a top-level obd package.
+# The current implementation also has concrete data.obd and domain.usecase keeps.
+-keep class com.evcockpit.obd.** { *; }
+
 # Real Bluetooth ELM327 state machine and Android Auto entrypoints.
 -keep class com.evcockpit.domain.usecase.Elm327Session { *; }
 -keep class com.evcockpit.data.repository.Elm327VehicleRepository { *; }
