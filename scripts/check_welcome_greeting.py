@@ -32,5 +32,5 @@ assert "if (state.phase == ObdPhase.CONNECTED) welcome.launchWelcomeGreeting()" 
 assert car.count("welcome.launchWelcomeGreeting()") == 2
 assert "onCreateSession(sessionInfo: SessionInfo)" in car
 assert "welcome.launchWelcomeGreeting()" not in content("MainActivity.kt")
-assert "Locale(\"en\", \"US\")" in guide # existing navigation voice unmodified
+assert "val locale = GREETING_LOCALE" in guide # navigation uses Turkish TTS
 print("OK: Turkish greeting is one-shot, two-trigger, and focus/voice-pref safe.")
