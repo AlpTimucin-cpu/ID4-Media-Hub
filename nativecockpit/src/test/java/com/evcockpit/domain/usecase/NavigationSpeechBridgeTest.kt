@@ -11,7 +11,7 @@ class NavigationSpeechBridgeTest {
         routeId = "test-route",
         routePoints = listOf(GeoCoordinate(37.0, 34.0), GeoCoordinate(37.01, 34.0)),
         maneuvers = listOf(NavigationManeuver(
-            "step-7", "turn right", GeoCoordinate(37.005, 34.0)
+            "step-7", "sağa dön", GeoCoordinate(37.005, 34.0)
         )),
         totalKm = 1.11, osrmDurationSeconds = 90.0
     )
@@ -38,8 +38,8 @@ class NavigationSpeechBridgeTest {
         }
         assertEquals(
             listOf(
-                "In two hundred meters, turn right",
-                "In fifty meters, turn right"
+                "İki yüz metre sonra, sağa dön",
+                "Elli metre sonra, sağa dön"
             ), messages
         )
     }
