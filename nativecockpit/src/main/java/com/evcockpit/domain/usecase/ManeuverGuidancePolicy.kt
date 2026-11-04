@@ -91,7 +91,7 @@ class ManeuverGuidancePolicy {
         proposedLevel = level
         proposedAtMs = nowMs
         pendingCueToken = ++proposalSequence
-        return (if (level == 0) "In two hundred meters, " else "In fifty meters, ") +
+        return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
             instruction
     }
 
