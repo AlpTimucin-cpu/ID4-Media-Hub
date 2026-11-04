@@ -19,7 +19,7 @@ rules = read("nativecockpit/proguard-rules.pro")
 
 assert "if (validSoc != null)" in hud
 assert "if (number != unknownValue)" in hud
-assert "OBD Bağlantısı Bekleniyor" in hud
+assert "HardwareNotice(" in hud and "ux_obd_unavailable" in hud and "ux_gps_waiting" in hud
 assert "vehicleRepository.telemetry" in app and "obd.connection" in app
 assert "speed = if (connection.phase == ObdPhase.CONNECTED)" in app
 assert "now - speedAtMs in 0L..10_000L" in sound
