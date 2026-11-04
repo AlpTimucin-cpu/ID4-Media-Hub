@@ -35,16 +35,23 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
     val audioDucking = LocalAppAudioDucking.current
     val voiceDucked = if (audioDucking != null)
         audioDucking.ducked.collectAsStateWithLifecycle().value else false
-    val player = remember(context) {
-        ExoPlayer.Builder(context).build().apply {
-            setAudioAttributes(AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
-            setHandleAudioBecomingNoisy(true)
-        }
+    val player: ExoPlayer? = remember(context) {
+        // A media service failure should not prevent the screen from opening.
+        runCatching {
+            ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true
+                )
+                setHandleAudioBecomingNoisy(true)
+            }
+        }.getOrNull()
     }
     LaunchedEffect(player, voiceDucked) {
-        // TTS navigation/welcome reduces only our radio player to 20%.
-        player.volume = if (voiceDucked) 0.2f else 1f
+        // Only the application-owned radio is lowered; restore the user level.
+        player?.let { activePlayer ->
+            runCatching { activePlayer.volume = if (voiceDucked) 0.2f else 1f }
+        }
     }
     var query by rememberSaveable { mutableStateOf("") }
     val filteredStations = remember(state.stations, query) {
@@ -60,41 +67,64 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
     var buffering by remember { mutableStateOf(false) }
     var playbackFailed by remember { mutableStateOf(false) }
     DisposableEffect(player, lifecycle) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                buffering = playbackState == Player.STATE_BUFFERING
+        val activePlayer = player
+        if (activePlayer == null) {
+            onDispose { }
+        } else {
+            val listener = object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    buffering = playbackState == Player.STATE_BUFFERING
+                }
+                override fun onPlayerError(error: PlaybackException) {
+                    playbackFailed = true
+                    buffering = false
+                }
             }
-            override fun onPlayerError(error: PlaybackException) {
-                playbackFailed = true
-                buffering = false
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) {
+                    runCatching { activePlayer.pause() }
+                }
             }
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) player.pause()
-        }
-        player.addListener(listener)
-        lifecycle.addObserver(observer)
-        onDispose {
-            lifecycle.removeObserver(observer)
-            player.removeListener(listener)
-            player.release()
+            runCatching { activePlayer.addListener(listener) }
+            lifecycle.addObserver(observer)
+            onDispose {
+                lifecycle.removeObserver(observer)
+                runCatching { activePlayer.removeListener(listener) }
+                runCatching { activePlayer.release() }
+            }
         }
     }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.radio_description), style = MaterialTheme.typography.bodySmall)
+        if (player == null) {
+            Text(stringResource(R.string.radio_playback_error))
+        }
         currentName?.let { name ->
             Text(stringResource(R.string.radio_selected, name))
             if (buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (playbackFailed) Text(stringResource(R.string.radio_playback_error))
             Row {
                 TextButton(onClick = {
-                    if (!playbackFailed && (playing || player.playWhenReady)) player.pause()
-                    else { if (player.playerError != null) player.prepare(); playbackFailed = false; player.play() }
-                }) {
+                    player?.let { activePlayer ->
+                        runCatching {
+                            if (!playbackFailed && (playing || activePlayer.playWhenReady)) {
+                                activePlayer.pause()
+                            } else {
+                                if (activePlayer.playerError != null) activePlayer.prepare()
+                                playbackFailed = false
+                                activePlayer.play()
+                            }
+                        }.onFailure { playbackFailed = true }
+                    }
+                }, enabled = player != null) {
                     Text(stringResource(if (playing || buffering) R.string.radio_pause else R.string.radio_play))
                 }
-                TextButton(onClick = { player.stop(); currentName = null; playbackFailed = false }) {
+                TextButton(onClick = {
+                    runCatching { player?.stop() }
+                    currentName = null
+                    playbackFailed = false
+                }, enabled = player != null) {
                     Text(stringResource(R.string.radio_stop))
                 }
             }
@@ -122,11 +152,15 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
         LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
             items(filteredStations, key = { it.id }) { station ->
                 Column(Modifier.fillMaxWidth().clickable {
-                    currentName = station.name
-                    playbackFailed = false
-                    player.setMediaItem(MediaItem.fromUri(station.urlResolved))
-                    player.prepare()
-                    player.play()
+                    player?.let { activePlayer ->
+                        runCatching {
+                            currentName = station.name
+                            playbackFailed = false
+                            activePlayer.setMediaItem(MediaItem.fromUri(station.urlResolved))
+                            activePlayer.prepare()
+                            activePlayer.play()
+                        }.onFailure { playbackFailed = true }
+                    } ?: run { playbackFailed = true }
                 }.padding(vertical = 12.dp, horizontal = 8.dp)) {
                     Text(station.name, style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.radio_votes, station.votes),
