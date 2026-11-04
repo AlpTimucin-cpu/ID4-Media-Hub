@@ -6,4 +6,8 @@
 - [Android Auto Platform Status](ANDROID_AUTO_PLATFORM_STATUS.md)
 - [Historical Project Notes](PROJECT_HISTORY.md)
 
+- [Product Experience and GitHub Releases](PRODUCT_EXPERIENCE_AND_RELEASE.md)
+- [Full Kotlin UX Sources](PRODUCTION_UX_KOTLIN_SOURCES.md)
+- [Splash XML, Adaptive Icon and Release YAML](PRODUCTION_UX_RESOURCES_RELEASE.md)
+
 These documents describe the maintained `nativecockpit` application. Historical media sources in `app` do not constitute a certified production build.
