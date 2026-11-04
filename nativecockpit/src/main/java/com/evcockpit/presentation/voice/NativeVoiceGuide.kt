@@ -139,7 +139,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
         }
     }
 
-    /** Returns false rather than speaking without a valid audio-focus grant. */
+    /** Best-effort navigation TTS: focus denial is reported, not fatal. */
     fun speak(
         text: String,
         volume: Float,
@@ -151,14 +151,18 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
             return false
         val engine = tts ?: return false
         stopCurrent(notifyFailure = false) // Replace old utterance without canceling the NEW cue.
-        if (!ducking.acquire()) {
+        // Audio-focus denial must never crash or abort the route UI.
+        // TTS can still attempt the cue; Android may suppress it.
+        // Do not claim to hold focus when the request was denied.
+        val focusGranted = ducking.acquire()
+        if (focusGranted) {
+            status = Status.READY
+            lastError = null
+        } else {
             status = Status.AUDIO_FOCUS_DENIED
-            lastError = "Could not obtain audio focus"
-            Log.w(logTag, "Navigation audio focus was not granted")
-            return false
+            lastError = "Audio focus unavailable; navigation speech attempted"
+            Log.w(logTag, "Audio focus denied; trying a non-exclusive TTS cue")
         }
-        status = Status.READY
-        lastError = null
         val id = "eya-voice-${++sequence}"
         activeUtterance = id
         onStarted = onUtteranceStarted
