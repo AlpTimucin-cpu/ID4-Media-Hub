@@ -559,3 +559,20 @@ private fun ChargingPanel(ui: ChargingUiState, onFilter: (StationFilter) -> Unit
         }
     }
 }
+
+/** Actionable status hint shown when the real hardware is unavailable. */
+@Composable
+private fun HardwareNotice(title: String, detail: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        color = Navy.copy(alpha = .96f),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 5.dp
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 9.dp)) {
+            Text(title, color = NeonGreen, style = MaterialTheme.typography.labelLarge)
+            Text(detail, color = SoftText, style = MaterialTheme.typography.bodySmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
