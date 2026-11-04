@@ -74,12 +74,12 @@ jobs:
           src = p.read_text(encoding='utf-8')
 
           ver = re.search(
-              r"""(?m)^([ \t]*versionName[ \t]*=[ \t]*)(['"])(\d+)\.(\d+)\.(\d+)\2([ \t]*(?://[^\r\n]*)?)$""",
-              src
+    r'(?m)^\s*versionName\s*=\s*["\'](\d+)\.(\d+)\.(\d+)["\']\s*$',
+    src
           )
-          code = re.search(
-              r'(?m)^([ \t]*versionCode[ \t]*=[ \t]*)(\d+)([ \t]*(?://[^\r\n]*)?)$',
-              src
+code = re.search(
+    r'(?m)^\s*versionCode\s*=\s*(\d+)\s*$',
+    src
           )
 
           if not ver:

@@ -215,11 +215,30 @@ fun MediaWebViewScreen(
                                 return true
                             }
                             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-                                if (!allowed || !MediaSitePolicy.allows(service, url)) {
-                                    view.stopLoading()
-                                    model.error("Could not validate the page address.")
-                                } else model.start()
-                            }
+    if (!allowed || !MediaSitePolicy.allows(service, url)) {
+        view.stopLoading()
+        model.error("Could not validate the page address.")
+    } else {
+        model.start()
+        // YouTube Reklam Engelleyici (Ad Blocker Injection)
+        view.evaluateJavascript(
+            """
+            (function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-container, #player-ads, #masthead-ad { display: none !important; }';
+                document.head.appendChild(style);
+                var originalFetch = window.fetch;
+                window.fetch = function() {
+                    if (arguments[0] && arguments[0].includes('/ad')) {
+                        return Promise.reject('Ad blocked');
+                    }
+                    return originalFetch.apply(this, arguments);
+                };
+            })();
+            """.trimIndent(), null
+        )
+    }
+}
                             override fun onPageFinished(view: WebView, url: String?) {
                                 if (MediaSitePolicy.allows(service, url)) {
                                     CookieManager.getInstance().flush()
