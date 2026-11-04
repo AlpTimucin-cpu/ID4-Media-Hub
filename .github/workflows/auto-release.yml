@@ -1,0 +1,15 @@
+name: EV Cockpit - One Click Auto Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  auto-release:
+    uses: ./.github/workflows/release.yml
+    with:
+      release_tag: ''
+      allow_temporary_signing: true
+    secrets: inherit
