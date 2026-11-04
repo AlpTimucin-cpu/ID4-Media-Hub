@@ -67,12 +67,12 @@ android {
 
     buildTypes {
         getByName("debug") {
-            // Remains the explicitly marked UAT/simulation variant.
+            // Debug variant for development; uses the same real GPS and OBD repositories.
             isMinifyEnabled = false
         }
         getByName("release") {
             isDebuggable = false
-            // Diagnostic release: disable R8 code + resource shrinking until crash is reproduced.
+            // Production build: R8 code and resource shrinking enabled.
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

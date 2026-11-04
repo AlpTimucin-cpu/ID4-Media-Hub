@@ -369,14 +369,20 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
                 BatteryPercent(state.socPercent, false)
                 RangeValue(state.estimatedRangeKm)
             }
-            LinearProgressIndicator(
-                progress = { state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
-                    ?.div(100.0)?.toFloat() ?: 0f },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(3.dp),
-                color = NeonGreen, trackColor = GlassLine
-            )
-            if (state.socPercent == null) Text(stringResource(R.string.cockpit_measurement_unavailable),
-                style = MaterialTheme.typography.labelSmall, color = SoftText)
+            // No fake zero-percent bar when ELM327/BMS data is unavailable.
+            val validSoc = state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
+            if (validSoc != null) {
+                LinearProgressIndicator(
+                    progress = { (validSoc / 100.0).toFloat() },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(3.dp),
+                    color = NeonGreen, trackColor = GlassLine
+                )
+            } else {
+                Text(
+                    stringResource(R.string.cockpit_measurement_unavailable),
+                    style = MaterialTheme.typography.labelSmall, color = SoftText
+                )
+            }
         }
     }
 }
@@ -393,9 +399,11 @@ private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier 
             lineHeight = if (compact) 80.sp else 104.sp,
             fontWeight = FontWeight.Light, color = Color.White,
             maxLines = 1, softWrap = false)
-        Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
-            fontSize = if (compact) 30.sp else 40.sp,
-            lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
+        if (number != unknownValue) {
+            Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
+                fontSize = if (compact) 30.sp else 40.sp,
+                lineHeight = if (compact) 36.sp else 46.sp, color = SoftText)
+        }
     }
 }
 

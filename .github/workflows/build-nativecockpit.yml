@@ -9,6 +9,11 @@ on:
     branches:
       - feature/ev-cockpit
 
+# Cancel obsolete builds when a newer commit is pushed to the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -47,6 +52,8 @@ jobs:
         run: python3 scripts/check_welcome_greeting.py
       - name: Enforce real GPS and OBD inputs
         run: python3 scripts/check_production_hardware.py
+      - name: Validate audio, null-safety, and release certificate checks
+        run: python3 scripts/check_final_release_hardening.py
       - name: Native Cockpit unit tests
         run: gradle :nativecockpit:testDebugUnitTest --stacktrace --no-daemon
       - name: Validate release R8 shrinking without signing keys
@@ -180,18 +187,46 @@ jobs:
           set -euo pipefail
           gradle :nativecockpit:assembleRelease --stacktrace --no-daemon
 
-      - name: Verify APK certificate and prepare artifact
+      - name: Verify APK certificate matches owner's keystore
         shell: bash
         run: |
           set -euo pipefail
           apk="nativecockpit/build/outputs/apk/release/nativecockpit-release.apk"
           test -s "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+
+          # Verify Android's signature formats; compare against the owner's JKS.
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-certs.txt"
+          keytool -exportcert -keystore "$EYA_RELEASE_STORE_FILE" \
+            -alias "$EYA_RELEASE_KEY_ALIAS" \
+            -storepass:env EYA_RELEASE_STORE_PASSWORD \
+            -file "$RUNNER_TEMP/owner-cert.der" >/dev/null
+
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import re
+          from pathlib import Path
+
+          temp = Path(os.environ["RUNNER_TEMP"])
+          actual = (temp / "apk-certs.txt").read_text(encoding="utf-8")
+          match = re.search(
+              r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F:]+)", actual
+          )
+          if not match:
+              raise SystemExit("Missing APK signing-certificate fingerprint")
+          apk_sha = match.group(1).replace(":", "").lower()
+          owner_sha = hashlib.sha256((temp / "owner-cert.der").read_bytes()).hexdigest()
+          if apk_sha != owner_sha:
+              raise SystemExit("APK signer does not match the existing owner keystore")
+          print("APK signature verified and owner certificate matches")
+          PY
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
             grep -q "package: name='com.evcockpit'"
           cp "$apk" app-release.apk
           sha256sum app-release.apk > app-release.sha256
           ls -lh app-release.apk
+          rm -f "$RUNNER_TEMP/owner-cert.der" "$RUNNER_TEMP/apk-certs.txt"
 
       - name: Publish signed Release APK
         uses: actions/upload-artifact@v4
@@ -207,4 +242,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -f "$RUNNER_TEMP/eya-release.jks" "$RUNNER_TEMP/eya-release.jks.enc"
+          rm -f "$RUNNER_TEMP/eya-release.jks" "$RUNNER_TEMP/eya-release.jks.enc" "$RUNNER_TEMP/owner-cert.der" "$RUNNER_TEMP/apk-certs.txt"
