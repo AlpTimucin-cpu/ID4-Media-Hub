@@ -88,6 +88,17 @@ fun CockpitScreen(
     soundUnavailable: Boolean = false,
     onOpenSoundSettings: () -> Unit = {}
 ) {
+    // Disconnects invalidate *all* live battery/vehicle readings immediately.
+    // GPS and route state remain independent of the OBD adapter.
+    val displayState = if (obdConnection.phase == ObdPhase.CONNECTED) state else state.copy(
+        socPercent = null,
+        speedKmh = null,
+        voltageV = null,
+        batteryTemperatureC = null,
+        powerKw = null,
+        estimatedRangeKm = null,
+        socSourceLabel = null
+    )
     val route = state.route ?: routeState.routeResult
     var routePlanner by remember { mutableStateOf(false) }
     var charging by remember { mutableStateOf(false) }
@@ -248,7 +259,7 @@ fun CockpitScreen(
                     stringResource(R.string.ux_obd_help),
                     onClick = { settings = true; onObdRefresh() }
                 )
-            } else if (state.socPercent == null) {
+            } else if (displayState.socPercent == null) {
                 HardwareNotice(
                     stringResource(R.string.ux_battery_unavailable),
                     stringResource(R.string.ux_battery_help),
@@ -278,7 +289,7 @@ fun CockpitScreen(
             }
         }
         BatteryHud(
-            state = state, compact = compactBattery,
+            state = displayState, compact = compactBattery,
             modifier = Modifier.align(Alignment.TopStart)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
                 .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
@@ -326,7 +337,7 @@ fun CockpitScreen(
                 ).width(arrivalWidth)
         ) {
             ArrivalHud(
-                route = route, state = state, loading = loadStatus is RouteLoadStatus.Loading,
+                route = route, state = displayState, loading = loadStatus is RouteLoadStatus.Loading,
                 compact = short, onOpen = { routePlanner = true }
             )
         }
