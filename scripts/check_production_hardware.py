@@ -46,7 +46,7 @@ assert "protocol.close()" in repo
 assert "withContext(Dispatchers.IO) { runSession(device) }" in repo
 assert "_telemetry.value = VehicleTelemetry()" in repo
 assert "ObdPhase.CONNECTED" in fg
-assert "OBD Bağlantısı Bekleniyor" in cockpit
+assert "ux_obd_unavailable" in cockpit and "ux_gps_waiting" in cockpit
 
 assert "isMinifyEnabled = true" in gradle
 assert "isShrinkResources = true" in gradle
