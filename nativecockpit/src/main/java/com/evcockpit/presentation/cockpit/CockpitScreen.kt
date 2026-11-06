@@ -290,6 +290,7 @@ fun CockpitScreen(
         }
         BatteryHud(
             state = displayState, compact = compactBattery,
+            showExample = obdConnection.phase != ObdPhase.CONNECTED,
             modifier = Modifier.align(Alignment.TopStart)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
                 .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
@@ -391,7 +392,7 @@ private fun QuickActions(
 }
 
 @Composable
-private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
+private fun BatteryHud(state: CockpitUiState, compact: Boolean, showExample: Boolean, modifier: Modifier = Modifier) {
     Surface(
         modifier, color = Navy.copy(alpha = .96f),
         shape = RoundedCornerShape(18.dp), shadowElevation = 8.dp
@@ -403,15 +404,15 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
             if (compact) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BatteryPercent(state.socPercent, true, Modifier.weight(.58f))
-                    RangeValue(state.estimatedRangeKm, Modifier.weight(.42f))
+                    BatteryPercent(state.socPercent, true, showExample, Modifier.weight(.58f))
+                    RangeValue(state.estimatedRangeKm, Modifier.weight(.42f), showExample)
                 }
             } else {
-                BatteryPercent(state.socPercent, false)
-                RangeValue(state.estimatedRangeKm)
+                BatteryPercent(state.socPercent, false, showExample)
+                RangeValue(state.estimatedRangeKm, showExample = showExample)
             }
             // An illustration is never used as a live battery measurement.
-            if (state.socPercent == null) Text(
+            if (state.socPercent == null && showExample) Text(
                 "Örnek %80 · gerçek BMS doluluğu değil",
                 style = MaterialTheme.typography.labelSmall, color = SoftText
             )
@@ -434,11 +435,12 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
 }
 
 @Composable
-private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier = Modifier) {
+private fun BatteryPercent(value: Double?, compact: Boolean, showExample: Boolean, modifier: Modifier = Modifier) {
     val percentSymbol = stringResource(R.string.cockpit_percent_symbol)
     val unknownValue = stringResource(R.string.cockpit_unknown_value)
     val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
-        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: "80"
+        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) }
+        ?: if (showExample) "80" else unknownValue
     Row(modifier, verticalAlignment = Alignment.Bottom) {
         Text(number,
             fontSize = if (compact) 72.sp else 96.sp,
@@ -455,13 +457,15 @@ private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier 
 }
 
 @Composable
-private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
+private fun RangeValue(km: Double?, modifier: Modifier = Modifier, showExample: Boolean) {
     val unit = stringResource(R.string.cockpit_distance_unit)
     Column(modifier) {
         val knownRange = km?.takeIf { it.isFinite() && it >= 0.0 }
+        val displayRange = knownRange ?: if (showExample) 320.0 else null
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                CockpitFormat.distance(knownRange ?: 320.0).removeSuffix(" $unit"),
+                displayRange?.let { CockpitFormat.distance(it).removeSuffix(" $unit") }
+                    ?: stringResource(R.string.cockpit_unknown_value),
                 Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
                 fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false
             )
@@ -471,7 +475,7 @@ private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
             }
         }
         Text(
-            if (knownRange == null) "320 km · örnek model, canlı menzil değil"
+            if (knownRange == null && showExample) "320 km · örnek model, canlı menzil değil"
             else stringResource(R.string.cockpit_estimated_range),
             style = MaterialTheme.typography.labelSmall, color = SoftText
         )
