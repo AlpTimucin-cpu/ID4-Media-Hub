@@ -48,6 +48,8 @@ class ActiveSoundManager @Inject constructor(
     private var currentProfile: EngineProfile? = null
     private var lastSpeedKmh: Double? = null
     private var lastSpeedAtMs: Long? = null
+    private var smoothRate = 1.0f
+    private var smoothPitch = 1.0f
     private var enabled = false
     private var volume = 1f
     private var ducked = false
@@ -193,11 +195,15 @@ class ActiveSoundManager @Inject constructor(
                 // Both speed and pitch depend on the last genuine OBD speed.
                 val playbackRate = (0.90f + (speed / 300.0).toFloat())
                     .coerceIn(0.90f, 1.30f)
+                // One-pole smoothing avoids abrupt "game effect" pitch jumps.
+                smoothRate += (playbackRate - smoothRate) * 0.28f
+                smoothPitch += (decision.pitch.coerceIn(.90f, 1.38f) - smoothPitch) * .22f
                 acceleration?.playbackParameters = PlaybackParameters(
-                    playbackRate, decision.pitch.coerceIn(0.75f, 2.0f)
+                    smoothRate, smoothPitch
                 )
                 idle?.playbackParameters = PlaybackParameters(
-                    playbackRate.coerceIn(0.90f, 1.10f), 0.95f
+                    smoothRate.coerceIn(.90f, 1.10f),
+                    smoothPitch.coerceIn(.90f, 1.10f)
                 )
                 when (decision.mode) {
                     EngineMotionPolicy.Mode.ACCELERATING -> {
@@ -272,6 +278,8 @@ class ActiveSoundManager @Inject constructor(
         runCatching { acceleration?.pause() }
         lastSpeedKmh = null
         lastSpeedAtMs = null
+        smoothRate = 1f
+        smoothPitch = 1f
     }
 
     fun onResume() { main.post { activeInForeground = true } }
