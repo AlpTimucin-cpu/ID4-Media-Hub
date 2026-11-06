@@ -22,6 +22,8 @@ import com.evcockpit.domain.usecase.StationCorridor
 
 data class ChargingUiState(
     val visible: List<ChargingStation> = emptyList(),
+    // Unfiltered EPDK catalog for map display even when list filters are active.
+    val allStations: List<ChargingStation> = emptyList(),
     val selectedFilter: StationFilter = StationFilter.ALL,
     val total: Int = 0,
     val corridorCount: Int? = null,
@@ -92,6 +94,7 @@ class ChargingViewModel @Inject constructor(
                 }}.toList()
             ChargingUiState(
                 visible = visible,
+                allStations = catalog.stations,
                 selectedFilter = selected,
                 total = catalog.stations.size,
                 corridorCount = if (index != null) alongIds.size else null,
