@@ -17,7 +17,7 @@ object RadioModule {
     @Provides
     @Singleton
     fun radioApi(): RadioBrowserApi = Retrofit.Builder()
-        .baseUrl("https://de1.api.radio-browser.info/")
+        .baseUrl("https://all.api.radio-browser.info/")
         .client(OkHttpClient.Builder()
             .callTimeout(20, TimeUnit.SECONDS)
             .addInterceptor { chain ->
