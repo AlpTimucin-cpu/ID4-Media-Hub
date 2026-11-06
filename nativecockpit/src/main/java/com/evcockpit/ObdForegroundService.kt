@@ -9,6 +9,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.evcockpit.domain.model.ObdPhase
+import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.presentation.voice.WelcomeGreetingManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -18,17 +21,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import com.evcockpit.domain.model.ObdPhase
-import com.evcockpit.domain.repository.ObdConnectionController
-import com.evcockpit.presentation.voice.WelcomeGreetingManager
 
-/**
- * User-initiated connected-device foreground service.
- *
- * Keeps the same singleton read-only ELM polling coroutine alive when the UI
- * is no longer visible. Does not reconnect without a new explicit user action.
- * Stop notification action closes the Bluetooth socket and clears live values.
- */
+/** User-initiated foreground Bluetooth service; no silent auto-reconnect. */
 @AndroidEntryPoint
 class ObdForegroundService : Service() {
     @Inject lateinit var obd: ObdConnectionController
@@ -38,51 +32,69 @@ class ObdForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "OBD canlı teknik ölçümler", NotificationManager.IMPORTANCE_LOW)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(
+                CHANNEL, "EV Cockpit OBD bağlantısı", NotificationManager.IMPORTANCE_LOW
+            )
         )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             obd.disconnect()
+            welcome.onObdDisconnected()
             stopSelf()
             return START_NOT_STICKY
         }
+
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java).apply {
+            this, 0,
+            Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val stop = PendingIntent.getService(
-            this, 1, Intent(this, ObdForegroundService::class.java).setAction(ACTION_STOP),
+            this, 1,
+            Intent(this, ObdForegroundService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_eya_car)
-            .setContentTitle("Elektrikli Yol Arkadaşım")
-            .setContentText("OBD teknik ölçümleri ve hesaplamaları çalışıyor")
+            .setContentTitle("EV Cockpit")
+            .setContentText("OBD bağlantısı ve teknik ölçümler çalışıyor")
             .setOngoing(true)
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "Bağlantıyı kes", stop).build())
             .build()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            startForeground(
+                NOTIFICATION_ID, notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            )
         } else startForeground(NOTIFICATION_ID, notification)
 
         connectionMonitor?.cancel()
         connectionMonitor = scope.launch {
-            var sessionStarted = false
+            var wasConnected = false
+            var hadConnectionAttempt = false
             obd.connection.collect { state ->
-                if (state.phase == ObdPhase.CONNECTING || state.phase == ObdPhase.CONNECTED)
-                    sessionStarted = true
-                // A genuine adapter connection, never a mere Activity launch.
-                if (state.phase == ObdPhase.CONNECTED) welcome.launchWelcomeGreeting()
-                if (sessionStarted &&
-                    (state.phase == ObdPhase.ERROR || state.phase == ObdPhase.DISCONNECTED))
+                if (state.phase == ObdPhase.CONNECTING || state.phase == ObdPhase.CONNECTED) {
+                    hadConnectionAttempt = true
+                }
+                val connected = state.phase == ObdPhase.CONNECTED
+                if (connected && !wasConnected) {
+                    // Genuine ELM327 session. Not triggered by launching an Activity.
+                    welcome.launchObdGreeting()
+                }
+                if (wasConnected && !connected) welcome.onObdDisconnected()
+                wasConnected = connected
+                if (hadConnectionAttempt &&
+                    (state.phase == ObdPhase.DISCONNECTED || state.phase == ObdPhase.ERROR)
+                ) {
+                    welcome.onObdDisconnected()
                     stopSelf()
+                }
             }
         }
         return START_NOT_STICKY
@@ -91,6 +103,7 @@ class ObdForegroundService : Service() {
     override fun onDestroy() {
         connectionMonitor?.cancel()
         scope.cancel()
+        welcome.onObdDisconnected()
         obd.disconnect()
         super.onDestroy()
     }
@@ -99,7 +112,7 @@ class ObdForegroundService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.evcockpit.action.STOP_OBD"
-        private const val CHANNEL = "eya_obd_engineering"
+        private const val CHANNEL = "ev_cockpit_obd_service"
         private const val NOTIFICATION_ID = 2460
     }
 }
