@@ -77,7 +77,9 @@ fun MediaHomeScreen(
                 )
             }
         }
-        when (tab) {
+        // Remaining height is owned by the active tab, never by nested panels.
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            when (tab) {
             0 -> {
                 if (selected == null) {
                     Column(
@@ -176,6 +178,7 @@ fun MediaHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     allowVideo = false
                 )
+            }
             }
         }
     }
