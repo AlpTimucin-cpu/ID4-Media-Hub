@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.content.pm.ActivityInfo
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -146,6 +147,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Landscape on phones; Android may override orientation on large-screen devices.
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         Log.i(TAG, "Launching modern Compose CockpitScreen, package=$packageName")
 
         lifecycleScope.launch {
