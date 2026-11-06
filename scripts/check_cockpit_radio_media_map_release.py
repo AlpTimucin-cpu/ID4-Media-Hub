@@ -32,7 +32,8 @@ assert '@GET("json/stations/search?countrycode=TR")' in radio_api
 assert '"clickcount"' in radio_api and 'limit: Int = 50' in radio_api
 for field in ('name', 'url_resolved', 'favicon', 'tags', 'votes'):
     assert field in radio_api, f"Radio Browser field missing: {field}"
-assert "ExoPlayer.Builder" in radio_screen and "RadioScreen()" in media_menu
+assert "ExoPlayer.Builder" in radio_screen and "RadioScreen(" in media_menu
+assert "InternalMediaPlayer(" in media_menu and "TabRow(" in media_menu
 repository = read("nativecockpit/src/main/java/com/evcockpit/data/radio/RadioRepository.kt")
 assert "Flow<Result<List<RadioStation>>>" in repository
 assert "CancellationException" in repository
@@ -47,4 +48,4 @@ assert "style.addLayerAbove(weatherLayer, ROUTE_LAYER)" in map_code
 assert "style.addLayerAbove(chargingLayer, ROUTE_LAYER)" in map_code
 assert "ensureRouteOverlayZOrder(style)" in map_code
 
-print("OK: radio, video fullscreen, MediaEngine Intent, MapLibre and release guards.")
+print("OK: RadioBrowser HTTPS, native Media3 player, video fullscreen, MapLibre and release guards.")
