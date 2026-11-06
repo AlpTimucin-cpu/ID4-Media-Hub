@@ -70,7 +70,12 @@ fun ObdSettingsDialog(
                         }
                     }
                 }
-                if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (state.phase == ObdPhase.CONNECTING) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text("Bluetooth soketi ve ELM327 el sıkışması deneniyor. " +
+                        "Diğer OBD uygulamalarının bağlantısını kapatın.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
                 if (state.phase == ObdPhase.CONNECTED) {
                     Text(if (state.lastPollSucceeded)
                         "ELM327 bağlı · araçtan 010D hız yanıtı alındı"
