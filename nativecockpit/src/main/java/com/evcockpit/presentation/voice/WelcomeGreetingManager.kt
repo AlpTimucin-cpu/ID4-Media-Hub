@@ -12,21 +12,22 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.evcockpit.data.settings.UserSettings
 import com.evcockpit.data.settings.UserSettingsRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
- * One brief Turkish greeting after a real user-initiated OBD connection or
- * Android Auto Session creation. Android TTS / AudioFocus only: no sound assets.
- *
- * The singleton is shared across Activity and CarAppService within one process.
- * It is NOT a vehicle ignition signal; no greeting on ordinary Activity launch.
+ * Turkish welcome greeting, once per actual OBD connection and once per
+ * Android Auto application process. It is NOT an ignition detector.
+ * No audio file is necessary: speech is synthesized by installed Android TTS.
  */
 @Singleton
 class WelcomeGreetingManager @Inject constructor(
@@ -35,174 +36,193 @@ class WelcomeGreetingManager @Inject constructor(
     private val audioDucking: AppAudioDucking
 ) {
     private val appContext = context.applicationContext
-    private val logTag = "EYA-Welcome"
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var welcomeSettings = UserSettings()
-    private val sessionGate = WelcomeSessionGate()
-    private val preferences = VoicePreference(appContext)
     private val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private val audioAttributes = AudioAttributes.Builder()
+    private val voicePrefs = VoicePreference(appContext)
+    private val attrs = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
+    private val _warning = MutableStateFlow<String?>(null)
+    val warning: StateFlow<String?> = _warning.asStateFlow()
+    fun dismissWarning() { _warning.value = null }
+
+    private var obdClaimed = false
+    private var carClaimed = false
+    private var active = false
+    private var initializing = false
+    private var focusGranted = false
+    private var engine: TextToSpeech? = null
+    private var userSettings = UserSettings()
+    private var generation = 0L
+
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         if (change == AudioManager.AUDIOFOCUS_LOSS ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
-            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+            change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
         ) main.post { closeSession() }
     }
     private val focusRequest = AudioFocusRequest.Builder(
         AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-    )
-        .setAudioAttributes(audioAttributes)
+    ).setAudioAttributes(attrs)
         .setOnAudioFocusChangeListener(focusListener, main)
         .build()
 
-    private var engine: TextToSpeech? = null
-    private var initializationPending = false
-    private var focusGranted = false
-    private var active = false
-    private val initTimeout = Runnable {
-        if (initializationPending) {
-            Log.w(logTag, "Turkish TTS initialization timed out")
+    private val initializationTimeout = Runnable {
+        if (initializing) {
+            Log.w(TAG, "Turkish TTS engine did not initialize")
+            _warning.value = "Türkçe TTS motoru başlatılamadı. Telefonun metin okuma ayarlarını kontrol edin."
             closeSession()
         }
     }
     private val speechTimeout = Runnable {
-        Log.w(logTag, "Welcome synthesis timed out")
-        closeSession()
+        if (active) {
+            Log.w(TAG, "Welcome speech timed out")
+            closeSession()
+        }
     }
 
-    /**
-     * Thread-safe and idempotent. Call only after the OBD phase is CONNECTED
-     * or from a real CarAppService.onCreateSession callback.
-     */
-    fun launchWelcomeGreeting() {
-        if (!sessionGate.claim()) return
-        scope.launch {
-            // DataStore is asynchronous: read the actual persisted user setting.
-            val current = runCatching { settings.settings.first() }.getOrNull() ?: return@launch
-            if (!current.isWelcomeGreetingEnabled) return@launch
-            welcomeSettings = current
-            startSession()
+    /** Called only on a real OBD DISCONNECTED -> CONNECTED transition. */
+    fun launchObdGreeting() = requestGreeting(isObd = true)
+
+    /** Used by CarAppService for a genuine Android Auto session. */
+    fun launchWelcomeGreeting() = requestGreeting(isObd = false)
+
+    /** Re-arm when a real OBD session ends. Safe on repeated DISCONNECTED states. */
+    fun onObdDisconnected() {
+        main.post { obdClaimed = false }
+    }
+
+    private fun requestGreeting(isObd: Boolean) {
+        main.post {
+            if (isObd) {
+                if (obdClaimed) return@post
+                obdClaimed = true
+            } else {
+                if (carClaimed) return@post
+                carClaimed = true
+            }
+            scope.launch {
+                val current = try { settings.settings.first() }
+                    catch (error: Exception) {
+                        Log.w(TAG, "Welcome settings unavailable", error)
+                        return@launch
+                    }
+                if (!current.isWelcomeGreetingEnabled) {
+                    Log.i(TAG, "Welcome disabled by user")
+                    return@launch
+                }
+                userSettings = current
+                if (!active) startSession()
+            }
         }
     }
 
     private fun startSession() {
-        if (active) return
         active = true
-        initializationPending = true
-        main.postDelayed(initTimeout, 8_000L)
-
-        // This engine is separate from en-US navigation TTS and is short-lived.
+        initializing = true
+        val id = ++generation
+        main.postDelayed(initializationTimeout, 8_000L)
         try {
             engine = TextToSpeech(appContext) { result ->
                 main.post {
-                    if (!active || !initializationPending) return@post
-                    initializationPending = false
-                    main.removeCallbacks(initTimeout)
-                    val localEngine = engine
-                    if (result != TextToSpeech.SUCCESS || localEngine == null ||
-                        !NativeVoiceGuide.selectTurkishGreetingVoice(localEngine, welcomeSettings.ttsVoiceName)
-                    ) {
-                        Log.w(logTag, "Turkish text-to-speech voice unavailable")
+                    if (!active || !initializing || id != generation) return@post
+                    initializing = false
+                    main.removeCallbacks(initializationTimeout)
+                    val tts = engine
+                    val ready = result == TextToSpeech.SUCCESS && tts != null &&
+                        NativeVoiceGuide.selectTurkishGreetingVoice(
+                            tts, userSettings.ttsVoiceName
+                        )
+                    if (!ready) {
+                        _warning.value = "Türkçe ses paketi bulunamadı. Telefonunuzun metin okuma (TTS) ayarlarından Türkçe sesi yükleyin."
+                        Log.e(TAG, "Turkish TTS voice missing or unavailable")
                         closeSession()
                         return@post
                     }
-                    localEngine.setAudioAttributes(audioAttributes)
-                    localEngine.setSpeechRate(welcomeSettings.ttsSpeechRate)
-                    localEngine.setOnUtteranceProgressListener(
-                        object : UtteranceProgressListener() {
-                            override fun onStart(utteranceId: String) {
-                                if (utteranceId == UTTERANCE_ID) main.post {
-                                    if (active) {
-                                        audioDucking.begin("welcome")
-                                        Log.d(logTag, "Welcome utterance started")
+                    val configured = runCatching {
+                        tts!!.setAudioAttributes(attrs)
+                        tts.setSpeechRate(userSettings.ttsSpeechRate)
+                        tts.setOnUtteranceProgressListener(
+                            object : UtteranceProgressListener() {
+                                override fun onStart(utteranceId: String) {
+                                    if (utteranceId == UTTERANCE_ID) main.post {
+                                        if (active && id == generation) {
+                                            audioDucking.begin("welcome")
+                                            Log.i(TAG, "Turkish greeting started")
+                                        }
                                     }
                                 }
+                                override fun onDone(utteranceId: String) = finish(utteranceId)
+                                override fun onError(utteranceId: String) = finish(utteranceId)
+                                override fun onError(utteranceId: String, errorCode: Int) {
+                                    Log.e(TAG, "Welcome synthesis error: $errorCode")
+                                    finish(utteranceId)
+                                }
+                                override fun onStop(utteranceId: String, interrupted: Boolean) =
+                                    finish(utteranceId)
                             }
-
-                            override fun onDone(utteranceId: String) =
-                                finishIfWelcome(utteranceId)
-
-                            override fun onError(utteranceId: String) =
-                                finishIfWelcome(utteranceId)
-
-                            override fun onError(utteranceId: String, errorCode: Int) =
-                                finishIfWelcome(utteranceId)
-
-                            override fun onStop(
-                                utteranceId: String, interrupted: Boolean
-                            ) = finishIfWelcome(utteranceId)
-                        }
-                    )
-                    // Let the voice service finish preparation / audio routing.
-                    main.postDelayed({
-                        if (active) speakGreeting()
-                    }, 1_000L)
+                        )
+                    }.isSuccess
+                    if (!configured) {
+                        _warning.value = "Türkçe ses motoru hazırlanamadı."
+                        closeSession()
+                        return@post
+                    }
+                    // TTS engine initialization may complete before audio routing settles.
+                    main.postDelayed({ if (active && id == generation) speakGreeting() }, 350L)
                 }
             }
         } catch (error: RuntimeException) {
-            Log.w(logTag, "Could not create TTS engine", error)
+            Log.e(TAG, "Welcome TTS creation failed", error)
+            _warning.value = "Türkçe ses motoruna erişilemedi."
             closeSession()
         }
     }
 
     private fun speakGreeting() {
         val tts = engine ?: return closeSession()
-        val granted = runCatching {
-            audio.requestAudioFocus(focusRequest) ==
-                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        focusGranted = runCatching {
+            audio.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }.getOrDefault(false)
-        if (!granted) {
-            Log.w(logTag, "Welcome audio focus denied")
-            closeSession()
-            return
-        }
-        focusGranted = true
+        if (!focusGranted) Log.w(TAG, "Welcome audio focus denied; trying TTS")
 
         val params = Bundle().apply {
-            putFloat(
-                TextToSpeech.Engine.KEY_PARAM_VOLUME,
-                preferences.volume.coerceIn(0.15f, 1.0f)
-            )
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, voicePrefs.volume.coerceIn(0.15f, 1f))
         }
-        // Exactly one TTS request, with its required stable utterance ID.
-        val queued = runCatching {
+        val accepted = runCatching {
             tts.speak(
-                "Merhaba. EV Cockpit hazır. İyi yolculuklar.",
+                "Merhaba yol arkadaşım. İyi yolculuklar.",
                 TextToSpeech.QUEUE_FLUSH,
                 params,
                 UTTERANCE_ID
             ) == TextToSpeech.SUCCESS
         }.getOrDefault(false)
-        if (queued) {
-            main.postDelayed(speechTimeout, 15_000L)
-        } else {
-            Log.w(logTag, "TTS did not accept the greeting")
+        if (!accepted) {
+            Log.e(TAG, "Welcome speech could not be queued")
             closeSession()
+            return
         }
+        main.postDelayed(speechTimeout, 15_000L)
     }
 
-    private fun finishIfWelcome(id: String) {
+    private fun finish(id: String) {
         if (id == UTTERANCE_ID) main.post { closeSession() }
     }
 
     private fun closeSession() {
         if (!active) return
         active = false
-        audioDucking.end("welcome")
-        initializationPending = false
-        main.removeCallbacks(initTimeout)
+        initializing = false
+        ++generation // Reject late callbacks from the previous TTS instance.
+        main.removeCallbacks(initializationTimeout)
         main.removeCallbacks(speechTimeout)
-
+        audioDucking.end("welcome")
         val old = engine
         engine = null
         runCatching { old?.stop() }
         runCatching { old?.shutdown() }
-
         if (focusGranted) {
             focusGranted = false
             runCatching { audio.abandonAudioFocusRequest(focusRequest) }
@@ -210,6 +230,7 @@ class WelcomeGreetingManager @Inject constructor(
     }
 
     companion object {
-        private const val UTTERANCE_ID = "welcome_greeting"
+        private const val TAG = "EV-Cockpit-Welcome"
+        private const val UTTERANCE_ID = "ev_cockpit_welcome"
     }
 }
