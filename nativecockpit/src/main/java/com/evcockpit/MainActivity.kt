@@ -265,6 +265,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Audible weather cues also give a short visible confirmation.
+            LaunchedEffect(navigation) {
+                navigation.weatherAlerts.collect { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
             val gpsError by navigation.gpsError.collectAsStateWithLifecycle()
             val ui by navigation.uiState.collectAsStateWithLifecycle()
             val stations by charging.uiState.collectAsStateWithLifecycle()
