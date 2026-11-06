@@ -11,6 +11,8 @@ import retrofit2.http.Url
 data class StationChargeTariff(
     val stationId: String,
     val priceTlKwh: Double? = null,
+    val minPriceTlKwh: Double? = null,
+    val maxPriceTlKwh: Double? = null,
     val campaignDescription: String? = null,
     val verifiedAtUtc: String? = null,
     val sourceOperator: String? = null
