@@ -62,13 +62,15 @@ object AutomaticDcChargingPlanner {
         baseline: BaselineEnergyResult,
         usableBatteryKwh: Double,
         startSocPercent: Double,
-        reserveSocPercent: Double
+        reserveSocPercent: Double,
+        chargingTargetPercent: Double = 80.0
     ): AutomaticChargePlan {
         if (baseline !is BaselineEnergyResult.Estimate ||
             route.routeId.isNullOrBlank() || !route.totalKm.isValidPositive() ||
             !usableBatteryKwh.isValidPositive() ||
             !startSocPercent.isFinite() || startSocPercent !in 0.0..100.0 ||
             !reserveSocPercent.isFinite() || reserveSocPercent !in 0.0..100.0 ||
+            !chargingTargetPercent.isFinite() || chargingTargetPercent !in 80.0..100.0 ||
             !baseline.effectiveWhPerKm.isValidPositive()
         ) return AutomaticChargePlan.Unavailable("No validated route and energy calibration")
 
@@ -80,12 +82,13 @@ object AutomaticDcChargingPlanner {
         val planned = mutableListOf<ProposedDcStop>()
         val used = HashSet<String>()
         // Charger speeds are NOT inferred from ambiguous EPDK powerRaw.
-        // 80% is a labelled modelling assumption, not the car's command.
+        // Charging target is an explicit user model setting, not a car command.
         repeat(12) {
             val destinationNeed = (destinationKm - lastKm) * energyPerKm
             if (energyKwh - destinationNeed >= batteryReserve) {
                 return AutomaticChargePlan.Estimate(
-                    planned, planned.sumOf { it.suggestedEnergyKwh }
+                    planned, planned.sumOf { it.suggestedEnergyKwh },
+                    assumedChargeTargetPercent = chargingTargetPercent
                 )
             }
             val reachable = corridor.asSequence()
@@ -101,7 +104,7 @@ object AutomaticDcChargingPlanner {
 
             val driveEnergy = (reachable.distanceFromStartKm - lastKm) * energyPerKm
             val arrivalKwh = energyKwh - driveEnergy
-            val targetKwh = usableBatteryKwh * 0.8
+            val targetKwh = usableBatteryKwh * chargingTargetPercent / 100.0
             val chargeKwh = (targetKwh - arrivalKwh).coerceAtLeast(0.0)
             if (chargeKwh < 0.1) return AutomaticChargePlan.Unavailable(
                 "The onward route is unreliable with an assumed 80% charge"
