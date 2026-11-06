@@ -13,13 +13,19 @@ data class WeatherWaypoint(
         2, 3, 45, 48 -> "cloud"
         else -> "rain"
     }
+    // WMO Open-Meteo weather codes for spoken Turkish announcements.
     val summaryTr: String get() = when (weatherCode) {
-        0, 1 -> "Clear"
-        2, 3 -> "Cloudy"
-        45, 48 -> "Foggy"
-        71, 73, 75, 77, 85, 86 -> "Snowy"
-        95, 96, 99 -> "Stormy"
-        else -> "Rainy"
+        0 -> "açık"
+        1 -> "az bulutlu"
+        2 -> "parçalı bulutlu"
+        3 -> "kapalı"
+        45, 48 -> "sisli"
+        51, 53, 55, 56, 57 -> "çiseli"
+        61, 63, 65, 66, 67 -> "yağmurlu"
+        71, 73, 75, 77, 85, 86 -> "kar yağışlı"
+        80, 81, 82 -> "sağanak yağışlı"
+        95, 96, 99 -> "gök gürültülü"
+        else -> "hava durumu değişken"
     }
 }
 
