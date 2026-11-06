@@ -27,7 +27,7 @@ assert "openRawResource(resourceId)" in sound
 assert "catch (error: Resources.NotFoundException)" in sound
 assert "val knownRange" in hud
 assert "catch (error: Exception)" in sound
-assert "multiplier = if (ducked) 0.2f else 1f" in sound
+assert "speechFactor = if (ducked) .2f else 1f" in sound
 assert "activePlayer.volume = if (voiceDucked) 0.2f else 1f" in radio
 assert "runCatching { activePlayer.release() }" in radio
 assert "runCatching { activePlayer.play()" not in radio  # playback is protected in a broader block
