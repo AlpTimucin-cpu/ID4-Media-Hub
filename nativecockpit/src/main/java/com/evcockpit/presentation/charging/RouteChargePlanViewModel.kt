@@ -14,8 +14,19 @@ import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.*
 import com.evcockpit.domain.usecase.*
 
+/** ABRP-style stop preferences alter the charging target in the model.
+ * Actual stop count and charging time are not guaranteed.
+ */
+enum class RouteStopPreference(val chargingTargetPercent: Double, val titleTr: String) {
+    OPTIMAL(80.0, "Optimal"),
+    FEWER(90.0, "Daha az"),
+    MINIMUM(100.0, "En az")
+}
+
 data class RouteChargingUiState(
     val routeId: String? = null,
+    val arrivalReservePercent: Float = 20f,
+    val stopPreference: RouteStopPreference = RouteStopPreference.OPTIMAL,
     val plan: AutomaticChargePlan = AutomaticChargePlan.Empty,
     val socSource: String = "MODEL/ESTIMATE",
     val catalogIsStale: Boolean = false
@@ -32,6 +43,33 @@ class RouteChargePlanViewModel @Inject constructor(
     private val preferences = context.getSharedPreferences(
         "eya_energy_calibration", Context.MODE_PRIVATE
     )
+
+    private data class UserPlanSettings(
+        val reservePercent: Float = 20f,
+        val preference: RouteStopPreference = RouteStopPreference.OPTIMAL
+    )
+
+    private val options = MutableStateFlow(UserPlanSettings(
+        reservePercent = preferences.getFloat("arrivalReservePct", 20f)
+            .takeIf { it.isFinite() && it in 5f..40f } ?: 20f,
+        preference = runCatching {
+            RouteStopPreference.valueOf(
+                preferences.getString("routeStopPreference", "OPTIMAL").orEmpty()
+            )
+        }.getOrDefault(RouteStopPreference.OPTIMAL)
+    ))
+
+    /** Changes are applied to the next calculation immediately and persisted. */
+    fun setArrivalReservePercent(value: Float) {
+        val safe = value.coerceIn(5f, 40f)
+        preferences.edit().putFloat("arrivalReservePct", safe).apply()
+        options.value = options.value.copy(reservePercent = safe)
+    }
+
+    fun setStopPreference(value: RouteStopPreference) {
+        preferences.edit().putString("routeStopPreference", value.name).apply()
+        options.value = options.value.copy(preference = value)
+    }
 
     private data class Prepared(
         val route: RouteSnapshot? = null,
@@ -65,32 +103,47 @@ class RouteChargePlanViewModel @Inject constructor(
     }.getOrNull()
 
     val uiState: StateFlow<RouteChargingUiState> = combine(
-        prepared, vehicle.telemetry, clock
-    ) { selected, telemetry, now ->
+        prepared, vehicle.telemetry, clock, options
+    ) { selected, telemetry, now, selectedOptions ->
         val route = selected.route
         if (route?.routeId == null)
-            return@combine RouteChargingUiState()
+            return@combine RouteChargingUiState(
+                arrivalReservePercent = selectedOptions.reservePercent,
+                stopPreference = selectedOptions.preference
+            )
 
         val capacity = config("usableBatteryKwh")
         val consumption = config("referenceWhPerKm")
-        val reserve = config("arrivalReservePct")
+        val reserve = selectedOptions.reservePercent.toDouble()
         if (capacity == null || capacity <= 0 || consumption == null ||
             consumption <= 0 || reserve == null || reserve !in 0.0..100.0
         ) return@combine RouteChargingUiState(
             routeId = route.routeId,
+            arrivalReservePercent = selectedOptions.reservePercent,
+            stopPreference = selectedOptions.preference,
             plan = AutomaticChargePlan.Unavailable(
-                "Validated capacity, consumption, and arrival-reserve calibration is required"
+                "Kalibre edilmiş kapasite ve tüketim bilgileri gerekli"
             ),
             catalogIsStale = selected.cacheStale
         )
 
         val freshObd = telemetry.socPercent.current(now)
         val measuredAt = telemetry.socPercent.measuredAtMillis
-        val stored = config("explicitAssumedSocPct")
-        val soc = freshObd ?: stored ?: 80.0
-        val source = if (freshObd != null && measuredAt != null)
-            DepartureSoc.FreshObd(freshObd, measuredAt)
-        else DepartureSoc.ExplicitAssumption(soc)
+        // Never invent a departure SoC; the user requested real OBD data.
+        if (freshObd == null || measuredAt == null) {
+            return@combine RouteChargingUiState(
+                routeId = route.routeId,
+                arrivalReservePercent = selectedOptions.reservePercent,
+                stopPreference = selectedOptions.preference,
+                plan = AutomaticChargePlan.Unavailable(
+                    "Gerçek BMS SoC ölçümü bekleniyor. OBD bağlı ve PID doğrulanmış olmalı."
+                ),
+                socSource = "OBD / BMS BAĞLANTISI BEKLENİYOR",
+                catalogIsStale = selected.cacheStale
+            )
+        }
+        val soc = freshObd
+        val source = DepartureSoc.FreshObd(soc, measuredAt)
 
         val baseline = EvBaselineEnergyEstimator.estimate(
             BaselineEnergyInputs(
@@ -105,14 +158,15 @@ class RouteChargePlanViewModel @Inject constructor(
             )
         )
         val plan = AutomaticDcChargingPlanner.plan(
-            route, selected.candidates, baseline, capacity, soc, reserve
+            route, selected.candidates, baseline, capacity, soc, reserve,
+            selectedOptions.preference.chargingTargetPercent
         )
         RouteChargingUiState(
             routeId = route.routeId,
+            arrivalReservePercent = selectedOptions.reservePercent,
+            stopPreference = selectedOptions.preference,
             plan = plan,
-            socSource = if (source is DepartureSoc.FreshObd) "LIVE OBD · MODEL/ESTIMATE"
-                else if (stored == null) "Default starting SoC 80% · MODEL/ESTIMATE"
-                else "Selected starting SoC · MODEL/ESTIMATE",
+            socSource = "CANLI OBD SoC · TAHMİNİ ENERJİ MODELİ",
             catalogIsStale = selected.cacheStale
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), RouteChargingUiState())
