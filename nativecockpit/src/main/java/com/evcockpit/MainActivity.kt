@@ -304,6 +304,8 @@ class MainActivity : ComponentActivity() {
                             onRouteAlternative = navigation::selectAlternative,
                             onRouteClear = navigation::clearRoute,
                             onAddChargingStop = navigation::addChargingStop,
+                            onSetArrivalReserve = chargePlan::setArrivalReservePercent,
+                            onSetStopPreference = chargePlan::setStopPreference,
                             onGpsClick = { requestGps(false) },
                             gpsError = gpsError,
                             chargingUi = stations,
