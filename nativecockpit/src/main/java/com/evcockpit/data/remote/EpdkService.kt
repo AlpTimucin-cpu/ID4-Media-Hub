@@ -9,6 +9,6 @@ import retrofit2.http.Streaming
  */
 interface EpdkService {
     @Streaming
-    @GET("AlpTimucin-cpu/ID4-Media-Hub/feature/ev-cockpit/data/charging/epdk_public_stations.json.gz")
+    @GET("AlpTimucin-cpu/ev-cockpit/feature/ev-cockpit/data/charging/epdk_public_stations.json.gz")
     suspend fun getPublicStations(): ResponseBody
 }
