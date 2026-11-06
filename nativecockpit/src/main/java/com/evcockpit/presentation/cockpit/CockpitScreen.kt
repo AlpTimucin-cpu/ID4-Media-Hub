@@ -158,7 +158,8 @@ fun CockpitScreen(
         onOriginChange = onRouteOriginChange, onDestinationChange = onRouteDestinationChange,
         onOriginSelected = onRouteOriginSelected, onDestinationSelected = onRouteDestinationSelected,
         onGps = onRouteFromGps, onPlan = onRoutePlan,
-        onChooseAlternative = onRouteAlternative, onClear = onRouteClear
+        onChooseAlternative = onRouteAlternative, onClear = onRouteClear,
+        measuredSocPercent = displayState.socPercent
     )
     if (engineeringOpen) TechnicalAnalysisSheet(
         snapshot = engineering, metrics = engineeringMetrics,
