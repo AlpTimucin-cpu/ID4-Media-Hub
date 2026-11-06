@@ -265,7 +265,7 @@ class NavigationViewModel @Inject constructor(
                 delay(30 * 60_000L)
                 while (true) {
                     val now = System.currentTimeMillis()
-                    val route = cockpit.value.route
+                    val route = uiState.value.cockpit.route
                     val fix = gpsLocation.value?.takeIf { it.usable(now) }
                     val settings = _voice.value
                     val nextTurn = route?.nextTurnMeters
