@@ -73,6 +73,7 @@ fun CockpitScreen(
     onRoutePlan:()->Unit,
     onRouteAlternative:(Int)->Unit,
     onRouteClear:()->Unit,
+    onAddChargingStop: (ChargingStation) -> Unit,
     onGpsClick: () -> Unit,
     gpsError: String? = null,
     chargingUi: ChargingUiState,
@@ -204,35 +205,60 @@ fun CockpitScreen(
         )
     }
     station?.let { selected ->
-        val fallbackName = stringResource(R.string.cockpit_station_name)
-        val fallbackOperator = stringResource(R.string.cockpit_operator_unknown)
-        val fallbackAddress = stringResource(R.string.cockpit_address_unknown)
-        val unknownValue = stringResource(R.string.cockpit_unknown_value)
-        AlertDialog(
-            onDismissRequest = { station = null }, containerColor = Navy,
-            title = { Text(selected.name.ifBlank { fallbackName }) },
-            text = {
-                Column(
-                    Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(selected.operator.ifBlank { fallbackOperator })
-                    Text(selected.address.ifBlank { fallbackAddress })
-                    selected.sockets.forEach { socket ->
-                        Text(stringResource(R.string.cockpit_socket_summary,
-                            socket.kind.toString(), socket.type.toString(),
-                            socket.powerRaw.ifBlank { unknownValue }))
-                    }
-                    Text(stringResource(R.string.cockpit_source_verified, selected.sourceVerifiedAtUtc), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.native_live_availability_price_and_road_access_are_unknown))
+        // Verified pricing is intentionally nullable until an authorized operator API
+        // is connected. Never display a fabricated TL/kWh quote as "today's price".
+        val quote = com.evcockpit.data.pricing.StationChargeTariff.unavailable(selected.id)
+        ModalBottomSheet(
+            onDismissRequest = { station = null },
+            containerColor = Navy,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(selected.name, style = MaterialTheme.typography.headlineSmall)
+                Text(selected.operator, color = SoftText)
+                Text(selected.address, color = SoftText,
+                    style = MaterialTheme.typography.bodySmall)
+                HorizontalDivider(color = GlassLine)
+                Text("ŞARJ SOKETLERİ", color = NeonGreen,
+                    style = MaterialTheme.typography.labelMedium)
+                selected.sockets.forEach { socket ->
+                    Text(socket.kind + " · " + socket.type + " · " +
+                        socket.powerRaw.ifBlank { "Güç belirtilmemiş" })
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { station = null }) { Text(stringResource(R.string.native_close)) }
+                HorizontalDivider(color = GlassLine)
+                Text("GÜNCEL FİYAT · TL/kWh", color = NeonGreen,
+                    style = MaterialTheme.typography.labelMedium)
+                Text(quote.priceTlKwh?.let { "%.2f TL/kWh".format(it) }
+                    ?: "Doğrulanmış günlük fiyat bulunmuyor")
+                Text(quote.campaignDescription
+                    ?: "Kampanya/indirim bilgisi sağlanmıyor",
+                    style = MaterialTheme.typography.bodySmall, color = SoftText)
+                Text("Fiyat, soket, saat ve üyeliğe göre değişebilir. " +
+                    "Operatörün güncel fiyatını doğrulamadan tahmin kullanılmaz.",
+                    style = MaterialTheme.typography.bodySmall, color = SoftText)
+                Text("EPDK kaynak tarihi: " + selected.sourceVerifiedAtUtc,
+                    style = MaterialTheme.typography.labelSmall, color = SoftText)
+                Button(
+                    onClick = { onAddChargingStop(selected); station = null },
+                    enabled = route?.routeId != null &&
+                        routePlannerUi.startLocation != null &&
+                        routePlannerUi.destinationSelected != null &&
+                        !routePlannerUi.planning,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Burada Durak Ekle · Rotayı Yeniden Hesapla") }
+                if (route?.routeId == null) Text(
+                    "Durak eklemek için önce rota oluştur.",
+                    style = MaterialTheme.typography.bodySmall, color = SoftText
+                )
+                TextButton(onClick = { station = null },
+                    modifier = Modifier.fillMaxWidth()) { Text("Kapat") }
             }
-        )
+        }
     }
-
 
     // Three non-overlapping columns; the center owns the only MapView.
     Column(Modifier.fillMaxSize().background(Ink)
