@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import com.evcockpit.presentation.media.MediaLauncher
 import com.evcockpit.presentation.media.RadioScreen
+import com.evcockpit.presentation.media.InternalMediaPlayer
 import com.evcockpit.presentation.media.MediaSite
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.evcockpit.presentation.media.MediaLaunchState
@@ -290,10 +291,11 @@ fun CockpitScreen(
             TelemetryLeftPanel(
                 displayState, obdConnection.phase == ObdPhase.CONNECTED,
                 onConnect = { settings = true; onObdRefresh() },
-                modifier = Modifier.weight(.26f).fillMaxHeight()
+                onEngineering = { engineeringOpen = true },
+                modifier = Modifier.weight(.35f).fillMaxHeight()
             )
             Box(
-                Modifier.weight(.46f).fillMaxHeight()
+                Modifier.weight(.40f).fillMaxHeight()
                     .background(Navy, RoundedCornerShape(14.dp))
             ) {
                 MapLibreCockpit(
@@ -331,15 +333,14 @@ fun CockpitScreen(
             }
             CockpitMediaPanel(
                 playbackAllowed = phoneMediaAllowed,
-                onMusic = { mediaLaunch = MediaLauncher.launchMediaEngine(context) },
-                onVideo = { site ->
+                 onVideo = { site ->
                     if (site == com.evcockpit.presentation.media.MediaSite.YOUTUBE) {
                         media = true
                     } else {
                         mediaLaunch = MediaLauncher.launchOfficialApp(context, site)
                     }
                 },
-                modifier = Modifier.weight(.28f).fillMaxHeight()
+                modifier = Modifier.weight(.25f).fillMaxHeight()
             )
         }
         CockpitDock(
@@ -599,70 +600,85 @@ private fun HardwareNotice(title: String, detail: String, onClick: () -> Unit) {
 }
 
 
-/** Landscape telemetry column. Every tile is independent; no nested card stack. */
+/** Six independent cards; the technical diagnostics page stays accessible. */
 @Composable
 private fun TelemetryLeftPanel(
-    data: CockpitUiState, connected: Boolean,
-    onConnect: () -> Unit, modifier: Modifier = Modifier
+    data: CockpitUiState,
+    connected: Boolean,
+    onConnect: () -> Unit,
+    onEngineering: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(color = Navy, shape = RoundedCornerShape(14.dp)) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                Text("EV COCKPIT", color = SoftText,
-                    style = MaterialTheme.typography.labelMedium)
-                val realSoc = data.socPercent?.takeIf { connected && it in 0.0..100.0 }
-                val socText = realSoc?.let { CockpitFormat.percent(it) } ?: "80%"
-                Text(socText,
-                    fontSize = 52.sp, lineHeight = 58.sp,
-                    fontWeight = FontWeight.Light,
-                    color = if (realSoc == null) Color.White.copy(alpha = .75f) else Color.White
-                )
-                Text(if (realSoc == null) "ÖRNEK · canlı BMS verisi yok" else "BATARYA · CANLI",
-                    color = SoftText, fontSize = 10.sp)
-                HorizontalDivider(Modifier.padding(vertical = 8.dp), color = GlassLine)
-                val realRange = data.estimatedRangeKm?.takeIf { connected && it >= 0.0 }
-                Text(realRange?.let { CockpitFormat.distance(it) } ?: "320 km",
-                    fontSize = 25.sp, color = NeonGreen)
-                Text(if (realRange == null) "ÖRNEK MODEL · rota hesabında kullanılmaz"
-                    else "MENZİL · TAHMİN",
-                    color = SoftText, fontSize = 10.sp)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TelemetryTile("HIZ", data.speedKmh?.takeIf { connected }?.let(CockpitFormat::speed)
-                ?: "Bağlantı bekleniyor", Modifier.weight(1f))
-            TelemetryTile("GÜÇ", data.powerKw?.takeIf { connected }?.let(CockpitFormat::power)
-                ?: "Bekleniyor", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // A BMS capacity parameter is not a certified health-of-battery result.
-            TelemetryTile("SoH %", "Doğrulanmadı", Modifier.weight(1f))
-            TelemetryTile("BATARYA °C", data.batteryTemperatureC?.takeIf { connected }
-                ?.let(CockpitFormat::temperature) ?: "Bekleniyor", Modifier.weight(1f))
+    fun reading(value: String?): String =
+        if (!connected) "Bağlantı Bekleniyor" else value ?: "Ölçüm Bekleniyor"
+
+    Column(modifier.verticalScroll(rememberScrollState())) {
+        Text(
+            "EV COCKPIT · TELEMETRİ",
+            color = NeonGreen,
+            style = MaterialTheme.typography.titleSmall
+        )
+        Spacer(Modifier.height(12.dp))
+        TelemetryTile(
+            "BATARYA · SoC",
+            reading(data.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
+                ?.let(CockpitFormat::percent))
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "MENZİL · MODEL",
+            reading(data.estimatedRangeKm?.takeIf { it.isFinite() && it >= 0.0 }
+                ?.let(CockpitFormat::distance))
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "BATARYA SAĞLIĞI · SoH",
+            if (!connected) "Bağlantı Bekleniyor" else "Doğrulanmadı"
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "BATARYA SICAKLIĞI",
+            reading(data.batteryTemperatureC?.let(CockpitFormat::temperature))
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "ANLIK GÜÇ",
+            reading(data.powerKw?.let(CockpitFormat::power))
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "ARAÇ HIZI",
+            reading(data.speedKmh?.let(CockpitFormat::speed))
+        )
+        Spacer(Modifier.height(12.dp))
+        TextButton(onClick = onEngineering, modifier = Modifier.fillMaxWidth()) {
+            Text("Tüm teknik ölçümler")
         }
         if (!connected) {
             Text(stringResource(R.string.ux_obd_unavailable),
                 style = MaterialTheme.typography.labelSmall, color = SoftText)
             OutlinedButton(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
-                Text("OBD bağla", maxLines = 1)
+                Text("OBD'ye bağlan")
             }
         }
     }
 }
 
 @Composable
-private fun TelemetryTile(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(modifier.heightIn(min = 76.dp), color = Navy,
-        shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(label, color = SoftText, style = MaterialTheme.typography.labelSmall,
-                maxLines = 1)
+private fun TelemetryTile(label: String, value: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Navy)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(label, color = SoftText, fontSize = 10.sp, maxLines = 1)
             Text(value, color = Color.White,
-                style = MaterialTheme.typography.titleSmall, maxLines = 2,
-                overflow = TextOverflow.Ellipsis)
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -713,57 +729,75 @@ private fun AssistPill(text: String, onClick: () -> Unit) {
 @Composable
 private fun CockpitMediaPanel(
     playbackAllowed: Boolean,
-    onMusic: () -> Unit,
     onVideo: (MediaSite) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    Surface(modifier, color = Navy, shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.fillMaxSize().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("MEDYA", color = Color.White, style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Radyo", "Müzik", "Video").forEachIndexed { index, name ->
-                    FilterChip(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        label = { Text(name, maxLines = 1, fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f)
+    Surface(modifier, color = Navy, shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.fillMaxSize().padding(6.dp)) {
+            Text("MEDYA", style = MaterialTheme.typography.labelMedium,
+                color = NeonGreen, modifier = Modifier.padding(8.dp))
+            TabRow(
+                selectedTabIndex = tab,
+                containerColor = Navy,
+                contentColor = NeonGreen
+            ) {
+                listOf("Video", "Radyo", "Müzik").forEachIndexed { i, name ->
+                    Tab(
+                        selected = tab == i, onClick = { tab = i },
+                        text = { Text(name, fontSize = 11.sp, maxLines = 1) }
                     )
                 }
             }
+            Spacer(Modifier.height(8.dp))
             when (tab) {
-                0 -> Box(Modifier.fillMaxWidth().weight(1f)) {
-                    RadioScreen(compact = true)
-                }
-                1 -> Column(
-                    Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("Müzik", color = Color.White)
-                    Text("Kurulu medya motorunu aç", color = SoftText,
-                        style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onMusic, modifier = Modifier.fillMaxWidth()) {
-                        Text("Müzik oynatıcıyı aç")
-                    }
-                }
-                else -> Column(
-                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                0 -> Column(
+                    Modifier.fillMaxWidth().weight(1f)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        if (playbackAllowed) "Telefon modu · sürüş sırasında video kullanmayın"
+                        if (playbackAllowed)
+                            "Resmî kataloglar · video için park edin"
                         else "Android Auto bağlıyken video kapalı",
-                        color = SoftText, style = MaterialTheme.typography.bodySmall
+                        color = SoftText,
+                        style = MaterialTheme.typography.labelSmall
                     )
                     MediaSite.entries.forEach { site ->
-                        OutlinedButton(
+                        val subtitle = when (site) {
+                            MediaSite.NETFLIX -> "Netflix · resmî uygulamada aç"
+                            MediaSite.DISNEY -> "Disney+ · resmî uygulamada aç"
+                            MediaSite.PRIME -> "Prime Video · resmî uygulamada aç"
+                            MediaSite.YOUTUBE -> "YouTube · uygulama içi WebView"
+                        }
+                        Card(
                             onClick = { onVideo(site) },
                             enabled = playbackAllowed,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(site.title) }
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF15263A)
+                            )
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(site.title, style = MaterialTheme.typography.titleSmall,
+                                    color = Color.White)
+                                Text(subtitle, style = MaterialTheme.typography.labelSmall,
+                                    color = SoftText, maxLines = 2)
+                            }
+                        }
                     }
+                }
+                1 -> Box(Modifier.fillMaxWidth().weight(1f)) {
+                    RadioScreen(compact = true)
+                }
+                else -> Box(
+                    Modifier.fillMaxWidth().weight(1f)
+                ) {
+                    InternalMediaPlayer(
+                        modifier = Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        allowVideo = false
+                    )
                 }
             }
         }
