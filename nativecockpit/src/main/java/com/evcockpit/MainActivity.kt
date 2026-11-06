@@ -1,23 +1,19 @@
 package com.evcockpit
 
 import android.Manifest
-import android.content.pm.PackageManager
-import android.content.Intent
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.CurrentLocationRequest
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -25,45 +21,57 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
-import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.evcockpit.presentation.onboarding.WelcomeOnboarding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import com.evcockpit.domain.repository.ObdConnectionController
-import com.evcockpit.domain.repository.VehicleRepository
-import com.evcockpit.domain.model.VehicleTelemetry
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.evcockpit.data.settings.UserSettings
 import com.evcockpit.data.settings.UserSettingsRepository
+import com.evcockpit.domain.model.ObdPhase
+import com.evcockpit.domain.repository.ObdConnectionController
+import com.evcockpit.domain.repository.VehicleRepository
+import com.evcockpit.presentation.charging.ChargingViewModel
+import com.evcockpit.presentation.charging.RouteChargePlanViewModel
+import com.evcockpit.presentation.cockpit.CockpitScreen
+import com.evcockpit.presentation.cockpit.CockpitTheme
+import com.evcockpit.presentation.media.enterOwnVideoPipWhenParked
+import com.evcockpit.presentation.navigation.NavigationViewModel
 import com.evcockpit.presentation.settings.SettingsScreen
 import com.evcockpit.presentation.settings.SettingsViewModel
 import com.evcockpit.presentation.sound.ActiveSoundManager
 import com.evcockpit.presentation.voice.AppAudioDucking
 import com.evcockpit.presentation.voice.LocalAppAudioDucking
-import com.evcockpit.domain.model.ObdPhase
-import com.evcockpit.presentation.navigation.NavigationViewModel
-import com.evcockpit.presentation.charging.ChargingViewModel
-import com.evcockpit.presentation.charging.RouteChargePlanViewModel
+import com.evcockpit.presentation.voice.NativeVoiceGuide
+import com.evcockpit.presentation.voice.TtsPackageWarningDialog
+import com.evcockpit.presentation.voice.WelcomeGreetingManager
 import com.evcockpit.presentation.weather.RouteWeatherViewModel
-import com.evcockpit.presentation.cockpit.CockpitScreen
-import com.evcockpit.presentation.cockpit.CockpitTheme
-import com.evcockpit.presentation.media.enterOwnVideoPipWhenParked
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 
+/**
+ * The only launcher Activity of the nativecockpit APK (applicationId com.evcockpit).
+ * The mediahub APK (com.evcockpit.mediahub) is a separate application;
+ * replacing this class will not change that companion application's launcher.
+ *
+ * Always renders the modern MapLibre + Compose CockpitScreen. Runtime permissions
+ * remain explicit, requested from the appropriate UI actions, never faked.
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
@@ -71,11 +79,13 @@ class MainActivity : ComponentActivity() {
     private val charging: ChargingViewModel by viewModels()
     private val chargePlan: RouteChargePlanViewModel by viewModels()
     private val weather: RouteWeatherViewModel by viewModels()
+
     @Inject lateinit var obd: ObdConnectionController
     @Inject lateinit var vehicleRepository: VehicleRepository
     @Inject lateinit var settingsRepository: UserSettingsRepository
     @Inject lateinit var activeSound: ActiveSoundManager
     @Inject lateinit var audioDucking: AppAudioDucking
+    @Inject lateinit var welcome: WelcomeGreetingManager
 
     private data class SoundFrame(
         val settings: UserSettings,
@@ -92,25 +102,31 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshObdDevices() {
         if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(
-            this, Manifest.permission.BLUETOOTH_CONNECT
-        ) != PackageManager.PERMISSION_GRANTED) {
+                this, Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
-        } else obd.refreshPaired()
+        } else {
+            obd.refreshPaired()
+        }
     }
 
     private fun connectObd(address: String) {
         try {
             obd.connect(address)
             if (obd.connection.value.phase != ObdPhase.CONNECTING &&
-                obd.connection.value.phase != ObdPhase.CONNECTED) return
-            // Explicit user action from a visible Activity; never auto-reconnect.
+                obd.connection.value.phase != ObdPhase.CONNECTED
+            ) return
+            // Keep the user-initiated, read-only OBD session alive with notification.
             ContextCompat.startForegroundService(
                 this, Intent(this, ObdForegroundService::class.java)
             )
-        } catch (_: Exception) {
-            obd.disconnect() // Don't leave an unsupervised background socket.
+        } catch (error: Exception) {
+            Log.e(TAG, "Could not start the OBD foreground service", error)
+            obd.disconnect()
             Toast.makeText(
-                this, "OBD arka plan servisi başlatılamadı. Bağlantı kapatıldı.",
+                this,
+                "OBD servisi başlatılamadı. Bağlantı kapatıldı.",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -121,11 +137,7 @@ class MainActivity : ComponentActivity() {
         stopService(Intent(this, ObdForegroundService::class.java))
     }
 
-    /**
-     * For a future OWNED player Activity only; call after a trusted Park signal.
-     * Third-party streaming packages own their own PiP and DRM surfaces.
-     * Existing MapLibre and media app navigation are unaffected.
-     */
+    /** A future app-owned video player only; never bypass projected-host safety. */
     fun enterParkedOwnedVideoPip(
         verifiedParked: Boolean,
         ownVideoPlaying: Boolean
@@ -134,9 +146,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        Log.i(TAG, "Launching modern Compose CockpitScreen, package=$packageName")
 
-        // Observe real telemetry only while the phone UI is resumed.
-        // Freshness check prevents stale/absent OBD readings producing sound.
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 val ticker = flow {
@@ -172,20 +183,20 @@ class MainActivity : ComponentActivity() {
             val fused = remember(context) {
                 LocationServices.getFusedLocationProviderClient(context.applicationContext)
             }
-            var pendingRouteRequest by remember { mutableStateOf(false) }
             val locationManager = remember(context) {
                 context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             }
-            var fusedToken by remember { mutableStateOf<CancellationTokenSource?>(null) }
+            var pendingRouteRequest by remember { mutableStateOf(false) }
+            var currentToken by remember { mutableStateOf<CancellationTokenSource?>(null) }
+
             DisposableEffect(fused) {
-                onDispose { fusedToken?.cancel() }
+                onDispose { currentToken?.cancel() }
             }
-            // Route selection already has its own validated Fused request in ViewModel.
-            // Map refresh uses an independent one-shot request, not stale lastLocation.
+
             @Suppress("MissingPermission")
-            fun granted(forRoute: Boolean) {
+            fun fetchRealLocation(forRoute: Boolean) {
                 if (!locationManager.isLocationEnabled) {
-                    navigation.reportGpsError("Location services are off. Enable location in your phone settings.")
+                    navigation.reportGpsError("GPS kapalı. Telefonun konum ayarlarını açın.")
                     return
                 }
                 navigation.startGps()
@@ -197,62 +208,60 @@ class MainActivity : ComponentActivity() {
                     context, Manifest.permission.ACCESS_FINE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
                 val request = CurrentLocationRequest.Builder()
-                    .setPriority(if (fine) Priority.PRIORITY_HIGH_ACCURACY
-                                 else Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setPriority(
+                        if (fine) Priority.PRIORITY_HIGH_ACCURACY
+                        else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                    )
                     .setMaxUpdateAgeMillis(3_000L)
                     .setDurationMillis(15_000L)
                     .build()
-                fusedToken?.cancel()
+                currentToken?.cancel()
                 val token = CancellationTokenSource()
-                fusedToken = token
+                currentToken = token
                 try {
                     fused.getCurrentLocation(request, token.token)
                         .addOnSuccessListener { location ->
                             if (location == null) {
-                                navigation.reportGpsError(
-                                    "No current location found. Try again outdoors."
-                                )
+                                navigation.reportGpsError("GPS konumu bulunamadı. Açık havada tekrar deneyin.")
                             } else {
                                 navigation.acceptLastLocation(location)
                             }
                         }
                         .addOnFailureListener { error ->
                             navigation.reportGpsError(
-                                "Could not get location: " + (error.message ?: "GPS error")
+                                "GPS alınamadı: ${error.message ?: "konum hatası"}"
                             )
                         }
-                } catch (_: SecurityException) {
-                    navigation.reportGpsError("Location permission is no longer valid. Grant it again.")
+                } catch (error: SecurityException) {
+                    navigation.reportGpsError("Konum izni yok. Telefon ayarlarını kontrol edin.")
                 }
             }
-            val permissionLauncher = rememberLauncherForActivityResult(
+
+            val gpsPermissions = arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            val requestLocationPermission = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
-            ) { grants ->
-                val accepted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-                if (accepted) granted(pendingRouteRequest)
-                else {
-                    if (pendingRouteRequest) navigation.locationPermissionDenied()
-                    else navigation.reportGpsError(
-                        "Location permission was not granted. Enable it in Settings."
-                    )
-                }
+            ) { granted ->
+                val accepted = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                if (accepted) fetchRealLocation(pendingRouteRequest)
+                else if (pendingRouteRequest) navigation.locationPermissionDenied()
+                else navigation.reportGpsError("Konum iznine izin verilmedi.")
                 pendingRouteRequest = false
             }
             val requestGps: (Boolean) -> Unit = { fromRoute ->
-                val allowed = listOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ).any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
-                if (allowed) granted(fromRoute)
+                val allowed = gpsPermissions.any {
+                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                }
+                if (allowed) fetchRealLocation(fromRoute)
                 else {
                     pendingRouteRequest = fromRoute
-                    permissionLauncher.launch(arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ))
+                    requestLocationPermission.launch(gpsPermissions)
                 }
             }
+
             val gpsError by navigation.gpsError.collectAsStateWithLifecycle()
             val ui by navigation.uiState.collectAsStateWithLifecycle()
             val stations by charging.uiState.collectAsStateWithLifecycle()
@@ -262,65 +271,55 @@ class MainActivity : ComponentActivity() {
             val engineering by obd.engineering.collectAsStateWithLifecycle()
             val engineeringMetrics by obd.engineeringMetrics.collectAsStateWithLifecycle()
             val soundSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
-            var audioSettingsOpen by rememberSaveable { mutableStateOf(false) }
-            val introPreferences = remember(context) {
-                context.applicationContext.getSharedPreferences(
-                    "ev_cockpit_onboarding_v1", Context.MODE_PRIVATE
-                )
-            }
-            var onboardingCompleted by rememberSaveable {
-                mutableStateOf(introPreferences.getBoolean("completed", false))
-            }
             val soundUnavailable by activeSound.audioUnavailable.collectAsStateWithLifecycle()
+            val welcomeWarning by welcome.warning.collectAsStateWithLifecycle()
+            var audioSettingsOpen by remember { mutableStateOf(false) }
+            var ttsWarningDismissed by rememberSaveable { mutableStateOf(false) }
+
             CompositionLocalProvider(LocalAppAudioDucking provides audioDucking) {
                 CockpitTheme(nightMode = soundSettings.isNightModeEnabled) {
                     Box(Modifier.fillMaxSize()) {
-                        if (!onboardingCompleted) {
-                            WelcomeOnboarding(onFinish = {
-                                introPreferences.edit().putBoolean("completed", true).apply()
-                                onboardingCompleted = true
-                            })
-                        } else {
+                        // The first rendered screen is ALWAYS the modern Compose cockpit.
+                        // The old CockpitDashboard belongs to a different app package.
                         CockpitScreen(
-                    state = ui.cockpit,
-                    routeState = ui.routeState,
-                    loadStatus = ui.loadStatus,
-                    routePlannerUi = ui.planner,
-                    onRouteOriginChange = navigation::editOrigin,
-                    onRouteDestinationChange = navigation::editDestination,
-                    onRouteOriginSelected = navigation::selectOrigin,
-                    onRouteDestinationSelected = navigation::selectDestination,
-                    onRouteFromGps = { requestGps(true) },
-                    onRoutePlan = navigation::plan,
-                    onRouteAlternative = navigation::selectAlternative,
-                    onRouteClear = navigation::clearRoute,
-                    onGpsClick = { requestGps(false) },
-                    gpsError = gpsError,
-                    chargingUi = stations,
-                    automaticChargePlan = automaticChargePlan,
-                    weatherUi = routeWeather,
-                    onStationFilter = charging::changeFilter,
-                    onMapViewport = charging::viewportChanged,
-                    onRefreshStations = charging::refresh,
-                    obdConnection = obdConnection,
-                    engineering = engineering,
-                    engineeringMetrics = engineeringMetrics,
-                    onObdRefresh = ::refreshObdDevices,
-                    onObdConnect = ::connectObd,
-                    onObdDisconnect = ::disconnectObd,
-                    onObdMebDiagnostic = obd::requestMebDiagnostic,
-                    onObdClearDiagnostic = obd::clearMebDiagnostic,
-                    voiceEnabled = ui.voice.enabled,
-                    onVoiceToggle = { navigation.setVoiceEnabled(!ui.voice.enabled) },
-                    voiceVolume = ui.voice.volume,
-                    onVoiceVolumeChange = navigation::setVoiceVolume,
-                    voiceStatus = ui.voice.status,
-                    voiceError = ui.voice.error,
-                    onVoiceTest = navigation::testVoice,
-                    soundUnavailable = soundUnavailable,
-                    onOpenSoundSettings = { audioSettingsOpen = true }
-                )
-                        // Separate settings affordance: original CockpitScreen untouched.
+                            state = ui.cockpit,
+                            routeState = ui.routeState,
+                            loadStatus = ui.loadStatus,
+                            routePlannerUi = ui.planner,
+                            onRouteOriginChange = navigation::editOrigin,
+                            onRouteDestinationChange = navigation::editDestination,
+                            onRouteOriginSelected = navigation::selectOrigin,
+                            onRouteDestinationSelected = navigation::selectDestination,
+                            onRouteFromGps = { requestGps(true) },
+                            onRoutePlan = navigation::plan,
+                            onRouteAlternative = navigation::selectAlternative,
+                            onRouteClear = navigation::clearRoute,
+                            onGpsClick = { requestGps(false) },
+                            gpsError = gpsError,
+                            chargingUi = stations,
+                            automaticChargePlan = automaticChargePlan,
+                            weatherUi = routeWeather,
+                            onStationFilter = charging::changeFilter,
+                            onMapViewport = charging::viewportChanged,
+                            onRefreshStations = charging::refresh,
+                            obdConnection = obdConnection,
+                            engineering = engineering,
+                            engineeringMetrics = engineeringMetrics,
+                            onObdRefresh = ::refreshObdDevices,
+                            onObdConnect = ::connectObd,
+                            onObdDisconnect = ::disconnectObd,
+                            onObdMebDiagnostic = obd::requestMebDiagnostic,
+                            onObdClearDiagnostic = obd::clearMebDiagnostic,
+                            voiceEnabled = ui.voice.enabled,
+                            onVoiceToggle = { navigation.setVoiceEnabled(!ui.voice.enabled) },
+                            voiceVolume = ui.voice.volume,
+                            onVoiceVolumeChange = navigation::setVoiceVolume,
+                            voiceStatus = ui.voice.status,
+                            voiceError = ui.voice.error,
+                            onVoiceTest = navigation::testVoice,
+                            soundUnavailable = soundUnavailable,
+                            onOpenSoundSettings = { audioSettingsOpen = true }
+                        )
                         IconButton(
                             modifier = Modifier.align(Alignment.TopEnd)
                                 .padding(top = 42.dp, end = 8.dp),
@@ -328,31 +327,45 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Icon(Icons.Default.Tune, contentDescription = "Ses ayarları")
                         }
-                        if (audioSettingsOpen) SettingsScreen(
-                            viewModel = settingsViewModel,
-                            activeSound = activeSound,
-                            onClose = { audioSettingsOpen = false }
-                        )
+                        // Show a dismissible warning when either Turkish TTS path is missing.
+                        if (!ttsWarningDismissed &&
+                            (welcomeWarning != null ||
+                                ui.voice.status == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING)
+                        ) {
+                            TtsPackageWarningDialog(onDismiss = {
+                                welcome.dismissWarning()
+                                ttsWarningDismissed = true
+                            })
+                        }
+                        if (audioSettingsOpen) {
+                            SettingsScreen(
+                                viewModel = settingsViewModel,
+                                activeSound = activeSound,
+                                onClose = { audioSettingsOpen = false }
+                            )
                         }
                     }
                 }
             }
         }
     }
+
     override fun onResume() {
         super.onResume()
         activeSound.onResume()
         navigation.setForeground(true)
-        val allowed = listOf(Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION).any {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }
-        if (allowed) navigation.startGps()
+        val hasGpsPermission = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ).any { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+        if (hasGpsPermission) navigation.startGps()
     }
+
     override fun onPause() {
         activeSound.onPause()
         navigation.setForeground(false)
-        // OBD is retained only while the user-started connectedDevice FGS runs.
         super.onPause()
     }
+
+    companion object { private const val TAG = "EV-Cockpit-Main" }
 }
