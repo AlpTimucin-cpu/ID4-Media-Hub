@@ -36,7 +36,7 @@ assert "vehicleRepository.telemetry, locationRepository.gpsFix" in nav
 assert "locationRepository.start()" in nav
 assert "isFromMockProvider" in nav
 assert "createRfcommSocketToServiceRecord(spp)" in repo
-assert "conn.connect()" in repo
+assert "candidate.connect()" in repo and "connectSpp(device)" in repo
 assert "Elm327Session(transport)" in repo
 assert "ElmSessionPhase.READY" in repo
 assert 'protocol.readRawOnce("010D")' in repo
