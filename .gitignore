@@ -1,9 +1,23 @@
-# Android local SDK configuration and release signing material.
+# Local Android SDK and Gradle state
 /local.properties
+/.gradle/
+**/build/
+*.apk
+*.aab
+
+# Never commit release keys, encoded key bundles, or developer credentials
 **/*.jks
 **/*.keystore
 **/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+EYA_GitHub_TEK_SECRET.txt
+*signing*bundle*.txt
+*keystore*secret*.txt
+.env
+.env.*
+!.env.example
 
-# Transient native build output; do not commit signed or unsigned APKs.
-/.gradle/
-/nativecockpit/build/
+# Keep the verified Gradle Wrapper scripts and jar under version control
+!gradle/wrapper/gradle-wrapper.jar
