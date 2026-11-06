@@ -29,11 +29,12 @@ class RadioRepositoryTest {
             assertEquals("https://a.example/icon.png", result[1].favicon)
             assertEquals("pop", result[1].tags)
             val url = server.takeRequest().requestUrl!!
-            assertEquals("/json/stations/bycountryexact/Turkey", url.encodedPath)
-            assertNull(url.queryParameter("countrycode"))
-            assertEquals("votes", url.queryParameter("order"))
+            assertEquals("/json/stations/search", url.encodedPath)
+            assertEquals("TR", url.queryParameter("countrycode"))
+            assertEquals("clickcount", url.queryParameter("order"))
             assertEquals("true", url.queryParameter("reverse"))
             assertEquals("true", url.queryParameter("hidebroken"))
+            assertEquals("50", url.queryParameter("limit"))
         } finally { server.shutdown() }
     }
 
