@@ -58,14 +58,14 @@ jobs:
             echo '::error title=HATA::Android modÃ¼lÃ¼ bulunamadÄ±.'
             exit 1
           }
-                    if [ "$(git branch --show-current)" != "feature/ev-cockpit" ]; then
+          if [ "$(git branch --show-current)" != "feature/ev-cockpit" ]; then
             echo '::error::Yalnızca feature/ev-cockpit dalından derleme yapılabilir.'
             exit 1
           fi
           grep -Fq 'applicationId = "com.evcockpit"' nativecockpit/build.gradle.kts
           test -f nativecockpit/src/main/java/com/evcockpit/presentation/cockpit/CockpitScreen.kt
           echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-echo "OK: Derleme kaynak dalÄ± $(git branch --show-current)"
+          echo "OK: Derleme kaynak dalÄ± $(git branch --show-current)"
 
       - name: Update version in Gradle
         shell: bash
