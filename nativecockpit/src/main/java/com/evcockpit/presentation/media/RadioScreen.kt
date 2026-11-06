@@ -28,7 +28,7 @@ import com.evcockpit.R
 import com.evcockpit.presentation.voice.LocalAppAudioDucking
 
 @Composable
-fun RadioScreen(model: RadioViewModel = viewModel()) {
+fun RadioScreen(model: RadioViewModel = viewModel(), compact: Boolean = false) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current.applicationContext
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -95,8 +95,10 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
             }
         }
     }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.radio_description), style = MaterialTheme.typography.bodySmall)
+    Column(if (compact) Modifier.fillMaxSize() else Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)) {
+        if (!compact) Text(stringResource(R.string.radio_description),
+            style = MaterialTheme.typography.bodySmall)
         if (player == null) {
             Text(stringResource(R.string.radio_playback_error))
         }
@@ -149,7 +151,8 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
                 Text(stringResource(R.string.radio_refresh))
             }
         }
-        LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
+        LazyColumn(if (compact) Modifier.fillMaxWidth().weight(1f)
+            else Modifier.fillMaxWidth().height(260.dp)) {
             items(filteredStations, key = { it.id }) { station ->
                 Column(Modifier.fillMaxWidth().clickable {
                     player?.let { activePlayer ->
@@ -171,6 +174,7 @@ fun RadioScreen(model: RadioViewModel = viewModel()) {
                 HorizontalDivider()
             }
         }
-        Text(stringResource(R.string.radio_attribution), style = MaterialTheme.typography.labelSmall)
+        if (!compact) Text(stringResource(R.string.radio_attribution),
+            style = MaterialTheme.typography.labelSmall)
     }
 }
