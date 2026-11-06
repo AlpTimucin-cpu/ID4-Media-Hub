@@ -274,6 +274,7 @@ fun CockpitScreen(
                     obdConnection.phase == ObdPhase.CONNECTED,
                     onConnect = { settings = true; onObdRefresh() },
                     onEngineering = { engineeringOpen = true },
+                    onSoundSettings = onOpenSoundSettings,
                     modifier = Modifier.weight(.32f).fillMaxHeight()
                 )
                 Box(
@@ -613,6 +614,7 @@ private fun TelemetryLeftPanel(
     connected: Boolean,
     onConnect: () -> Unit,
     onEngineering: () -> Unit,
+    onSoundSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     fun reading(value: String?): String =
@@ -659,6 +661,9 @@ private fun TelemetryLeftPanel(
         Spacer(Modifier.height(12.dp))
         TextButton(onClick = onEngineering, modifier = Modifier.fillMaxWidth()) {
             Text("Tüm teknik ölçümler")
+        }
+        TextButton(onClick = onSoundSettings, modifier = Modifier.fillMaxWidth()) {
+            Text("Ses ve motor sesi ayarları")
         }
         if (!connected) {
             Text(stringResource(R.string.ux_obd_unavailable),
