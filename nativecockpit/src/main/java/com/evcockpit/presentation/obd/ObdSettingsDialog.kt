@@ -1,5 +1,8 @@
 package com.evcockpit.presentation.obd
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.evcockpit.R
 
@@ -27,32 +30,51 @@ fun ObdSettingsDialog(
     onClearDiagnostic: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Surface(Modifier.fillMaxWidth(.94f).fillMaxHeight(.90f).imePadding(),
             shape=MaterialTheme.shapes.large) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.native_obd_connection_and_meb_diagnostics),style=MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.native_bluetooth_classic_spp_elm327_pair_the_adapter_in_android_bluetooth_set),
+                Text("Bluetooth Classic (SPP) OBD adaptörünü Android'de eşleştir. " +
+                    "OBD cihazı sokete takılı ve araç açık olmalı. BLE adaptörler ayrı GATT profili gerektirir.",
                     style=MaterialTheme.typography.bodySmall)
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("1 · Bluetooth ayarlarını aç ve OBD'yi eşleştir") }
                 Text("Durum: ${phaseLabel(state.phase)}")
                 if (state.phase != ObdPhase.CONNECTED) {
                     Text("OBD Bağlantısı Bekleniyor", style=MaterialTheme.typography.bodyMedium)
                 }
                 state.error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick=onRefresh, enabled=true, modifier=Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.native_refresh_paired_devices_request_permission))
+                OutlinedButton(onClick=onRefresh, modifier=Modifier.fillMaxWidth()) {
+                    Text("2 · Eşleşmiş cihazları yenile / izin iste")
                 }
-                if (state.devices.isEmpty()) Text(stringResource(R.string.native_no_paired_devices_this_screen_does_not_scan))
+                if (state.devices.isEmpty()) Text(
+                    "Eşleşmiş cihaz bulunamadı. OBD adaptörünü Bluetooth ayarlarından " +
+                    "eşleştirip tekrar 'Yenile'ye basın."
+                )
                 state.devices.forEach { device ->
                     OutlinedButton(onClick={onConnect(device.address)},
                         enabled=state.phase != ObdPhase.CONNECTED && state.phase != ObdPhase.CONNECTING,
-                        modifier=Modifier.fillMaxWidth()) { Text(device.name) }
+                        modifier=Modifier.fillMaxWidth()) {
+                        Column {
+                            Text("3 · Bağlan: ${device.name}")
+                            Text(device.address, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
                 if (state.phase == ObdPhase.CONNECTING) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (state.phase == ObdPhase.CONNECTED) {
-                    Text(if (state.lastPollSucceeded) "Actual SAE 010D speed response received"
-                         else "010D speed response not yet validated")
+                    Text(if (state.lastPollSucceeded)
+                        "ELM327 bağlı · araçtan 010D hız yanıtı alındı"
+                        else "ELM327 bağlı · 010D hız yanıtı henüz yok / ECU desteklemiyor")
                     HorizontalDivider()
                     Text(stringResource(R.string.native_experimental_meb_ecu_readings),style=MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.native_test_only_while_parked_and_in_your_own_vehicle_queries_use_read_only_u) +
@@ -107,10 +129,10 @@ fun ObdSettingsDialog(
 }
 
 private fun phaseLabel(phase: ObdPhase): String = when (phase) {
-    ObdPhase.DISCONNECTED -> "Disconnected"
-    ObdPhase.CONNECTING -> "Connecting"
-    ObdPhase.CONNECTED -> "Connected"
-    ObdPhase.ERROR -> "Error"
+    ObdPhase.DISCONNECTED -> "Bağlı değil"
+    ObdPhase.CONNECTING -> "Bluetooth / ELM327 bağlantısı kuruluyor"
+    ObdPhase.CONNECTED -> "ELM327 bağlandı"
+    ObdPhase.ERROR -> "Bağlantı hatası"
 }
 
 private fun diagnosticLabel(status: MebResponseStatus): String = when (status) {
