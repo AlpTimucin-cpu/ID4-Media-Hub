@@ -36,7 +36,8 @@ fun RoutePlannerDialog(
     onGps: () -> Unit,
     onPlan: () -> Unit,
     onChooseAlternative: (Int) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    measuredSocPercent: Double? = null
 ) {
     val scrollState = rememberScrollState()
     val muted = Color(0xFFB4BEC4)
@@ -179,6 +180,53 @@ fun RoutePlannerDialog(
                                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 }
                                 Suggestions(state.destinationMatches, onDestinationSelected)
+                            }
+
+                            // Vehicle card follows the supplied ABRP reference.
+                            // It is read-only: no fake 100% departure slider.
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFF303336),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Column(
+                                    Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "Volkswagen ID.4 Pure",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        "Başlangıç batarya seviyesi · CANLI OBD",
+                                        color = muted,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    val measured = measuredSocPercent
+                                        ?.takeIf { it.isFinite() && it in 0.0..100.0 }
+                                    if (measured != null) {
+                                        Text(
+                                            String.format(
+                                                java.util.Locale.forLanguageTag("tr-TR"),
+                                                "%%%.1f", measured
+                                            ),
+                                            color = success,
+                                            style = MaterialTheme.typography.titleLarge
+                                        )
+                                        LinearProgressIndicator(
+                                            progress = { (measured / 100.0).toFloat() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = success
+                                        )
+                                    } else {
+                                        Text(
+                                            "OBD bağlantısı ve doğrulanmış BMS SoC bekleniyor",
+                                            color = muted,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
                             }
 
                             state.error?.let { error ->
