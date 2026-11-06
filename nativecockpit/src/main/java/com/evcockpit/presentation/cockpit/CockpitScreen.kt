@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import com.evcockpit.presentation.media.MediaLauncher
+import com.evcockpit.presentation.media.RadioScreen
+import com.evcockpit.presentation.media.MediaSite
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.evcockpit.presentation.media.MediaLaunchState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -230,129 +233,76 @@ fun CockpitScreen(
         )
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
-        val landscape = maxWidth > maxHeight
-        val short = maxHeight < 480.dp
-        val compactBattery = landscape && short
-        val batteryWidth = if (compactBattery) maxWidth * .49f
-            else 256.dp.coerceAtMost(maxWidth * .64f)
-        val arrivalWidth = if (landscape) 294.dp.coerceAtMost(maxWidth * .43f) else maxWidth - 32.dp
 
-        MapLibreCockpit(
-            gpsFix = state.gpsFix, routePoints = route?.routePoints.orEmpty(),
-            stations = chargingUi.visible,
-            plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
-                ?.stops?.map { it.station.id }?.toSet().orEmpty(),
-            weatherPoints = weatherUi.points.takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
-            speedProfile = route?.profileSpeeds.orEmpty(),
-            onViewportChanged = onMapViewport, onStationTapped = { station = it },
-            modifier = Modifier.fillMaxSize()
-        )
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp).padding(bottom = 92.dp).widthIn(max = 340.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+    // Three non-overlapping columns; the center owns the only MapView.
+    Column(Modifier.fillMaxSize().background(Ink)
+        .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (obdConnection.phase != ObdPhase.CONNECTED) {
-                HardwareNotice(
-                    stringResource(R.string.ux_obd_unavailable),
-                    stringResource(R.string.ux_obd_help),
-                    onClick = { settings = true; onObdRefresh() }
+            TelemetryLeftPanel(
+                displayState, obdConnection.phase == ObdPhase.CONNECTED,
+                onConnect = { settings = true; onObdRefresh() },
+                modifier = Modifier.weight(.26f).fillMaxHeight()
+            )
+            Box(
+                Modifier.weight(.46f).fillMaxHeight()
+                    .background(Navy, RoundedCornerShape(14.dp))
+            ) {
+                MapLibreCockpit(
+                    gpsFix = state.gpsFix,
+                    routePoints = route?.routePoints.orEmpty(),
+                    stations = chargingUi.allStations,
+                    plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
+                        ?.stops?.map { it.station.id }?.toSet().orEmpty(),
+                    weatherPoints = weatherUi.points
+                        .takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
+                    speedProfile = route?.profileSpeeds.orEmpty(),
+                    onViewportChanged = onMapViewport,
+                    onStationTapped = { station = it },
+                    modifier = Modifier.fillMaxSize()
                 )
-            } else if (displayState.socPercent == null) {
-                HardwareNotice(
-                    stringResource(R.string.ux_battery_unavailable),
-                    stringResource(R.string.ux_battery_help),
-                    onClick = { settings = true }
+                NavigationGlassCard(
+                    route, loadStatus is RouteLoadStatus.Loading,
+                    onOpen = { routePlanner = true },
+                    modifier = Modifier.align(Alignment.TopCenter)
+                        .fillMaxWidth(.90f).padding(top = 8.dp)
                 )
-            }
-            if (state.gpsFix == null) {
-                HardwareNotice(
-                    stringResource(R.string.ux_gps_waiting),
-                    stringResource(R.string.ux_gps_help),
-                    onClick = onGpsClick
-                )
-            }
-            if (soundUnavailable) {
-                HardwareNotice(
-                    stringResource(R.string.ux_sound_unavailable),
-                    stringResource(R.string.ux_sound_help),
-                    onClick = onOpenSoundSettings
-                )
-            }
-            if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) {
-                HardwareNotice(
-                    stringResource(R.string.ux_tts_missing),
-                    stringResource(R.string.ux_tts_help),
-                    onClick = { missingVoice = true }
-                )
-            }
-        }
-        BatteryHud(
-            state = displayState, compact = compactBattery,
-            showExample = obdConnection.phase != ObdPhase.CONNECTED,
-            modifier = Modifier.align(Alignment.TopStart)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
-                .padding(start = 16.dp, top = 16.dp).width(batteryWidth)
-        )
-        Column(
-            Modifier.align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End))
-                .padding(top = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Surface(color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
-                if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {
-                    VoiceButton(onClick = { voiceSettings = true })
-                    QuickActions(
-                        gpsEnabled = true,
-                        hasGpsFix = state.gpsFix != null,
-                        voiceEnabled = voiceEnabled,
-                        onGpsClick = onGpsClick,
-                        onVoiceToggle = onVoiceToggle
+                Row(
+                    Modifier.align(Alignment.BottomStart).padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    AssistPill(
+                        if (state.gpsFix == null) "GPS bekleniyor" else "GPS aktif",
+                        onGpsClick
                     )
-                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    VoiceButton(onClick = { voiceSettings = true })
-                    QuickActions(
-                        gpsEnabled = true,
-                        hasGpsFix = state.gpsFix != null,
-                        voiceEnabled = voiceEnabled,
-                        onGpsClick = onGpsClick,
-                        onVoiceToggle = onVoiceToggle
+                    AssistPill(
+                        if (voiceEnabled) "Ses açık" else "Ses kapalı",
+                        onVoiceToggle
                     )
                 }
             }
-        }
-        Column(
-            Modifier.align(if (landscape) Alignment.TopEnd else Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(
-                    if (landscape) WindowInsetsSides.Top + WindowInsetsSides.End
-                    else WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
-                ))
-                .padding(
-                    start = if (landscape) 0.dp else 16.dp,
-                    end = 16.dp,
-                    top = if (landscape) 80.dp else 0.dp,
-                    bottom = if (landscape) 0.dp else 112.dp
-                ).width(arrivalWidth)
-        ) {
-            ArrivalHud(
-                route = route, state = displayState, loading = loadStatus is RouteLoadStatus.Loading,
-                compact = short, onOpen = { routePlanner = true }
+            CockpitMediaPanel(
+                playbackAllowed = phoneMediaAllowed,
+                onMusic = { mediaLaunch = MediaLauncher.launchMediaEngine(context) },
+                onVideo = { site ->
+                    if (site == com.evcockpit.presentation.media.MediaSite.YOUTUBE) {
+                        media = true
+                    } else {
+                        mediaLaunch = MediaLauncher.launchOfficialApp(context, site)
+                    }
+                },
+                modifier = Modifier.weight(.28f).fillMaxHeight()
             )
         }
-        SnackbarHost(
-            hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .navigationBarsPadding().padding(bottom = if (landscape) 80.dp else 260.dp)
-        )
         CockpitDock(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            onRoute = { routePlanner = true }, onCharging = { charging = true },
-            onMedia = { media = true }, onEngineering = { engineeringOpen = true },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+            onRoute = { routePlanner = true },
+            onCharging = { charging = true },
+            onMedia = { media = true },
+            onEngineering = { engineeringOpen = true },
             onSettings = { settings = true; onObdRefresh() }
         )
     }
@@ -599,6 +549,176 @@ private fun HardwareNotice(title: String, detail: String, onClick: () -> Unit) {
             Text(title, color = NeonGreen, style = MaterialTheme.typography.labelLarge)
             Text(detail, color = SoftText, style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+
+/** Landscape telemetry column. Every tile is independent; no nested card stack. */
+@Composable
+private fun TelemetryLeftPanel(
+    data: CockpitUiState, connected: Boolean,
+    onConnect: () -> Unit, modifier: Modifier = Modifier
+) {
+    Column(
+        modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(color = Navy, shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                Text("EV COCKPIT", color = SoftText,
+                    style = MaterialTheme.typography.labelMedium)
+                val realSoc = data.socPercent?.takeIf { connected && it in 0.0..100.0 }
+                val socText = realSoc?.let { CockpitFormat.percent(it) } ?: "80%"
+                Text(socText,
+                    fontSize = 52.sp, lineHeight = 58.sp,
+                    fontWeight = FontWeight.Light,
+                    color = if (realSoc == null) Color.White.copy(alpha = .75f) else Color.White
+                )
+                Text(if (realSoc == null) "ÖRNEK · canlı BMS verisi yok" else "BATARYA · CANLI",
+                    color = SoftText, fontSize = 10.sp)
+                HorizontalDivider(Modifier.padding(vertical = 8.dp), color = GlassLine)
+                val realRange = data.estimatedRangeKm?.takeIf { connected && it >= 0.0 }
+                Text(realRange?.let { CockpitFormat.distance(it) } ?: "320 km",
+                    fontSize = 25.sp, color = NeonGreen)
+                Text(if (realRange == null) "ÖRNEK MODEL · rota hesabında kullanılmaz"
+                    else "MENZİL · TAHMİN",
+                    color = SoftText, fontSize = 10.sp)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TelemetryTile("HIZ", data.speedKmh?.takeIf { connected }?.let(CockpitFormat::speed)
+                ?: "Bağlantı bekleniyor", Modifier.weight(1f))
+            TelemetryTile("GÜÇ", data.powerKw?.takeIf { connected }?.let(CockpitFormat::power)
+                ?: "Bekleniyor", Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // A BMS capacity parameter is not a certified health-of-battery result.
+            TelemetryTile("SoH %", "Doğrulanmadı", Modifier.weight(1f))
+            TelemetryTile("BATARYA °C", data.batteryTemperatureC?.takeIf { connected }
+                ?.let(CockpitFormat::temperature) ?: "Bekleniyor", Modifier.weight(1f))
+        }
+        if (!connected) {
+            OutlinedButton(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
+                Text("OBD bağla", maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TelemetryTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(modifier.heightIn(min = 76.dp), color = Navy,
+        shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(label, color = SoftText, style = MaterialTheme.typography.labelSmall,
+                maxLines = 1)
+            Text(value, color = Color.White,
+                style = MaterialTheme.typography.titleSmall, maxLines = 2,
+                overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun NavigationGlassCard(
+    route: RouteSnapshot?, loading: Boolean,
+    onOpen: () -> Unit, modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier.clickable(onClick = onOpen),
+        color = Color(0xCF0A1728),
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 4.dp
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("NAVİGASYON", color = NeonGreen,
+                style = MaterialTheme.typography.labelSmall)
+            Text(
+                route?.nextTurnInstruction?.takeIf { it.isNotBlank() }
+                    ?: if (loading) "Rota hesaplanıyor…" else "Rota çizmek için dokunun",
+                color = Color.White, style = MaterialTheme.typography.titleSmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            val arrival = route?.estimatedArrivalEpochMs?.let(CockpitFormat::eta)
+            val left = route?.remainingKm?.let(CockpitFormat::distance)
+            if (arrival != null || left != null) Text(
+                listOfNotNull(left, arrival?.let { "Varış $it" }).joinToString(" · "),
+                color = SoftText, style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun AssistPill(text: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.clickable(onClick = onClick),
+        color = Color(0xD90A1728), shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(text, color = SoftText,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
+    }
+}
+
+@Composable
+private fun CockpitMediaPanel(
+    playbackAllowed: Boolean,
+    onMusic: () -> Unit,
+    onVideo: (MediaSite) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    Surface(modifier, color = Navy, shape = RoundedCornerShape(14.dp)) {
+        Column(Modifier.fillMaxSize().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("MEDYA", color = Color.White, style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Radyo", "Müzik", "Video").forEachIndexed { index, name ->
+                    FilterChip(
+                        selected = tab == index,
+                        onClick = { tab = index },
+                        label = { Text(name, maxLines = 1, fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            when (tab) {
+                0 -> Box(Modifier.fillMaxWidth().weight(1f)) {
+                    RadioScreen(compact = true)
+                }
+                1 -> Column(
+                    Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Müzik", color = Color.White)
+                    Text("Kurulu medya motorunu aç", color = SoftText,
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onMusic, modifier = Modifier.fillMaxWidth()) {
+                        Text("Müzik oynatıcıyı aç")
+                    }
+                }
+                else -> Column(
+                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        if (playbackAllowed) "Video uygulamaları · park hâlinde"
+                        else "Video sürüşte kullanılamaz",
+                        color = SoftText, style = MaterialTheme.typography.bodySmall
+                    )
+                    MediaSite.entries.forEach { site ->
+                        OutlinedButton(
+                            onClick = { onVideo(site) },
+                            enabled = playbackAllowed,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(site.title) }
+                    }
+                }
+            }
         }
     }
 }
