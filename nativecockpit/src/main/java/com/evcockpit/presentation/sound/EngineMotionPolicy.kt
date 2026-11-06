@@ -20,9 +20,8 @@ internal object EngineMotionPolicy {
             deltaSeconds in 0.1..20.0
         ) (speedKmh - previousKmh) / deltaSeconds else 0.0
 
-        val roaring = acceleration > 10.0
-        val pitch = if (roaring) 1.9f
-            else (0.85 + (speedKmh.coerceIn(0.0, 130.0) / 130.0 * 0.95)).toFloat()
+        // Mild pitch progression follows actual OBD km/h; no fake RPM or gear shifts.
+        val pitch = (0.90 + speedKmh.coerceIn(0.0, 160.0) / 160.0 * 0.42).toFloat()
         val mode = if (acceleration > 0.4) Mode.ACCELERATING else Mode.IDLE
         return Decision(mode, pitch)
     }
