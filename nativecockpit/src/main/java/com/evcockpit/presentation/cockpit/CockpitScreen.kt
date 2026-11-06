@@ -207,7 +207,13 @@ fun CockpitScreen(
     station?.let { selected ->
         // Verified pricing is intentionally nullable until an authorized operator API
         // is connected. Never display a fabricated TL/kWh quote as "today's price".
-        val quote = com.evcockpit.data.pricing.StationChargeTariff.unavailable(selected.id)
+        val quote by produceState(
+            initialValue = com.evcockpit.data.pricing.StationChargeTariff.unavailable(selected.id),
+            key1 = selected.id,
+            key2 = selected.operator
+        ) {
+            value = com.evcockpit.data.pricing.VerifiedOperatorTariffRepository.quote(selected)
+        }
         ModalBottomSheet(
             onDismissRequest = { station = null },
             containerColor = Navy,
@@ -232,8 +238,21 @@ fun CockpitScreen(
                 HorizontalDivider(color = GlassLine)
                 Text("GÜNCEL FİYAT · TL/kWh", color = NeonGreen,
                     style = MaterialTheme.typography.labelMedium)
-                Text(quote.priceTlKwh?.let { "%.2f TL/kWh".format(it) }
-                    ?: "Doğrulanmış günlük fiyat bulunmuyor")
+                val priceLabel = when {
+                    quote.priceTlKwh != null -> "%.2f TL/kWh".format(quote.priceTlKwh)
+                    quote.minPriceTlKwh != null && quote.maxPriceTlKwh != null ->
+                        "%.2f–%.2f TL/kWh".format(
+                            quote.minPriceTlKwh, quote.maxPriceTlKwh
+                        )
+                    else -> "Güncel fiyat doğrulanamadı"
+                }
+                Text(priceLabel)
+                if (quote.minPriceTlKwh != null) {
+                    Text("Yalnız operatör genel tarifesi · istasyon/soket fiyatı değil",
+                        style = MaterialTheme.typography.bodySmall, color = SoftText)
+                    Text("Tarife tarihi: " + quote.verifiedAtUtc.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall, color = SoftText)
+                }
                 Text(quote.campaignDescription
                     ?: "Kampanya/indirim bilgisi sağlanmıyor",
                     style = MaterialTheme.typography.bodySmall, color = SoftText)
