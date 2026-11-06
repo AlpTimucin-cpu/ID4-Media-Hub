@@ -38,7 +38,7 @@ class RadioViewModel @Inject constructor(
                     result.fold(
                         onSuccess = { stations ->
                             mutableState.value = RadioUiState(
-                                stations = stations, loading = false, failed = false
+                                stations = stations, loading = false, failed = stations.isEmpty()
                             )
                         },
                         onFailure = { error ->
