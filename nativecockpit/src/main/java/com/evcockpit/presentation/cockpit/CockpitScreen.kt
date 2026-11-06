@@ -146,12 +146,10 @@ fun CockpitScreen(
         onClearDiagnostic = onObdClearDiagnostic,
         onDismiss = { settings = false }
     )
+    // Media3 lives inside the app; no external "media engine" is required.
     if (media) ParkedStreamingDialog(
-        playbackAllowed = phoneMediaAllowed, onDismiss = { media = false },
-        onLaunchMediaEngine = {
-            mediaLaunch = MediaLauncher.launchMediaEngine(context)
-            if (mediaLaunch is MediaLaunchState.Launched) media = false
-        }
+        playbackAllowed = phoneMediaAllowed,
+        onDismiss = { media = false }
     )
     if (mediaLaunch == MediaLaunchState.NotInstalled || mediaLaunch == MediaLaunchState.Blocked) {
         AlertDialog(
