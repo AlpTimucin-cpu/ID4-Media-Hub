@@ -22,6 +22,8 @@ interface RadioBrowserApi {
         @Query("hidebroken") hideBroken: Boolean = true,
         @Query("order") order: String = "clickcount",
         @Query("reverse") reverse: Boolean = true,
-        @Query("limit") limit: Int = 50
+        @Query("limit") limit: Int = 50,
+        // Server-side HTTPS-only filtering prevents the "50 HTTP / 0 playable" case.
+        @Query("is_https") onlyHttps: Boolean = true
     ): List<RadioStation>
 }
