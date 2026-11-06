@@ -29,6 +29,10 @@ concurrency:
 
 jobs:
   signed-release:
+    # SECURITY HOLD: a former signing bundle was committed to a public branch.
+    # Do not consume EYA_SIGNING_BUNDLE_BASE64 or mint "stable" APKs until
+    # credential compromise, certificate continuity and migration are resolved.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
