@@ -63,6 +63,32 @@ class AutomaticDcChargingPlannerTest {
         assertTrue(result is AutomaticChargePlan.Unavailable)
     }
 
+    @Test fun differentChargeTargetsAreExplicitModeledPreferences() {
+        val corridor = AutomaticDcChargingPlanner.candidates(route, listOf(dc))
+        val optimal = AutomaticDcChargingPlanner.plan(
+            route, corridor, baseline, 60.0, 80.0, 15.0, 80.0
+        ) as AutomaticChargePlan.Estimate
+        val fewer = AutomaticDcChargingPlanner.plan(
+            route, corridor, baseline, 60.0, 80.0, 15.0, 90.0
+        ) as AutomaticChargePlan.Estimate
+        val minimum = AutomaticDcChargingPlanner.plan(
+            route, corridor, baseline, 60.0, 80.0, 15.0, 100.0
+        ) as AutomaticChargePlan.Estimate
+        assertEquals(80.0, optimal.assumedChargeTargetPercent, 0.01)
+        assertEquals(90.0, fewer.assumedChargeTargetPercent, 0.01)
+        assertEquals(100.0, minimum.assumedChargeTargetPercent, 0.01)
+        assertTrue(fewer.totalSuggestedChargeKwh > optimal.totalSuggestedChargeKwh)
+        assertTrue(minimum.totalSuggestedChargeKwh > fewer.totalSuggestedChargeKwh)
+    }
+
+    @Test fun chargeTargetOutsideSafeModelRangeIsRejected() {
+        val result = AutomaticDcChargingPlanner.plan(
+            route, AutomaticDcChargingPlanner.candidates(route, listOf(dc)),
+            baseline, 60.0, 80.0, 15.0, 120.0
+        )
+        assertTrue(result is AutomaticChargePlan.Unavailable)
+    }
+
     @Test fun missingCalibrationFailsClosed() {
         val result = AutomaticDcChargingPlanner.plan(route, emptyList(), baseline, Double.NaN, 80.0, 15.0)
         assertTrue(result is AutomaticChargePlan.Unavailable)
