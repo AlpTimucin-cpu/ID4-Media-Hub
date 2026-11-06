@@ -44,7 +44,7 @@ android {
         applicationId = "com.evcockpit"
         minSdk = 28
         targetSdk = 35
-        versionCode = 25
+        versionCode = 26
         versionName = "1.0.4"
     }
 
