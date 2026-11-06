@@ -62,6 +62,8 @@ private const val FALLBACK_STYLE = "https://tiles.openfreemap.org/styles/fiord"
 private const val ROUTE_SRC = "eya-route-source"
 private const val ROUTE_LAYER = "eya-route-line"
 private const val STATION_SRC = "eya-station-source"
+private const val STATION_DC_OVERVIEW_SRC = "evc-dc-overview-src"
+private const val STATION_DC_OVERVIEW_LAYER = "evc-dc-overview-points"
 private const val STATION_CORRIDOR_SRC = "eya-route-dc-corridor-source"
 private const val STATION_ALL_LAYER = "eya-station-all"
 private const val STATION_RING_LAYER = "eya-station-route-outline"
@@ -93,6 +95,7 @@ fun MapLibreCockpit(
     val owner = LocalLifecycleOwner.current
     // Map callback must never capture stale Compose lists/lambdas.
     val stationIndex = remember(stations) { stations.associateBy { it.id } }
+    val dcStationCount = remember(stations) { stations.count { it.hasDc } }
     val latestStationIndex by rememberUpdatedState(stationIndex)
     val latestViewport by rememberUpdatedState(onViewportChanged)
     val latestTap by rememberUpdatedState(onStationTapped)
@@ -197,7 +200,7 @@ fun MapLibreCockpit(
                     return@OnMapClickListener true
                 }
                 val hits=map.queryRenderedFeatures(map.projection.toScreenLocation(point),
-                    STATION_PLANNED_LAYER,STATION_DC_LAYER,STATION_RING_LAYER,STATION_ALL_LAYER)
+                    STATION_PLANNED_LAYER,STATION_DC_LAYER,STATION_DC_OVERVIEW_LAYER,STATION_RING_LAYER,STATION_ALL_LAYER)
                 val id=hits.firstOrNull()?.let { f ->
                     if(f.hasProperty("stationId")) f.getStringProperty("stationId") else null
                 }
@@ -207,7 +210,7 @@ fun MapLibreCockpit(
             map.addOnMapClickListener(clickListener!!)
             // Türkiye panoraması yalnız kamera başlangıcıdır; GPS değildir.
             map.cameraPosition = CameraPosition.Builder()
-                .target(LatLng(39.0, 35.0)).zoom(5.2).build()
+                .target(LatLng(39.9334, 32.8597)).zoom(5.2).build()
             map.setStyle(Style.Builder().fromUri(DARK_STYLE)) { style ->
                 activeStyle = style
                 mapStatus = "Map ready · OpenFreeMap"
@@ -281,6 +284,16 @@ fun MapLibreCockpit(
                 .background(Color(0xDF0B2032), RoundedCornerShape(12.dp))
                 .padding(14.dp), color = Color.White, fontSize = 12.sp)
         }
+        if (stations.isNotEmpty()) {
+            Text(
+                "EPDK · ${stations.size} istasyon · $dcStationCount DC",
+                color = Color(0xFF39FF88), fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.BottomStart)
+                    .navigationBarsPadding().padding(start = 12.dp, bottom = 76.dp)
+                    .background(Color(0xEA081320), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 7.dp)
+            )
+        }
         // Explicit provider attribution additionally to MapLibre's native attribution.
         Text(stringResource(R.string.native_openfreemap_openstreetmap),
             color = Color(0xFFD6E2EB), fontSize = 10.sp,
@@ -309,7 +322,7 @@ private fun ensureRouteOverlayZOrder(style: Style) {
     var below = ROUTE_LAYER
     val overlayOrder = listOf(
         SPEED_NORMAL, SPEED_SLOW,
-        STATION_CLUSTER_LAYER, STATION_CLUSTER_COUNT_LAYER,
+        STATION_DC_OVERVIEW_LAYER, STATION_CLUSTER_LAYER, STATION_CLUSTER_COUNT_LAYER,
         STATION_ALL_LAYER, STATION_RING_LAYER, STATION_PLANNED_LAYER,
         STATION_DC_LAYER, WEATHER_LAYER
     )
@@ -376,6 +389,21 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
     style.getSourceAs<GeoJsonSource>(STATION_CORRIDOR_SRC)?.setGeoJson(corridorGeo)
         ?: style.addSource(GeoJsonSource(STATION_CORRIDOR_SRC, corridorGeo))
     Log.d("EYA-MAP-UAT", "unclusteredCorridorDc=" + corridorFeatures.size)
+    // Individual DC dots remain visible without a calculated route.
+    val dcGeo = FeatureCollection.fromFeatures(geo.features().orEmpty().filter {
+        it.hasProperty("dc") && it.getBooleanProperty("dc")
+    })
+    val overviewSource = style.getSourceAs<GeoJsonSource>(STATION_DC_OVERVIEW_SRC)
+    if (overviewSource == null) {
+        style.addSource(GeoJsonSource(STATION_DC_OVERVIEW_SRC, dcGeo))
+        style.addLayer(CircleLayer(STATION_DC_OVERVIEW_LAYER, STATION_DC_OVERVIEW_SRC)
+            .withProperties(
+                circleColor(android.graphics.Color.rgb(57, 255, 136)),
+                circleRadius(2.9f),
+                circleOpacity(0.65f),
+                circleStrokeWidth(0f)
+            ))
+    } else overviewSource.setGeoJson(dcGeo)
     val existing=style.getSourceAs<GeoJsonSource>(STATION_SRC)
     if(existing!=null){existing.setGeoJson(geo);return}
     // Clustering belongs to the data source: thousands of points do not become
@@ -391,7 +419,7 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
     style.addLayer(CircleLayer(STATION_CLUSTER_LAYER, STATION_SRC)
         .withFilter(isCluster)
         .withProperties(
-            circleColor(android.graphics.Color.rgb(16, 115, 155)),
+            circleColor(android.graphics.Color.rgb(18, 125, 87)),
             circleRadius(21f),
             circleStrokeWidth(2f),
             circleStrokeColor(android.graphics.Color.WHITE)
@@ -407,7 +435,7 @@ private fun updateStations(style: Style, geo: FeatureCollection) {
     style.addLayer(CircleLayer(STATION_ALL_LAYER, STATION_SRC)
         .withFilter(isSingle)
         .withProperties(
-            circleColor(android.graphics.Color.rgb(35, 164, 205)),
+            circleColor(android.graphics.Color.rgb(48, 206, 126)),
             circleRadius(5f),
             circleOpacity(.72f),
             circleStrokeWidth(1f),
