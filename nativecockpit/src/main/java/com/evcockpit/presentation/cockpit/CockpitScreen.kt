@@ -33,6 +33,7 @@ import com.evcockpit.domain.model.*
 import com.evcockpit.domain.usecase.AutomaticChargePlan
 import com.evcockpit.presentation.charging.ChargingUiState
 import com.evcockpit.presentation.charging.RouteChargingUiState
+import com.evcockpit.presentation.charging.RouteStopPreference
 import com.evcockpit.presentation.map.MapLibreCockpit
 import com.evcockpit.presentation.media.MediaHomeScreen
 import com.evcockpit.presentation.media.rememberPhoneMediaAllowed
@@ -40,6 +41,7 @@ import com.evcockpit.presentation.navigation.NavigationRouteState
 import com.evcockpit.presentation.navigation.RouteLoadStatus
 import com.evcockpit.presentation.obd.ObdSettingsDialog
 import com.evcockpit.presentation.route.RoutePlannerDialog
+import com.evcockpit.presentation.route.RouteJourneySheet
 import com.evcockpit.presentation.route.RoutePlannerUiState
 import com.evcockpit.presentation.voice.NativeVoiceGuide
 import com.evcockpit.presentation.voice.TtsPackageWarningDialog
@@ -69,6 +71,8 @@ fun CockpitScreen(
     onRouteAlternative:(Int)->Unit,
     onRouteClear:()->Unit,
     onAddChargingStop: (ChargingStation) -> Unit,
+    onSetArrivalReserve: (Float) -> Unit,
+    onSetStopPreference: (RouteStopPreference) -> Unit,
     onGpsClick: () -> Unit,
     gpsError: String? = null,
     chargingUi: ChargingUiState,
@@ -100,6 +104,7 @@ fun CockpitScreen(
     )
     val route = state.route ?: routeState.routeResult
     var routePlanner by remember { mutableStateOf(false) }
+    var journeySheet by remember { mutableStateOf(false) }
     var charging by remember { mutableStateOf(false) }
     var selectedPage by rememberSaveable { mutableIntStateOf(0) } // 0 = Harita, 1 = Medya
     var settings by remember { mutableStateOf(false) }
@@ -119,6 +124,34 @@ fun CockpitScreen(
     LaunchedEffect(voiceStatus) {
         if (voiceStatus == NativeVoiceGuide.Status.TURKISH_VOICE_MISSING) missingVoice = true
     }
+
+    // A calculated real OSRM route opens its journey summary immediately.
+    LaunchedEffect(route?.routeId) {
+        if (route?.routeId != null && routePlanner) {
+            routePlanner = false
+            journeySheet = true
+        }
+    }
+
+    if (journeySheet && route?.routeId != null) RouteJourneySheet(
+        route = route,
+        planner = routePlannerUi,
+        charging = automaticChargePlan,
+        realObdSocPercent = if (obdConnection.phase == ObdPhase.CONNECTED)
+            displayState.socPercent else null,
+        onDismiss = { journeySheet = false },
+        onEditTargets = {
+            journeySheet = false
+            routePlanner = true
+        },
+        onSelectAlternative = onRouteAlternative,
+        onSetReserve = onSetArrivalReserve,
+        onSetPreference = onSetStopPreference,
+        onOpenStation = {
+            journeySheet = false
+            station = it
+        }
+    )
 
     if (routePlanner) RoutePlannerDialog(
         state = routePlannerUi, onDismiss = { routePlanner = false },
@@ -300,7 +333,10 @@ fun CockpitScreen(
                     NavigationGlassCard(
                         route,
                         loadStatus is RouteLoadStatus.Loading,
-                        onOpen = { routePlanner = true },
+                        onOpen = {
+                            if (route?.routeId == null) routePlanner = true
+                            else journeySheet = true
+                        },
                         modifier = Modifier.align(Alignment.TopCenter)
                             .fillMaxWidth(.87f).padding(top = 10.dp)
                     )
@@ -332,6 +368,7 @@ fun CockpitScreen(
                 .padding(horizontal = 8.dp, vertical = 2.dp),
             onRoute = {
                 if (selectedPage == 1) selectedPage = 0
+                else if (route?.routeId != null) journeySheet = true
                 else routePlanner = true
             },
             onCharging = { selectedPage = 0; charging = true },
