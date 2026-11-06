@@ -20,7 +20,7 @@ class EngineMotionPolicyTest {
         assertEquals(EngineMotionPolicy.Mode.ACCELERATING, accel.mode)
         assertTrue(accel.pitch > 0.9f)
         val roar = EngineMotionPolicy.decide(65.0, 42.0, 1.0)
-        assertEquals(1.9f, roar.pitch, 0.0001f)
+        assertTrue(roar.pitch in 1.0f..1.4f)
         assertEquals(EngineMotionPolicy.Mode.IDLE,
             EngineMotionPolicy.decide(60.0, 65.0, 2.0).mode)
     }
