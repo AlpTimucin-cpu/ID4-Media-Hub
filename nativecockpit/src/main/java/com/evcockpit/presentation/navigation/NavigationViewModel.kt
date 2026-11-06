@@ -121,6 +121,8 @@ class NavigationViewModel @Inject constructor(
     private var destinationJob: Job? = null
     private var gpsJob: Job? = null
     private var planningJob: Job? = null
+    // UI-owned selected charging stops; actual routing remains in RouteRepository.
+    private val chargingStops = mutableListOf<ChargingStation>()
 
     /** Tick only expires previously measured values, never invents a new GPS fix. */
     private val ticker: Flow<Long> = flow {
@@ -440,6 +442,7 @@ class NavigationViewModel @Inject constructor(
     }
     fun plan() {
         if (!_planner.value.canCalculate) return
+        chargingStops.clear()
         planningJob?.cancel()
         planningJob = viewModelScope.launch {
             val state = _planner.value
@@ -472,8 +475,58 @@ class NavigationViewModel @Inject constructor(
             }
         }
     }
+    /** Recalculates through an actual EPDK station coordinate, not a drawn straight line.
+     * Existing route is retained when the OSRM request fails.
+     */
+    fun addChargingStop(station: ChargingStation) {
+        val planner = _planner.value
+        val origin = planner.startLocation
+        val target = planner.destinationSelected
+        if (routes.currentRoute.value == null || origin == null || target == null) {
+            _planner.update {
+                it.copy(error = "Önce başlangıç ve varış içeren bir rota çiz.")
+            }
+            return
+        }
+        if (!station.coordinate.valid() || chargingStops.any { it.id == station.id }) {
+            _planner.update { it.copy(error = "Bu şarj durağı zaten eklenmiş veya koordinatı geçersiz.") }
+            return
+        }
+        if (chargingStops.size >= 5) {
+            _planner.update { it.copy(error = "En fazla beş şarj durağı ekleyebilirsin.") }
+            return
+        }
+        val candidates = chargingStops.toList() + station
+        planningJob?.cancel()
+        planningJob = viewModelScope.launch {
+            _planner.update { it.copy(planning = true, error = null) }
+            try {
+                when (val result = routes.calculateVia(
+                    origin, target, candidates.map { it.coordinate }
+                )) {
+                    is RouteCalculationResult.Success -> {
+                        chargingStops.clear()
+                        chargingStops.addAll(candidates)
+                        speechBridge.reset()
+                        _planner.update { it.copy(planning = false, error = null) }
+                    }
+                    is RouteCalculationResult.Failure -> {
+                        _planner.update { it.copy(planning = false,
+                            error = "Durak eklenemedi: ${result.message.take(100)}") }
+                    }
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                _planner.update { it.copy(planning = false,
+                    error = "Durak hesaplanamadı: ${error.message?.take(90) ?: "bağlantı hatası"}") }
+            }
+        }
+    }
+
     fun selectAlternative(index: Int) { routes.choose(index); speechBridge.reset() }
     fun clearRoute() {
+        chargingStops.clear()
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
         routes.clear(); speechBridge.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
