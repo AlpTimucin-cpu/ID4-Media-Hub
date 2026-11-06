@@ -392,8 +392,11 @@ private fun QuickActions(
 
 @Composable
 private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifier = Modifier) {
-    Surface(modifier, color = Navy.copy(alpha = .96f), shape = RoundedCornerShape(6.dp)) {
-        Column(Modifier.padding(12.dp)) {
+    Surface(
+        modifier, color = Navy.copy(alpha = .96f),
+        shape = RoundedCornerShape(18.dp), shadowElevation = 8.dp
+    ) {
+        Column(Modifier.padding(14.dp)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge,
                 color = SoftText, maxLines = 1)
             Spacer(Modifier.height(4.dp))
@@ -407,6 +410,11 @@ private fun BatteryHud(state: CockpitUiState, compact: Boolean, modifier: Modifi
                 BatteryPercent(state.socPercent, false)
                 RangeValue(state.estimatedRangeKm)
             }
+            // An illustration is never used as a live battery measurement.
+            if (state.socPercent == null) Text(
+                "Örnek %80 · gerçek BMS doluluğu değil",
+                style = MaterialTheme.typography.labelSmall, color = SoftText
+            )
             // No fake zero-percent bar when ELM327/BMS data is unavailable.
             val validSoc = state.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
             if (validSoc != null) {
@@ -430,12 +438,13 @@ private fun BatteryPercent(value: Double?, compact: Boolean, modifier: Modifier 
     val percentSymbol = stringResource(R.string.cockpit_percent_symbol)
     val unknownValue = stringResource(R.string.cockpit_unknown_value)
     val number = value?.takeIf { it.isFinite() && it in 0.0..100.0 }
-        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: unknownValue
+        ?.let { CockpitFormat.percent(it).removeSuffix(percentSymbol) } ?: "80"
     Row(modifier, verticalAlignment = Alignment.Bottom) {
         Text(number,
             fontSize = if (compact) 72.sp else 96.sp,
             lineHeight = if (compact) 80.sp else 104.sp,
-            fontWeight = FontWeight.Light, color = Color.White,
+            fontWeight = FontWeight.Light,
+            color = if (value == null) Color.White.copy(alpha = .60f) else Color.White,
             maxLines = 1, softWrap = false)
         if (number != unknownValue) {
             Text(percentSymbol, Modifier.padding(bottom = if (compact) 8.dp else 12.dp),
@@ -452,8 +461,7 @@ private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
         val knownRange = km?.takeIf { it.isFinite() && it >= 0.0 }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                knownRange?.let { CockpitFormat.distance(it).removeSuffix(" $unit") }
-                    ?: stringResource(R.string.cockpit_unknown_value),
+                CockpitFormat.distance(knownRange ?: 320.0).removeSuffix(" $unit"),
                 Modifier.alignByBaseline(), fontSize = 39.sp, lineHeight = 46.sp,
                 fontWeight = FontWeight.Light, color = NeonGreen, maxLines = 1, softWrap = false
             )
@@ -462,8 +470,11 @@ private fun RangeValue(km: Double?, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelMedium, color = SoftText)
             }
         }
-        Text(stringResource(R.string.cockpit_estimated_range),
-            style = MaterialTheme.typography.labelSmall, color = SoftText)
+        Text(
+            if (knownRange == null) "320 km · örnek model, canlı menzil değil"
+            else stringResource(R.string.cockpit_estimated_range),
+            style = MaterialTheme.typography.labelSmall, color = SoftText
+        )
     }
 }
 
@@ -477,8 +488,8 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
             verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
             Text(
                 route?.nextTurnInstruction?.takeIf { it.isNotBlank() }
-                    ?: stringResource(if (loading) R.string.native_calculating_route
-                        else R.string.native_waiting_for_maneuver),
+                    ?: if (loading) stringResource(R.string.native_calculating_route)
+                       else "Rota çizmek için dokunun",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis
             )
