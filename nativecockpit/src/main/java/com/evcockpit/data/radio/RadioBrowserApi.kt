@@ -11,16 +11,17 @@ data class RadioStation(
     @SerializedName("url_resolved") val urlResolved: String = "",
     val favicon: String = "",
     val tags: String = "",
-    val votes: Int = 0
+    val votes: Int = 0,
+    @SerializedName("clickcount") val clickCount: Int = 0
 )
 
 interface RadioBrowserApi {
-    // Radio Browser Turkish stations; ranked in descending community vote order.
-    @GET("json/stations/bycountryexact/Turkey")
+    // Request Turkish stations by ISO country code; top 50 by listen/click count.
+    @GET("json/stations/search?countrycode=TR")
     suspend fun stations(
         @Query("hidebroken") hideBroken: Boolean = true,
-        @Query("order") order: String = "votes",
+        @Query("order") order: String = "clickcount",
         @Query("reverse") reverse: Boolean = true,
-        @Query("limit") limit: Int = 500
+        @Query("limit") limit: Int = 50
     ): List<RadioStation>
 }
