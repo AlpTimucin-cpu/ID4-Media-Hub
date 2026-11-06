@@ -11,6 +11,14 @@ interface RouteRepository {
     val selectedIndex: StateFlow<Int?>
     suspend fun search(query: String): List<RoutePlace>
     suspend fun calculate(origin: GeoCoordinate, destination: RoutePlace): RouteCalculationResult
+    /** Real OSRM via-points; implementers may reject unsupported routes explicitly. */
+    suspend fun calculateVia(
+        origin: GeoCoordinate,
+        destination: RoutePlace,
+        stops: List<GeoCoordinate>
+    ): RouteCalculationResult = if (stops.isEmpty()) calculate(origin, destination)
+    else RouteCalculationResult.Failure(null, "Bu rota hizmeti ara durakları desteklemiyor")
+
 
     // Preserve existing callers while supplying one safe Result boundary to
     // the ViewModel; coroutine cancellation must never turn into UI errors.
