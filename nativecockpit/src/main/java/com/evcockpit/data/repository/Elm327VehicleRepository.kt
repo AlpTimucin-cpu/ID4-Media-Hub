@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import com.evcockpit.data.obd.ElmSpeedParser
 import com.evcockpit.data.obd.MebUdsParser
 import com.evcockpit.domain.model.EngineeringMath
@@ -335,8 +336,9 @@ class Elm327VehicleRepository @Inject constructor(
     private suspend fun sendAndRead(conn:BluetoothSocket,command:String):String {
         conn.outputStream.write((command+"\r").toByteArray(Charsets.US_ASCII))
         conn.outputStream.flush()
-        return withTimeout(6_000L) {
-            val input=conn.inputStream
+        return try {
+            withTimeout(6_000L) {
+                val input=conn.inputStream
             val builder=StringBuilder()
             val chunk=ByteArray(256)
             while (!builder.contains('>')) {
@@ -348,7 +350,12 @@ class Elm327VehicleRepository @Inject constructor(
                     if (builder.length>4096) throw IOException("ELM327 reply oversized")
                 } else delay(35)
             }
-            builder.toString()
+                builder.toString()
+            }
+        } catch (timeout: TimeoutCancellationException) {
+            // An ELM command timeout is a failed ECU/adapter exchange, not
+            // a user-initiated coroutine cancellation. Keep the error visible.
+            throw IOException("ELM327 komutu $command için 6 sn yanıt vermedi", timeout)
         }
     }
 
