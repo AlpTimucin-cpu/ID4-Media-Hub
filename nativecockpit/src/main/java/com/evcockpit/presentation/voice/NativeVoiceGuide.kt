@@ -192,6 +192,12 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
         return true
     }
 
+    /** Optional weather announcements never interrupt an active navigation cue. */
+    fun speakIfIdle(text: String, volume: Float): Boolean {
+        if (activeUtterance != null) return false
+        return speak(text, volume)
+    }
+
     fun stop() = stopCurrent(notifyFailure = true)
 
     private fun clearWatchdog() {
