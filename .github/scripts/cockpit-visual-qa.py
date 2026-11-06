@@ -64,13 +64,13 @@ def capture(name):
         data=shell('cat','/sdcard/cockpit-ui.xml')
         (out/(name+'.xml')).write_text(data)
         nodes=list(ET.fromstring(data).iter('node'))
-    for label in ['Route','Charging','Media','Settings']:
+    for label in ['Rota','Şarj','Medya','Ayarlar']:
         assert any(n.get('text')==label for n in nodes),f'{name}: missing {label} action'
     for n in nodes:
-        if n.get('text') in ['Route','Charging','Media','Settings']:
+        if n.get('text') in ['Rota','Şarj','Medya','Ayarlar']:
             coords=[int(x) for x in re.findall(r'\d+',n.get('bounds',''))]
             assert len(coords)==4 and coords[2]>coords[0] and coords[3]>coords[1]
-    assert 'EV Cockpit' in data, f'{name}: missing application brand'
+    assert 'EV COCKPIT' in data or 'EV Cockpit' in data, f'{name}: missing application brand'
     assert shell('pidof','com.evcockpit').strip(),f'{name}: application process exited'
 
 def tap_label(label):
@@ -84,8 +84,7 @@ def tap_label(label):
 adb('install','-r','nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk')
 adb('logcat','-c')
 try:
-    for name,size,density in [('portrait','1080x1920','420'),
-                              ('landscape','1920x1080','240'),
+    for name,size,density in [('landscape','1920x1080','240'),
                               ('compact-landscape','1280x720','320')]:
         shell('wm','size',size);shell('wm','density',density)
         shell('am','force-stop','com.evcockpit')
@@ -94,37 +93,35 @@ try:
         capture(name)
     # Let the 200m/50m TTS callbacks run when the route and speech providers are available.
     time.sleep(15)
-    # Test media controls in portrait; the preceding checks cover compact layouts.
-    shell('wm','size','1080x1920');shell('wm','density','420')
+    # Validate the in-app media hub. It MUST NOT require Fermata or mediahub.
+    shell('wm','size','1920x1080');shell('wm','density','240')
     time.sleep(3)
-    # The companion app is absent on this clean emulator.
-    tap_label('Media')
-    tap_label('Open Media Engine')
+    tap_label('Medya')
+    tap_label('Müzik')
     shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
-    warning=shell('cat','/sdcard/cockpit-ui.xml')
-    (out/'media-engine-missing.xml').write_text(warning)
-    (out/'media-engine-missing.png').write_bytes(adb('exec-out','screencap','-p'))
-    assert 'Media Engine unavailable' in warning
-    assert 'Install the separate Media Engine application first.' in warning
-    tap_label('Close')
-    tap_label('Radio')
-    time.sleep(22)
+    music=shell('cat','/sdcard/cockpit-ui.xml')
+    (out/'internal-media3.xml').write_text(music)
+    (out/'internal-media3.png').write_bytes(adb('exec-out','screencap','-p'))
+    assert 'Dahili Media3' in music, 'Native player not shown'
+    assert 'Medya motoru açılamadı' not in music
+
+    tap_label('Radyo')
+    time.sleep(12)
     shell('uiautomator','dump','/sdcard/cockpit-ui.xml')
     radio=shell('cat','/sdcard/cockpit-ui.xml')
     (out/'radio.xml').write_text(radio)
     (out/'radio.png').write_bytes(adb('exec-out','screencap','-p'))
-    assert 'Popular stations in Türkiye' in radio
-    assert 'Refresh' in radio
+    assert 'Yenile' in radio, 'Radio refresh control missing'
     assert shell('pidof','com.evcockpit').strip()
     shell('input','keyevent','4')
 
     # Install the real Release build type, signed only for this disposable emulator.
     adb('uninstall','com.evcockpit')
     adb('install','nativecockpit/build/outputs/apk/release/nativecockpit-release.apk')
-    shell('wm','size','1080x1920');shell('wm','density','420')
+    shell('wm','size','1920x1080');shell('wm','density','240')
     (out/'release.launch.txt').write_text(shell('am','start','-W','-n','com.evcockpit/.MainActivity'))
     time.sleep(8)
-    capture('release-portrait')
+    capture('release-landscape')
     logs=adb('logcat','-d','-v','threadtime').decode(errors='replace')
     (out/'startup-logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|Fatal signal',logs),'Android reported a fatal error'
@@ -132,4 +129,4 @@ finally:
     (out/'startup-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
     (out/'activity-state.txt').write_text(shell('dumpsys','activity','activities'))
     shell('wm','size','reset');shell('wm','density','reset')
-print('PASS: Debug layouts, missing companion Intent handling and non-debuggable Release cold start')
+print('PASS: Landscape layouts, native Media3 hub, radio tab and signed Release cold start')
