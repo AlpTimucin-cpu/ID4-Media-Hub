@@ -198,14 +198,11 @@ class Elm327VehicleRepository @Inject constructor(
 
     @SuppressLint("MissingPermission")
     private suspend fun runSession(device: BluetoothDevice) {
-        val conn=device.createRfcommSocketToServiceRecord(spp)
-        socket=conn
-        val watchdog=scope.launch {
-            delay(12_000L)
-            if (!conn.isConnected) conn.closeSilently()
-        }
-        try { conn.connect() } finally { watchdog.cancel() }
-        if (!conn.isConnected) throw IOException("SPP connection unavailable")
+        // The adapter must have been paired in Android settings first.
+        // Start with authenticated Bluetooth Classic SPP; if the adapter is a
+        // known clone rejecting SDP authentication, retry paired-device RFCOMM.
+        val conn = connectSpp(device)
+        if (!conn.isConnected) throw IOException("Bluetooth SPP soketi açılamadı")
         // Adapt the same physical RFCOMM socket to the tested Elm327Session.
         // The single runSession worker still owns all CAN header/filter changes.
         val transport = object : ObdTransport {
@@ -236,6 +233,29 @@ class Elm327VehicleRepository @Inject constructor(
         while (kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]?.isActive == true) {
             val manual = diagnosticRequests.tryReceive().getOrNull()
             val command = manual ?: cycle[cursor++ % cycle.size]
+            // Poll the vehicle's SAE speed *before* slow MEB UDS reads.
+            // A rejected manufacturer DID can take seconds; speed must not wait.
+            try {
+                val speed = ElmSpeedParser.decode(protocol.readRawOnce("010D"))
+                if (speed != null) {
+                    val now = System.currentTimeMillis()
+                    _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
+                    _engineering.value = _engineering.value.copy(speedKmh = TimedValue(speed, now))
+                    recalculate()
+                    _connection.value = _connection.value.copy(
+                        lastPollSucceeded = true, lastSpeedAtMs = now
+                    )
+                } else {
+                    _telemetry.value = VehicleTelemetry()
+                    _connection.value = _connection.value.copy(lastPollSucceeded = false)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _telemetry.value = VehicleTelemetry()
+                _connection.value = _connection.value.copy(lastPollSucceeded = false)
+            }
+
             try {
                 val response = runMebReadOnlyQuery(conn, protocol, command)
                 val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
@@ -268,31 +288,48 @@ class Elm327VehicleRepository @Inject constructor(
                 // ECU defect; continue with other safe reads.
             }
 
-            try {
-                val speed = ElmSpeedParser.decode(protocol.readRawOnce("010D"))
-                if (speed != null) {
-                    val now = System.currentTimeMillis()
-                    _telemetry.value = VehicleTelemetry(speedKmh = TimedValue(speed, now))
-                    _engineering.value = _engineering.value.copy(speedKmh = TimedValue(speed, now))
-                    recalculate()
-                    _connection.value = _connection.value.copy(
-                        lastPollSucceeded = true, lastSpeedAtMs = now
-                    )
-                } else {
-                    _telemetry.value = VehicleTelemetry()
-                    _connection.value = _connection.value.copy(lastPollSucceeded = false)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                _telemetry.value = VehicleTelemetry()
-                _connection.value = _connection.value.copy(lastPollSucceeded = false)
-            }
             delay(700L)
         }
         } finally {
             protocol.close() // Closes only the socket owned by this session.
         }
+    }
+
+    @SuppressLint("MissingPermission") // User permission was verified in connect().
+    private suspend fun connectSpp(device: BluetoothDevice): BluetoothSocket {
+        var failure: Exception? = null
+        for (authenticated in listOf(true, false)) {
+            val candidate = if (authenticated)
+                device.createRfcommSocketToServiceRecord(spp)
+            else device.createInsecureRfcommSocketToServiceRecord(spp)
+            socket = candidate
+            val timeoutJob = scope.launch {
+                delay(12_000L)
+                if (!candidate.isConnected) candidate.closeSilently()
+            }
+            try {
+                // SDP discovery can prevent the OBD adapter accepting RFCOMM.
+                adapter?.cancelDiscovery()
+                candidate.connect()
+                return candidate
+            } catch (cancel: CancellationException) {
+                candidate.closeSilently()
+                throw cancel
+            } catch (error: Exception) {
+                failure = error
+                candidate.closeSilently()
+                // A permission denial cannot be fixed by a second socket mode.
+                if (error is SecurityException) throw error
+            } finally {
+                timeoutJob.cancel()
+            }
+        }
+        socket = null
+        throw IOException(
+            "Eşleştirilmiş OBD cihazı SPP bağlantısı kurmadı. " +
+                "Cihazın Bluetooth türünü ve başka uygulamanın bağlı olup olmadığını kontrol edin.",
+            failure
+        )
     }
 
     private suspend fun runMebReadOnlyQuery(
