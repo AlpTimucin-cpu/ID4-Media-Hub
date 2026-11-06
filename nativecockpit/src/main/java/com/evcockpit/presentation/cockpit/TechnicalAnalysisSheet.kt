@@ -149,7 +149,7 @@ private fun Metric(name: String, value: Double?, unit: String, precision: Int) {
         Text(
             value?.takeIf { it.isFinite() }?.let {
                 String.format(Locale.forLanguageTag("tr-TR"), "%.${precision}f %s", it, unit)
-            } ?: "—",
+            } ?: "Bekleniyor",
             style = MaterialTheme.typography.titleSmall
         )
     }
