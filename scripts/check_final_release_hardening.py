@@ -48,8 +48,12 @@ for rule in (
     assert rule in rules, f"Missing compatibility rule: {rule}"
 
 assert "-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }" in rules
-assert "EYA_SIGNING_BUNDLE_BASE64: ${{ secrets.EYA_SIGNING_BUNDLE_BASE64 }}" in workflow
-assert "APK signer does not match the existing owner keystore" in workflow
-assert "apksigner\" verify --verbose" in workflow
-assert "EV-Cockpit-Signed-Stable-Release" in workflow
-print("OK: null-safe HUD, ducked players, R8 and signing identity verification")
+# Stage B builds ONLY Android Debug. Release signing is deliberately disabled
+# in this workflow because the previous signing bundle was exposed in source.
+assert "EYA_SIGNING_BUNDLE_BASE64" not in workflow
+assert "secrets." not in workflow
+assert "EV-Cockpit-Signed-Stable-Release" not in workflow
+assert "EV-Cockpit-Native-Kotlin-Debug-APK" in workflow
+assert ":nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug" in workflow
+assert "gradle/wrapper/gradle-wrapper.jar" in workflow
+print("OK: null-safe HUD, ducked players, R8 configuration and debug-only CI")
