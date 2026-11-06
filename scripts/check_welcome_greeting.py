@@ -17,20 +17,20 @@ assert "selectTurkishGreetingVoice" in guide
 assert 'Locale.forLanguageTag("tr-TR")' in guide
 assert '"female"' in guide
 assert "class WelcomeGreetingManager" in welcome
-assert 'UTTERANCE_ID = "welcome_greeting"' in welcome
+assert 'UTTERANCE_ID = "ev_cockpit_welcome"' in welcome
 assert "TextToSpeech.QUEUE_FLUSH" in welcome
-assert '"Merhaba. EV Cockpit hazır. İyi yolculuklar."' in welcome
+assert '"Merhaba yol arkadaşım. İyi yolculuklar."' in welcome
 assert "AUDIOFOCUS_GAIN_TRANSIENT" in welcome
 assert "abandonAudioFocusRequest" in welcome
-assert "preferences.volume" in welcome
+assert "voicePrefs.volume" in welcome
 assert "current.isWelcomeGreetingEnabled" in welcome
 assert "settings.settings.first()" in welcome
-assert "welcomeSettings.ttsVoiceName" in welcome
+assert "userSettings.ttsVoiceName" in welcome
 assert "audioDucking.begin" in welcome and "audioDucking.end" in welcome
-assert "WelcomeSessionGate()" in welcome and "AtomicBoolean" in gate
-assert "if (state.phase == ObdPhase.CONNECTED) welcome.launchWelcomeGreeting()" in obd
+assert "fun launchObdGreeting()" in welcome and "fun onObdDisconnected()" in welcome
+assert "welcome.launchObdGreeting()" in obd and "ObdPhase.CONNECTED" in obd
 assert car.count("welcome.launchWelcomeGreeting()") == 2
 assert "onCreateSession(sessionInfo: SessionInfo)" in car
 assert "welcome.launchWelcomeGreeting()" not in content("MainActivity.kt")
-assert "val locale = GREETING_LOCALE" in guide # navigation uses Turkish TTS
+assert "engine.setLanguage(TURKISH)" in guide # navigation uses Turkish TTS
 print("OK: Turkish greeting is one-shot, two-trigger, and focus/voice-pref safe.")
