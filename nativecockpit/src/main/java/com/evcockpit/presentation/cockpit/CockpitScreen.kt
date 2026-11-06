@@ -301,7 +301,7 @@ fun CockpitScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     AssistPill(
-                        if (state.gpsFix == null) "GPS bekleniyor" else "GPS aktif",
+                        if (state.gpsFix == null) stringResource(R.string.ux_gps_waiting) else "GPS aktif",
                         onGpsClick
                     )
                     AssistPill(
@@ -625,6 +625,8 @@ private fun TelemetryLeftPanel(
                 ?.let(CockpitFormat::temperature) ?: "Bekleniyor", Modifier.weight(1f))
         }
         if (!connected) {
+            Text(stringResource(R.string.ux_obd_unavailable),
+                style = MaterialTheme.typography.labelSmall, color = SoftText)
             OutlinedButton(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
                 Text("OBD bağla", maxLines = 1)
             }
