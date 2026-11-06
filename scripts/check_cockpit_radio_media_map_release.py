@@ -28,8 +28,8 @@ webview = read("nativecockpit/src/main/java/com/evcockpit/presentation/media/Med
 map_code = read("nativecockpit/src/main/java/com/evcockpit/presentation/map/MapLibreCockpit.kt")
 manifest = read("nativecockpit/src/main/AndroidManifest.xml")
 
-assert '@GET("json/stations/bycountryexact/Turkey")' in radio_api
-assert '"votes"' in radio_api
+assert '@GET("json/stations/search?countrycode=TR")' in radio_api
+assert '"clickcount"' in radio_api and 'limit: Int = 50' in radio_api
 for field in ('name', 'url_resolved', 'favicon', 'tags', 'votes'):
     assert field in radio_api, f"Radio Browser field missing: {field}"
 assert "ExoPlayer.Builder" in radio_screen and "RadioScreen()" in media_menu
