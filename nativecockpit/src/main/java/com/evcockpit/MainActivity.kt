@@ -330,13 +330,7 @@ class MainActivity : ComponentActivity() {
                             soundUnavailable = soundUnavailable,
                             onOpenSoundSettings = { audioSettingsOpen = true }
                         )
-                        IconButton(
-                            modifier = Modifier.align(Alignment.TopEnd)
-                                .padding(top = 42.dp, end = 8.dp),
-                            onClick = { audioSettingsOpen = true }
-                        ) {
-                            Icon(Icons.Default.Tune, contentDescription = "Ses ayarları")
-                        }
+                        // Settings entry moved into the telemetry column to avoid HUD overlap.
                         // Show a dismissible warning when either Turkish TTS path is missing.
                         if (!ttsWarningDismissed &&
                             (welcomeWarning != null ||
