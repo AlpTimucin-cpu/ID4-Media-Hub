@@ -62,7 +62,7 @@ class ObdForegroundService : Service() {
         val notification = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_eya_car)
             .setContentTitle("EV Cockpit")
-            .setContentText("OBD bağlantısı ve teknik ölçümler çalışıyor")
+            .setContentText("Bluetooth OBD bağlantısı kuruluyor / izleniyor")
             .setOngoing(true)
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "Bağlantıyı kes", stop).build())
@@ -89,8 +89,10 @@ class ObdForegroundService : Service() {
                 }
                 if (wasConnected && !connected) welcome.onObdDisconnected()
                 wasConnected = connected
-                if (hadConnectionAttempt &&
-                    (state.phase == ObdPhase.DISCONNECTED || state.phase == ObdPhase.ERROR)
+                // A failed adapter can move to ERROR before this collector starts.
+                // Do not leave a zombie foreground service behind.
+                if (state.phase == ObdPhase.ERROR ||
+                    (hadConnectionAttempt && state.phase == ObdPhase.DISCONNECTED)
                 ) {
                     welcome.onObdDisconnected()
                     stopSelf()
