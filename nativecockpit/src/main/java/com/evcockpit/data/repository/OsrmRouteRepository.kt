@@ -58,9 +58,15 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
 
     override suspend fun calculate(
         origin: GeoCoordinate, destination: RoutePlace
+    ): RouteCalculationResult = calculateVia(origin, destination, emptyList())
+
+    override suspend fun calculateVia(
+        origin: GeoCoordinate,
+        destination: RoutePlace,
+        stops: List<GeoCoordinate>
     ): RouteCalculationResult = withContext(Dispatchers.IO) {
         val url = try {
-            OsrmRequestFormat.url(origin, destination.coordinate)
+            OsrmRequestFormat.urlVia(origin, stops, destination.coordinate)
         } catch (error: IllegalArgumentException) {
             return@withContext RouteCalculationResult.Failure(null, error.message ?: "Coordinate error")
         }
