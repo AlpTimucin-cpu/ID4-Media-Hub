@@ -19,4 +19,28 @@ object OsrmRequestFormat {
 
     fun url(origin: GeoCoordinate, destination: GeoCoordinate): String =
         ROOT + coordinates(origin, destination) + PARAMETERS
+
+    /** One to five genuine, user-selected charging stop coordinates.
+     * The route visits them in order; no synthetic GPS or straight-line segment.
+     */
+    fun urlVia(
+        origin: GeoCoordinate,
+        stops: List<GeoCoordinate>,
+        destination: GeoCoordinate
+    ): String {
+        require(stops.size <= 5) { "En fazla beş şarj durağı eklenebilir" }
+        require(origin.valid() && destination.valid() && stops.all { it.valid() }) {
+            "Geçersiz şarj durağı koordinatı"
+        }
+        if (stops.isEmpty()) return url(origin, destination)
+        val points = listOf(origin) + stops + destination
+        require(points.zipWithNext().all { (a, b) -> a != b }) {
+            "Aynı koordinata iki kez durak eklenemez"
+        }
+        val coords = points.joinToString(";") {
+            String.format(Locale.US, "%.6f,%.6f", it.longitude, it.latitude)
+        }
+        return ROOT + coords + PARAMETERS.replace("alternatives=true", "alternatives=false")
+    }
+
 }
