@@ -73,6 +73,8 @@ class Elm327VehicleRepository @Inject constructor(
     }
     private val diagnosticRequests = Channel<String>(capacity=1)
     private var task: Job? = null
+    // A cancelled attempt must never overwrite the state/socket of a newer one.
+    private var sessionEpoch: Long = 0L
     @Volatile private var socket: BluetoothSocket? = null
     private val spp = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
@@ -83,6 +85,16 @@ class Elm327VehicleRepository @Inject constructor(
     @SuppressLint("MissingPermission")
     override fun refreshPaired() {
         if (!hasPermission()) { permissionDenied(); return }
+        if (adapter == null) {
+            _connection.value = _connection.value.copy(devices = emptyList(),
+                error = "Bu telefonda Bluetooth adaptörü bulunamadı.")
+            return
+        }
+        if (!adapter.isEnabled) {
+            _connection.value = _connection.value.copy(devices = emptyList(),
+                error = "Bluetooth kapalı. Telefonun Bluetooth ayarlarından açın.")
+            return
+        }
         try {
             val found = adapter?.bondedDevices.orEmpty().mapNotNull { device ->
                 val address = device.address.orEmpty()
@@ -95,7 +107,9 @@ class Elm327VehicleRepository @Inject constructor(
     }
 
     override fun permissionDenied() {
-        _connection.value = _connection.value.copy(error="Bluetooth connection permission is required")
+        _connection.value = _connection.value.copy(
+            error = "Yakındaki cihazlar izni gerekli. Android uygulama izinlerinden izin verin."
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -103,18 +117,35 @@ class Elm327VehicleRepository @Inject constructor(
         if (_connection.value.phase == ObdPhase.CONNECTING ||
             _connection.value.phase == ObdPhase.CONNECTED) return
         if (!hasPermission()) { permissionDenied(); return }
+        if (adapter?.isEnabled != true) {
+            _connection.value = _connection.value.copy(phase = ObdPhase.ERROR,
+                error = "Bluetooth kapalı. Açıp tekrar deneyin.")
+            return
+        }
         refreshPaired()
         val device = try { adapter?.bondedDevices?.firstOrNull { it.address == address } }
             catch (_: SecurityException) { null }
         if (device == null) {
-            _connection.value = _connection.value.copy(error="Pair the adapter in Android Bluetooth settings first")
+            _connection.value = _connection.value.copy(phase = ObdPhase.ERROR,
+                error = "OBD cihazını önce Android Bluetooth ayarlarından eşleştirin.")
             return
         }
+        if (device.type == BluetoothDevice.DEVICE_TYPE_LE) {
+            _connection.value = _connection.value.copy(phase = ObdPhase.ERROR,
+                error = "Bu BLE adaptör için üreticinin UART/GATT UUID profili gerekiyor; " +
+                    "Bluetooth Classic SPP bağlantısı kullanılamaz.")
+            return
+        }
+        // Publish CONNECTING before launching: the Activity/Service must never
+        // inspect an outdated DISCONNECTED snapshot.
+        val epoch = ++sessionEpoch
         task?.cancel()
+        socket?.closeSilently()
+        socket = null
+        _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTING,
+            selectedDevice=address,error=null,lastSpeedAtMs=null,
+            lastPollSucceeded=false,diagnosticBusy=false,diagnosticResult=null)
         task = scope.launch {
-            _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTING,
-                selectedDevice=address,error=null,lastSpeedAtMs=null,
-                lastPollSucceeded=false,diagnosticBusy=false,diagnosticResult=null)
             _telemetry.value = VehicleTelemetry()
             _engineering.value = EngineeringSnapshot()
             _metrics.value = EngineeringMetrics()
@@ -123,21 +154,29 @@ class Elm327VehicleRepository @Inject constructor(
             } catch (_: CancellationException) {
                 // disconnect() closes socket to unblock Bluetooth reads.
             } catch (e: Exception) {
-                _connection.value = _connection.value.copy(phase=ObdPhase.ERROR,
-                    diagnosticBusy=false,
-                    error=when(e) {
-                        is SecurityException -> "Bluetooth permission denied"
-                        is IOException -> "ELM327 connection/response failed; check the adapter"
-                        else -> "Could not connect to ELM327"
-                    })
+                if (epoch == sessionEpoch) {
+                    android.util.Log.e("EV-Cockpit-OBD", "OBD session failed", e)
+                    val reason = when (e) {
+                        is SecurityException -> "Bluetooth bağlantı izni reddedildi."
+                        is IOException -> "ELM327 yanıt vermedi: " +
+                            (e.message?.take(100) ?: "cihazı ve kontağı kontrol edin.")
+                        else -> "ELM327 bağlantısı başarısız: " +
+                            (e.message?.take(100) ?: "cihaz türünü kontrol edin.")
+                    }
+                    _connection.value = _connection.value.copy(
+                        phase=ObdPhase.ERROR, diagnosticBusy=false, error=reason
+                    )
+                }
             } finally {
-                socket?.closeSilently();socket=null
-                _telemetry.value=VehicleTelemetry()
-                _engineering.value=EngineeringSnapshot()
-                _metrics.value=EngineeringMetrics()
-                if (_connection.value.phase != ObdPhase.ERROR)
-                    _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
-                        diagnosticBusy=false,diagnosticResult=null)
+                if (epoch == sessionEpoch) {
+                    socket?.closeSilently();socket=null
+                    _telemetry.value=VehicleTelemetry()
+                    _engineering.value=EngineeringSnapshot()
+                    _metrics.value=EngineeringMetrics()
+                    if (_connection.value.phase != ObdPhase.ERROR)
+                        _connection.value=_connection.value.copy(phase=ObdPhase.DISCONNECTED,
+                            diagnosticBusy=false,diagnosticResult=null)
+                }
             }
         }
     }
@@ -314,6 +353,7 @@ class Elm327VehicleRepository @Inject constructor(
     }
 
     override fun disconnect() {
+        ++sessionEpoch
         task?.cancel();task=null
         socket?.closeSilently();socket=null
         while (diagnosticRequests.tryReceive().isSuccess) { /* discard pending reads */ }
