@@ -39,9 +39,9 @@ fun RoutePlannerDialog(
     onClear: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val muted = Color(0xFFABC5D5)
-    val accent = Color(0xFF62E7EE)
-    val success = Color(0xFF74F2BD)
+    val muted = Color(0xFFB4BEC4)
+    val accent = Color(0xFF67AFFF)
+    val success = Color(0xFF78DF9D)
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
         unfocusedTextColor = Color.White,
@@ -63,16 +63,16 @@ fun RoutePlannerDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.80f))
+                .background(Color.Black.copy(alpha = 0.45f))
                 .statusBarsPadding(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.BottomCenter
         ) {
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth(0.90f)
-                        .fillMaxHeight(0.85f),
-                    shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFF0A1728),
+                        .fillMaxWidth(0.94f)
+                        .fillMaxHeight(0.82f),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = Color(0xFF111315),
                     tonalElevation = 4.dp,
                     shadowElevation = 18.dp
                 ) {
@@ -86,7 +86,7 @@ fun RoutePlannerDialog(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.native_route_and_charging_plan),
+                                text = "Hedefler",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = Color.White
@@ -102,7 +102,7 @@ fun RoutePlannerDialog(
                                 )
                             }
                         }
-                        HorizontalDivider(color = Color(0xFF27465B))
+                        HorizontalDivider(color = Color(0xFF353B40))
 
                         // Every form field, suggestion, alternative and action can scroll.
                         Column(
@@ -115,7 +115,8 @@ fun RoutePlannerDialog(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.native_photon_osm_addresses_actual_osrm_route_not_live_traffic),
+                                text = "Başlangıç ve varış için gerçek OSRM rotası hesaplanır. " +
+                                    "Batarya şarjı yalnızca doğrulanmış OBD ölçümünden okunur.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = muted
                             )
@@ -272,7 +273,7 @@ private fun Suggestions(items: List<RoutePlace>, onSelect: (RoutePlace) -> Unit)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEach { place ->
             Surface(
-                color = Color(0xFF19374B),
+                color = Color(0xFF303336),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Row(
