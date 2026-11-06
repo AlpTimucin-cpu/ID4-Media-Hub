@@ -348,7 +348,6 @@ fun CockpitScreen(
             onRoute = { routePlanner = true },
             onCharging = { charging = true },
             onMedia = { media = true },
-            onEngineering = { engineeringOpen = true },
             onSettings = { settings = true; onObdRefresh() }
         )
     }
@@ -523,17 +522,38 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
 @Composable
 private fun CockpitDock(
     modifier: Modifier = Modifier,
-    onRoute: () -> Unit, onCharging: () -> Unit, onMedia: () -> Unit,
-    onEngineering: () -> Unit, onSettings: () -> Unit
+    onRoute: () -> Unit,
+    onCharging: () -> Unit,
+    onMedia: () -> Unit,
+    onSettings: () -> Unit
 ) {
-    Surface(modifier.fillMaxWidth(), color = Navy.copy(alpha = .98f), shape = RoundedCornerShape(6.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-            DockAction(Icons.Default.Map, stringResource(R.string.native_route), onRoute, Modifier.weight(1f))
-            DockAction(Icons.Default.Bolt, stringResource(R.string.native_charging), onCharging, Modifier.weight(1f))
-            DockAction(Icons.Default.SmartDisplay, stringResource(R.string.native_media), onMedia, Modifier.weight(1f))
-            DockAction(Icons.Default.Analytics, "Hesaplar", onEngineering, Modifier.weight(1f))
-            DockAction(Icons.Default.Settings, stringResource(R.string.native_settings), onSettings, Modifier.weight(1f))
-        }
+    // Four primary destinations only. Diagnostics lives in TelemetryLeftPanel.
+    NavigationBar(
+        modifier = modifier.height(64.dp),
+        containerColor = Navy,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0)
+    ) {
+        NavigationBarItem(
+            selected = false, onClick = onRoute,
+            icon = { Icon(Icons.Default.Map, contentDescription = null) },
+            label = { Text("Rota", fontSize = 11.sp) }
+        )
+        NavigationBarItem(
+            selected = false, onClick = onCharging,
+            icon = { Icon(Icons.Default.Bolt, contentDescription = null) },
+            label = { Text("Şarj", fontSize = 11.sp) }
+        )
+        NavigationBarItem(
+            selected = false, onClick = onMedia,
+            icon = { Icon(Icons.Default.SmartDisplay, contentDescription = null) },
+            label = { Text("Medya", fontSize = 11.sp) }
+        )
+        NavigationBarItem(
+            selected = false, onClick = onSettings,
+            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+            label = { Text("Ayarlar", fontSize = 11.sp) }
+        )
     }
 }
 
