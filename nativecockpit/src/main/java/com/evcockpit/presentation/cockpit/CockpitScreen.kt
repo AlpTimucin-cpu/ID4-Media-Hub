@@ -272,6 +272,8 @@ fun CockpitScreen(
                 TelemetryLeftPanel(
                     displayState,
                     obdConnection.phase == ObdPhase.CONNECTED,
+                    engineering = engineering,
+                    metrics = engineeringMetrics,
                     onConnect = { settings = true; onObdRefresh() },
                     onEngineering = { engineeringOpen = true },
                     onSoundSettings = onOpenSoundSettings,
@@ -607,60 +609,117 @@ private fun HardwareNotice(title: String, detail: String, onClick: () -> Unit) {
 }
 
 
-/** Six independent cards; the technical diagnostics page stays accessible. */
+/** Live OBD results only. Experimental MEB PID scales stay labelled and
+ * NEVER become validated BMS SoC or charging-plan inputs automatically.
+ */
 @Composable
 private fun TelemetryLeftPanel(
     data: CockpitUiState,
     connected: Boolean,
+    engineering: EngineeringSnapshot,
+    metrics: EngineeringMetrics,
     onConnect: () -> Unit,
     onEngineering: () -> Unit,
     onSoundSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val now = System.currentTimeMillis()
     fun reading(value: String?): String =
-        if (!connected) "Bağlantı Bekleniyor" else value ?: "Ölçüm Bekleniyor"
+        if (!connected) "Bağlantı Bekleniyor" else value ?: "ECU yanıtı bekleniyor"
+
+    // The following BMS values are parsed from actual UDS frames.
+    // Their community PID scaling must be confirmed against the vehicle.
+    val candidateSoc = engineering.socPercent.current(now, 120_000L)
+    val candidateVoltage = engineering.packVoltageV.current(now, 120_000L)
+    val candidateCurrent = engineering.packCurrentA.current(now, 120_000L)
+    val candidateMaxTemp = engineering.temperatureMaxC.current(now, 120_000L)
+    val candidateMinTemp = engineering.temperatureMinC.current(now, 120_000L)
+    val candidateCapacity = engineering.capacityParameterKwh.current(now, 900_000L)
+    val candidateCellMax = engineering.cellMaxV.current(now, 120_000L)
+    val candidateCellMin = engineering.cellMinV.current(now, 120_000L)
 
     Column(modifier.verticalScroll(rememberScrollState())) {
+        Text("EV COCKPIT · CANLI OBD", color = NeonGreen,
+            style = MaterialTheme.typography.titleSmall)
         Text(
-            "EV COCKPIT · TELEMETRİ",
-            color = NeonGreen,
-            style = MaterialTheme.typography.titleSmall
+            if (connected) "ELM327 bağlı · yalnızca gerçek ECU yanıtları"
+            else "Adaptör bağlantısı bekleniyor",
+            color = SoftText,
+            style = MaterialTheme.typography.labelSmall
         )
         Spacer(Modifier.height(12.dp))
         TelemetryTile(
-            "BATARYA · SoC",
-            reading(data.socPercent?.takeIf { it.isFinite() && it in 0.0..100.0 }
-                ?.let(CockpitFormat::percent))
+            if (candidateSoc != null) "BATARYA SoC · DENEYSEL BMS"
+            else "BATARYA SoC",
+            reading(data.socPercent?.let(CockpitFormat::percent)
+                ?: candidateSoc?.let(CockpitFormat::percent))
         )
         Spacer(Modifier.height(16.dp))
         TelemetryTile(
-            "MENZİL · MODEL",
-            reading(data.estimatedRangeKm?.takeIf { it.isFinite() && it >= 0.0 }
-                ?.let(CockpitFormat::distance))
+            "MENZİL · OBD SoC + MODEL",
+            reading(if (candidateSoc != null)
+                metrics.estimatedSummerRangeKm?.let(CockpitFormat::distance)
+            else null)
         )
         Spacer(Modifier.height(16.dp))
         TelemetryTile(
             "BATARYA SAĞLIĞI · SoH",
-            if (!connected) "Bağlantı Bekleniyor" else "Doğrulanmadı"
+            if (connected) "OBD ile doğrulanmadı" else "Bağlantı Bekleniyor"
         )
         Spacer(Modifier.height(16.dp))
         TelemetryTile(
-            "BATARYA SICAKLIĞI",
-            reading(data.batteryTemperatureC?.let(CockpitFormat::temperature))
+            "BATARYA SICAKLIĞI · DENEYSEL BMS",
+            reading(data.batteryTemperatureC?.let(CockpitFormat::temperature)
+                ?: candidateMaxTemp?.let(CockpitFormat::temperature))
         )
         Spacer(Modifier.height(16.dp))
         TelemetryTile(
-            "ANLIK GÜÇ",
-            reading(data.powerKw?.let(CockpitFormat::power))
+            "ANLIK GÜÇ · DENEYSEL BMS",
+            reading(data.powerKw?.let(CockpitFormat::power)
+                ?: if (candidateVoltage != null && candidateCurrent != null)
+                    metrics.batteryPowerKw?.let(CockpitFormat::power) else null)
         )
         Spacer(Modifier.height(16.dp))
         TelemetryTile(
-            "ARAÇ HIZI",
+            "ARAÇ HIZI · OBD 010D",
             reading(data.speedKmh?.let(CockpitFormat::speed))
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "PAKET GERİLİMİ · DENEYSEL",
+            reading(candidateVoltage?.let { "%.1f V".format(it) })
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "PAKET AKIMI · DENEYSEL",
+            reading(candidateCurrent?.let { "%.1f A".format(it) })
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "BATARYA SICAKLIK ARALIĞI",
+            reading(if (candidateMinTemp != null && candidateMaxTemp != null)
+                "%.1f – %.1f °C".format(candidateMinTemp, candidateMaxTemp) else null)
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "HÜCRE GERİLİM ARALIĞI",
+            reading(if (candidateCellMin != null && candidateCellMax != null)
+                "%.3f – %.3f V".format(candidateCellMin, candidateCellMax) else null)
+        )
+        Spacer(Modifier.height(16.dp))
+        TelemetryTile(
+            "KAPASİTE PARAMETRESİ · SoH DEĞİL",
+            reading(candidateCapacity?.let { "%.2f kWh".format(it) })
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Deneysel MEB PID ölçekleri araç göstergesi veya ODIS ile " +
+                "doğrulanmadan menzil/şarj kararlarında kullanılmaz. " +
+                "SoH için onaylı BMS kapasite testi gerekir.",
+            style = MaterialTheme.typography.labelSmall, color = SoftText
+        )
         TextButton(onClick = onEngineering, modifier = Modifier.fillMaxWidth()) {
-            Text("Tüm teknik ölçümler")
+            Text("Tüm teknik ölçümler ve ham OBD yanıtları")
         }
         TextButton(onClick = onSoundSettings, modifier = Modifier.fillMaxWidth()) {
             Text("Ses ve motor sesi ayarları")
