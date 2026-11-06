@@ -294,6 +294,7 @@ class MainActivity : ComponentActivity() {
                             onRoutePlan = navigation::plan,
                             onRouteAlternative = navigation::selectAlternative,
                             onRouteClear = navigation::clearRoute,
+                            onAddChargingStop = navigation::addChargingStop,
                             onGpsClick = { requestGps(false) },
                             gpsError = gpsError,
                             chargingUi = stations,
