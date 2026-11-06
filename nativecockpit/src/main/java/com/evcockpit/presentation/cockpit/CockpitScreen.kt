@@ -22,13 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalContext
-import com.evcockpit.presentation.media.MediaLauncher
-import com.evcockpit.presentation.media.RadioScreen
-import com.evcockpit.presentation.media.InternalMediaPlayer
-import com.evcockpit.presentation.media.MediaSite
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.evcockpit.presentation.media.MediaLaunchState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,7 +34,7 @@ import com.evcockpit.domain.usecase.AutomaticChargePlan
 import com.evcockpit.presentation.charging.ChargingUiState
 import com.evcockpit.presentation.charging.RouteChargingUiState
 import com.evcockpit.presentation.map.MapLibreCockpit
-import com.evcockpit.presentation.media.ParkedStreamingDialog
+import com.evcockpit.presentation.media.MediaHomeScreen
 import com.evcockpit.presentation.media.rememberPhoneMediaAllowed
 import com.evcockpit.presentation.navigation.NavigationRouteState
 import com.evcockpit.presentation.navigation.RouteLoadStatus
@@ -107,14 +101,12 @@ fun CockpitScreen(
     val route = state.route ?: routeState.routeResult
     var routePlanner by remember { mutableStateOf(false) }
     var charging by remember { mutableStateOf(false) }
-    var media by remember { mutableStateOf(false) }
+    var selectedPage by rememberSaveable { mutableIntStateOf(0) } // 0 = Harita, 1 = Medya
     var settings by remember { mutableStateOf(false) }
     var engineeringOpen by remember { mutableStateOf(false) }
     var voiceSettings by remember { mutableStateOf(false) }
     var station by remember { mutableStateOf<ChargingStation?>(null) }
     var missingVoice by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    var mediaLaunch by remember { mutableStateOf<MediaLaunchState?>(null) }
     val phoneMediaAllowed = rememberPhoneMediaAllowed()
     val snackbar = remember { SnackbarHostState() }
     val error = (loadStatus as? RouteLoadStatus.Error)?.message
@@ -146,25 +138,6 @@ fun CockpitScreen(
         onClearDiagnostic = onObdClearDiagnostic,
         onDismiss = { settings = false }
     )
-    // Media3 lives inside the app; no external "media engine" is required.
-    if (media) ParkedStreamingDialog(
-        playbackAllowed = phoneMediaAllowed,
-        onDismiss = { media = false }
-    )
-    if (mediaLaunch == MediaLaunchState.NotInstalled || mediaLaunch == MediaLaunchState.Blocked) {
-        AlertDialog(
-            onDismissRequest = { mediaLaunch = null },
-            containerColor = Navy,
-            title = { Text(stringResource(R.string.media_engine_unavailable_title)) },
-            text = { Text(stringResource(if (mediaLaunch == MediaLaunchState.NotInstalled)
-                R.string.media_engine_not_installed else R.string.media_engine_blocked)) },
-            confirmButton = {
-                TextButton(onClick = { mediaLaunch = null }) {
-                    Text(stringResource(R.string.native_close))
-                }
-            }
-        )
-    }
     if (missingVoice) TtsPackageWarningDialog(onDismiss = { missingVoice = false })
     if (voiceSettings) AlertDialog(
         onDismissRequest = { voiceSettings = false },
@@ -278,74 +251,88 @@ fun CockpitScreen(
         }
     }
 
-    // Three non-overlapping columns; the center owns the only MapView.
-    Column(Modifier.fillMaxSize().background(Ink)
-        .windowInsetsPadding(WindowInsets.safeDrawing)
+    // Fixed bottom navigation. Media is a separate page, not a third HUD column.
+    Column(
+        Modifier.fillMaxSize().background(Ink)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        Row(
-            Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            TelemetryLeftPanel(
-                displayState, obdConnection.phase == ObdPhase.CONNECTED,
-                onConnect = { settings = true; onObdRefresh() },
-                onEngineering = { engineeringOpen = true },
-                modifier = Modifier.weight(.35f).fillMaxHeight()
+        if (selectedPage == 1) {
+            MediaHomeScreen(
+                phoneAllowed = phoneMediaAllowed,
+                vehicleMoving = obdConnection.phase == ObdPhase.CONNECTED &&
+                    (state.speedKmh ?: 0.0) > 1.0,
+                modifier = Modifier.fillMaxWidth().weight(1f)
             )
-            Box(
-                Modifier.weight(.40f).fillMaxHeight()
-                    .background(Navy, RoundedCornerShape(14.dp))
+        } else {
+            Row(
+                Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                MapLibreCockpit(
-                    gpsFix = state.gpsFix,
-                    routePoints = route?.routePoints.orEmpty(),
-                    stations = chargingUi.allStations,
-                    plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
-                        ?.stops?.map { it.station.id }?.toSet().orEmpty(),
-                    weatherPoints = weatherUi.points
-                        .takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
-                    speedProfile = route?.profileSpeeds.orEmpty(),
-                    onViewportChanged = onMapViewport,
-                    onStationTapped = { station = it },
-                    modifier = Modifier.fillMaxSize()
+                TelemetryLeftPanel(
+                    displayState,
+                    obdConnection.phase == ObdPhase.CONNECTED,
+                    onConnect = { settings = true; onObdRefresh() },
+                    onEngineering = { engineeringOpen = true },
+                    modifier = Modifier.weight(.32f).fillMaxHeight()
                 )
-                NavigationGlassCard(
-                    route, loadStatus is RouteLoadStatus.Loading,
-                    onOpen = { routePlanner = true },
-                    modifier = Modifier.align(Alignment.TopCenter)
-                        .fillMaxWidth(.90f).padding(top = 8.dp)
-                )
-                Row(
-                    Modifier.align(Alignment.BottomStart).padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Box(
+                    Modifier.weight(.68f).fillMaxHeight()
+                        .background(Navy, RoundedCornerShape(14.dp))
                 ) {
-                    AssistPill(
-                        if (state.gpsFix == null) stringResource(R.string.ux_gps_waiting) else "GPS aktif",
-                        onGpsClick
+                    // The route is always visible on the driving page.
+                    MapLibreCockpit(
+                        gpsFix = state.gpsFix,
+                        routePoints = route?.routePoints.orEmpty(),
+                        stations = chargingUi.allStations,
+                        plannedStopIds = (automaticChargePlan.plan as? AutomaticChargePlan.Estimate)
+                            ?.stops?.map { it.station.id }?.toSet().orEmpty(),
+                        weatherPoints = weatherUi.points
+                            .takeIf { weatherUi.routeId == route?.routeId }.orEmpty(),
+                        speedProfile = route?.profileSpeeds.orEmpty(),
+                        onViewportChanged = onMapViewport,
+                        onStationTapped = { station = it },
+                        modifier = Modifier.fillMaxSize()
                     )
-                    AssistPill(
-                        if (voiceEnabled) "Ses açık" else "Ses kapalı",
-                        onVoiceToggle
+                    NavigationGlassCard(
+                        route,
+                        loadStatus is RouteLoadStatus.Loading,
+                        onOpen = { routePlanner = true },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .fillMaxWidth(.87f).padding(top = 10.dp)
                     )
+                    Row(
+                        Modifier.align(Alignment.BottomStart).padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        AssistPill(
+                            if (state.gpsFix == null) stringResource(R.string.ux_gps_waiting)
+                            else "GPS aktif",
+                            onGpsClick
+                        )
+                        AssistPill(
+                            if (voiceEnabled) "Ses açık" else "Ses kapalı",
+                            onVoiceToggle
+                        )
+                        if (soundUnavailable) AssistPill(
+                            "Motor sesi kullanılamıyor",
+                            onOpenSoundSettings
+                        )
+                    }
                 }
             }
-            CockpitMediaPanel(
-                playbackAllowed = phoneMediaAllowed,
-                 onVideo = { site ->
-                    if (site == com.evcockpit.presentation.media.MediaSite.YOUTUBE) {
-                        media = true
-                    } else {
-                        mediaLaunch = MediaLauncher.launchOfficialApp(context, site)
-                    }
-                },
-                modifier = Modifier.weight(.25f).fillMaxHeight()
-            )
         }
+        SnackbarHost(hostState = snackbar)
         CockpitDock(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-            onRoute = { routePlanner = true },
-            onCharging = { charging = true },
-            onMedia = { media = true },
+            selectedPage = selectedPage,
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            onRoute = {
+                if (selectedPage == 1) selectedPage = 0
+                else routePlanner = true
+            },
+            onCharging = { selectedPage = 0; charging = true },
+            onMedia = { selectedPage = 1 },
             onSettings = { settings = true; onObdRefresh() }
         )
     }
@@ -520,6 +507,7 @@ private fun ArrivalHud(route: RouteSnapshot?, state: CockpitUiState, loading: Bo
 @Composable
 private fun CockpitDock(
     modifier: Modifier = Modifier,
+    selectedPage: Int,
     onRoute: () -> Unit,
     onCharging: () -> Unit,
     onMedia: () -> Unit,
@@ -533,7 +521,7 @@ private fun CockpitDock(
         windowInsets = WindowInsets(0)
     ) {
         NavigationBarItem(
-            selected = false, onClick = onRoute,
+            selected = selectedPage == 0, onClick = onRoute,
             icon = { Icon(Icons.Default.Map, contentDescription = null) },
             label = { Text("Rota", fontSize = 11.sp) }
         )
@@ -543,7 +531,7 @@ private fun CockpitDock(
             label = { Text("Şarj", fontSize = 11.sp) }
         )
         NavigationBarItem(
-            selected = false, onClick = onMedia,
+            selected = selectedPage == 1, onClick = onMedia,
             icon = { Icon(Icons.Default.SmartDisplay, contentDescription = null) },
             label = { Text("Medya", fontSize = 11.sp) }
         )
@@ -744,80 +732,3 @@ private fun AssistPill(text: String, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun CockpitMediaPanel(
-    playbackAllowed: Boolean,
-    onVideo: (MediaSite) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    Surface(modifier, color = Navy, shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.fillMaxSize().padding(6.dp)) {
-            Text("MEDYA", style = MaterialTheme.typography.labelMedium,
-                color = NeonGreen, modifier = Modifier.padding(8.dp))
-            TabRow(
-                selectedTabIndex = tab,
-                containerColor = Navy,
-                contentColor = NeonGreen
-            ) {
-                listOf("Video", "Radyo", "Müzik").forEachIndexed { i, name ->
-                    Tab(
-                        selected = tab == i, onClick = { tab = i },
-                        text = { Text(name, fontSize = 11.sp, maxLines = 1) }
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            when (tab) {
-                0 -> Column(
-                    Modifier.fillMaxWidth().weight(1f)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        if (playbackAllowed)
-                            "Resmî kataloglar · video için park edin"
-                        else "Android Auto bağlıyken video kapalı",
-                        color = SoftText,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    MediaSite.entries.forEach { site ->
-                        val subtitle = when (site) {
-                            MediaSite.NETFLIX -> "Netflix · resmî uygulamada aç"
-                            MediaSite.DISNEY -> "Disney+ · resmî uygulamada aç"
-                            MediaSite.PRIME -> "Prime Video · resmî uygulamada aç"
-                            MediaSite.YOUTUBE -> "YouTube · uygulama içi WebView"
-                        }
-                        Card(
-                            onClick = { onVideo(site) },
-                            enabled = playbackAllowed,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF15263A)
-                            )
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(site.title, style = MaterialTheme.typography.titleSmall,
-                                    color = Color.White)
-                                Text(subtitle, style = MaterialTheme.typography.labelSmall,
-                                    color = SoftText, maxLines = 2)
-                            }
-                        }
-                    }
-                }
-                1 -> Box(Modifier.fillMaxWidth().weight(1f)) {
-                    RadioScreen(compact = true)
-                }
-                else -> Box(
-                    Modifier.fillMaxWidth().weight(1f)
-                ) {
-                    InternalMediaPlayer(
-                        modifier = Modifier.fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                        allowVideo = false
-                    )
-                }
-            }
-        }
-    }
-}
