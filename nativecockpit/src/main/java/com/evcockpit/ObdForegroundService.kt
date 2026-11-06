@@ -95,7 +95,8 @@ class ObdForegroundService : Service() {
                     (hadConnectionAttempt && state.phase == ObdPhase.DISCONNECTED)
                 ) {
                     welcome.onObdDisconnected()
-                    stopSelf()
+                    // Only stop this request, never a newer user retry.
+                    stopSelf(startId)
                 }
             }
         }
@@ -106,7 +107,9 @@ class ObdForegroundService : Service() {
         connectionMonitor?.cancel()
         scope.cancel()
         welcome.onObdDisconnected()
-        obd.disconnect()
+        // Preserve the real connection error so the user can read it after
+        // the foreground notification disappears.
+        if (obd.connection.value.phase != ObdPhase.ERROR) obd.disconnect()
         super.onDestroy()
     }
 
