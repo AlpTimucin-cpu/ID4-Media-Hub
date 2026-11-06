@@ -17,6 +17,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.evcockpit.car.CarNavigationOwnership
 import com.evcockpit.data.location.FusedCurrentLocationProvider
+import com.evcockpit.data.weather.OpenMeteoWeatherRepository
 import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.LocationRepository
 import com.evcockpit.domain.repository.RouteRepository
@@ -88,6 +92,7 @@ class NavigationViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val currentLocation: FusedCurrentLocationProvider,
     private val vehicleRepository: VehicleRepository,
+    private val weatherRepository: OpenMeteoWeatherRepository,
     audioDucking: AppAudioDucking
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
@@ -100,6 +105,8 @@ class NavigationViewModel @Inject constructor(
     private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
     private val _foreground = MutableStateFlow(false)
+    private val _weatherAlerts = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val weatherAlerts = _weatherAlerts.asSharedFlow()
     private var gpsWaitSinceMs = System.currentTimeMillis()
     // Genuine ELM327 measurements and Fused provider fixes only.
     private data class LiveSources(val telemetry: VehicleTelemetry, val gps: GpsFix?)
@@ -241,6 +248,50 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             snapshotFlow { guide.status to guide.lastError }.collect { (status, error) ->
                 _voice.update { it.copy(status = status, error = error) }
+            }
+        }
+        // A route-scoped, foreground-only 30-minute clock. No fake GPS, no
+        // unverified forecast spoken, and no collision with imminent turns.
+        viewModelScope.launch {
+            combine(
+                routes.currentRoute,
+                _foreground,
+                CarNavigationOwnership.navigating,
+                _voice
+            ) { route, foreground, carNavigating, voice ->
+                if (foreground && !carNavigating && voice.enabled) route?.routeId else null
+            }.distinctUntilChanged().collectLatest { activeId ->
+                if (activeId == null) return@collectLatest
+                delay(30 * 60_000L)
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    val route = cockpit.value.route
+                    val fix = gpsLocation.value?.takeIf { it.usable(now) }
+                    val settings = _voice.value
+                    val nextTurn = route?.nextTurnMeters
+                    if (route?.routeId == activeId && fix != null &&
+                        (nextTurn == null || nextTurn > 650.0) &&
+                        settings.enabled &&
+                        settings.status in setOf(
+                            NativeVoiceGuide.Status.READY,
+                            NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED
+                        )
+                    ) {
+                        val report = weatherRepository.currentAt(fix.coordinate).getOrNull()
+                        // Timestamp and location are real forecast API data.
+                        if (report != null && routes.currentRoute.value?.routeId == activeId &&
+                            _foreground.value
+                        ) {
+                            val degree = report.temperatureC.toInt()
+                            val message = "Mevcut konumunuzda hava ${degree} derece, " +
+                                "${report.summaryTr}."
+                            if (guide.speakIfIdle(message, settings.volume)) {
+                                _weatherAlerts.tryEmit(message)
+                            }
+                        }
+                    }
+                    delay(30 * 60_000L)
+                }
             }
         }
         // Measured GPS drives both route progress and maneuver announcements.
