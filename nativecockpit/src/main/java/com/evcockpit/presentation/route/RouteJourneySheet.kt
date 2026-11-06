@@ -69,7 +69,13 @@ fun RouteJourneySheet(
     var section by remember { mutableIntStateOf(0) }
     val plan = charging.plan
     val routeMatches = charging.routeId == route.routeId
-    val safeReserve = charging.arrivalReservePercent.coerceIn(5f, 40f)
+    // Keep slider movement local; persist once, after the gesture finishes.
+    var reserveDraft by remember { mutableFloatStateOf(
+        charging.arrivalReservePercent.coerceIn(5f, 40f)
+    ) }
+    LaunchedEffect(charging.arrivalReservePercent) {
+        reserveDraft = charging.arrivalReservePercent.coerceIn(5f, 40f)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -236,11 +242,12 @@ fun RouteJourneySheet(
                     )
                     JourneyCard {
                         Text("Varışta batarya rezervi", fontWeight = FontWeight.SemiBold)
-                        Text("${safeReserve.toInt()}%", fontWeight = FontWeight.Bold,
+                        Text("${reserveDraft.toInt()}%", fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.headlineSmall)
                         Slider(
-                            value = safeReserve,
-                            onValueChange = onSetReserve,
+                            value = reserveDraft,
+                            onValueChange = { reserveDraft = it },
+                            onValueChangeFinished = { onSetReserve(reserveDraft) },
                             valueRange = 5f..40f,
                             steps = 34
                         )
