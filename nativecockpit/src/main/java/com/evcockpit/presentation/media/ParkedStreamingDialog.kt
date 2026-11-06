@@ -1,39 +1,22 @@
 package com.evcockpit.presentation.media
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.evcockpit.R
 
-/** Phone media browser: embedded YouTube, external licensed DRM apps, and radio. */
+/**
+ * Standalone Mola-style media hub. It DOES NOT require the old mediahub APK,
+ * a Fermata package or another external player.
+ */
 @Composable
 fun ParkedStreamingDialog(
     playbackAllowed: Boolean,
@@ -42,121 +25,133 @@ fun ParkedStreamingDialog(
     onLaunchMediaEngine: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var radioTab by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf<MediaSite?>(null) }
-    var appError by remember { mutableStateOf<Pair<MediaSite, MediaLaunchState>?>(null) }
+    var tab by remember { mutableIntStateOf(0) } // Video / Radio / Music
+    var webSite by remember { mutableStateOf<MediaSite?>(null) }
+    var externalError by remember { mutableStateOf<Pair<MediaSite, MediaLaunchState>?>(null) }
 
     LaunchedEffect(playbackAllowed) {
-        if (!playbackAllowed) selected = null
+        if (!playbackAllowed) webSite = null
     }
 
-    // YouTube only: fullscreen ChromeClient stays owned by the WebView host.
-    val service = selected
-    if (service == MediaSite.YOUTUBE && playbackAllowed) {
+    if (webSite == MediaSite.YOUTUBE && playbackAllowed) {
         Dialog(
-            onDismissRequest = { selected = null },
+            onDismissRequest = { webSite = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Surface(Modifier.fillMaxSize(), color = Color(0xFF0A0F1A)) {
                 MediaWebViewScreen(
-                    service = service,
+                    service = MediaSite.YOUTUBE,
                     playbackAllowed = playbackAllowed,
-                    onClose = { selected = null }
+                    onClose = { webSite = null }
                 )
             }
         }
         return
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
-            modifier = modifier.fillMaxWidth().heightIn(max = 600.dp),
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF0A1728),
-            contentColor = Color.White,
-            shadowElevation = 12.dp
+            modifier = modifier.fillMaxWidth(.94f).fillMaxHeight(.91f),
+            shape = RoundedCornerShape(18.dp),
+            color = Color(0xFF0D1929),
+            contentColor = Color.White
         ) {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()).padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    stringResource(R.string.native_in_app_media_browser),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                TabRow(selectedTabIndex = if (radioTab) 1 else 0) {
-                    Tab(selected = !radioTab, onClick = { radioTab = false },
-                        text = { Text(stringResource(R.string.media_video_tab)) })
-                    Tab(selected = radioTab, onClick = { radioTab = true },
-                        text = { Text(stringResource(R.string.media_radio_tab)) })
+            Column(Modifier.fillMaxSize().padding(12.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("EV COCKPIT · MEDYA",
+                        style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onDismiss) { Text("Kapat") }
                 }
-                if (radioTab) {
-                    RadioScreen()
-                } else {
-                    Text(
-                        if (playbackAllowed)
-                            stringResource(R.string.native_in_app_media_on_the_phone)
-                        else stringResource(R.string.native_video_is_unavailable_on_this_screen),
-                        color = Color(0xFFABC5D5),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    onLaunchMediaEngine?.let { launch ->
-                        OutlinedButton(
-                            onClick = launch,
-                            enabled = playbackAllowed,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        ) { Text(stringResource(R.string.media_engine_open)) }
+                TabRow(
+                    selectedTabIndex = tab,
+                    containerColor = Color(0xFF0D1929),
+                    contentColor = Color(0xFF3DEA9B)
+                ) {
+                    listOf("Video", "Radyo", "Müzik").forEachIndexed { index, title ->
+                        Tab(
+                            selected = tab == index,
+                            onClick = { tab = index },
+                            text = { Text(title) }
+                        )
                     }
-                    MediaSite.entries.forEach { site ->
-                        Button(
-                            enabled = playbackAllowed,
-                            onClick = {
-                                if (site == MediaSite.YOUTUBE) {
-                                    selected = site
-                                } else {
-                                    when (val result = MediaLauncher.launchOfficialApp(context, site)) {
-                                        is MediaLaunchState.Launched -> onDismiss()
-                                        else -> appError = site to result
+                }
+                Spacer(Modifier.height(10.dp))
+                when (tab) {
+                    0 -> Column(
+                        Modifier.fillMaxWidth().weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            if (playbackAllowed)
+                                "Resmî video katalogları · araç park hâlindeyken kullanın."
+                            else "Android Auto bağlıyken video kullanılamaz.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        MediaSite.entries.forEach { site ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
+                                enabled = playbackAllowed,
+                                onClick = {
+                                    if (site == MediaSite.YOUTUBE) webSite = site
+                                    else {
+                                        when (val result =
+                                            MediaLauncher.launchOfficialApp(context, site)) {
+                                            is MediaLaunchState.Launched -> onDismiss()
+                                            else -> externalError = site to result
+                                        }
                                     }
+                                },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF172B40)
+                                )
+                            ) {
+                                Column(Modifier.padding(14.dp)) {
+                                    Text(site.title,
+                                        style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        if (site == MediaSite.YOUTUBE)
+                                            "Uygulama içi YouTube web oynatıcı"
+                                        else "Resmî uygulamayı aç · abonelik ve DRM sağlayıcıya aittir",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        ) { Text(site.title) }
+                            }
+                        }
                     }
-                    Text(
-                        stringResource(R.string.native_sign_in_to_your_account_on_the_site_playback_support_depends_on_the_se),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFB7CEDF)
-                    )
-                }
-                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.native_close))
+                    1 -> Box(Modifier.weight(1f)) {
+                        RadioScreen(compact = true)
+                    }
+                    else -> Box(Modifier.weight(1f)) {
+                        // Media engine button now opens this app-owned Media3 player.
+                        InternalMediaPlayer(
+                            modifier = Modifier.fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            allowVideo = false
+                        )
+                    }
                 }
             }
         }
     }
 
-    appError?.let { (site, state) ->
+    externalError?.let { (site, state) ->
         AlertDialog(
-            onDismissRequest = { appError = null },
-            containerColor = Color(0xEE15263A),
-            tonalElevation = 14.dp,
-            shape = RoundedCornerShape(24.dp),
-            title = { Text(site.title, color = Color.White) },
+            onDismissRequest = { externalError = null },
+            title = { Text(site.title) },
             text = {
-                Text(
-                    stringResource(
-                        if (state == MediaLaunchState.NotInstalled)
-                            R.string.media_external_not_installed
-                        else R.string.media_external_launch_blocked
-                    ),
-                    color = Color(0xFFE0ECF7)
-                )
+                Text(if (state == MediaLaunchState.NotInstalled)
+                    "Bu hizmetin resmî uygulaması yüklü değil."
+                    else "Bu hizmet açılamadı. Uygulama izinlerini kontrol edin.")
             },
             confirmButton = {
-                TextButton(onClick = { appError = null }) {
-                    Text(stringResource(R.string.native_close))
-                }
+                TextButton(onClick = { externalError = null }) { Text("Tamam") }
             }
         )
     }
