@@ -108,6 +108,53 @@ class OpenMeteoWeatherRepository @Inject constructor() {
             Result.failure(error)
         }
 
+    /**
+     * Fetch current conditions at an actual, validated GPS coordinate.
+     * Used by the 30-minute spoken alert, not by the route sample cache.
+     */
+    suspend fun currentAt(coordinate: GeoCoordinate): Result<WeatherWaypoint> = try {
+        require(coordinate.valid()) { "Geçersiz GPS konumu" }
+        val response = withContext(Dispatchers.IO) {
+            api.weather(
+                String.format(Locale.US, "%.5f", coordinate.latitude),
+                String.format(Locale.US, "%.5f", coordinate.longitude)
+            )
+        }
+        if (!response.isSuccessful) {
+            response.errorBody()?.close()
+            throw IOException("Open-Meteo HTTP ${response.code()}")
+        }
+        val root = response.body()?.takeUnless { it.isJsonNull }?.asJsonObject
+            ?: throw IOException("Open-Meteo boş sonuç döndürdü")
+        val current = root.getAsJsonObject("current")
+        val legacy = root.getAsJsonObject("current_weather")
+        val temperature = current?.safeNumber("temperature_2m")
+            ?: legacy?.safeNumber("temperature")
+        val wind = current?.safeNumber("wind_speed_10m")
+            ?: legacy?.safeNumber("windspeed")
+        val code = current?.safeNumber("weather_code")
+            ?: legacy?.safeNumber("weathercode")
+        val time = current?.get("time")?.asString ?: legacy?.get("time")?.asString
+        if (temperature == null || temperature !in -90.0..65.0 ||
+            wind == null || wind !in 0.0..350.0 ||
+            code == null || code !in 0.0..100.0 || time.isNullOrBlank()
+        ) throw IOException("Open-Meteo geçersiz hava ölçümü")
+        Result.success(
+            WeatherWaypoint(
+                coordinate = coordinate,
+                distanceFromStartKm = 0.0,
+                temperatureC = temperature,
+                windSpeedKmh = wind,
+                weatherCode = code.toInt(),
+                observedAt = time
+            )
+        )
+    } catch (cancel: CancellationException) {
+        throw cancel
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+
     private fun JsonObject.safeNumber(field: String): Double? = try {
         get(field)?.takeUnless { it.isJsonNull }?.asDouble?.takeIf { it.isFinite() }
     } catch (_: RuntimeException) {
