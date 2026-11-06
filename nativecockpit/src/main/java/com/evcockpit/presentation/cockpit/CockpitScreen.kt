@@ -753,8 +753,8 @@ private fun CockpitMediaPanel(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        if (playbackAllowed) "Video uygulamaları · park hâlinde"
-                        else "Video sürüşte kullanılamaz",
+                        if (playbackAllowed) "Telefon modu · sürüş sırasında video kullanmayın"
+                        else "Android Auto bağlıyken video kapalı",
                         color = SoftText, style = MaterialTheme.typography.bodySmall
                     )
                     MediaSite.entries.forEach { site ->
