@@ -31,7 +31,6 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
 import com.evcockpit.data.obd.ElmSpeedParser
 import com.evcockpit.data.obd.MebUdsParser
-import com.evcockpit.domain.model.EngineeringMath
 import com.evcockpit.domain.model.EngineeringMetrics
 import com.evcockpit.domain.model.EngineeringSnapshot
 import com.evcockpit.domain.model.MebResponseStatus
@@ -323,8 +322,9 @@ class Elm327VehicleRepository @Inject constructor(
         var initiated=false
         try {
             val capacityRead = command == "222AB2"
-            // Match CAN settings actually observed in this vehicle's Car Scanner
-            // session. Older ELM firmware requires 6-digit ATSH + ATCP17.
+            // These CAN settings are unverified candidate values; no address mapping
+            // has been validated on this specific ID.4. The read is user-initiated
+            // and raw-only. Do not reuse the response as BMS telemetry.
             val configuration = if (capacityRead) listOf(
                 "ATH1", "ATSP6", "ATCAF1", "ATCFC1",
                 "ATSH710", "ATCRA77A", "ATFCSH710",
