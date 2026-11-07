@@ -30,5 +30,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("com.google.guava:guava:33.4.8-android")
+    // ContextCompat.registerReceiver backports NOT_EXPORTED to API 26.
+    implementation("androidx.core:core:1.17.0")
     testImplementation("junit:junit:4.13.2")
 }
