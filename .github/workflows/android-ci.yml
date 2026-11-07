@@ -1,0 +1,193 @@
+name: EV Cockpit - Android CI (Debug only)
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# No repository write permission and no signing secrets on PRs.
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug:
+    name: Lint, JVM tests, Debug APK, optional R8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Checkout (no persisted credentials)
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK tooling
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install and verify Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          test -s "$sdk_root/platforms/android-36/android.jar"
+          test -x "$sdk_root/build-tools/36.0.0/aapt"
+          "$sdk_root/build-tools/36.0.0/aapt" version
+
+      - name: Verify Gradle Wrapper and enable read-only PR cache
+        uses: gradle/actions/setup-gradle@0f4528296b4bc09e8ae0fc7be30185a4ab435545 # v6.0.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Verify Gradle 8.14.3 and discover actual Android modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./gradlew
+          test -s gradle/wrapper/gradle-wrapper.jar
+          grep -Fq 'gradle-8.14.3-bin.zip' gradle/wrapper/gradle-wrapper.properties
+          ./gradlew --version --no-daemon
+          ./gradlew projects --no-daemon --console=plain
+
+          modules="$RUNNER_TEMP/ev-cockpit-modules.txt"
+          test -f app/build.gradle.kts
+          printf 'app\n' > "$modules"
+          for module in evlite nativecockpit; do
+            if test -f "$module/build.gradle.kts"; then
+              printf '%s\n' "$module" >> "$modules"
+            fi
+          done
+          echo 'Modules with confirmed Gradle build files:'
+          cat "$modules"
+
+      - name: Android lint (each existing module)
+        id: lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t modules < "$RUNNER_TEMP/ev-cockpit-modules.txt"
+          tasks=()
+          for module in "${modules[@]}"; do
+            tasks+=(":$module:lintDebug")
+          done
+          ./gradlew "${tasks[@]}" --no-daemon --stacktrace
+          for module in "${modules[@]}"; do
+            test -s "$module/build/reports/lint-results-debug.html" || {
+              echo "::error::Missing lint HTML report for $module"
+              exit 1
+            }
+          done
+
+      - name: JVM unit tests (each existing module)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t modules < "$RUNNER_TEMP/ev-cockpit-modules.txt"
+          tasks=()
+          for module in "${modules[@]}"; do
+            tasks+=(":$module:testDebugUnitTest")
+          done
+          ./gradlew "${tasks[@]}" --no-daemon --stacktrace
+
+      - name: Build unsigned-by-owner Debug APKs only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t modules < "$RUNNER_TEMP/ev-cockpit-modules.txt"
+          tasks=()
+          for module in "${modules[@]}"; do
+            tasks+=(":$module:assembleDebug")
+          done
+          ./gradlew "${tasks[@]}" --no-daemon --stacktrace
+
+      - name: Optional nativecockpit R8 task (never publish Release)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Fxq nativecockpit "$RUNNER_TEMP/ev-cockpit-modules.txt"; then
+            echo '::notice::No nativecockpit module on this branch; skipping R8.'
+            exit 0
+          fi
+          ./gradlew :nativecockpit:tasks --all --console=plain --no-daemon \
+            > "$RUNNER_TEMP/nativecockpit-gradle-tasks.txt"
+          if grep -Eq '^[[:space:]]*minifyReleaseWithR8([[:space:]]|$)' \
+            "$RUNNER_TEMP/nativecockpit-gradle-tasks.txt"; then
+            ./gradlew :nativecockpit:minifyReleaseWithR8 --no-daemon --stacktrace
+          else
+            echo '::notice::No registered minifyReleaseWithR8 task; skipped, not verified.'
+          fi
+
+      - name: Verify Debug APKs and create SHA-256 file
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          : > debug-apks.sha256
+          mapfile -t modules < "$RUNNER_TEMP/ev-cockpit-modules.txt"
+          for module in "${modules[@]}"; do
+            apk_dir="$module/build/outputs/apk/debug"
+            test -d "$apk_dir"
+            mapfile -d '' -t apks < <(find "$apk_dir" -maxdepth 1 -type f \
+              -name '*.apk' -print0)
+            if (( ${#apks[@]} == 0 )); then
+              echo "::error::Debug APK missing for $module"
+              exit 1
+            fi
+            for apk in "${apks[@]}"; do
+              test -s "$apk"
+              unzip -t "$apk" > /dev/null
+              "$sdk_root/build-tools/36.0.0/aapt" dump badging "$apk" \
+                > "$RUNNER_TEMP/apk-badging.txt"
+              grep -q '^package: name=' "$RUNNER_TEMP/apk-badging.txt"
+              sha256sum "$apk" >> debug-apks.sha256
+            done
+          done
+          cat debug-apks.sha256
+
+      - name: Upload lint HTML and unit-test reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: android-ci-reports
+          path: |
+            **/build/reports/lint-results-debug.html
+            **/build/reports/lint-results-debug.xml
+            **/build/reports/tests/testDebugUnitTest/**
+            **/build/test-results/testDebugUnitTest/**
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Debug APKs and SHA-256 (no release, no keystore)
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ev-cockpit-debug-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            evlite/build/outputs/apk/debug/*.apk
+            nativecockpit/build/outputs/apk/debug/*.apk
+            debug-apks.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      # Keep collecting test/build evidence, but NEVER silently waive lint errors.
+      - name: Enforce lint quality gate
+        if: ${{ always() && steps.lint.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo '::error::Android lint reported errors; CI remains failed.'
+          exit 1
