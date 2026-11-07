@@ -1,0 +1,19 @@
+# Default review ownership. Branch protection must separately require reviews.
+* @AlpTimucin-cpu
+
+# Sensitive CI/CD and supply-chain configuration
+/.github/ @AlpTimucin-cpu
+/gradle/ @AlpTimucin-cpu
+/gradlew @AlpTimucin-cpu
+/gradlew.bat @AlpTimucin-cpu
+/build.gradle.kts @AlpTimucin-cpu
+/settings.gradle.kts @AlpTimucin-cpu
+
+# Android builds and release-signing changes
+/app/ @AlpTimucin-cpu
+/nativecockpit/ @AlpTimucin-cpu
+/evlite/ @AlpTimucin-cpu
+
+# Scanner and public security policy
+/scripts/check_apk_secrets.py @AlpTimucin-cpu
+/SECURITY.md @AlpTimucin-cpu
