@@ -42,6 +42,7 @@ import com.evcockpit.domain.repository.VehicleRepository
 import com.evcockpit.domain.usecase.NavigationSpeechBridge
 import com.evcockpit.domain.usecase.RouteProgressTracker
 import com.evcockpit.domain.usecase.RouteDeviationPolicy
+import com.evcockpit.domain.usecase.WeatherChangeAlertGate
 import com.evcockpit.domain.usecase.EvBaselineEnergyEstimator
 import com.evcockpit.domain.usecase.BaselineEnergyInputs
 import com.evcockpit.domain.usecase.BaselineEnergyResult
@@ -256,8 +257,9 @@ class NavigationViewModel @Inject constructor(
                 _voice.update { it.copy(status = status, error = error) }
             }
         }
-        // A route-scoped, foreground-only 30-minute clock. No fake GPS, no
-        // unverified forecast spoken, and no collision with imminent turns.
+        // Spoken forecast is a model-based ETA warning, NOT an observation.
+        // The route-scoped gate speaks only when severity rises, never every
+        // refresh; navigation maneuvers and Android Auto retain precedence.
         viewModelScope.launch {
             combine(
                 routes.currentRoute,
@@ -268,35 +270,29 @@ class NavigationViewModel @Inject constructor(
                 if (foreground && !carNavigating && voice.enabled) route?.routeId else null
             }.distinctUntilChanged().collectLatest { activeId ->
                 if (activeId == null) return@collectLatest
-                delay(30 * 60_000L)
+                val changeGate = WeatherChangeAlertGate()
                 while (true) {
                     val now = System.currentTimeMillis()
+                    val forecast = weatherRepository.latestForecast.value
                     val route = uiState.value.cockpit.route
-                    val fix = gpsLocation.value?.takeIf { it.usable(now) }
-                    val settings = _voice.value
-                    val nextTurn = route?.nextTurnMeters
-                    if (route?.routeId == activeId && fix != null &&
-                        (nextTurn == null || nextTurn > 650.0) &&
-                        settings.enabled &&
-                        settings.status in setOf(
+                    val setting = _voice.value
+                    val risk = if (forecast.routeId == activeId &&
+                        route?.routeId == activeId
+                    ) changeGate.increasedWarning(forecast, now) else null
+                    if (risk != null && _foreground.value &&
+                        (route.nextTurnMeters == null || route.nextTurnMeters > 650.0) &&
+                        setting.enabled && setting.status in setOf(
                             NativeVoiceGuide.Status.READY,
                             NativeVoiceGuide.Status.AUDIO_FOCUS_DENIED
                         )
                     ) {
-                        val report = weatherRepository.currentAt(fix.coordinate).getOrNull()
-                        // Timestamp and location are real forecast API data.
-                        if (report != null && routes.currentRoute.value?.routeId == activeId &&
-                            _foreground.value
-                        ) {
-                            val degree = report.temperatureC.toInt()
-                            val message = "Mevcut konumunuzda hava ${degree} derece, " +
-                                "${report.summaryTr}."
-                            if (guide.speakIfIdle(message, settings.volume)) {
-                                _weatherAlerts.tryEmit(message)
-                            }
+                        val message = "Rota üzerindeki saatlik hava tahmininde " +
+                            "${risk.summaryTr} hava bekleniyor. Yol koşullarına dikkat."
+                        if (guide.speakIfIdle(message, setting.volume)) {
+                            _weatherAlerts.tryEmit(message)
                         }
                     }
-                    delay(30 * 60_000L)
+                    delay(60_000L)
                 }
             }
         }
