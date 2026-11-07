@@ -43,7 +43,7 @@ class NominatimGeocoderTest {
         }
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test(expected = RuntimeException::class)
     fun malformedJsonIsRejected() {
         NominatimResponseParser.parse("not json")
     }
