@@ -55,3 +55,11 @@ Use read-only ELM327 queries; never infer unverified battery readings. API keys 
 **Do not treat existing GitHub Release APKs as owner-verified production releases.** The main-branch legacy release workflows require security remediation. The feature-branch production release job is intentionally disabled pending signing-key investigation. See [Android build guide](docs/APK_BUILD_GUIDE.md) for testing and known limits.
 
 Source-level build checks are not substitutes for real-device tests. Any media-engine integration must respect its upstream license and usage restrictions. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+## Repository hygiene and responsible disclosure
+
+Tracked Kotlin/Gradle sources and the reviewed Gradle Wrapper are the canonical build inputs, **not** legacy source ZIP archives. The unreviewed `EV_Cockpit_Legacy_Source_v0.8.zip` is removed from the current Stage 6 review branch (its historic Git copies remain) and the obsolete ZIP importer/builder workflows are retired. See [repository hygiene and validation](docs/REPOSITORY_HYGIENE.md).
+
+Weekly [Dependabot](.github/dependabot.yml) pull requests cover Gradle and GitHub Actions. [CODEOWNERS](.github/CODEOWNERS) identifies review owners; actual required reviews need branch protection. Report vulnerabilities privately following [SECURITY.md](SECURITY.md); never publish real API keys or signing material in Issues.
+
+The [protected Release setup](docs/PROTECTED_RELEASE_SETUP.md) remains on security hold: it is not safe to release without reviewing the historical signing key and explicitly configuring the production Environment. The current `main` branch does not contain the native cockpit Gradle module; its signed release must not silently build another branch.

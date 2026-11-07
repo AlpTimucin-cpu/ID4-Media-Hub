@@ -1,0 +1,17 @@
+# Code owners for changes to core build, release and security policy.
+# CODEOWNERS only requests reviews; enforce with main branch rulesets/protection.
+* @AlpTimucin-cpu
+
+/.github/workflows/ @AlpTimucin-cpu
+/.github/dependabot.yml @AlpTimucin-cpu
+/.github/CODEOWNERS @AlpTimucin-cpu
+/gradle/ @AlpTimucin-cpu
+/gradlew @AlpTimucin-cpu
+/gradlew.bat @AlpTimucin-cpu
+/build.gradle.kts @AlpTimucin-cpu
+/settings.gradle.kts @AlpTimucin-cpu
+/app/ @AlpTimucin-cpu
+/nativecockpit/ @AlpTimucin-cpu
+/evlite/ @AlpTimucin-cpu
+/scripts/ @AlpTimucin-cpu
+/SECURITY.md @AlpTimucin-cpu

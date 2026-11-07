@@ -1,0 +1,46 @@
+# Android SDK / IDE / Gradle local state (never publish machine-specific paths)
+/local.properties
+**/local.properties
+/.gradle/
+**/.gradle/
+**/build/
+.idea/
+*.iml
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Built packages are published through reviewed CI / Releases, not Git
+*.apk
+*.aab
+*.apks
+
+# Private signing material, credential bundles and local secrets
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/google-services.json
+**/firebase-adminsdk*.json
+**/service-account*.json
+**/secrets.properties
+**/apikeys.properties
+EYA_GitHub_TEK_SECRET.txt
+*signing*bundle*.txt
+*keystore*secret*.txt
+.env
+.env.*
+!.env.example
+
+# Retired, unreviewed source archives are NOT a canonical build input
+/EV_Cockpit_Legacy_Source_v0.8.zip
+/ID4_Media_Hub_v0.8_APK_Derlemeye_Hazir_Kaynak.zip
+/EV_Cockpit_v0.8_Source.zip
+
+# The official Gradle Wrapper files ARE source-controlled
+!gradlew
+!gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties

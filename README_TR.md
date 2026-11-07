@@ -47,3 +47,11 @@ Yalnızca salt-okunur ELM327 sorguları kullanılır. Doğrulanmamış SoC/DID v
 Eski GitHub Release APK'ları sahibin kalıcı imzalama sertifikasıyla doğrulanmış kabul edilmemelidir. Geliştirme dalındaki production release işi güvenlik incelemesi sebebiyle devre dışıdır. Ayrıntılar: [APK derleme kılavuzu](docs/APK_BUILD_GUIDE.md).
 
 Gerçek GPS, OBD, TTS, ses odağı, medya ve Android Auto kabul testleri fiziksel cihaz/araç üzerinde ayrıca yapılmalıdır.
+
+## Depo hijyeni ve güvenlik bildirimleri
+
+Derlemenin asıl kaynağı takip edilen Kotlin/Gradle dosyaları ve doğrulanmış Gradle Wrapper'dır; eski kaynak ZIP arşivleri değildir. `EV_Cockpit_Legacy_Source_v0.8.zip` yalnızca 6. aşama inceleme dalının güncel dosya ağacından kaldırıldı. Önceki Git commit'lerinde kopyaları bulunmaya devam edebilir; eskimiş ZIP içe aktarma/derleme iş akışları da devre dışı bırakıldı. Ayrıntılar: [Depo hijyeni ve kontroller](docs/REPOSITORY_HYGIENE.md).
+
+[Dependabot](.github/dependabot.yml), Gradle ve GitHub Actions bağımlılıkları için haftalık PR açacak şekilde ayarlandı. [CODEOWNERS](.github/CODEOWNERS) dosyası inceleme sorumlusunu belirtir; zorunlu onay için ayrıca GitHub dal koruması gerekir. Güvenlik açığı ve gizli bilgileri halka açık Issue'lara eklemeyin; [SECURITY.md](SECURITY.md) içindeki özel bildirim yöntemini izleyin.
+
+[Korumalı Release kılavuzu](docs/PROTECTED_RELEASE_SETUP.md) hâlâ güvenlik incelemesi bekliyor. Eski imzalama anahtarı araştırılmadan ve `production-release` onay kuralları etkinleştirilmeden üretim yayını başlatılmamalı. `main` dalında hâlâ `:nativecockpit` bulunmadığı için farklı dala sessizce geçilerek imzalı APK üretilmeyecek.
