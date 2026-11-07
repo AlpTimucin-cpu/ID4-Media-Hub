@@ -6,7 +6,10 @@ data class WeatherWaypoint(
     val temperatureC: Double,
     val windSpeedKmh: Double,
     val weatherCode: Int,
-    val observedAt: String
+    /** UTC valid hour of a prediction; not an observed measurement. */
+    val observedAt: String,
+    val forecastEtaEpochMs: Long? = null,
+    val precipitationProbabilityPercent: Int? = null
 ) {
     val iconKey: String get() = when (weatherCode) {
         0, 1 -> "sun"
@@ -37,6 +40,9 @@ data class RouteWeatherState(
     val fetchedAtMillis: Long? = null,
     val error: String? = null
 ) {
+    fun ageMinutes(nowMs: Long): Long? =
+        fetchedAtMillis?.takeIf { nowMs >= it }?.let { (nowMs - it) / 60_000L }
+
     val destination: WeatherWaypoint? get() = points.lastOrNull()?.takeIf {
         routeLengthKm != null && kotlin.math.abs(it.distanceFromStartKm - routeLengthKm) < 0.2
     }

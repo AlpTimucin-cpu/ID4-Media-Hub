@@ -313,6 +313,7 @@ class MainActivity : ComponentActivity() {
                             chargingUi = stations,
                             automaticChargePlan = automaticChargePlan,
                             weatherUi = routeWeather,
+                            onRefreshWeather = weather::refresh,
                             onStationFilter = charging::changeFilter,
                             onMapViewport = charging::viewportChanged,
                             onRefreshStations = charging::refresh,

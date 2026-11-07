@@ -80,6 +80,7 @@ fun CockpitScreen(
     chargingUi: ChargingUiState,
     automaticChargePlan: RouteChargingUiState,
     weatherUi: RouteWeatherState,
+    onRefreshWeather: () -> Unit,
     onStationFilter: (StationFilter) -> Unit,
     onMapViewport: (GeoViewport) -> Unit,
     onRefreshStations: () -> Unit,
@@ -360,6 +361,20 @@ fun CockpitScreen(
                         if (soundUnavailable) AssistPill(
                             "Motor sesi kullanılamıyor",
                             onOpenSoundSettings
+                        )
+                    }
+                    if (route?.routeId != null) {
+                        val age = if (weatherUi.routeId == route.routeId)
+                            weatherUi.ageMinutes(System.currentTimeMillis()) else null
+                        val title = when {
+                            weatherUi.loading -> "Hava tahmini yükleniyor"
+                            age == null -> "Hava tahmini yok"
+                            age > 30L -> "Eski tahmin · ${age} dk önce"
+                            else -> "Open-Meteo tahmini · ${age} dk önce"
+                        }
+                        AssistPill(
+                            "$title · Yenile",
+                            onRefreshWeather
                         )
                     }
                 }
