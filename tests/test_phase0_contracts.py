@@ -91,6 +91,18 @@ class FoundationContractTests(unittest.TestCase):
             (ROOT / "app/src/main/java/tr/id4/mediahub/SportzXLauncher.kt").exists()
         )
 
+    def test_android_26_safe_media_and_network_apis(self):
+        main = (ROOT / "app/src/main/java/tr/id4/mediahub/MainActivity.kt").read_text()
+        logo = (ROOT / "app/src/main/java/tr/id4/mediahub/ChannelLogoLoader.kt").read_text()
+        service = (ROOT / "app/src/main/java/tr/id4/mediahub/AudioLibraryService.kt").read_text()
+        playback = (ROOT / "app/src/main/java/tr/id4/mediahub/TvPlayback.kt").read_text()
+        self.assertNotIn("readNBytes(", logo)
+        self.assertIn("ByteArray(512_001)", logo)
+        self.assertIn("SDK_INT >= 30", main)
+        self.assertNotIn("},mainExecutor)", main)
+        self.assertIn("ContextCompat.RECEIVER_NOT_EXPORTED", service)
+        self.assertIn("@OptIn(UnstableApi::class)", playback)
+
     def test_gitleaks_does_not_use_pr_target_or_write_scope(self):
         workflow = (ROOT / ".github/workflows/security-secrets.yml").read_text(encoding="utf-8")
         self.assertNotIn("pull_request_target:", workflow)
