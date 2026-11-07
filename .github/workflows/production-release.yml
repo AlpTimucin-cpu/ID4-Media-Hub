@@ -232,6 +232,12 @@ jobs:
             echo '::error::Release APK certificate does not match approved owner certificate.'
             exit 1
           fi
+          keytool -printcert -jarfile "$aab" > "$RUNNER_TEMP/aab-certs.txt"
+          aab_pin="$(sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/aab-certs.txt" | head -1 | tr -d ':\r ' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$aab_pin" || "$aab_pin" != "$owner_pin" ]]; then
+            echo '::error::Release AAB certificate does not match approved owner certificate.'
+            exit 1
+          fi
 
           mkdir -p dist
           cp "$apk" "dist/EV-Cockpit-$TAG.apk"
@@ -259,7 +265,8 @@ jobs:
         shell: bash
         run: |
           rm -f "$RUNNER_TEMP/evc-release.jks" \
-                "$RUNNER_TEMP/expected-cert.der" "$RUNNER_TEMP/apk-certs.txt"
+                "$RUNNER_TEMP/expected-cert.der" "$RUNNER_TEMP/apk-certs.txt" \
+                "$RUNNER_TEMP/aab-certs.txt"
 
   publish:
     name: Publish approved signed binaries on GitHub Releases
