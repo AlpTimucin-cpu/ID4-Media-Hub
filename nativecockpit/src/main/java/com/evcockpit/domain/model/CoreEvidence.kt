@@ -6,7 +6,7 @@ enum class EvidenceSource { FUSED_GPS, VERIFIED_OBD, PROVIDER, ENERGY_MODEL, USE
 
 /** Each available value must carry its own source and observation time. */
 sealed interface CoreEvidence<out T> {
-    data class Available<T>(
+    data class Available<T : Any>(
         val value: T,
         val recordedAtMillis: Long,
         val source: EvidenceSource,
