@@ -55,3 +55,13 @@ Use read-only ELM327 queries; never infer unverified battery readings. API keys 
 **Do not treat existing GitHub Release APKs as owner-verified production releases.** The main-branch legacy release workflows require security remediation. The feature-branch production release job is intentionally disabled pending signing-key investigation. See [Android build guide](docs/APK_BUILD_GUIDE.md) for testing and known limits.
 
 Source-level build checks are not substitutes for real-device tests. Any media-engine integration must respect its upstream license and usage restrictions. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+## Repository maintenance and security disclosures
+
+- Repository hygiene: see [cleanup record](docs/REPOSITORY_HYGIENE.md). Local SDK files, build artifacts, release keys and ZIP archives are excluded via [.gitignore](.gitignore). The obsolete ZIP importer is retired.
+- Automated dependency **proposals**, not automatic merges: [Dependabot](.github/dependabot.yml) checks Gradle and GitHub Actions weekly on the default branch after this PR is merged.
+- Changes to code, Actions and signing paths have [CODEOWNERS](.github/CODEOWNERS) review ownership; GitHub branch rules must separately **require** approval.
+- For confidential vulnerability reports, read [SECURITY.md](SECURITY.md). Do not post secrets or exploit details in public issues.
+- The legacy source ZIP has been removed from the proposed working tree only; historical Git commits can still contain it. A potentially exposed signing key requires a separate certificate/rotation decision.
+
+The native cockpit's actual source remains on `feature/ev-cockpit`. The `main` build commands above still build only `:app`. Draft PRs and successful Debug APK builds do not constitute a production signing approval.
