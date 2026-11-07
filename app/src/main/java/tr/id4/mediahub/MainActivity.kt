@@ -65,7 +65,12 @@ class MainActivity : Activity() {
         setContentView(root)
         // Android 15 enforces edge-to-edge drawing: keep the bottom nav above OS controls.
         root.setOnApplyWindowInsetsListener { _, insets ->
-            val bottom = insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            val bottom = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
             root.setPadding(0, 0, 0, bottom)
             insets
         }
@@ -293,7 +298,7 @@ class MainActivity : Activity() {
                 }catch (_:Exception){
                     if(!isFinishing && !isDestroyed)status.text="●   Ses servisine bağlanılamadı"
                 }
-            },mainExecutor)
+            }, java.util.concurrent.Executor { command -> runOnUiThread(command) })
         }
         syncRadioCatalogue(false)
     }
