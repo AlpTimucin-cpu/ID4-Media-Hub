@@ -1,43 +1,57 @@
 # EV Cockpit
 
-EV Cockpit is an independent Android cockpit for electric-vehicle navigation, charging planning, read-only diagnostics, online radio, and optional in-cabin audio.
+Independent GPL-3.0 Android project. **This repository has different module layouts on `main` and `feature/ev-cockpit`.** Always choose a branch before running build commands.
 
-## Real hardware only
+## Branch and module status (verified 2026-11-07)
 
-- **GPS:** Android Fused Location Provider with runtime location permission and freshness/accuracy validation. No generated route locations or automatic demo journeys.
-- **Vehicle telemetry:** explicitly paired ELM327 Bluetooth Classic SPP adapter, read-only CAN/UDS queries, and individually timestamped measurements. No generated vehicle speed, battery charge, or diagnostic responses.
-- **Unavailable measurements:** display an unavailable or disconnected state; never replace absent BMS data with invented values.
-- **Navigation:** OSRM road geometry, MapLibre rendering, TTS maneuver guidance, and Android Auto session support.
-- **Media:** live HTTPS radio stations and official external DRM application launches. Video restrictions remain subject to Android and Android Auto safety policies.
-- **Active Sound:** optional in-cabin synthesized audio from fresh vehicle speed only. It does not replace the vehicle's legally required external warning system.
+| Path | `main` | `feature/ev-cockpit` |
+| --- | --- | --- |
+| `:app` | Android media hub (`tr.id4.mediahub`) | Android media hub |
+| `:evlite` | Not present | Lightweight EV tools |
+| `:nativecockpit` | Not present | Kotlin/Compose cockpit, navigation, read-only OBD and Android Auto |
+| `media-engine/` | Not present | Optional source integration, **not** an included Gradle project |
 
-## Build and testing
+The Gradle project on `main` is named `ID4MediaHub`, with only `include(":app")`. The Gradle project on `feature/ev-cockpit` is named `EvCockpit`, with `:app`, `:evlite`, and `:nativecockpit`.
 
-Use Java 17, Android SDK 36 and Gradle 8.14.3.
+Do **not** add `include(":nativecockpit")` to `main` without adding that module's actual source and build files through a reviewed migration.
+
+## Requirements
+
+- Java 17
+- Android SDK platform 36
+- Gradle Wrapper 8.14.3 (`./gradlew` on Linux/macOS; `gradlew.bat` on Windows)
+
+The Gradle distribution URL is pinned and checked against the official Gradle 8.14.3 binary ZIP SHA-256. Android Gradle Plugin is 8.11.1; Kotlin Gradle Plugin is 2.2.20. No version catalog is configured.
+
+## Build the `main` media hub
 
 ```bash
-gradle :nativecockpit:testDebugUnitTest
-gradle :nativecockpit:assembleDebug
-gradle :nativecockpit:minifyReleaseWithR8
+git switch main
+./gradlew --version
+./gradlew projects
+./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
 ```
 
-The **release** build has R8 code minification and Android resource shrinking enabled. The final signed release needs the owner's established signing key. A successful shrink task or debug build does not prove that the signed application will launch on every device.
+Expected Gradle project: `:app`. Expected APK location after a **successful** build: `app/build/outputs/apk/debug/app-debug.apk`. This branch is **not** the native EV cockpit.
 
-GitHub Actions publishes temporary debug APK artifacts for phone-based validation. Real GPS, OBD connectivity, TTS, audio focus, playback, map rendering, and signed release installation still require physical-device acceptance tests.
+## Build the native cockpit from its actual branch
 
-## Components
+```bash
+git switch feature/ev-cockpit
+./gradlew --version
+./gradlew projects
+./gradlew :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug --no-daemon --stacktrace
+./gradlew :nativecockpit:tasks --all
+```
 
-| Module | Role |
-|---|---|
-| `nativecockpit` | Kotlin + Compose cockpit, OBD, navigation, audio and Android Auto |
-| `app` | Companion media integration |
-| `evlite` | Lightweight navigation and charging tools |
-| `media-engine` | Separately licensed optional media integration |
+Expected projects: `:app`, `:evlite`, `:nativecockpit`. Expected native Debug APK after successful build: `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`. Inspect the task list before invoking R8 tasks; the release variant requires a separate signing and security review.
 
-## Security and legal boundaries
+The [Verified Debug APK workflow run on 2026-11-06](https://github.com/AlpTimucin-cpu/ev-cockpit/actions/runs/42280552718) concluded successfully for `feature/ev-cockpit`. A CI success does not establish physical-device or Android Auto host acceptance.
 
-Vehicle queries are read-only and must be performed on a personally owned, paired adapter. Estimated charging needs and range are models, not measured battery condition. This application does not authorize video use while driving.
+## Security and release status
 
-Third-party libraries and integration package IDs retain their required licence notices. See [LICENSE](LICENSE), [NOTICE](NOTICE.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [security guidance](SECURITY_TOMTOM.md).
+Use read-only ELM327 queries; never infer unverified battery readings. API keys must not be baked into APK assets. An older TomTom key may have been exposed in historic builds: see [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md).
 
-EV Cockpit is an independent project and does not imply affiliation with any vehicle manufacturer or streaming service.
+**Do not treat existing GitHub Release APKs as owner-verified production releases.** The main-branch legacy release workflows require security remediation. The feature-branch production release job is intentionally disabled pending signing-key investigation. See [Android build guide](docs/APK_BUILD_GUIDE.md) for testing and known limits.
+
+Source-level build checks are not substitutes for real-device tests. Any media-engine integration must respect its upstream license and usage restrictions. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).

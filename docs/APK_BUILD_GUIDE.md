@@ -1,36 +1,52 @@
-# EV Cockpit — APK Build Guide
+# EV Cockpit — APK Build and Verification Guide
 
-## Mobile workflow
+Verified repository layout on 2026-11-07:
 
-Use the repository's **Actions** tab in your mobile browser (enable Desktop site if necessary).
+- `main`: only Gradle project `:app` (media hub).
+- `feature/ev-cockpit`: Gradle projects `:app`, `:evlite`, `:nativecockpit` (native EV cockpit).
+- `media-engine/` on the feature branch is an optional source integration, **not** a Gradle project included from the root `settings.gradle.kts`.
 
-1. Open `Native Cockpit · Kotlin Compose APK` in Actions and select **Run workflow**.
-2. Choose branch `feature/ev-cockpit` and start the run.
-3. The **build** job runs JVM tests, checks real GPS/OBD inputs, validates R8, and publishes a debug APK.
-4. Download `EV-Cockpit-Native-Kotlin-Debug-APK` from **Artifacts** after a green build. Extract its ZIP and install the debug APK only for testing.
-5. For a production APK, create repository Actions secret `EYA_SIGNING_BUNDLE_BASE64` with the existing release keystore. Never upload the keystore or passwords into source control.
-6. Only after the release job passes, download `EV-Cockpit-Signed-Stable-Release` from **Artifacts**. Extract `app-release.apk` and install it on the phone.
-7. Android may require permission for your browser or file manager to install an APK. Confirm the publisher and signing identity before updating an existing installation.
+## Prerequisites
 
-### Signing bundle schema
+Java 17, Android SDK platform 36 and the pinned Gradle 8.14.3 Wrapper. GitHub runner SDK installation is managed separately by workflows. No keystore is needed for Debug builds.
 
-The repository secret is a Base64-encoded UTF-8 JSON object. The object, **before** Base64 encoding, has this structure:
+## Command-line verification
 
-```json
-{
-  "schema": "eya-signing-v1",
-  "keystore_base64": "BASE64_OF_YOUR_EXISTING_JKS_BYTES",
-  "keystore_sha256": "SHA256_HEX_OF_THE_SAME_JKS_BYTES",
-  "store_password": "YOUR_EXISTING_STORE_PASSWORD",
-  "key_alias": "YOUR_EXISTING_ALIAS",
-  "key_password": "YOUR_EXISTING_KEY_PASSWORD"
-}
+```bash
+git switch main
+./gradlew --version
+./gradlew projects
+./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
 ```
 
-Create this sensitive bundle **locally and privately** from an existing signing identity. GitHub's web editor cannot manufacture the owner's JKS. Never paste it into ChatGPT, Issues, pull requests, a README, or untrusted online encoders. Keep a secure backup.
+Expected project list: root `ID4MediaHub` and `:app`. After a successful build, expect `app/build/outputs/apk/debug/app-debug.apk`.
 
-Release uses R8 `isMinifyEnabled = true`, `isShrinkResources = true`, and owner certificate verification. The workflow refuses to publish a fake production APK if the secret is absent.
+```bash
+git switch feature/ev-cockpit
+./gradlew --version
+./gradlew projects
+./gradlew :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug --no-daemon --stacktrace
+./gradlew :nativecockpit:tasks --all
+```
 
-## Required physical acceptance
+Expected project list: root `EvCockpit`, `:app`, `:evlite`, `:nativecockpit`. After a successful build, expect `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`. Check the task list before running any R8-specific Gradle task.
 
-Install and launch the signed APK on a phone, test with GPS permission disabled and enabled, physically disconnect/reconnect the paired ELM327, check unavailable telemetry shows a dash, verify TTS and radio ducking, and test missing/corrupt audio resources as applicable. A successful CI build alone is not device acceptance.
+Typical problems: `Project 'nativecockpit' not found` means the wrong branch was checked out; `SDK location not found` means the Android SDK is missing; a Gradle plugin incompatibility needs the AGP/Gradle/JDK versions checked; a Gradle distribution checksum mismatch must be investigated rather than bypassed.
+
+## Mobile GitHub Actions check
+
+1. Open [EV Cockpit Actions](https://github.com/AlpTimucin-cpu/ev-cockpit/actions) in your browser.
+2. Choose `EV Cockpit · Verified Debug APK` and run it on `feature/ev-cockpit` if permissions allow.
+3. Check **every required step** and the run conclusion; a green job is required before trusting an APK artifact.
+4. Download the `EV-Cockpit-Native-Kotlin-Debug-APK` artifact from that successful run (within its retention period), extract it and compare the checksum.
+5. Install only for testing, then verify launch, permissions, real GPS, Bluetooth OBD read-only behavior, audio/TTS, maps and Android Auto on supported hardware.
+
+The 2026-11-06 [Verified Debug APK run](https://github.com/AlpTimucin-cpu/ev-cockpit/actions/runs/42280552718) succeeded. Historic GitHub Releases exist, but are **not verified owner-signed production deliverables**.
+
+## Release signing safety hold
+
+Do not generate a replacement production key or use legacy one-click temporary signing for app updates. Production signing requires review of the exposed-key history, certificate identity, protected environment, no-secret PR jobs and an audited separate release workflow. Never put keystores, passwords or API keys into source, issue comments or build artifacts.
+
+The feature-branch `.github/workflows/release.yml` release job is intentionally disabled pending review. The main-branch legacy `auto-release.yml` / `release.yml` flows must not be treated as approved production delivery.
+
+See [SECURITY_TOMTOM.md](../SECURITY_TOMTOM.md) for historic TomTom key investigation. Successful JVM/CI builds do not replace acceptance tests on actual devices.
