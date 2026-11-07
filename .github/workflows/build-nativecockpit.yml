@@ -78,6 +78,12 @@ jobs:
           python3 scripts/check_production_hardware.py
           python3 scripts/check_final_release_hardening.py
 
+      - name: Native Phase 0 safety regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_native_phase0_policy.py' -v
+
       - name: Android lint (do not waive failures)
         id: lint
         continue-on-error: true
