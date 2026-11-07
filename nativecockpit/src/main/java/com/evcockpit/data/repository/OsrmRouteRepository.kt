@@ -1,6 +1,9 @@
 package com.evcockpit.data.repository
 
 import com.google.gson.JsonParser
+import com.evcockpit.data.settings.AppConfigRepository
+import com.evcockpit.domain.usecase.BoundedNetworkRetry
+import kotlinx.coroutines.flow.first
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -20,18 +23,19 @@ import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.RouteRepository
 
 @Singleton
-class OsrmRouteRepository @Inject constructor() : RouteRepository {
+class OsrmRouteRepository @Inject constructor(
+    private val appConfig: AppConfigRepository
+) : RouteRepository {
     private val http = OkHttpClient.Builder()
         .connectTimeout(9, TimeUnit.SECONDS)
         .readTimeout(17, TimeUnit.SECONDS)
         .callTimeout(22, TimeUnit.SECONDS)
         .build()
-    private val osrm = Retrofit.Builder()
-        .baseUrl("https://router.project-osrm.org/")
-        .client(http).build().create(OsrmService::class.java)
-    private val photon = Retrofit.Builder()
-        .baseUrl("https://photon.komoot.io/")
-        .client(http).build().create(PhotonService::class.java)
+    private fun osrm(root: String): OsrmService = Retrofit.Builder()
+        .baseUrl(root).client(http).build().create(OsrmService::class.java)
+
+    private fun photon(root: String): PhotonService = Retrofit.Builder()
+        .baseUrl(root).client(http).build().create(PhotonService::class.java)
 
     private val selected = MutableStateFlow<RouteSnapshot?>(null)
     private val variants = MutableStateFlow<List<RouteOption>>(emptyList())
@@ -42,7 +46,10 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
 
     override suspend fun search(query: String): List<RoutePlace> = withContext(Dispatchers.IO) {
         require(query.trim().length in 3..100) { "Enter at least 3 characters" }
-        val result = photon.search(query.trim())
+        val root = appConfig.configuration.first().endpoints.geocodingBaseUrl
+        val result = BoundedNetworkRetry.io {
+            photon(root).search(query.trim())
+        }
         if (!result.isSuccessful) {
             result.errorBody()?.close()
             throw IOException(when (result.code()) {
@@ -65,13 +72,18 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         destination: RoutePlace,
         stops: List<GeoCoordinate>
     ): RouteCalculationResult = withContext(Dispatchers.IO) {
+        val root = appConfig.configuration.first().endpoints.osrmBaseUrl
+            ?: return@withContext RouteCalculationResult.Failure(
+                null, CoreIssue.CONFIG_UNCONFIRMED.messageTr +
+                    " Kendi HTTPS OSRM sunucunuzun adresini Ayarlar bölümüne girin."
+            )
         val url = try {
             OsrmRequestFormat.urlVia(origin, stops, destination.coordinate)
         } catch (error: IllegalArgumentException) {
             return@withContext RouteCalculationResult.Failure(null, error.message ?: "Coordinate error")
         }
         try {
-            val response = osrm.route(url)
+            val response = BoundedNetworkRetry.io { osrm(root).route(url) }
             if (!response.isSuccessful) {
                 val info = response.errorBody()?.use { body ->
                     val bytes = body.bytes()
