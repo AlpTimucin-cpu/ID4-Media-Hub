@@ -1,5 +1,8 @@
 package com.evcockpit.data.weather
 
+import com.evcockpit.data.settings.AppConfigRepository
+import com.evcockpit.domain.usecase.BoundedNetworkRetry
+import kotlinx.coroutines.flow.first
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import java.io.IOException
@@ -31,14 +34,16 @@ internal interface OpenMeteoService {
 
 /** A bounded, cancellable request for real model-based current conditions. */
 @Singleton
-class OpenMeteoWeatherRepository @Inject constructor() {
+class OpenMeteoWeatherRepository @Inject constructor(
+    private val appConfig: AppConfigRepository
+) {
     private val http = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(18, TimeUnit.SECONDS)
         .build()
-    private val api = Retrofit.Builder()
-        .baseUrl("https://api.open-meteo.com/")
+    private fun api(root: String): OpenMeteoService = Retrofit.Builder()
+        .baseUrl(root)
         .client(http)
         .addConverterFactory(GsonConverterFactory.create())
         .build().create(OpenMeteoService::class.java)
@@ -58,7 +63,10 @@ class OpenMeteoWeatherRepository @Inject constructor() {
                     val longitudes = positions.joinToString(",") {
                         String.format(Locale.US, "%.5f", it.first.longitude)
                     }
-                    val response = api.weather(latitudes, longitudes)
+                    val root = appConfig.configuration.first().endpoints.weatherBaseUrl
+                    val response = BoundedNetworkRetry.io {
+                        api(root).weather(latitudes, longitudes)
+                    }
                     if (!response.isSuccessful) {
                         response.errorBody()?.close()
                         throw IOException("Open-Meteo HTTP ${response.code()}")
@@ -115,10 +123,13 @@ class OpenMeteoWeatherRepository @Inject constructor() {
     suspend fun currentAt(coordinate: GeoCoordinate): Result<WeatherWaypoint> = try {
         require(coordinate.valid()) { "Geçersiz GPS konumu" }
         val response = withContext(Dispatchers.IO) {
-            api.weather(
-                String.format(Locale.US, "%.5f", coordinate.latitude),
-                String.format(Locale.US, "%.5f", coordinate.longitude)
-            )
+            val root = appConfig.configuration.first().endpoints.weatherBaseUrl
+            BoundedNetworkRetry.io {
+                api(root).weather(
+                    String.format(Locale.US, "%.5f", coordinate.latitude),
+                    String.format(Locale.US, "%.5f", coordinate.longitude)
+                )
+            }
         }
         if (!response.isSuccessful) {
             response.errorBody()?.close()
@@ -161,6 +172,7 @@ class OpenMeteoWeatherRepository @Inject constructor() {
         null
     }
 
+    companion object {
     /**
      * Geodesic sampling every 100 km including start and exact final destination.
      * Cap is fail-closed rather than silently skipping unrequested route segments.
@@ -204,5 +216,7 @@ class OpenMeteoWeatherRepository @Inject constructor() {
         val dlon = Math.toRadians(b.longitude - a.longitude)
         val x = sin(dlat/2).pow(2) + cos(lat1)*cos(lat2)*sin(dlon/2).pow(2)
         return 2.0 * 6_371_008.8 * asin(sqrt(x.coerceIn(0.0,1.0)))
+    }
+
     }
 }
