@@ -7,7 +7,8 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "tr.id4.mediahub"
-        minSdk = 28
+        // Phase 0 target: Android 8.0 (API 26); CI lint/build must validate this change.
+        minSdk = 26
         targetSdk = 35
         versionCode = 15
         versionName = "0.14"
