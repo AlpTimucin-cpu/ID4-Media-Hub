@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import com.evcockpit.car.CarNavigationOwnership
 import com.evcockpit.data.location.FusedCurrentLocationProvider
 import com.evcockpit.data.weather.OpenMeteoWeatherRepository
+import com.evcockpit.data.settings.AppConfigRepository
 import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.LocationRepository
 import com.evcockpit.domain.repository.RouteRepository
@@ -93,14 +94,10 @@ class NavigationViewModel @Inject constructor(
     private val currentLocation: FusedCurrentLocationProvider,
     private val vehicleRepository: VehicleRepository,
     private val weatherRepository: OpenMeteoWeatherRepository,
+    private val appConfigRepository: AppConfigRepository,
     audioDucking: AppAudioDucking
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
-    // Read only explicitly provisioned, independently verified calibration inputs.
-    // No hard-coded battery capacity, consumption or assumed SoC.
-    private val modelPrefs = context.applicationContext.getSharedPreferences(
-        "eya_energy_calibration", Context.MODE_PRIVATE
-    )
     private val guide = NativeVoiceGuide(context, audioDucking)
     private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
@@ -139,13 +136,13 @@ class NavigationViewModel @Inject constructor(
         }
     }
     private val cockpit = combine(
-        sources, routes.currentRoute, ticker
-    ) { source, route, now ->
+        sources, routes.currentRoute, ticker, appConfigRepository.configuration
+    ) { source, route, now, configuration ->
         val usableGps = source.gps?.takeIf { it.usable(now) }
         val lastGpsAt = source.gps?.recordedAtMillis
             ?.takeIf { it <= now && it >= gpsWaitSinceMs } ?: gpsWaitSinceMs
         val telemetry = source.telemetry
-        val energy = estimateEnergy(route, telemetry, now)
+        val energy = estimateEnergy(route, telemetry, now, configuration.vehicle)
         val baseRoute = progress.enrich(route, usableGps, now)
         val visualRoute = if (energy is BaselineEnergyResult.Estimate) {
             baseRoute?.copy(estimatedArrivalSocPercent = energy.arrivalSocPercent)
@@ -163,7 +160,7 @@ class NavigationViewModel @Inject constructor(
                 energy.usedLiveObd) "LIVE OBD · MODEL/ESTIMATE" else null,
             gpsWarning = if (_foreground.value &&
                 now - lastGpsAt > 10_000L && usableGps == null
-            ) "Waiting for GPS signal..." else null,
+            ) CoreIssue.LOCATION_MISSING.messageTr else null,
             route = visualRoute,
             gpsFix = usableGps
         )
@@ -176,21 +173,19 @@ class NavigationViewModel @Inject constructor(
     private fun estimateEnergy(
         route: RouteSnapshot?,
         telemetry: VehicleTelemetry,
-        now: Long
+        now: Long,
+        profile: VehicleProfileConfig
     ): BaselineEnergyResult? {
         if (route?.routeId == null) return null
-        // Damaged/old preference types must not crash the navigation UI.
-        fun readFloat(key: String): Double? = runCatching {
-            if (modelPrefs.contains(key)) modelPrefs.getFloat(key, Float.NaN)
-                .toDouble().takeIf { it.isFinite() } else null
-        }.getOrNull()
-        val capacity = readFloat("usableBatteryKwh") ?: Double.NaN
-        val consumption = readFloat("referenceWhPerKm") ?: Double.NaN
-        val reserve = readFloat("arrivalReservePct") ?: Double.NaN
-        if (!capacity.isFinite() || capacity <= 0.0 ||
-            !consumption.isFinite() || consumption <= 0.0 ||
-            !reserve.isFinite() || reserve !in 0.0..100.0
-        ) return BaselineEnergyResult.Unavailable("No calibrated capacity/consumption/reserve data")
+        if (!profile.readyForEstimate()) return BaselineEnergyResult.Unavailable(
+            CoreIssue.CONFIG_UNCONFIRMED.messageTr
+        )
+        val capacity = profile.usableBatteryKwh
+            ?: return BaselineEnergyResult.Unavailable("Kullanılabilir batarya bilinmiyor")
+        val consumption = profile.referenceWhPerKm()
+            ?: return BaselineEnergyResult.Unavailable("Referans tüketim bilinmiyor")
+        val reserve = profile.arrivalReservePercent
+            ?: return BaselineEnergyResult.Unavailable("Varış rezervi bilinmiyor")
 
         // No synthetic SoC or default 80% substitution.
         val fresh = telemetry.socPercent.current(now)
