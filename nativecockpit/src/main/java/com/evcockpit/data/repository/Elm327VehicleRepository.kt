@@ -31,6 +31,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
 import com.evcockpit.data.obd.ElmSpeedParser
 import com.evcockpit.data.obd.MebUdsParser
+import com.evcockpit.domain.model.EngineeringMath
 import com.evcockpit.domain.model.EngineeringMetrics
 import com.evcockpit.domain.model.EngineeringSnapshot
 import com.evcockpit.domain.model.MebResponseStatus
