@@ -38,6 +38,34 @@ class RouteProgressTrackerTest {
         assertNull(result.gpsProgressFraction)
         assertNull(result.nextManeuver)
     }
+    @Test fun windowedProjectionFallsBackToFullRouteAfterLargeGpsJump() {
+        val points = (0..250).map { step ->
+            GeoCoordinate(38.0, 35.0 + step * 0.00010)
+        }
+        val longRoute = RouteSnapshot(
+            routeId = "long-test-geometry",
+            routePoints = points,
+            totalKm = 2.2,
+            osrmDurationSeconds = 500.0
+        )
+        val tracker = RouteProgressTracker()
+        val beginning = tracker.enrich(longRoute, GpsFix(points[2], 3f, now), now)
+        assertNotNull(beginning?.gpsProgressFraction)
+        val jumped = tracker.enrich(
+            longRoute, GpsFix(points[230], 3f, now + 1_000L), now + 1_000L
+        )
+        assertNotNull(jumped?.gpsProgressFraction)
+        assertTrue(jumped!!.gpsProgressFraction!! > 0.85f)
+    }
+
+    @Test fun deviationOffsetHasNoSyntheticZeroWhenGpsMissing() {
+        val tracker = RouteProgressTracker()
+        assertNull(tracker.offRouteMeters(route, null, now))
+        assertTrue(tracker.offRouteMeters(
+            route, GpsFix(GeoCoordinate(38.003, 35.01), 3f, now), now
+        )!! > 150.0)
+    }
+
     @Test fun switchingRouteDoesNotRetainOldManeuver() {
         val tracker=RouteProgressTracker()
         tracker.enrich(route,GpsFix(line[0],5f,now),now)
