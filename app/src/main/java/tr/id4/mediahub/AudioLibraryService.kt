@@ -21,6 +21,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.os.Build
 import android.util.Log
 
@@ -54,12 +55,8 @@ class AudioLibraryService : MediaLibraryService() {
         session = MediaLibrarySession.Builder(this, player!!, LibraryCallback()).build()
         knownGroups = StationStore.load(this).map { it.group }.toSet()
         val filter = IntentFilter(ACTION_CATALOG_UPDATED)
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(catalogReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(catalogReceiver, filter)
-        }
+        // Compat applies non-exported receiver semantics on older API levels too.
+        ContextCompat.registerReceiver(this, catalogReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         receiverRegistered = true
     }
 
