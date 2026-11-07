@@ -64,6 +64,8 @@ fun CockpitScreen(
     routePlannerUi: RoutePlannerUiState,
     onRouteOriginChange:(String)->Unit,
     onRouteDestinationChange:(String)->Unit,
+    onRouteOriginSearch:()->Unit,
+    onRouteDestinationSearch:()->Unit,
     onRouteOriginSelected:(RoutePlace)->Unit,
     onRouteDestinationSelected:(RoutePlace)->Unit,
     onRouteFromGps:()->Unit,
@@ -156,6 +158,7 @@ fun CockpitScreen(
     if (routePlanner) RoutePlannerDialog(
         state = routePlannerUi, onDismiss = { routePlanner = false },
         onOriginChange = onRouteOriginChange, onDestinationChange = onRouteDestinationChange,
+        onOriginSearch = onRouteOriginSearch, onDestinationSearch = onRouteDestinationSearch,
         onOriginSelected = onRouteOriginSelected, onDestinationSelected = onRouteDestinationSelected,
         onGps = onRouteFromGps, onPlan = onRoutePlan,
         onChooseAlternative = onRouteAlternative, onClear = onRouteClear,
