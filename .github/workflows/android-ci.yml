@@ -103,22 +103,23 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          roots = [Path("app"), Path("evlite"), Path("nativecockpit")]
-          pattern = re.compile(r"^(.*?):([0-9]+): Error:.*\[([a-zA-Z0-9_]+)\]")
-          for root in roots:
-              report = root / "build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt"
+          import xml.etree.ElementTree as ET
+          for module in ("app", "evlite", "nativecockpit"):
+              report = Path(module) / "build/reports/lint-results-debug.xml"
               if not report.is_file():
+                  print(f"::notice::No XML lint report in {module}")
                   continue
-              for line in report.read_text(errors="replace").splitlines():
-                  match = pattern.search(line)
-                  if not match:
+              issues = ET.parse(report).getroot().findall("issue")
+              print(f"::notice::Lint issue count for {module}: {len(issues)}")
+              for issue in issues:
+                  if issue.get("severity") != "Error":
                       continue
-                  filename = Path(match.group(1)).name
-                  lineno = match.group(2)
-                  issue = match.group(3)
-                  # Print only basename, line, issue class: not source code or API secrets.
-                  print(f"::notice::Lint: {filename}:{lineno} [{issue}]")
+                  name = issue.get("id", "Unknown")
+                  for location in issue.findall("location")[:1]:
+                      filename = Path(location.get("file", "")).name
+                      lineno = location.get("line", "?")
+                      # No message, source content, URI, or secret value is printed.
+                      print(f"::notice::Lint: {filename}:{lineno} [{name}]")
           PY
 
       - name: JVM unit tests (each existing module)
