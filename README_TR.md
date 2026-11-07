@@ -17,15 +17,39 @@ Elektrikli araçlar için Kotlin, Jetpack Compose, MapLibre ve OSRM tabanlı, ha
 - `evlite`: `com.evcockpit.evguide.lite` paketli hafif harita uygulaması.
 - `media-engine`: ayrı lisanslı medya tabanı için kaynak entegrasyonu.
 
-## Derleme
+## Gerçek modüller ve derleme
 
-Java 17, Android SDK 36 ve Gradle 8.14.3 kullanılır.
+Dallar birbirinden farklıdır: `main` dalı `ID4MediaHub` adlı, yalnızca
+`:app` modülünü içeren medya uygulamasıdır. **Gerçek kokpit**
+`feature/ev-cockpit` dalındaki `:nativecockpit` modülüdür. Bu dalda
+Gradle modülleri `:app`, `:evlite` ve `:nativecockpit` olarak tanımlıdır.
+`media-engine/` kaynak dizini Gradle modülü değildir.
+
+Java 17, Android SDK 36 ve SHA-256 ile doğrulanan Gradle Wrapper 8.14.3 kullanılır.
+Mevcut `:nativecockpit` minimum Android sürümü **28**'dir. İstenen API 26 desteği
+henüz test edilmediği için etkinleştirilmedi.
 
 ```bash
-gradle :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug
+git switch feature/ev-cockpit
+./gradlew --version
+./gradlew projects
+./gradlew :nativecockpit:lintDebug :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug --no-daemon --stacktrace
 ```
 
-Test APK yolu: `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`.
+Başarılı Debug APK yolu:
+`nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`.
+
+FAZ 0 güvenlik iyileştirmeleri
+[`audit/phase0-native-validation-20261107`](https://github.com/AlpTimucin-cpu/ev-cockpit/pull/25)
+dalındadır: Gitleaks, APK anahtar denetimi, Türkçe metinler ve yalnızca
+Mod 01 / UDS 0x22 tanı okuması için testler. Bu PR henüz `feature` dalına
+birleştirilmedi.
+
+**ID.4 BMS SoC DID/CAN adresleri/çarpanları doğrulanmadı.** Taslak güvenlik
+düzeltmesi otomatik MEB DID taramasını ve sayısal batarya çıkarımını kapatır;
+kullanıcının başlattığı UDS 0x22 tanılamasının ham yanıtı ölçülmüş SoC sayılmaz.
+Gerçek cihaz, GPS, Bluetooth ELM327 ve Android Auto kabul testleri ayrıca
+gereklidir. Eski TomTom/imzalama anahtarı riski giderilmeden üretim yayını yoktur.
 
 ## Paket geçişi
 
