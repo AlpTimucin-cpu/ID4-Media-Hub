@@ -13,6 +13,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
+import android.os.Build
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -64,7 +65,12 @@ class MainActivity : Activity() {
         setContentView(root)
         // Android 15 enforces edge-to-edge drawing: keep the bottom nav above OS controls.
         root.setOnApplyWindowInsetsListener { _, insets ->
-            val bottom = insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
             root.setPadding(0, 0, 0, bottom)
             insets
         }
