@@ -87,29 +87,43 @@ object OsrmResponseParser {
     }catch(_: Exception){null}
 }
 
-/** OSRM supplies turn type/modifier, not Turkish text. No fake events or place names. */
+/** Only real OSRM turn metadata can produce spoken Turkish instructions. */
 object OsrmTurkishInstructions {
-    fun speak(type:String?,modifier:String?,name:String?):String? {
-        val direction=when(modifier){
-            "left"->"left";"right"->"right";"slight left"->"slightly left"
-            "slight right"->"slightly right";"sharp left"->"sharply left"
-            "sharp right"->"sharply right";"uturn"->"back";"straight"->"straight"
-            else->null
+    fun speak(type: String?, modifier: String?, name: String?): String? {
+        val direction = when (modifier) {
+            "left" -> "sola"
+            "right" -> "sağa"
+            "slight left" -> "hafif sola"
+            "slight right" -> "hafif sağa"
+            "sharp left" -> "keskin sola"
+            "sharp right" -> "keskin sağa"
+            "uturn" -> "U dönüşü"
+            "straight" -> "düz"
+            else -> null
         }
-        val message=when(type){
-            "turn", "end of road"->direction?.let { if(it=="straight")"Continue straight" else "Turn $it" }
-            "new name", "continue"->"Continue straight"
-            "fork"->direction?.let {"Take the fork $it"}
-            "merge"->direction?.let {"Merge $it"}
-            "on ramp"->direction?.let {"Take the connecting road $it"}
-            "off ramp"->direction?.let {"Take the exit $it"}
-            "roundabout","rotary"->"Enter the roundabout"
-            "exit roundabout", "exit rotary"->"Exit the roundabout"
-            else->null // OSRM unknown type: stay silent
-        }?:return null
-        val road=name.orEmpty().trim().takeIf {
-            it.length in 2..55 && it.none { c -> c.isISOControl() || c=='<' || c=='>' }
+        val instruction = when (type) {
+            "turn", "end of road" -> when (direction) {
+                null -> null
+                "düz" -> "Düz devam edin"
+                "U dönüşü" -> "U dönüşü yapın"
+                else -> "$direction dönün"
+            }
+            "continue", "new name" -> "Yol boyunca devam edin"
+            "fork" -> direction?.let { "Yol ayrımında $it ilerleyin" }
+            "merge" -> direction?.let { "$it katılın" }
+            "on ramp" -> direction?.let { "Bağlantı yoluna $it girin" }
+            "off ramp" -> direction?.let { "$it çıkışı kullanın" }
+            "roundabout", "rotary" -> "Dönel kavşağa girin"
+            "exit roundabout", "exit rotary" -> "Dönel kavşaktan çıkın"
+            "arrive" -> "Hedefinize ulaştınız"
+            else -> null // Unknown maneuver: remain silent, do not invent an action.
+        } ?: return null
+        val road = name.orEmpty().trim().takeIf {
+            it.length in 2..55 && it.none { c ->
+                c.isISOControl() || c == '<' || c == '>'
+            }
         }
-        return (if(road==null)message else "$message, toward $road").take(140)
+        return (if (road == null) instruction else "$instruction. $road yolunu takip edin")
+            .take(140)
     }
 }
