@@ -40,6 +40,7 @@ import com.evcockpit.domain.repository.RouteRepository
 import com.evcockpit.domain.repository.VehicleRepository
 import com.evcockpit.domain.usecase.NavigationSpeechBridge
 import com.evcockpit.domain.usecase.RouteProgressTracker
+import com.evcockpit.domain.usecase.RouteDeviationPolicy
 import com.evcockpit.domain.usecase.EvBaselineEnergyEstimator
 import com.evcockpit.domain.usecase.BaselineEnergyInputs
 import com.evcockpit.domain.usecase.BaselineEnergyResult
@@ -101,6 +102,7 @@ class NavigationViewModel @Inject constructor(
     private val guide = NativeVoiceGuide(context, audioDucking)
     private val speechBridge = NavigationSpeechBridge()
     private val progress = RouteProgressTracker()
+    private val deviation = RouteDeviationPolicy()
     private val _foreground = MutableStateFlow(false)
     private val _weatherAlerts = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val weatherAlerts = _weatherAlerts.asSharedFlow()
@@ -289,6 +291,23 @@ class NavigationViewModel @Inject constructor(
                 }
             }
         }
+        // Only foreground phone guidance may initiate an automatic re-route.
+        // Five new, accurate GPS measurements must exceed the 150 m boundary.
+        viewModelScope.launch {
+            combine(
+                routes.currentRoute, locationRepository.gpsFix,
+                _foreground, CarNavigationOwnership.navigating
+            ) { route, fix, foreground, carNavigating ->
+                DeviationInputs(route, fix, foreground && !carNavigating)
+            }.collect { state ->
+                if (state.route == null) deviation.reset()
+                else if (state.allowed && !_planner.value.planning &&
+                    deviation.observe(state.route, state.fix, System.currentTimeMillis())
+                ) {
+                    state.fix?.let { handleDeviation(state.route, it) }
+                }
+            }
+        }
         // Measured GPS drives both route progress and maneuver announcements.
         viewModelScope.launch {
             var activeSpeechRouteId: String? = null
@@ -332,6 +351,67 @@ class NavigationViewModel @Inject constructor(
         }
     }
 
+    private data class DeviationInputs(
+        val route: RouteSnapshot?, val fix: GpsFix?, val allowed: Boolean
+    )
+
+    private fun handleDeviation(route: RouteSnapshot, fix: GpsFix) {
+        if (routes.currentRoute.value?.routeId != route.routeId ||
+            !fix.usable(System.currentTimeMillis()) || fix.accuracyMeters > 35f
+        ) return
+        val target = _planner.value.destinationSelected
+        if (target == null) {
+            _planner.update {
+                it.copy(error = "Rotadan çıkıldı. Hedef eksik; yeni rota için hedef seçin.")
+            }
+            return
+        }
+        // Preserve user-selected charging-stop intent. Never silently skip or
+        // route back through a completed stop. Ask for manual reconciliation.
+        if (chargingStops.isNotEmpty()) {
+            _planner.update {
+                it.copy(error = "Rotadan çıkıldı. Şarj duraklarını kontrol edip rotayı yeniden başlatın.")
+            }
+            if (_voice.value.enabled) guide.speakIfIdle(
+                "Rotadan çıktınız. Şarj duraklarınızı kontrol edin.", _voice.value.volume
+            )
+            return
+        }
+        planningJob?.cancel()
+        planningJob = viewModelScope.launch {
+            _planner.update { it.copy(planning = true, error = null) }
+            if (_voice.value.enabled) guide.speakIfIdle(
+                "Rotadan çıktınız. Rota yeniden hesaplanıyor.", _voice.value.volume
+            )
+            try {
+                when (val result = routes.calculateVia(fix.coordinate, target, emptyList())) {
+                    is RouteCalculationResult.Success -> {
+                        _planner.update {
+                            it.copy(
+                                planning = false, error = null, originFromGps = true,
+                                originSelected = null, gpsOrigin = fix.coordinate,
+                                originText = "Geçerli GPS konumu"
+                            )
+                        }
+                    }
+                    is RouteCalculationResult.Failure -> {
+                        _planner.update {
+                            it.copy(planning = false,
+                                error = "Rota yeniden hesaplanamadı: " + result.message.take(120))
+                        }
+                    }
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                _planner.update {
+                    it.copy(planning = false,
+                        error = "Yeni rota alınamadı. Bağlantınızı kontrol edin.")
+                }
+            }
+        }
+    }
+
     private data class SpeechInputs(
         val route: RouteSnapshot?, val fix: GpsFix?,
         val allowed: Boolean, val voice: VoiceUiState
@@ -357,7 +437,7 @@ class NavigationViewModel @Inject constructor(
     @Suppress("DEPRECATION")
     fun acceptLastLocation(location: android.location.Location?) {
         if (location == null || location.isFromMockProvider || !location.hasAccuracy()) {
-            reportGpsError("Could not read location. Check GPS and precise location settings.")
+            reportGpsError("GPS konumu alınamadı. Konum ve hassasiyet ayarlarını kontrol edin.")
             return
         }
         val fix = GpsFix(
@@ -370,7 +450,7 @@ class NavigationViewModel @Inject constructor(
         if (fix.usable(System.currentTimeMillis())) {
             locationRepository.acceptFix(fix)
             _gpsError.value = null
-        } else _gpsError.value = "Location is not sufficiently recent or accurate."
+        } else _gpsError.value = "GPS verisi yeterince güncel veya hassas değil."
 
     }
     fun reportGpsError(message: String) {
@@ -425,15 +505,15 @@ class NavigationViewModel @Inject constructor(
             else it.copy(searchingDestination = true) }
         try {
             val found = routes.searchResult(value).getOrThrow()
-            val error = if (found.isEmpty()) "Address not found. Enter a more specific location." else null
+            val error = if (found.isEmpty()) "Adres bulunamadı. Daha ayrıntılı bir konum girin." else null
             _planner.update { if (origin) it.copy(originMatches = found, searchingOrigin = false, error = error)
                 else it.copy(destinationMatches = found, searchingDestination = false, error = error) }
         } catch (cancel: CancellationException) { throw cancel }
         catch (error: Exception) {
             val message = when (error) {
-                is UnknownHostException -> "No internet connection"
-                is SocketTimeoutException -> "Photon server timed out"
-                is IOException -> error.message ?: "Could not reach the address service"
+                is UnknownHostException -> "İnternet bağlantısı yok"
+                is SocketTimeoutException -> "Adres arama servisi zaman aşımına uğradı"
+                is IOException -> error.message ?: "Adres servisine ulaşılamadı"
                 else -> "Address search failed: ${error.message?.take(80) ?: "bilinmeyen hata"}"
             }
             _planner.update { if (origin) it.copy(searchingOrigin = false, error = message)
@@ -473,18 +553,18 @@ class NavigationViewModel @Inject constructor(
                     if (result.isSuccess) state.copy(
                         locatingGps = false, originFromGps = true,
                         gpsOrigin = result.getOrNull()?.first,
-                        originText = "My current GPS location", error = null
+                        originText = "Geçerli GPS konumum", error = null
                     ) else state.copy(locatingGps = false, originFromGps = false,
-                        error = result.exceptionOrNull()?.message ?: "Could not obtain GPS location")
+                        error = result.exceptionOrNull()?.message ?: "GPS konumu alınamadı")
                 }
             } catch (cancel: CancellationException) { throw cancel }
         }
     }
     fun locationPermissionDenied() {
-        _gpsError.value = "Location permission was not granted."
+        _gpsError.value = "Konum izni verilmedi."
         gpsJob?.cancel()
         _planner.update { it.copy(locatingGps = false, originFromGps = false,
-            gpsOrigin = null, error = "Location permission was not granted; you can select the origin manually") }
+            gpsOrigin = null, error = "Konum izni verilmedi; başlangıç noktasını elle seçebilirsiniz") }
     }
     fun plan() {
         if (!_planner.value.canCalculate) return
@@ -495,7 +575,7 @@ class NavigationViewModel @Inject constructor(
             val start = state.startLocation
             val target = state.destinationSelected
             if (start == null || target == null) {
-                _planner.update { it.copy(error = "Origin and destination have not been selected") }
+                _planner.update { it.copy(error = "Başlangıç ve varış seçilmedi") }
                 return@launch
             }
             _planner.update { it.copy(planning = true, error = null) }
@@ -509,8 +589,8 @@ class NavigationViewModel @Inject constructor(
                             planning = false,
                             error = when {
                                 result.message.contains("internet", ignoreCase = true) ->
-                                    "No Internet Connection"
-                                else -> "Could Not Calculate Route (OSRM Error): " + result.message.take(90)
+                                    "İnternet bağlantısı yok"
+                                else -> "Rota hesaplanamadı (OSRM): " + result.message.take(90)
                             }
                         ) }
                 }
@@ -574,7 +654,7 @@ class NavigationViewModel @Inject constructor(
     fun clearRoute() {
         chargingStops.clear()
         originJob?.cancel(); destinationJob?.cancel(); gpsJob?.cancel(); planningJob?.cancel()
-        routes.clear(); speechBridge.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
+        routes.clear(); deviation.reset(); speechBridge.reset(); guide.stop(); _planner.value = RoutePlannerUiState()
     }
     override fun onCleared() {
         guide.close()
