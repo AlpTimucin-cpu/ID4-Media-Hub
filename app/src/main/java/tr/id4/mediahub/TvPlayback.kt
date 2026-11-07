@@ -29,6 +29,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
 import androidx.media3.datasource.HttpDataSource
 
 /** Phone-only IPTV. This UI never projects video into Android Auto. */
@@ -73,6 +75,7 @@ class TvPlayback(
         setOnClickListener { action() }
     }
 
+    @OptIn(UnstableApi::class)
     fun view(): View {
         val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         root.addView(label("CANLI TV  •  CANLI YAYIN", 19f))

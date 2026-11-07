@@ -159,6 +159,10 @@ jobs:
           done
           cat debug-apks.sha256
 
+      - name: Verify Phase 0 source structure and media policy
+        shell: bash
+        run: python3 -m unittest discover -s tests -p 'test_phase0_source_policy.py' -v
+
       - name: Test APK secret-checking logic
         shell: bash
         run: python3 -m unittest discover -s tests -p 'test_apk_secret_scan.py' -v

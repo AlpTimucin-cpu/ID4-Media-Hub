@@ -33,8 +33,8 @@ object ChannelLogoLoader {
                     val mime = conn.contentType.orEmpty().lowercase()
                     if (conn.responseCode !in 200..299 || (length > 512_000) ||
                         !(mime.startsWith("image/png") || mime.startsWith("image/jpeg") || mime.startsWith("image/webp"))) return@execute
-                    val bytes = conn.inputStream.use { it.readNBytes(512_001) }
-                    if (bytes.size > 512_000) return@execute
+                    val bytes = conn.inputStream.use { BoundedInputReader.read(it, 512_000) }
+                        ?: return@execute
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@execute
                     cache.put(url, bitmap)
                     main.post {
