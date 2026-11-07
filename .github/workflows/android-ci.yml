@@ -159,6 +159,27 @@ jobs:
           done
           cat debug-apks.sha256
 
+      - name: Test APK secret-checking logic
+        shell: bash
+        run: python3 -m unittest discover -s tests -p 'test_apk_secret_scan.py' -v
+
+      - name: Check decompressed Debug APKs for embedded secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          apks=()
+          while IFS= read -r module; do
+            while IFS= read -r -d '' apk; do
+              apks+=("$apk")
+            done < <(find "$module/build/outputs/apk/debug" -maxdepth 1 \
+              -type f -name '*.apk' -print0)
+          done < "$RUNNER_TEMP/ev-cockpit-modules.txt"
+          if (( ${#apks[@]} == 0 )); then
+            echo '::error::No Debug APK exists for security scanning.'
+            exit 1
+          fi
+          python3 scripts/check_apk_secrets.py "${apks[@]}"
+
       - name: Upload lint HTML and unit-test reports
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
