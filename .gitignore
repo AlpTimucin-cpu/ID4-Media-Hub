@@ -1,0 +1,45 @@
+# Local Android SDK, Android Studio and Gradle state
+/local.properties
+**/local.properties
+/.gradle/
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+.idea/
+*.iml
+.DS_Store
+
+# Generated Android packages (release binaries belong in reviewed GitHub Releases)
+*.apk
+*.aab
+*.apks
+*.idsig
+*.zip
+
+# Signing material, credentials and service-account material
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/google-services.json
+**/service-account*.json
+**/credentials*.json
+EYA_GitHub_TEK_SECRET.txt
+*signing*bundle*.txt
+*keystore*secret*.txt
+.env
+.env.*
+!.env.example
+
+# Editor and development output
+*.log
+*.tmp
+*.bak
+__pycache__/
+*.py[cod]
+
+# Intentionally committed, independently checksum-verified Gradle Wrapper:
+# gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.jar and properties
+# are NOT ignored.
