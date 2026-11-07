@@ -97,28 +97,32 @@ jobs:
             }
           done
 
-      - name: Report lint issue locations without source or secrets
+      - name: Report lint issue IDs and file locations only
         if: ${{ steps.lint.outcome == 'failure' }}
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          from collections import Counter
           import xml.etree.ElementTree as ET
           for module in ("app", "evlite", "nativecockpit"):
               report = Path(module) / "build/reports/lint-results-debug.xml"
               if not report.is_file():
-                  print(f"::notice::No XML lint report in {module}")
+                  print(f"Lint XML absent: {module}")
                   continue
               issues = ET.parse(report).getroot().findall("issue")
-              print(f"::notice::Lint issue count for {module}: {len(issues)}")
-              for issue in issues:
-                  # Android lint can label issue severities Error or Fatal.
-                  name = issue.get("id", "Unknown")
-                  for location in issue.findall("location")[:1]:
-                      filename = Path(location.get("file", "")).name
-                      lineno = location.get("line", "?")
-                      # No message, source content, URI, or secret value is printed.
-                      print(f"::notice::Lint: {filename}:{lineno} [{name}]")
+              print(f"Lint severities: {dict(Counter(str(i.get('severity')) for i in issues))}")
+              for i in issues:
+                  issue_id = i.get("id", "Unknown")
+                  severity = i.get("severity", "Unknown")
+                  locations = [e for e in i.iter() if e.tag.split("}")[-1] == "location"]
+                  if not locations:
+                      print(f"Lint {severity} [{issue_id}] (location not in XML)")
+                  else:
+                      loc = locations[0]
+                      filename = Path(loc.get("file", "")).name
+                      lineno = loc.get("line", "?")
+                      print(f"Lint {severity} [{issue_id}] {filename}:{lineno}")
           PY
 
       - name: JVM unit tests (each existing module)
