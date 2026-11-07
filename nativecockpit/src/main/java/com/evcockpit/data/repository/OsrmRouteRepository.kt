@@ -1,6 +1,9 @@
 package com.evcockpit.data.repository
 
 import com.google.gson.JsonParser
+import com.evcockpit.data.settings.AppConfigRepository
+import com.evcockpit.domain.usecase.BoundedNetworkRetry
+import kotlinx.coroutines.flow.first
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -20,18 +23,19 @@ import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.RouteRepository
 
 @Singleton
-class OsrmRouteRepository @Inject constructor() : RouteRepository {
+class OsrmRouteRepository @Inject constructor(
+    private val appConfig: AppConfigRepository
+) : RouteRepository {
     private val http = OkHttpClient.Builder()
         .connectTimeout(9, TimeUnit.SECONDS)
         .readTimeout(17, TimeUnit.SECONDS)
         .callTimeout(22, TimeUnit.SECONDS)
         .build()
-    private val osrm = Retrofit.Builder()
-        .baseUrl("https://router.project-osrm.org/")
-        .client(http).build().create(OsrmService::class.java)
-    private val photon = Retrofit.Builder()
-        .baseUrl("https://photon.komoot.io/")
-        .client(http).build().create(PhotonService::class.java)
+    private fun osrm(root: String): OsrmService = Retrofit.Builder()
+        .baseUrl(root).client(http).build().create(OsrmService::class.java)
+
+    private fun photon(root: String): PhotonService = Retrofit.Builder()
+        .baseUrl(root).client(http).build().create(PhotonService::class.java)
 
     private val selected = MutableStateFlow<RouteSnapshot?>(null)
     private val variants = MutableStateFlow<List<RouteOption>>(emptyList())
@@ -41,18 +45,21 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
     override val selectedIndex: StateFlow<Int?> = index.asStateFlow()
 
     override suspend fun search(query: String): List<RoutePlace> = withContext(Dispatchers.IO) {
-        require(query.trim().length in 3..100) { "Enter at least 3 characters" }
-        val result = photon.search(query.trim())
+        require(query.trim().length in 3..100) { "Adres için en az üç karakter yazın" }
+        val root = appConfig.configuration.first().endpoints.geocodingBaseUrl
+        val result = BoundedNetworkRetry.io {
+            photon(root).search(query.trim())
+        }
         if (!result.isSuccessful) {
             result.errorBody()?.close()
             throw IOException(when (result.code()) {
-                400 -> "Photon request rejected (HTTP 400)."
-                429 -> "Address query rate limit reached (HTTP 429); try again later."
-                in 500..599 -> "Photon server is unavailable (HTTP ${result.code()})."
-                else -> "Address service returned HTTP ${result.code()}."
+                400 -> "Adres arama isteği reddedildi (HTTP 400)."
+                429 -> "Adres servisinde istek sınırına ulaşıldı (HTTP 429)."
+                in 500..599 -> "Adres servisi kullanılamıyor (HTTP ${result.code()})."
+                else -> "Adres servisi hata verdi (HTTP ${result.code()})."
             })
         }
-        val body = result.body() ?: throw IOException("Address service returned an empty response")
+        val body = result.body() ?: throw IOException("Adres servisi boş yanıt döndürdü")
         body.use { PhotonResponseParser.parse(it.string()) }
     }
 
@@ -65,13 +72,18 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         destination: RoutePlace,
         stops: List<GeoCoordinate>
     ): RouteCalculationResult = withContext(Dispatchers.IO) {
+        val root = appConfig.configuration.first().endpoints.osrmBaseUrl
+            ?: return@withContext RouteCalculationResult.Failure(
+                null, CoreIssue.CONFIG_UNCONFIRMED.messageTr +
+                    " Kendi HTTPS OSRM sunucunuzun adresini Ayarlar bölümüne girin."
+            )
         val url = try {
             OsrmRequestFormat.urlVia(origin, stops, destination.coordinate)
         } catch (error: IllegalArgumentException) {
             return@withContext RouteCalculationResult.Failure(null, error.message ?: "Coordinate error")
         }
         try {
-            val response = osrm.route(url)
+            val response = BoundedNetworkRetry.io { osrm(root).route(url) }
             if (!response.isSuccessful) {
                 val info = response.errorBody()?.use { body ->
                     val bytes = body.bytes()
@@ -83,12 +95,12 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
                 )
             }
             val body = response.body()
-                ?: return@withContext RouteCalculationResult.Failure(null, "OSRM returned an empty response")
+                ?: return@withContext RouteCalculationResult.Failure(null, "OSRM boş yanıt döndürdü")
             val alternatives = try {
                 body.use { OsrmResponseParser.parse(it.string(), destination.label) }
             } catch (error: RuntimeException) {
                 return@withContext RouteCalculationResult.Failure(null,
-                    "Could not read OSRM route data: ${error.message?.take(80) ?: "invalid JSON"}")
+                    "OSRM rota verileri okunamadı: ${error.message?.take(80) ?: "geçersiz JSON"}")
             }
             // Publish only a completely validated response. Do not publish a partial route.
             variants.value = alternatives
@@ -98,14 +110,14 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: UnknownHostException) {
-            RouteCalculationResult.Failure(null, "No internet connection or OSRM address could not be resolved")
+            RouteCalculationResult.Failure(null, CoreIssue.NETWORK_UNAVAILABLE.messageTr)
         } catch (_: SocketTimeoutException) {
-            RouteCalculationResult.Failure(null, "OSRM timed out. Check your internet connection")
+            RouteCalculationResult.Failure(null, "OSRM yanıtı zaman aşımına uğradı.")
         } catch (_: IOException) {
-            RouteCalculationResult.Failure(null, "Could not connect to OSRM. Try again")
+            RouteCalculationResult.Failure(null, "OSRM bağlantısı kurulamadı. Yeniden deneyin.")
         } catch (error: RuntimeException) {
             RouteCalculationResult.Failure(null,
-                "Could not process the route response: ${error.message?.take(90) ?: "beklenmeyen hata"}")
+                "Rota yanıtı işlenemedi: ${error.message?.take(90) ?: "beklenmeyen hata"}")
         }
     }
 
@@ -124,11 +136,11 @@ class OsrmRouteRepository @Inject constructor() : RouteRepository {
         fun explainStatus(status: Int, code: String?): String {
             val suffix = code?.let { " · OSRM: $it" } ?: ""
             return when (status) {
-                400 -> "OSRM HTTP 400: coordinates or query parameters rejected$suffix"
-                404 -> "OSRM HTTP 404: routing service not found$suffix"
-                429 -> "OSRM HTTP 429: query rate limit exceeded$suffix"
-                in 500..599 -> "OSRM HTTP $status: server temporarily unavailable$suffix"
-                else -> "OSRM HTTP $status: request failed$suffix"
+                400 -> "OSRM HTTP 400: koordinatlar veya istek geçersiz$suffix"
+                404 -> "OSRM HTTP 404: rota servisi bulunamadı$suffix"
+                429 -> "OSRM HTTP 429: istek sınırına ulaşıldı$suffix"
+                in 500..599 -> "OSRM HTTP $status: servis geçici olarak kullanılamıyor$suffix"
+                else -> "OSRM HTTP $status: istek başarısız$suffix"
             }
         }
         /** Only expose the OSRM machine-readable error code, not arbitrary server text. */

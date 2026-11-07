@@ -17,6 +17,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -48,6 +49,29 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val voices by viewModel.voiceOptions.collectAsStateWithLifecycle()
+    val configuration by viewModel.appConfiguration.collectAsStateWithLifecycle()
+    val configurationError by viewModel.configError.collectAsStateWithLifecycle()
+    var batteryEntry by remember(configuration.vehicle) {
+        mutableStateOf(configuration.vehicle.usableBatteryKwh?.toString().orEmpty())
+    }
+    var dcEntry by remember(configuration.vehicle) {
+        mutableStateOf(configuration.vehicle.peakDcKw?.toString().orEmpty())
+    }
+    var consumptionEntry by remember(configuration.vehicle) {
+        mutableStateOf(configuration.vehicle.consumptionKwhPer100Km?.toString().orEmpty())
+    }
+    var reserveEntry by remember(configuration.vehicle) {
+        mutableStateOf(configuration.vehicle.arrivalReservePercent?.toString().orEmpty())
+    }
+    var osrmEntry by remember(configuration.endpoints) {
+        mutableStateOf(configuration.endpoints.osrmBaseUrl.orEmpty())
+    }
+    var geocodingEntry by remember(configuration.endpoints) {
+        mutableStateOf(configuration.endpoints.geocodingBaseUrl)
+    }
+    var weatherEntry by remember(configuration.endpoints) {
+        mutableStateOf(configuration.endpoints.weatherBaseUrl)
+    }
     var voicesExpanded by remember { mutableStateOf(false) }
     var profilesExpanded by remember { mutableStateOf(false) }
 
@@ -68,6 +92,78 @@ fun SettingsScreen(
                 Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
+                Text("Araç ve Servis Ayarları", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "VW ID.4 Pure için 52 kWh net batarya bilgisi kullanıcı beyanıdır. " +
+                        "DC tepe gücü doğrulanmadı. Bunlar otomatik ölçüm değildir; " +
+                        "değerleri kendiniz kontrol edip kaydetmelisiniz.",
+                    color = Color(0xFFAEC4D6),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value = batteryEntry, onValueChange = { batteryEntry = it },
+                    label = { Text("Kullanılabilir batarya (kWh) — teyit gerekli") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                OutlinedTextField(
+                    value = dcEntry, onValueChange = { dcEntry = it },
+                    label = { Text("DC tepe şarj (kW) — bilinmiyorsa boş") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                OutlinedTextField(
+                    value = consumptionEntry, onValueChange = { consumptionEntry = it },
+                    label = { Text("Referans tüketim (kWh/100 km) — senaryo") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                OutlinedTextField(
+                    value = reserveEntry, onValueChange = { reserveEntry = it },
+                    label = { Text("Varış rezervi (%) — kullanıcı tercihi") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                Button(
+                    onClick = {
+                        viewModel.saveVehicleConfig(
+                            batteryEntry, dcEntry, consumptionEntry, reserveEntry
+                        )
+                    }, modifier = Modifier.fillMaxWidth()
+                ) { Text("Araç parametrelerini kullanıcı olarak onayla") }
+                Text(
+                    if (configuration.vehicle.userConfirmed)
+                        "Kullanıcı teyitli senaryo parametreleri. CAN/BMS ölçümü değildir."
+                    else "Araç parametreleri teyit edilmedi — enerji hesabı kullanılamıyor.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                HorizontalDivider()
+                Text("Ağ hizmetleri (HTTPS)", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = osrmEntry, onValueChange = { osrmEntry = it },
+                    label = { Text("Kendi OSRM sunucunuzun kök adresi") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                Text(
+                    "OSRM herkese açık demo sunucusu üretimde kullanılmaz. " +
+                        "Adres yoksa rota isteği yapılmaz.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value = geocodingEntry, onValueChange = { geocodingEntry = it },
+                    label = { Text("Geocoding HTTPS servis kök adresi") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                OutlinedTextField(
+                    value = weatherEntry, onValueChange = { weatherEntry = it },
+                    label = { Text("Open-Meteo HTTPS servis kök adresi") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                OutlinedButton(
+                    onClick = { viewModel.saveServiceUrls(osrmEntry, geocodingEntry, weatherEntry) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Hizmet adreslerini kaydet") }
+                configurationError?.let { issue ->
+                    Text(issue, color = Color(0xFFFFC4C4), style = MaterialTheme.typography.bodySmall)
+                }
+                HorizontalDivider()
+
                 Text("Ses ve Görünüm Ayarları", style = MaterialTheme.typography.titleLarge)
                 HorizontalDivider()
 
