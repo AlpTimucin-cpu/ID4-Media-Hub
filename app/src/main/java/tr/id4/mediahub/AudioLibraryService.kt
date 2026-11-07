@@ -19,9 +19,9 @@ import com.google.common.util.concurrent.ListenableFuture
 import android.net.Uri
 import android.content.BroadcastReceiver
 import android.content.Context
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.util.Log
 
 /** Driver-safe audio media library for Android Auto. Video stays in the phone Activity. */
@@ -54,12 +54,10 @@ class AudioLibraryService : MediaLibraryService() {
         session = MediaLibrarySession.Builder(this, player!!, LibraryCallback()).build()
         knownGroups = StationStore.load(this).map { it.group }.toSet()
         val filter = IntentFilter(ACTION_CATALOG_UPDATED)
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(catalogReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(catalogReceiver, filter)
-        }
+        // Backported non-exported receiver registration works on API 26+.
+        ContextCompat.registerReceiver(
+            this, catalogReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         receiverRegistered = true
     }
 
