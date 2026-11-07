@@ -41,7 +41,7 @@ class RouteProgressTracker {
      * Null means missing, inaccurate, stale or invalid GPS/route; never zero-fills it.
      */
     fun offRouteMeters(route: RouteSnapshot?, fix: GpsFix?, nowMs: Long): Double? {
-        if (route?.routeId.isNullOrBlank() || fix?.usable(nowMs) != true ||
+        if (route == null || route.routeId.isNullOrBlank() || fix?.usable(nowMs) != true ||
             fix.accuracyMeters > 35f || !validRouteGeometry(route.routePoints)
         ) return null
         load(route)
