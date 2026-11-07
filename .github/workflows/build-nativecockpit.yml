@@ -3,11 +3,10 @@ name: EV Cockpit · Verified Debug APK
 on:
   workflow_dispatch:
   pull_request:
-    branches:
-      - feature/ev-cockpit
   push:
     branches:
       - feature/ev-cockpit
+      - 'feature/phase1-*'
 
 permissions:
   contents: read
