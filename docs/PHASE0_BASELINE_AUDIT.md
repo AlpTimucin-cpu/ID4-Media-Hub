@@ -43,9 +43,13 @@ PRs are **stacked** in the following order: `#16 → #17 → #18 → #19 → #21
 
 - `app/build.gradle.kts`: lower **:app only** minSdk to 26 for CI compatibility assessment.
 - `app/src/main/AndroidManifest.xml`: add explicit audio-search intent and remove unrelated package query.
-- `app/src/main/java/tr/id4/mediahub/MainActivity.kt`: use Media3 session for bounded voice-search requests, remove unverified external sports links.
+- `app/src/main/java/tr/id4/mediahub/MainActivity.kt`: use Media3 session for bounded voice-search requests, remove unverified external sports links, and guard API 30 WindowInsets with an API 26 fallback / avoid API 28 mainExecutor.
 - `app/src/main/java/tr/id4/mediahub/SportzXLauncher.kt`: deleted from working tree, not history.
-- `tests/test_phase0_contracts.py`: deterministic source/manifest/CI security contract checks.
+- `app/src/main/java/tr/id4/mediahub/ChannelLogoLoader.kt`: replace Android 13+ readNBytes with a bounded API 26 InputStream loop.
+- `app/src/main/java/tr/id4/mediahub/AudioLibraryService.kt`: use backported ContextCompat.RECEIVER_NOT_EXPORTED registration instead of legacy unsafe receiver registration.
+- `app/src/main/java/tr/id4/mediahub/TvPlayback.kt`: use explicit androidx.annotation.OptIn for the Media3 APIs marked UnstableApi.
+- `app/build.gradle.kts`: add the verified AndroidX Core compatibility dependency for receiver registration.
+- `tests/test_phase0_contracts.py`: ten deterministic source/manifest/CI/Android-26 security contract checks.
 - `.github/workflows/android-ci.yml`: execute contract tests and **withhold Debug APK artifacts if lint fails**.
 - `README.md` and `README_TR.md`: explain Phase 0 and minSdk target/gaps.
 - This file: audit, risk, test and rollback documentation.
@@ -60,7 +64,7 @@ PRs are **stacked** in the following order: `#16 → #17 → #18 → #19 → #21
 # Expected: root ID4MediaHub with only :app
 
 python3 -m unittest discover -s tests -p 'test_phase0_contracts.py' -v
-# Expected: all nine source-contract tests PASS (does not compile Android)
+# Expected: all ten source-contract tests PASS (does not compile Android)
 python3 -m unittest discover -s tests -p 'test_apk_secret_scan.py' -v
 # Expected: all ten APK scanner unit tests PASS
 
@@ -76,6 +80,15 @@ gitleaks git . --log-opts="--all" --redact=100 --no-banner --exit-code=1
 ```
 
 Possible errors: missing SDK or Java, build dependency resolution, unregistered modules, Kotlin compile error, Android lint API-level findings, existing historical exposed key detection. A full-history Gitleaks finding must be triaged privately, not suppressed to make CI green.
+
+### Root-cause investigation for SDK 26 compatibility
+
+The initial Phase 0 lint failed with **11 errors and 72 warnings**. Its redacted XML breakdown showed:
+- `NewApi`: `ChannelLogoLoader.kt:36` (`InputStream.readNBytes`); `MainActivity.kt:68` (three API 30 inset calls); `MainActivity.kt:296` (API 28 mainExecutor).
+- `UnspecifiedRegisterReceiverFlag`: `AudioLibraryService.kt:61`.
+- `UnsafeOptInUsageError`: `TvPlayback.kt:86–87` (Media3 opt-in errors).
+
+The Phase 0 compatibility edits address these APIs without disabling lint. CI must still prove that they compile and the lint gate passes. The warnings are documented technical debt, not a passed device test.
 
 ### Tests to run on hardware
 
