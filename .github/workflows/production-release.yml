@@ -1,0 +1,311 @@
+name: EV Cockpit - Protected Signed Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing vMAJOR.MINOR.PATCH tag pointing to current main HEAD'
+        required: true
+        type: string
+
+# Default: read-only. Only the isolated publication job may create a Release.
+permissions:
+  contents: read
+
+concurrency:
+  group: protected-release-${{ github.event.inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    name: Validate exact tag, main ancestry, native module
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+      sha: ${{ steps.verify.outputs.sha }}
+    steps:
+      - name: Checkout exact event commit without credentials
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate release identity and source
+        id: verify
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag || '' }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == 'push' && "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          elif [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' && "$GITHUB_REF" == 'refs/heads/main' ]]; then
+            tag="$REQUESTED_TAG"
+          else
+            echo '::error::Release accepts only v* tag pushes or manual runs from main.'
+            exit 1
+          fi
+
+          if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo '::error::Tag must be vMAJOR.MINOR.PATCH.'
+            exit 1
+          fi
+          git show-ref --tags --verify --quiet "refs/tags/$tag" || {
+            echo '::error::Release tag must exist before the workflow starts.'
+            exit 1
+          }
+          tagged_sha="$(git rev-parse "refs/tags/$tag^{commit}")"
+          source_sha="$(git rev-parse HEAD)"
+          if [[ "$tagged_sha" != "$source_sha" ]]; then
+            echo '::error::Tag does not match the checked-out release source.'
+            exit 1
+          fi
+
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$source_sha" refs/remotes/origin/main; then
+            echo '::error::Tagged source is not in the main branch history.'
+            exit 1
+          fi
+          test -f nativecockpit/build.gradle.kts || {
+            echo '::error::nativecockpit missing on this exact tag; no feature-branch fallback.'
+            exit 1
+          }
+          test -x ./gradlew
+          test -s gradle/wrapper/gradle-wrapper.jar
+          grep -Fq 'gradle-8.14.3-bin.zip' gradle/wrapper/gradle-wrapper.properties
+
+          release_version="${tag#v}"
+          if ! grep -Fq "versionName = \"$release_version\"" nativecockpit/build.gradle.kts; then
+            echo '::error::Git tag and nativecockpit versionName differ.'
+            exit 1
+          fi
+          printf 'tag=%s\nsha=%s\n' "$tag" "$source_sha" >> "$GITHUB_OUTPUT"
+          echo "Verified source commit: $source_sha (tag $tag)"
+
+  sign:
+    name: Protected approval, sign APK and AAB, verify certificates
+    needs: source-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    environment:
+      name: production-release
+    permissions:
+      contents: read
+    steps:
+      - name: Require explicit environment authorization and approved certificate
+        shell: bash
+        env:
+          RELEASE_ALLOWED: ${{ vars.EVC_RELEASE_ALLOWED }}
+          APPROVED_CERT_SHA256: ${{ vars.EVC_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_ALLOWED" != 'approved-after-incident-review' ]]; then
+            echo '::error::production-release environment is not authorized.'
+            exit 1
+          fi
+          pin="$(printf '%s' "$APPROVED_CERT_SHA256" | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          if [[ ! "$pin" =~ ^[0-9a-f]{64}$ ]]; then
+            echo '::error::Approved release certificate SHA-256 is not configured.'
+            exit 1
+          fi
+          echo 'Authorization variables configured; GitHub Environment reviewers must also approve.'
+
+      - name: Checkout approved source only
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: ${{ needs.source-gate.outputs.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Java 17 (Temurin)
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK 36
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Check SDK 36 and Build Tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk"
+          test -s "$sdk/platforms/android-36/android.jar"
+          test -x "$sdk/build-tools/36.0.0/apksigner"
+
+      - name: Validate pinned Gradle Wrapper (no sensitive build cache)
+        uses: gradle/actions/setup-gradle@0f4528296b4bc09e8ae0fc7be30185a4ab435545 # v6.0.0
+        with:
+          validate-wrappers: true
+          cache-disabled: true
+
+      - name: Restore owner-controlled environment keystore and verify certificate
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.EVC_RELEASE_KEYSTORE_BASE64 }}
+          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.EVC_RELEASE_STORE_PASSWORD }}
+          EYA_RELEASE_KEY_ALIAS: ${{ secrets.EVC_RELEASE_KEY_ALIAS }}
+          EYA_RELEASE_KEY_PASSWORD: ${{ secrets.EVC_RELEASE_KEY_PASSWORD }}
+          APPROVED_CERT_SHA256: ${{ vars.EVC_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for name in RELEASE_KEYSTORE_BASE64 EYA_RELEASE_STORE_PASSWORD EYA_RELEASE_KEY_ALIAS EYA_RELEASE_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]] || [[ "${!name}" == *$'\n'* ]] || [[ "${!name}" == *$'\r'* ]]; then
+              echo "::error::A required production environment secret is missing or malformed: $name"
+              exit 1
+            fi
+            echo "::add-mask::${!name}"
+          done
+          keystore="$RUNNER_TEMP/evc-release.jks"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          keytool -list -keystore "$keystore" \
+            -storepass:env EYA_RELEASE_STORE_PASSWORD \
+            -alias "$EYA_RELEASE_KEY_ALIAS" >/dev/null
+          keytool -exportcert -keystore "$keystore" \
+            -storepass:env EYA_RELEASE_STORE_PASSWORD \
+            -alias "$EYA_RELEASE_KEY_ALIAS" \
+            -file "$RUNNER_TEMP/expected-cert.der" >/dev/null
+
+          actual="$(sha256sum "$RUNNER_TEMP/expected-cert.der" | cut -d' ' -f1)"
+          expected="$(printf '%s' "$APPROVED_CERT_SHA256" | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          if [[ "$actual" != "$expected" ]]; then
+            echo '::error::Signing certificate differs from the explicitly approved fingerprint.'
+            exit 1
+          fi
+          echo 'Owner certificate fingerprint verified; private signing material stays in runner temp.'
+
+      - name: Kotlin tests and Release lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --version --no-daemon
+          ./gradlew :nativecockpit:testDebugUnitTest :nativecockpit:lintRelease \
+            --no-daemon --stacktrace
+
+      - name: Build signed Release APK and AAB with approved owner identity
+        shell: bash
+        env:
+          EYA_RELEASE_STORE_FILE: ${{ runner.temp }}/evc-release.jks
+          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.EVC_RELEASE_STORE_PASSWORD }}
+          EYA_RELEASE_KEY_ALIAS: ${{ secrets.EVC_RELEASE_KEY_ALIAS }}
+          EYA_RELEASE_KEY_PASSWORD: ${{ secrets.EVC_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in EYA_RELEASE_STORE_PASSWORD EYA_RELEASE_KEY_ALIAS EYA_RELEASE_KEY_PASSWORD; do
+            echo "::add-mask::${!name}"
+          done
+          test -s "$EYA_RELEASE_STORE_FILE"
+          ./gradlew :nativecockpit:assembleRelease :nativecockpit:bundleRelease \
+            --no-daemon --warning-mode=summary
+
+      - name: Verify signed outputs and approved APK certificate; generate SHA-256
+        shell: bash
+        env:
+          EYA_RELEASE_STORE_PASSWORD: ${{ secrets.EVC_RELEASE_STORE_PASSWORD }}
+          EYA_RELEASE_KEY_ALIAS: ${{ secrets.EVC_RELEASE_KEY_ALIAS }}
+          APPROVED_CERT_SHA256: ${{ vars.EVC_RELEASE_CERT_SHA256 }}
+          TAG: ${{ needs.source-gate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          apk='nativecockpit/build/outputs/apk/release/nativecockpit-release.apk'
+          aab='nativecockpit/build/outputs/bundle/release/nativecockpit-release.aab'
+          test -s "$apk"
+          test -s "$aab"
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          "$sdk/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          jarsigner -verify -strict "$aab" >/dev/null
+
+          "$sdk/build-tools/36.0.0/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-certs.txt"
+          apk_pin="$(sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certs.txt" | head -1 | tr -d ':\r ' | tr '[:upper:]' '[:lower:]')"
+          owner_pin="$(printf '%s' "$APPROVED_CERT_SHA256" | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          if [[ -z "$apk_pin" || "$apk_pin" != "$owner_pin" ]]; then
+            echo '::error::Release APK certificate does not match approved owner certificate.'
+            exit 1
+          fi
+
+          mkdir -p dist
+          cp "$apk" "dist/EV-Cockpit-$TAG.apk"
+          cp "$aab" "dist/EV-Cockpit-$TAG.aab"
+          (
+            cd dist
+            sha256sum ./*.apk ./*.aab > SHA256SUMS
+            sha256sum --check SHA256SUMS >/dev/null
+          )
+          echo 'Signed APK/AAB and SHA-256 verified; no private key in distribution.'
+
+      - name: Upload signed binaries only (not secrets or keystore)
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: signed-release-${{ needs.source-gate.outputs.tag }}
+          path: |
+            dist/*.apk
+            dist/*.aab
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove signing material from runner
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/evc-release.jks" \
+                "$RUNNER_TEMP/expected-cert.der" "$RUNNER_TEMP/apk-certs.txt"
+
+  publish:
+    name: Publish approved signed binaries on GitHub Releases
+    needs: [source-gate, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download only this run's signed artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: signed-release-${{ needs.source-gate.outputs.tag }}
+          path: dist
+
+      - name: Validate checksums and reject existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.source-gate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd dist
+          test -s "EV-Cockpit-$TAG.apk"
+          test -s "EV-Cockpit-$TAG.aab"
+          sha256sum --check SHA256SUMS
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo '::error::Release tag already has a GitHub Release; refusing silent overwrite.'
+            exit 1
+          fi
+
+      - name: Create GitHub Release (no signing secrets in this job)
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ needs.source-gate.outputs.tag }}
+          target_commitish: ${{ needs.source-gate.outputs.sha }}
+          name: EV Cockpit ${{ needs.source-gate.outputs.tag }}
+          draft: false
+          prerelease: false
+          make_latest: false
+          overwrite_files: false
+          fail_on_unmatched_files: true
+          body: |
+            Signed Android APK and AAB from an approved owner-controlled certificate.
+            SHA256SUMS is attached. A successful CI build does not replace physical-device validation.
+          files: |
+            dist/*.apk
+            dist/*.aab
+            dist/SHA256SUMS
