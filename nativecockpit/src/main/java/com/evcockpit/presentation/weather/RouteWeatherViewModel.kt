@@ -37,7 +37,8 @@ class RouteWeatherViewModel @Inject constructor(
                     emit(RouteWeatherState())
                     return@flow
                 }
-                val routeId = requireNotNull(route.routeId)
+                val activeRoute = requireNotNull(route)
+                val routeId = requireNotNull(activeRoute.routeId)
                 val progress = RouteProgressTracker()
                 var previous: RouteWeatherState? = null
                 emit(RouteWeatherState(routeId = routeId, loading = true))
@@ -57,7 +58,7 @@ class RouteWeatherViewModel @Inject constructor(
                         locations.gpsFix.first { it?.usable(System.currentTimeMillis()) == true }
                         continue
                     }
-                    val projected = progress.enrich(route, fix, now)
+                    val projected = progress.enrich(activeRoute, fix, now)
                     val result = if (projected?.validProgress() != null) {
                         weather.routeWeather(projected)
                     } else Result.failure(IllegalStateException(
