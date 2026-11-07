@@ -80,6 +80,17 @@ class FoundationContractTests(unittest.TestCase):
         for entry in ("local.properties", "**/build/", "**/*.jks", "*.apk"):
             self.assertIn(entry, ignore)
 
+    def test_unverified_sports_shortcuts_are_not_shipped(self):
+        manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+        activity = (
+            ROOT / "app/src/main/java/tr/id4/mediahub/MainActivity.kt"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("com.sportzx", manifest.lower())
+        self.assertNotIn("sportzx", activity.lower())
+        self.assertFalse(
+            (ROOT / "app/src/main/java/tr/id4/mediahub/SportzXLauncher.kt").exists()
+        )
+
     def test_gitleaks_does_not_use_pr_target_or_write_scope(self):
         workflow = (ROOT / ".github/workflows/security-secrets.yml").read_text(encoding="utf-8")
         self.assertNotIn("pull_request_target:", workflow)
