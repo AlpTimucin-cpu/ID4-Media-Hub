@@ -116,7 +116,7 @@ class OpenMeteoWeatherRepository @Inject constructor(
         )
         val fetched = RouteWeatherState(
             routeId = route.routeId,
-            routeLengthKm = route.totalKm,
+            routeLengthKm = sites.last().distanceFromStartKm,
             points = forecasts,
             fetchedAtMillis = System.currentTimeMillis(),
             error = if (forecasts.size != sites.size)
