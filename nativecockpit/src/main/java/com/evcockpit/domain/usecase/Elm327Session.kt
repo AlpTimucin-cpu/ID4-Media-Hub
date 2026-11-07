@@ -55,7 +55,7 @@ class Elm327Session(private val transport: ObdTransport) {
 
     suspend fun readOnly(command: String): String = commands.withLock {
         val query = command.trim().uppercase(Locale.ROOT).replace(" ", "")
-        require(query.matches(Regex("(?:01|09)[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
+        require(query.matches(Regex("01[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
             "Only permitted read-only queries are allowed"
         }
 
@@ -107,7 +107,7 @@ class Elm327Session(private val transport: ObdTransport) {
      */
     suspend fun readRawOnce(command: String): String = commands.withLock {
         val query = command.trim().uppercase(Locale.ROOT).replace(" ", "")
-        require(query.matches(Regex("(?:01|09)[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
+        require(query.matches(Regex("01[0-9A-F]{2,6}|22[0-9A-F]{4}"))) {
             "Only read-only PID and UDS requests are allowed"
         }
         val token = generation

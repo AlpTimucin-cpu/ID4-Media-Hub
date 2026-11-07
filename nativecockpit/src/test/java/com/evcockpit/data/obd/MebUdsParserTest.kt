@@ -5,16 +5,16 @@ import org.junit.Test
 import com.evcockpit.domain.model.MebResponseStatus
 
 class MebUdsParserTest {
-    @Test fun bmsSocCandidateOnlyFromStrictHeader() {
+    @Test fun unverifiedBmsDidIsRawOnly() {
         val sample = MebUdsParser.parse("22028C","22028C\r17FE007B 04 62 02 8C 55 AA AA AA\r>",100)
         assertEquals(MebResponseStatus.VALID_RAW,sample.status)
-        assertEquals(34.0,sample.candidateBmsSocPercent!!,0.001)
+        assertNull(sample.candidateBmsSocPercent)
         assertEquals("62028C55",sample.payloadHex)
     }
-    @Test fun maxTempDoesNotPretendToBeSoH() {
+    @Test fun unverifiedTemperatureDidIsRawOnly() {
         val sample = MebUdsParser.parse("221E0E","17FE007B07621E0E04680004\r>",100)
         assertEquals(MebResponseStatus.VALID_RAW,sample.status)
-        assertEquals(17.625,sample.candidateMaxBatteryTempC!!,0.001)
+        assertNull(sample.candidateMaxBatteryTempC)
         assertNull(sample.candidateBmsSocPercent)
     }
     @Test fun currentMultiframeIsCompleteButNotMappedToAmps() {
@@ -40,9 +40,22 @@ class MebUdsParserTest {
             MebUdsParser.parse("22028C","NO DATA>",100).status)
         assertEquals(MebResponseStatus.ADAPTER_ERROR,
             MebUdsParser.parse("22028C","CAN ERROR>",100).status)
-        assertEquals(MebResponseStatus.MALFORMED,
+        assertEquals(MebResponseStatus.VALID_RAW,
             MebUdsParser.parse("22028C","17FE007B 04 62 02 8C FF 00 00 00>",100).status)
     }
+    @Test fun unverifiedSampleNeverProducesSoCOrTemperature() {
+        val soc = MebUdsParser.parse(
+            "22028C", "17FE007B 04 62 02 8C 55 AA AA AA>", 100
+        )
+        val temp = MebUdsParser.parse(
+            "221E0E", "17FE007B07621E0E04680004>", 100
+        )
+        assertNull(soc.candidateBmsSocPercent)
+        assertNull(soc.candidateMaxBatteryTempC)
+        assertNull(temp.candidateBmsSocPercent)
+        assertNull(temp.candidateMaxBatteryTempC)
+    }
+
     @Test(expected=IllegalArgumentException::class)
     fun disallowArbitraryUdsAndSensitiveCommands() {
         MebUdsParser.parse("22F190","17FE007B 04 62 F1 90 00 00 00 00>",100)

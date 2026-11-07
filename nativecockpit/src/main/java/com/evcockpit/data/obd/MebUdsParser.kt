@@ -7,7 +7,7 @@ import com.evcockpit.domain.model.MebResponseStatus
  * Read-only, fail-closed ISO-TP 29-bit CAN parser for specific MEB battery UDS
  * responses. 17FE007B is the expected ECU response ID from a community
  * parameter list; requests must be sent to 17FC007B by the adapter layer.
- * These readings are diagnostic candidates, NEVER cockpit telemetry.
+ * These are UNVERIFIED candidate diagnostic addresses and must NEVER be used as cockpit measurements.
  *
  * Handles ISO-TP single and consecutive frames; ignores echoed commands,
  * ELM 'SEARCHING...', and adapter prompts. Does not accept headerless data
@@ -95,20 +95,9 @@ object MebUdsParser {
         if (actualDid != request.drop(2))
             return result(MebResponseStatus.WRONG_IDENTIFIER, payload.toSignedBytes())
         val bytes = payload.toSignedBytes()
-        return when (request) {
-            "22028C" -> {
-                val candidate = payload[3] / 2.5
-                if (candidate !in 0.0..100.0) result(MebResponseStatus.MALFORMED, bytes)
-                else result(MebResponseStatus.VALID_RAW, bytes, soc = candidate)
-            }
-            "221E0E" -> {
-                if (payload.size < 7) return result(MebResponseStatus.INCOMPLETE, bytes)
-                val candidate = ((payload[3] shl 8) or payload[4]) / 64.0
-                if (candidate !in -40.0..105.0) result(MebResponseStatus.MALFORMED, bytes)
-                else result(MebResponseStatus.VALID_RAW, bytes, temp = candidate)
-            }
-            else -> result(MebResponseStatus.VALID_RAW, bytes)
-        }
+        // Vehicle-specific DID meanings/scales are UNVERIFIED for this ID.4.
+        // Preserve the ECU identity + raw payload without inventing SoC or temperature.
+        return result(MebResponseStatus.VALID_RAW, bytes)
     }
 
     private fun List<Int>.toSignedBytes(): ByteArray =

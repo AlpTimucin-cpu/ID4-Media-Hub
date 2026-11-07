@@ -135,6 +135,19 @@ class Elm327SessionTest {
             runBlocking { session.readOnly("ATSH7E0") }
         }
     }
+    @Test fun onlyMode01AndUds22AreAcceptedEvenBeforeConnection(): Unit = runBlocking {
+        val session = Elm327Session(FakeTransport())
+        for (disallowed in listOf("0902", "1001", "140000", "2E1234", "2F1234",
+                                  "310001", "ATSH710", "2701", "3E00")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { session.readOnly(disallowed) }
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { session.readRawOnce(disallowed) }
+            }
+        }
+    }
+
     @Test fun rawOnceNeedsReadyAndReturnsGenuineNoDataWithoutReconnecting() = runBlocking {
         val fake = FakeTransport()
         val session = Elm327Session(fake)
