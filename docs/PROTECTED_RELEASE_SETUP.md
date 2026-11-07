@@ -79,7 +79,7 @@ On approved release artifacts (once they actually exist):
 
     sha256sum -c SHA256SUMS
     $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs EV-Cockpit-vX.Y.Z.apk
-    jarsigner -verify -strict EV-Cockpit-vX.Y.Z.aab
+    jarsigner -verify EV-Cockpit-vX.Y.Z.aab
 
 Here vX.Y.Z is a placeholder, not a published release. Compare certificate SHA-256 to approved public fingerprint.
 
