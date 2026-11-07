@@ -74,6 +74,10 @@ jobs:
           echo 'Modules with confirmed Gradle build files:'
           cat "$modules"
 
+      - name: Validate Phase 0 build and policy contracts
+        shell: bash
+        run: python3 -m unittest discover -s tests -p 'test_phase0_contracts.py' -v
+
       - name: Android lint (each existing module)
         id: lint
         continue-on-error: true
@@ -92,6 +96,34 @@ jobs:
               exit 1
             }
           done
+
+      - name: Report lint issue IDs and file locations only
+        if: ${{ steps.lint.outcome == 'failure' }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from collections import Counter
+          import xml.etree.ElementTree as ET
+          for module in ("app", "evlite", "nativecockpit"):
+              report = Path(module) / "build/reports/lint-results-debug.xml"
+              if not report.is_file():
+                  print(f"Lint XML absent: {module}")
+                  continue
+              issues = ET.parse(report).getroot().findall("issue")
+              print(f"Lint severities: {dict(Counter(str(i.get('severity')) for i in issues))}")
+              for i in issues:
+                  issue_id = i.get("id", "Unknown")
+                  severity = i.get("severity", "Unknown")
+                  locations = [e for e in i.iter() if e.tag.split("}")[-1] == "location"]
+                  if not locations:
+                      print(f"Lint {severity} [{issue_id}] (location not in XML)")
+                  else:
+                      loc = locations[0]
+                      filename = Path(loc.get("file", "")).name
+                      lineno = loc.get("line", "?")
+                      print(f"Lint {severity} [{issue_id}] {filename}:{lineno}")
+          PY
 
       - name: JVM unit tests (each existing module)
         shell: bash
@@ -194,6 +226,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Debug APKs and SHA-256 (no release, no keystore)
+        if: ${{ steps.lint.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ev-cockpit-debug-apks

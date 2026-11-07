@@ -24,6 +24,8 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -32,6 +34,7 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.datasource.HttpDataSource
 
 /** Phone-only IPTV. This UI never projects video into Android Auto. */
+@OptIn(UnstableApi::class)
 class TvPlayback(
     private val activity: Activity,
     private val catalog: () -> List<VideoChannel>,

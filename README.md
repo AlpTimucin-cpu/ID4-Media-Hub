@@ -65,3 +65,9 @@ Source-level build checks are not substitutes for real-device tests. Any media-e
 - The legacy source ZIP has been removed from the proposed working tree only; historical Git commits can still contain it. A potentially exposed signing key requires a separate certificate/rotation decision.
 
 The native cockpit's actual source remains on `feature/ev-cockpit`. The `main` build commands above still build only `:app`. Draft PRs and successful Debug APK builds do not constitute a production signing approval.
+
+## Phase 0 verification baseline (draft, not on main)
+
+The Phase 0 source-only audit and work-in-progress quality gates are documented in [PHASE0_BASELINE_AUDIT.md](docs/PHASE0_BASELINE_AUDIT.md). This draft proposes **minSdk 26 for the main-branch media hub `:app` only**; the actual `:nativecockpit` module on `feature/ev-cockpit` still requires separate API 26 validation and currently declares minSdk 28. Android Auto voice-search routing was added for the media hub but is **not** vehicle-tested. Do not interpret the `:app` build as a native cockpit build or a signed production release.
+
+The current source proposal removes shortcuts to an unverified sports-streaming application. The repository description/topics and protected GitHub Environment are maintainer-side settings, not code changes.

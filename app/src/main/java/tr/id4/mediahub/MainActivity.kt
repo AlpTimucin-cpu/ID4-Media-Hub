@@ -1,6 +1,7 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.app.SearchManager
 import android.content.ComponentName
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -64,7 +65,12 @@ class MainActivity : Activity() {
         setContentView(root)
         // Android 15 enforces edge-to-edge drawing: keep the bottom nav above OS controls.
         root.setOnApplyWindowInsetsListener { _, insets ->
-            val bottom = insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            val bottom = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
             root.setPadding(0, 0, 0, bottom)
             insets
         }
@@ -145,22 +151,6 @@ class MainActivity : Activity() {
                 renderHome()
             }
         )
-        val sportzTv = panel().apply {
-            background = gradient(0xff173d58.toInt(),0xff182941.toInt(),16)
-            setPadding(dp(12),dp(9),dp(12),dp(9))
-        }
-        val sportzRow = LinearLayout(this).apply {
-            orientation=LinearLayout.HORIZONTAL
-            gravity=Gravity.CENTER_VERTICAL
-        }
-        val sportzTitle = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        sportzTitle.addView(label("SPORTZX",17,true))
-        sportzTitle.addView(label("Yüklü Android uygulamasını doğrudan aç",11,false))
-        sportzRow.addView(sportzTitle,LinearLayout.LayoutParams(0,-2,1f))
-        sportzRow.addView(button("Aç  ↗") { SportzXLauncher.openIfInstalled(this) },
-            LinearLayout.LayoutParams(dp(96),dp(47)))
-        sportzTv.addView(sportzRow)
-        television.addView(sportzTv)
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
@@ -251,8 +241,6 @@ class MainActivity : Activity() {
         external.addView(textAction("▣  Netflix'i telefonda aç") {
             InstalledMediaApps.openNetflix(this)
         })
-        external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
-        external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
         library.addView(external)
 
         val utilities=panel()
@@ -286,6 +274,7 @@ class MainActivity : Activity() {
                     val connected=future.get()
                     if(isFinishing || isDestroyed)return@addListener
                     controller=connected
+                    playFromVoiceSearch(intent, connected)
                     connected.addListener(object:Player.Listener {
                         override fun onPlayerError(error: PlaybackException) {
                             status.text="●   Radyo hatası: ${error.errorCodeName}"
@@ -309,9 +298,42 @@ class MainActivity : Activity() {
                 }catch (_:Exception){
                     if(!isFinishing && !isDestroyed)status.text="●   Ses servisine bağlanılamadı"
                 }
-            },mainExecutor)
+            }, java.util.concurrent.Executor { command -> runOnUiThread(command) })
         }
         syncRadioCatalogue(false)
+    }
+
+    /** Android Auto music voice intents use the existing Media3 station resolver.
+     *  No arbitrary URI or video playback is accepted from a voice request.
+     */
+    private fun playFromVoiceSearch(request: Intent?, session: MediaController) {
+        if (request?.action != "android.media.action.MEDIA_PLAY_FROM_SEARCH") return
+        val query = request.getStringExtra(SearchManager.QUERY)?.trim()
+            ?.takeIf { it.length in 1..100 && it.none(Char::isISOControl) }
+        if (query == null) {
+            status.text = "●   Geçerli radyo araması bulunamadı"
+            return
+        }
+        val item = androidx.media3.common.MediaItem.Builder()
+            .setRequestMetadata(
+                androidx.media3.common.MediaItem.RequestMetadata.Builder()
+                    .setSearchQuery(query)
+                    .build()
+            ).build()
+        try {
+            session.setMediaItem(item)
+            session.prepare()
+            session.play()
+            status.text = "●   Radyo araması başlatıldı"
+        } catch (_: Exception) {
+            status.text = "●   Radyo araması başlatılamadı"
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        controller?.let { playFromVoiceSearch(intent, it) }
     }
 
     private fun toggleRadioPlayback() {
@@ -407,20 +429,17 @@ class MainActivity : Activity() {
         quick.addView(shortcut("♫","RADYO","Müzik ve yayın"){selectTab(2)},LinearLayout.LayoutParams(0,dp(120),1f))
         quick.addView(shortcut("＋","LİSTELER","M3U ekle"){selectTab(3)},LinearLayout.LayoutParams(0,dp(120),1f))
         homeContainer.addView(quick)
-        val sportzHome=panel().apply{
+        val officialApps=panel().apply{
             background=gradient(0xff20344f.toInt(),0xff102d45.toInt(),16)
         }
-        sportzHome.addView(label("SPOR & DİĞER UYGULAMALAR",13,true))
-        sportzHome.addView(button("◉  SportzX'i doğrudan aç") {
-            SportzXLauncher.openIfInstalled(this)
-        })
+        officialApps.addView(label("RESMİ MEDYA UYGULAMALARI",13,true))
         val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         appsRow.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
             LinearLayout.LayoutParams(0,dp(49),1f))
         appsRow.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
             LinearLayout.LayoutParams(0,dp(49),1f))
-        sportzHome.addView(appsRow)
-        homeContainer.addView(sportzHome)
+        officialApps.addView(appsRow)
+        homeContainer.addView(officialApps)
         val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
             homeContainer.addView(section("SON AÇILANLAR","Geçmişinden seç"))
