@@ -33,7 +33,18 @@ object ChannelLogoLoader {
                     val mime = conn.contentType.orEmpty().lowercase()
                     if (conn.responseCode !in 200..299 || (length > 512_000) ||
                         !(mime.startsWith("image/png") || mime.startsWith("image/jpeg") || mime.startsWith("image/webp"))) return@execute
-                    val bytes = conn.inputStream.use { it.readNBytes(512_001) }
+                    // InputStream.readNBytes is unavailable on older Android runtimes.
+                    // Read at most cap+1 bytes into a bounded buffer on API 26+.
+                    val bytes = conn.inputStream.use { stream ->
+                        val buffer = ByteArray(512_001)
+                        var count = 0
+                        while (count < buffer.size) {
+                            val n = stream.read(buffer, count, buffer.size - count)
+                            if (n <= 0) break
+                            count += n
+                        }
+                        buffer.copyOf(count)
+                    }
                     if (bytes.size > 512_000) return@execute
                     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@execute
                     cache.put(url, bitmap)
