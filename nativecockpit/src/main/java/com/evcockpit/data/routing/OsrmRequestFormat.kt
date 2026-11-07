@@ -5,7 +5,7 @@ import com.evcockpit.domain.model.GeoCoordinate
 
 /** OSRM uses longitude,latitude separated by a literal ';'. */
 object OsrmRequestFormat {
-    private const val ROOT = "https://router.project-osrm.org/route/v1/driving/"
+    private const val ROOT = "route/v1/driving/"
     private const val PARAMETERS = "?alternatives=true&steps=true&geometries=geojson&overview=full&annotations=speed"
 
     fun coordinates(origin: GeoCoordinate, destination: GeoCoordinate): String {
