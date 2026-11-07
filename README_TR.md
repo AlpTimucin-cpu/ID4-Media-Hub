@@ -47,3 +47,13 @@ Yalnızca salt-okunur ELM327 sorguları kullanılır. Doğrulanmamış SoC/DID v
 Eski GitHub Release APK'ları sahibin kalıcı imzalama sertifikasıyla doğrulanmış kabul edilmemelidir. Geliştirme dalındaki production release işi güvenlik incelemesi sebebiyle devre dışıdır. Ayrıntılar: [APK derleme kılavuzu](docs/APK_BUILD_GUIDE.md).
 
 Gerçek GPS, OBD, TTS, ses odağı, medya ve Android Auto kabul testleri fiziksel cihaz/araç üzerinde ayrıca yapılmalıdır.
+
+## Depo bakımı ve güvenlik bildirimleri
+
+- [Depo hijyeni kaydı](docs/REPOSITORY_HYGIENE.md) eski kaynak ZIP'inin çalışma ağacından kaldırıldığını ve artık çalışmayan otomatik ZIP içe aktarma işinin kapatıldığını açıklar. Dosya geçmiş Git commit'lerinde kalır.
+- [.gitignore](.gitignore) yerel SDK dosyalarını, `build/` çıktılarını, APK/AAB paketlerini ve imzalama anahtarlarını dışlar.
+- [Dependabot](.github/dependabot.yml), birleşmeden sonra varsayılan dalda Gradle ve GitHub Actions güncellemeleri için haftalık PR önerecektir; otomatik birleştirme yapılmaz.
+- [.github/CODEOWNERS](.github/CODEOWNERS) inceleme sorumlusunu belirtir; onayı zorunlu kılmak için GitHub dal korumasının ayrıca etkinleştirilmesi gerekir.
+- Gizli güvenlik açıklarını herkese açık issue'lara yazma. Bildirim için [SECURITY.md](SECURITY.md) belgesini incele.
+
+`main` hâlâ yalnızca `:app` modülünü derler. `feature/ev-cockpit` dalındaki `:nativecockpit` modülü otomatik olarak `main` dalına taşınmadı. Güvenlik ve üretim imzalama onayı ayrıca gereklidir.
