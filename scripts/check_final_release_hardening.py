@@ -48,12 +48,19 @@ for rule in (
     assert rule in rules, f"Missing compatibility rule: {rule}"
 
 assert "-keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }" in rules
-# Stage B builds ONLY Android Debug. Release signing is deliberately disabled
-# in this workflow because the previous signing bundle was exposed in source.
+# Stage 0 native workflow must never consume signing secrets, publish releases
+# or let a failing lint/build/secret scanner become an acceptable APK artifact.
 assert "EYA_SIGNING_BUNDLE_BASE64" not in workflow
-assert "secrets." not in workflow
+assert "${{ secrets." not in workflow
 assert "EV-Cockpit-Signed-Stable-Release" not in workflow
-assert "EV-Cockpit-Native-Kotlin-Debug-APK" in workflow
-assert ":nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug" in workflow
+assert "EV-Cockpit-Native-Debug-APK" in workflow
+for command in (":nativecockpit:lintDebug", ":nativecockpit:testDebugUnitTest",
+                ":nativecockpit:assembleDebug", "python3 scripts/check_apk_secrets.py"):
+    assert command in workflow, f"Missing native CI gate: {command}"
+assert workflow.index("Reject native Debug APK with embedded key patterns") < workflow.index(
+    "Upload verified Debug APK and SHA-256")
+assert "steps.lint.outcome == 'failure'" in workflow
+assert "retention-days: 7" in workflow
 assert "gradle/wrapper/gradle-wrapper.jar" in workflow
-print("OK: null-safe HUD, ducked players, R8 configuration and debug-only CI")
+assert "permissions:\n  contents: read" in workflow
+print("OK: null-safe HUD, ducked players, R8 configuration and secured debug-only CI")
