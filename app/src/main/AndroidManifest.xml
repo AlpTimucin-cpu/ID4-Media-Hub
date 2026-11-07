@@ -8,8 +8,7 @@
         <package android:name="com.google.android.apps.youtube.music" />
         <package android:name="com.netflix.mediaclient" />
         <package android:name="com.google.android.youtube" />
-        <package android:name="com.sportzx.live" />
-        <!-- Inspect only installed launchable apps for the optional SportzX shortcut. -->
+                <!-- Inspect only installed launchable apps for the optional SportzX shortcut. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -36,6 +35,7 @@
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
             </intent-filter>
         </service>
     </application>
