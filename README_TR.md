@@ -57,3 +57,9 @@ Gerçek GPS, OBD, TTS, ses odağı, medya ve Android Auto kabul testleri fizikse
 - Gizli güvenlik açıklarını herkese açık issue'lara yazma. Bildirim için [SECURITY.md](SECURITY.md) belgesini incele.
 
 `main` hâlâ yalnızca `:app` modülünü derler. `feature/ev-cockpit` dalındaki `:nativecockpit` modülü otomatik olarak `main` dalına taşınmadı. Güvenlik ve üretim imzalama onayı ayrıca gereklidir.
+
+## FAZ 0 doğrulama temeli (taslak PR; main'de değil)
+
+Denetim, riskler ve doğrulama kapıları için [PHASE0_BASELINE_AUDIT.md](docs/PHASE0_BASELINE_AUDIT.md) belgesine bak. Bu taslakta **yalnızca medya uygulaması `:app` için minSdk 26** önerilir. Gerçek kokpit `feature/ev-cockpit` dalındaki `:nativecockpit` modülüdür ve halen minSdk 28 kullanır. Android 8 desteği, telefon kurulumu ve Android Auto sesli arama **cihazda doğrulanmadı**. `:app` Debug APK'sı, kokpit Release APK'sı değildir.
+
+Lisansı doğrulanmamış spor yayını kısayolları bu taslaktan çıkarıldı. Depo açıklaması/topics ve korumalı Environment için GitHub sahibinin ayrıca ayar yapması gerekir.
