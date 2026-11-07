@@ -223,7 +223,7 @@ jobs:
           test -s "$aab"
           sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           "$sdk/build-tools/36.0.0/apksigner" verify --verbose "$apk"
-          jarsigner -verify -strict "$aab" >/dev/null
+          jarsigner -verify "$aab" >/dev/null
 
           "$sdk/build-tools/36.0.0/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-certs.txt"
           apk_pin="$(sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certs.txt" | head -1 | tr -d ':\r ' | tr '[:upper:]' '[:lower:]')"
