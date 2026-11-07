@@ -28,7 +28,7 @@ data class VehicleProfileConfig(
 /** HTTPS service roots, not credentials. Public OSRM demo is deliberately disallowed. */
 data class ServiceEndpointConfig(
     val osrmBaseUrl: String? = null,
-    val geocodingBaseUrl: String = "https://photon.komoot.io/",
+    val geocodingBaseUrl: String = "https://nominatim.openstreetmap.org/",
     val weatherBaseUrl: String = "https://api.open-meteo.com/"
 ) {
     fun validated(): Boolean =
