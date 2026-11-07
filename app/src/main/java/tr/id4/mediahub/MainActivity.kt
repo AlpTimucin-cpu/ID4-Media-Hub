@@ -145,22 +145,6 @@ class MainActivity : Activity() {
                 renderHome()
             }
         )
-        val sportzTv = panel().apply {
-            background = gradient(0xff173d58.toInt(),0xff182941.toInt(),16)
-            setPadding(dp(12),dp(9),dp(12),dp(9))
-        }
-        val sportzRow = LinearLayout(this).apply {
-            orientation=LinearLayout.HORIZONTAL
-            gravity=Gravity.CENTER_VERTICAL
-        }
-        val sportzTitle = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        sportzTitle.addView(label("SPORTZX",17,true))
-        sportzTitle.addView(label("Yüklü Android uygulamasını doğrudan aç",11,false))
-        sportzRow.addView(sportzTitle,LinearLayout.LayoutParams(0,-2,1f))
-        sportzRow.addView(button("Aç  ↗") { SportzXLauncher.openIfInstalled(this) },
-            LinearLayout.LayoutParams(dp(96),dp(47)))
-        sportzTv.addView(sportzRow)
-        television.addView(sportzTv)
         val mediaApps = panel().apply {
             background=gradient(0xff162c48.toInt(),0xff172c3c.toInt(),16)
         }
@@ -251,8 +235,6 @@ class MainActivity : Activity() {
         external.addView(textAction("▣  Netflix'i telefonda aç") {
             InstalledMediaApps.openNetflix(this)
         })
-        external.addView(textAction("◉  SportzX uygulamasını aç") { SportzXLauncher.openIfInstalled(this) })
-        external.addView(label("SportzX yüklüyse doğrudan açılır. Tarayıcıya yönlendirme yapılmaz.",12,false))
         library.addView(external)
 
         val utilities=panel()
@@ -407,20 +389,17 @@ class MainActivity : Activity() {
         quick.addView(shortcut("♫","RADYO","Müzik ve yayın"){selectTab(2)},LinearLayout.LayoutParams(0,dp(120),1f))
         quick.addView(shortcut("＋","LİSTELER","M3U ekle"){selectTab(3)},LinearLayout.LayoutParams(0,dp(120),1f))
         homeContainer.addView(quick)
-        val sportzHome=panel().apply{
+        val officialAppsHome=panel().apply{
             background=gradient(0xff20344f.toInt(),0xff102d45.toInt(),16)
         }
-        sportzHome.addView(label("SPOR & DİĞER UYGULAMALAR",13,true))
-        sportzHome.addView(button("◉  SportzX'i doğrudan aç") {
-            SportzXLauncher.openIfInstalled(this)
-        })
+        officialAppsHome.addView(label("DİĞER MEDYA UYGULAMALARI",13,true))
         val appsRow=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         appsRow.addView(button("▶ YouTube") { InstalledMediaApps.openYouTube(this) },
             LinearLayout.LayoutParams(0,dp(49),1f))
         appsRow.addView(button("▣ Netflix") { InstalledMediaApps.openNetflix(this) },
             LinearLayout.LayoutParams(0,dp(49),1f))
-        sportzHome.addView(appsRow)
-        homeContainer.addView(sportzHome)
+        officialAppsHome.addView(appsRow)
+        homeContainer.addView(officialAppsHome)
         val history=RecentStore.ids(this)
         if(history.isNotEmpty()){
             homeContainer.addView(section("SON AÇILANLAR","Geçmişinden seç"))
