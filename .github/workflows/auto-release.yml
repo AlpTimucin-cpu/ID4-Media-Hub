@@ -1,15 +1,16 @@
-name: EV Cockpit - One Click Auto Release
+name: Legacy one-click auto release (retired)
 
+# SECURITY HOLD: temporary signing or auto-publishing must never bypass
+# protected production-release approval.
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  auto-release:
-    uses: ./.github/workflows/release.yml
-    with:
-      release_tag: ''
-      allow_temporary_signing: true
-    secrets: inherit
+  retired:
+    if: false
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'Disabled. Temporary signing is not a production release.'

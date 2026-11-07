@@ -70,6 +70,9 @@ jobs:
           retention-days: 14
 
   release:
+    # SECURITY HOLD: superseded by the reviewed, protected production-release.yml.
+    # Keep legacy signing disabled irrespective of old trigger or repository secret.
+    if: false
     # Only trusted push/dispatch; do not expose signing secrets to pull requests.
     needs: build
     runs-on: ubuntu-latest
