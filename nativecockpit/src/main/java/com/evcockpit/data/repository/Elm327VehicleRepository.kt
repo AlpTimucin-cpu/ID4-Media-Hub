@@ -223,16 +223,11 @@ class Elm327VehicleRepository @Inject constructor(
             for (command in listOf("ATS0","ATH0","ATSP0"))
                 sendAndRead(conn, command)
             _connection.value = _connection.value.copy(phase=ObdPhase.CONNECTED, error=null)
-        // Background-in-app polling starts immediately after explicit pairing.
-        // A single worker owns ALL ELM I/O: no parallel CAN commands or write DIDs.
-        val cycle = listOf(
-            "22028C", "221E3B", "221E3D", "221E0E", "221E0F",
-            "221E33", "221E34", "221E1B", "221E32", "222AB2"
-        )
-        var cursor = 0
+        // SAFETY: Only SAE Mode 01 speed is polled after connection.
+        // Unverified MEB DID/CAN mappings must NEVER be queried automatically.
+        // A manufacturer DID read requires an explicit user selection and remains raw.
         while (kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]?.isActive == true) {
             val manual = diagnosticRequests.tryReceive().getOrNull()
-            val command = manual ?: cycle[cursor++ % cycle.size]
             // Poll the vehicle's SAE speed *before* slow MEB UDS reads.
             // A rejected manufacturer DID can take seconds; speed must not wait.
             try {
@@ -256,36 +251,24 @@ class Elm327VehicleRepository @Inject constructor(
                 _connection.value = _connection.value.copy(lastPollSucceeded = false)
             }
 
-            try {
-                val response = runMebReadOnlyQuery(conn, protocol, command)
-                val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
-                if (parsed.status == MebResponseStatus.VALID_RAW) {
-                    _engineering.value = EngineeringMath.update(
-                        _engineering.value, command, parsed.payloadHex, parsed.receivedAtMillis
-                    )
-                } else {
-                    _engineering.value = _engineering.value.copy(
-                        unsuccessfulReads = _engineering.value.unsuccessfulReads + 1
-                    )
-                }
-                recalculate()
-                if (manual != null) {
+            if (manual != null) {
+                val command = manual
+                try {
+                    val response = runMebReadOnlyQuery(conn, protocol, command)
+                    val parsed = MebUdsParser.parse(command, response, System.currentTimeMillis())
+                    // Only the raw reply is exposed. No unverified DID conversion
+                    // may populate the battery, temperature or engineering telemetry.
                     _connection.value = _connection.value.copy(
                         diagnosticBusy = false, diagnosticResult = parsed, error = null
                     )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    _connection.value = _connection.value.copy(
+                        diagnosticBusy = false,
+                        error = "MEB read failed; DID/CAN mapping is unverified"
+                    )
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                _engineering.value = _engineering.value.copy(
-                    unsuccessfulReads = _engineering.value.unsuccessfulReads + 1
-                )
-                if (manual != null) _connection.value = _connection.value.copy(
-                    diagnosticBusy = false,
-                    error = "MEB read failed; inspect adapter CAN protocol support"
-                )
-                // A rejected, unsupported or timed-out DID is not evidence of an
-                // ECU defect; continue with other safe reads.
             }
 
             delay(700L)
