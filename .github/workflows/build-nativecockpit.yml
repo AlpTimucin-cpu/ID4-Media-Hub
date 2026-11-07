@@ -9,50 +9,66 @@ on:
     branches:
       - feature/ev-cockpit
 
-# One build per branch; outdated pushes are cancelled.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
+concurrency:
+  group: native-phase0-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Kotlin tests and Debug APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 50
+    name: Native lint, tests, read-only policy, Debug APK, secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: temurin
           java-version: "17"
-      - name: Verify official Gradle Wrapper
+
+      - name: Install Android SDK tooling
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install and verify Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk"
+          test -s "$sdk/platforms/android-36/android.jar"
+          test -x "$sdk/build-tools/36.0.0/aapt"
+
+      - name: Validate Gradle Wrapper and configure PR read-only cache
+        uses: gradle/actions/setup-gradle@0f4528296b4bc09e8ae0fc7be30185a4ab435545 # v6.0.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Verify Gradle 8.14.3 and real native module
         shell: bash
         run: |
           set -euo pipefail
           test -x ./gradlew
           test -s gradle/wrapper/gradle-wrapper.jar
-          grep -Fq 'gradle-8.14.3-bin.zip' gradle/wrapper/gradle-wrapper.properties
           test "$(git hash-object gradle/wrapper/gradle-wrapper.jar)" = \
             '1b33c55baabb587c669f562ae36f953de2481846'
+          grep -Fq 'gradle-8.14.3-bin.zip' gradle/wrapper/gradle-wrapper.properties
+          grep -Eq '^distributionSha256Sum=[a-f0-9]{64}$' gradle/wrapper/gradle-wrapper.properties
+          test -s nativecockpit/build.gradle.kts
+          grep -Fq 'include(":nativecockpit")' settings.gradle.kts
           ./gradlew --version --no-daemon
-      - name: Android SDK 36
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -path '*/bin/sdkmanager' -print -quit)"
-          test -x "$sdkmanager_bin"
-          "$sdkmanager_bin" "platforms;android-36" "build-tools;36.0.0"
-      - name: Gradle build cache
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
-      - name: Static production source checks
+          ./gradlew projects --no-daemon --console=plain
+
+      - name: Production source policy checks
         shell: bash
         run: |
           set -euo pipefail
@@ -61,27 +77,83 @@ jobs:
           python3 scripts/check_welcome_greeting.py
           python3 scripts/check_production_hardware.py
           python3 scripts/check_final_release_hardening.py
-      - name: Compile and test native cockpit
-        run: ./gradlew :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug --stacktrace --no-daemon
-      - name: Verify APK package and save checksum
+
+      - name: Android lint (do not waive failures)
+        id: lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :nativecockpit:lintDebug --no-daemon --stacktrace
+          test -s nativecockpit/build/reports/lint-results-debug.html
+
+      - name: Native Kotlin JVM unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :nativecockpit:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Build native Debug APK (never sign or publish Release)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :nativecockpit:assembleDebug --no-daemon --stacktrace
+
+      - name: Verify native Debug APK and calculate checksum
         shell: bash
         run: |
           set -euo pipefail
           apk=nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
           test -s "$apk"
-          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
-          "$aapt" dump badging "$apk" | grep -F "package: name='com.evcockpit'"
-          "$aapt" dump xmltree "$apk" AndroidManifest.xml > "$RUNNER_TEMP/cockpit-manifest.txt"
-          grep -q 'androidx.car.app.CarAppService' "$RUNNER_TEMP/cockpit-manifest.txt"
-          grep -q 'android.permission.BLUETOOTH_CONNECT' "$RUNNER_TEMP/cockpit-manifest.txt"
+          unzip -t "$apk" > /dev/null
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          "$sdk/build-tools/36.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/native-badging.txt"
+          grep -Fq "package: name='com.evcockpit'" "$RUNNER_TEMP/native-badging.txt"
+          "$sdk/build-tools/36.0.0/aapt" dump xmltree "$apk" AndroidManifest.xml \
+            > "$RUNNER_TEMP/native-manifest.txt"
+          grep -Fq 'androidx.car.app.CarAppService' "$RUNNER_TEMP/native-manifest.txt"
+          grep -Fq 'android.permission.BLUETOOTH_CONNECT' "$RUNNER_TEMP/native-manifest.txt"
           sha256sum "$apk" > nativecockpit-debug.sha256
-          echo 'Debug APK verified. No production key was supplied.'
-      - name: Publish Debug APK and SHA-256
-        uses: actions/upload-artifact@v6
+
+      - name: Test secret scanner against synthetic samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_apk_secret_scan.py' -v
+
+      - name: Reject native Debug APK with embedded key patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_apk_secrets.py \
+            nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
+
+      - name: Upload native lint and JVM test reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: EV-Cockpit-Native-Kotlin-Debug-APK
+          name: native-phase0-reports
+          path: |
+            nativecockpit/build/reports/lint-results-debug.html
+            nativecockpit/build/reports/lint-results-debug.xml
+            nativecockpit/build/reports/tests/testDebugUnitTest/**
+            nativecockpit/build/test-results/testDebugUnitTest/**
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload verified Debug APK and SHA-256
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: EV-Cockpit-Native-Debug-APK
           path: |
             nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk
             nativecockpit-debug.sha256
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
+
+      - name: Enforce Android lint quality gate
+        if: ${{ always() && steps.lint.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo '::error::Native Android lint failed. CI cannot be approved.'
+          exit 1
