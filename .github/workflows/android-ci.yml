@@ -75,6 +75,8 @@ jobs:
           cat "$modules"
 
       - name: Android lint (each existing module)
+        id: lint
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -181,3 +183,11 @@ jobs:
             debug-apks.sha256
           if-no-files-found: error
           retention-days: 7
+
+      # Keep collecting test/build evidence, but NEVER silently waive lint errors.
+      - name: Enforce lint quality gate
+        if: ${{ always() && steps.lint.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo '::error::Android lint reported errors; CI remains failed.'
+          exit 1
