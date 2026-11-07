@@ -1,6 +1,7 @@
 package tr.id4.mediahub
 
 import android.app.Activity
+import android.app.SearchManager
 import android.content.ComponentName
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -286,6 +287,7 @@ class MainActivity : Activity() {
                     val connected=future.get()
                     if(isFinishing || isDestroyed)return@addListener
                     controller=connected
+                    playFromVoiceSearch(intent, connected)
                     connected.addListener(object:Player.Listener {
                         override fun onPlayerError(error: PlaybackException) {
                             status.text="●   Radyo hatası: ${error.errorCodeName}"
@@ -312,6 +314,39 @@ class MainActivity : Activity() {
             },mainExecutor)
         }
         syncRadioCatalogue(false)
+    }
+
+    /** Android Auto music voice intents use the existing Media3 station resolver.
+     *  No arbitrary URI or video playback is accepted from a voice request.
+     */
+    private fun playFromVoiceSearch(request: Intent?, session: MediaController) {
+        if (request?.action != "android.media.action.MEDIA_PLAY_FROM_SEARCH") return
+        val query = request.getStringExtra(SearchManager.QUERY)?.trim()
+            ?.takeIf { it.length in 1..100 && it.none(Char::isISOControl) }
+        if (query == null) {
+            status.text = "●   Geçerli radyo araması bulunamadı"
+            return
+        }
+        val item = androidx.media3.common.MediaItem.Builder()
+            .setRequestMetadata(
+                androidx.media3.common.MediaItem.RequestMetadata.Builder()
+                    .setSearchQuery(query)
+                    .build()
+            ).build()
+        try {
+            session.setMediaItem(item)
+            session.prepare()
+            session.play()
+            status.text = "●   Radyo araması başlatıldı"
+        } catch (_: Exception) {
+            status.text = "●   Radyo araması başlatılamadı"
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        controller?.let { playFromVoiceSearch(intent, it) }
     }
 
     private fun toggleRadioPlayback() {
