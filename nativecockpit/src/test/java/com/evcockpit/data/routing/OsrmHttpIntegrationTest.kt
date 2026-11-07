@@ -1,7 +1,6 @@
 package com.evcockpit.data.routing
 
 import kotlinx.coroutines.runBlocking
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
@@ -19,10 +18,10 @@ class OsrmHttpIntegrationTest {
                 .setBody("""{"code":"InvalidQuery","message":"Invalid coordinates"}"""))
             val service = Retrofit.Builder().baseUrl(server.url("/"))
                 .build().create(OsrmService::class.java)
-            val canonical = OsrmRequestFormat.url(
+            val relative = OsrmRequestFormat.url(
                 GeoCoordinate(37.456, 34.123), GeoCoordinate(36.123, 30.789)
-            ).toHttpUrl()
-            val localUrl = server.url(canonical.encodedPath + "?" + canonical.encodedQuery)
+            )
+            val localUrl = server.url("/" + relative)
             val response = service.route(localUrl.toString())
             assertFalse(response.isSuccessful)
             assertEquals(400, response.code())
