@@ -45,7 +45,9 @@ class BoundedNetworkRetryTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun unboundedRetriesAreRejected() = runBlocking {
-        BoundedNetworkRetry.io(100, 0L, 0L) { "must not run" }
+    fun unboundedRetriesAreRejected() {
+        runBlocking {
+            BoundedNetworkRetry.io(100, 0L, 0L) { "must not run" }
+        }
     }
 }
