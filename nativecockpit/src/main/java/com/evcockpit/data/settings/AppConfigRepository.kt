@@ -52,7 +52,7 @@ class AppConfigRepository @Inject constructor(@ApplicationContext context: Conte
             )
             val endpoints = ServiceEndpointConfig(
                 osrmBaseUrl = p[Keys.OSRM]?.takeIf(String::isNotBlank),
-                geocodingBaseUrl = p[Keys.GEOCODER] ?: "https://photon.komoot.io/",
+                geocodingBaseUrl = p[Keys.GEOCODER] ?: "https://nominatim.openstreetmap.org/",
                 weatherBaseUrl = p[Keys.WEATHER] ?: "https://api.open-meteo.com/"
             )
             AppConfiguration(
