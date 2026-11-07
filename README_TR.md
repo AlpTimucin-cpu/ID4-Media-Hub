@@ -1,28 +1,49 @@
-# Elektrikli Yol Arkadaşım
+# EV Cockpit — Derleme ve Dal Durumu
 
-Elektrikli araç yolculukları için geliştirilen bağımsız Android rota, şarj, medya ve telemetri uygulaması.
+Bağımsız GPL-3.0 lisanslı Android projesi. **`main` ile `feature/ev-cockpit` aynı modül yapısına sahip değildir.** Aşağıdaki bilgiler 7 Kasım 2026 tarihli GitHub dosya ağacından doğrulanmıştır.
 
-**Güncel durum:** Aktif geliştirme dalında APK GitHub Actions üzerinden oluşturulur. Başarılı CI testi, araç ekranında fiziksel test veya trafik/OBD bağlantısının gerçek cihazda doğrulandığı anlamına gelmez.
+| Yol | `main` | `feature/ev-cockpit` |
+| --- | --- | --- |
+| `:app` | Android medya uygulaması (`tr.id4.mediahub`) | Android medya uygulaması |
+| `:evlite` | Yok | Hafif EV araçları |
+| `:nativecockpit` | Yok | Kotlin/Compose, rota, salt-okunur OBD, Android Auto |
+| `media-engine/` | Yok | İsteğe bağlı medya kaynak entegrasyonu; Gradle modülü değil |
 
-## Öne çıkanlar
+`main/settings.gradle.kts` yalnızca `:app` içerir, proje adı `ID4MediaHub`'dır. `feature/ev-cockpit` dalı `:app`, `:evlite` ve `:nativecockpit` içerir; proje adı `EvCockpit`'tir. Kaynak dosyaları taşınmadan `main` içerisine hayalî modül eklenmemelidir.
 
-- **Rota ve harita:** Tek Leaflet haritası, gerçek OSRM yol geometrisi, alternatif rota seçimi ve trafiksiz süre uyarısı.
-- **Batarya ve enerji:** Geçerli, taze OBD verileri; veri yoksa tahminin/varsayımın açıkça işaretlenmesi.
-- **GPS ilerleme:** Son 30 saniyeye ait güvenilir konumdan rota izdüşümü; araç simgesi GPS yokken gizlenir.
-- **Şarj istasyonları:** Türkiye'de AC/DC istasyonları ve rota boyunca şarj durağı adayları.
-- **Canlı trafik:** Kullanıcıya ait API anahtarıyla akış katmanı; doğrulanmamış veriyi canlı diye göstermez.
-- **Medya:** Var olan medya çekirdeği ve resmî servis bağlantıları korunur; sürüş güvenliği ve telif kısıtları değiştirilmez.
+## Ön koşullar
 
-## Kurulum ve geliştirici belgeleri
+Java 17, Android SDK 36 ve Gradle Wrapper 8.14.3. Wrapper dağıtımı resmî SHA-256 ile denetlenir. AGP 8.11.1, Kotlin Gradle Plugin 2.2.20'dir.
 
-[**En yeni APK derlemesini görüntüle**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/actions/workflows/build-mola-native-id4.yml)
+## `main` derlemesi (medya uygulaması)
 
-[**Aktif geliştirme dalını aç**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/tree/feature/mola-native-id4)
+```bash
+git switch main
+./gradlew --version
+./gradlew projects
+./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+```
 
-[**Gerçek rota, Android/OBD ve GPS entegrasyon kılavuzu**](https://github.com/AlpTimucin-cpu/ID4-Media-Hub/blob/feature/mola-native-id4/docs/ELEKTRIKLI_YOL_ARKADASIM_ENTEGRASYON.md)
+Beklenen modül: `:app`. Başarılı derlemeden sonra beklenen dosya: `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Uyumluluk ve lisans
+## `feature/ev-cockpit` derlemesi (asıl kokpit)
 
-Bu proje üçüncü taraf resmî bir araç veya medya uygulaması değildir. Bağımsız marka **Elektrikli Yol Arkadaşım** olarak kullanılır. Gerekli açık kaynak ve veri atıfları [LICENSE](LICENSE), [NOTICE.md](NOTICE.md) ve [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md) belgelerinde korunur.
+```bash
+git switch feature/ev-cockpit
+./gradlew --version
+./gradlew projects
+./gradlew :nativecockpit:testDebugUnitTest :nativecockpit:assembleDebug --no-daemon --stacktrace
+./gradlew :nativecockpit:tasks --all
+```
 
-Geriye dönük uyumluluk için bazı teknik paket/dosya adları hâlâ eski iç kimlikleri taşır; bunlar kullanıcıya sunulan ürünün adı değildir.
+Beklenen modüller: `:app`, `:evlite`, `:nativecockpit`. Başarılı derlemeden sonra beklenen Debug APK: `nativecockpit/build/outputs/apk/debug/nativecockpit-debug.apk`.
+
+6 Kasım 2026 tarihli [Verified Debug APK çalışması](https://github.com/AlpTimucin-cpu/ev-cockpit/actions/runs/42280552718) başarılıdır. Bu sonuç, telefon veya araçta kusursuz çalışma kanıtı değildir.
+
+## Güvenlik
+
+Yalnızca salt-okunur ELM327 sorguları kullanılır. Doğrulanmamış SoC/DID verileri gerçek ölçüm olarak sunulmaz. API anahtarları APK içine eklenmemelidir. Eski TomTom anahtarıyla ilgili olası geçmiş sızıntısı için [SECURITY_TOMTOM.md](SECURITY_TOMTOM.md) belgesine bakın.
+
+Eski GitHub Release APK'ları sahibin kalıcı imzalama sertifikasıyla doğrulanmış kabul edilmemelidir. Geliştirme dalındaki production release işi güvenlik incelemesi sebebiyle devre dışıdır. Ayrıntılar: [APK derleme kılavuzu](docs/APK_BUILD_GUIDE.md).
+
+Gerçek GPS, OBD, TTS, ses odağı, medya ve Android Auto kabul testleri fiziksel cihaz/araç üzerinde ayrıca yapılmalıdır.
