@@ -112,8 +112,7 @@ jobs:
               issues = ET.parse(report).getroot().findall("issue")
               print(f"::notice::Lint issue count for {module}: {len(issues)}")
               for issue in issues:
-                  if issue.get("severity") != "Error":
-                      continue
+                  # Android lint can label issue severities Error or Fatal.
                   name = issue.get("id", "Unknown")
                   for location in issue.findall("location")[:1]:
                       filename = Path(location.get("file", "")).name
