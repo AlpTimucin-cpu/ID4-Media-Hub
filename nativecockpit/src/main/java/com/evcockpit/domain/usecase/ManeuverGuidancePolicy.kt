@@ -39,7 +39,7 @@ class ManeuverGuidancePolicy {
 
     /**
      * Returns exactly one announcement per route-step and distance stage.
-     * One stage at <=200 m, another at <=50 m, based on distance ALONG OSRM.
+     * One stage at <=650 m, another at <=90 m, based on distance ALONG OSRM.
      * Missing/stale/imprecise GPS or unsupported maneuver => silent, never guess.
      */
     fun nextAnnouncement(route: RouteSnapshot?, fix: GpsFix?, nowMs: Long): String? {
@@ -75,11 +75,11 @@ class ManeuverGuidancePolicy {
         val maneuver = nearest(route.routePoints, turn.location) ?: return null
         if (vehicle.offRoute > 35.0 || maneuver.offRoute > 25.0) return null
         val ahead = maneuver.metersAlong - vehicle.metersAlong
-        if (ahead < -10.0 || ahead > 1_100.0) return null
+        if (ahead < -10.0 || ahead > 1_500.0) return null
 
         val level = when {
-            ahead <= 50.0 -> 1
-            ahead <= 200.0 -> 0
+            ahead <= 90.0 -> 1
+            ahead <= 650.0 -> 0
             else -> return null
         }
         // Do not queue duplicate prompts while Android TTS is preparing.
@@ -94,7 +94,7 @@ class ManeuverGuidancePolicy {
         proposedLevel = level
         proposedAtMs = nowMs
         pendingCueToken = ++proposalSequence
-        return (if (level == 0) "İki yüz metre sonra, " else "Elli metre sonra, ") +
+        return (if (level == 0) "Yaklaşık altı yüz elli metre sonra, " else "Yaklaşık doksan metre sonra, ") +
             instruction
     }
 
