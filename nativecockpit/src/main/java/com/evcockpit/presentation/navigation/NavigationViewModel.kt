@@ -34,6 +34,7 @@ import com.evcockpit.car.CarNavigationOwnership
 import com.evcockpit.data.location.FusedCurrentLocationProvider
 import com.evcockpit.data.weather.OpenMeteoWeatherRepository
 import com.evcockpit.data.settings.AppConfigRepository
+import com.evcockpit.data.settings.UserSettingsRepository
 import com.evcockpit.domain.model.*
 import com.evcockpit.domain.repository.LocationRepository
 import com.evcockpit.domain.repository.RouteRepository
@@ -96,6 +97,7 @@ class NavigationViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val weatherRepository: OpenMeteoWeatherRepository,
     private val appConfigRepository: AppConfigRepository,
+    private val userSettings: UserSettingsRepository,
     audioDucking: AppAudioDucking
 ) : ViewModel() {
     private val prefs = VoicePreference(context)
@@ -242,6 +244,13 @@ class NavigationViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), NavigationUiState())
 
     init {
+        viewModelScope.launch {
+            userSettings.settings.collect { settings ->
+                guide.configureNavigationVoice(
+                    settings.ttsVoiceName, settings.ttsSpeechRate
+                )
+            }
+        }
         viewModelScope.launch {
             snapshotFlow { guide.status to guide.lastError }.collect { (status, error) ->
                 _voice.update { it.copy(status = status, error = error) }
