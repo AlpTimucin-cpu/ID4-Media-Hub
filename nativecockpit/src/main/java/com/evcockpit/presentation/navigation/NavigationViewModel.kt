@@ -484,7 +484,7 @@ class NavigationViewModel @Inject constructor(
         _planner.update { it.copy(originText = text, originSelected = null,
             originFromGps = false, gpsOrigin = null, locatingGps = false,
             originMatches = emptyList(), error = null, planning = false) }
-        originJob = search(text, true)
+        // Public Nominatim explicitly forbids search-as-you-type requests.
     }
     fun editDestination(value: String) {
         val text = value.take(100)
@@ -492,15 +492,25 @@ class NavigationViewModel @Inject constructor(
         routes.clear()
         _planner.update { it.copy(destinationText = text, destinationSelected = null,
             destinationMatches = emptyList(), planning = false, error = null) }
-        destinationJob = search(text, false)
+        // No search request until the user taps the Search button.
     }
+    fun requestOriginSearch() {
+        originJob?.cancel()
+        originJob = search(_planner.value.originText, true)
+    }
+
+    fun requestDestinationSearch() {
+        destinationJob?.cancel()
+        destinationJob = search(_planner.value.destinationText, false)
+    }
+
     private fun search(value: String, origin: Boolean): Job = viewModelScope.launch {
         if (value.trim().length < 3) {
             _planner.update { if (origin) it.copy(searchingOrigin = false)
                 else it.copy(searchingDestination = false) }
             return@launch
         }
-        delay(550L) // protect the Photon demo server
+        // NominatimGeocoder serializes explicit requests with a 1 request/s limit.
         _planner.update { if (origin) it.copy(searchingOrigin = true)
             else it.copy(searchingDestination = true) }
         try {
