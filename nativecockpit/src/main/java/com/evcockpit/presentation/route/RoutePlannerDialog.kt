@@ -31,6 +31,8 @@ fun RoutePlannerDialog(
     onDismiss: () -> Unit,
     onOriginChange: (String) -> Unit,
     onDestinationChange: (String) -> Unit,
+    onOriginSearch: () -> Unit,
+    onDestinationSearch: () -> Unit,
     onOriginSelected: (RoutePlace) -> Unit,
     onDestinationSelected: (RoutePlace) -> Unit,
     onGps: () -> Unit,
@@ -137,6 +139,12 @@ fun RoutePlannerDialog(
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
                                 )
+                                OutlinedButton(
+                                    onClick = onOriginSearch,
+                                    enabled = state.originText.trim().length >= 3 &&
+                                        !state.searchingOrigin,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                ) { Text("Başlangıç adresini ara") }
                                 TextButton(
                                     onClick = onGps,
                                     enabled = !state.locatingGps,
@@ -173,6 +181,12 @@ fun RoutePlannerDialog(
                                     colors = fieldColors,
                                     modifier = Modifier.fillMaxWidth()
                                 )
+                                OutlinedButton(
+                                    onClick = onDestinationSearch,
+                                    enabled = state.destinationText.trim().length >= 3 &&
+                                        !state.searchingDestination,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                ) { Text("Varış adresini ara") }
                                 if (state.destinationLocation != null) {
                                     Text(stringResource(R.string.native_destination_selected), color = success)
                                 }

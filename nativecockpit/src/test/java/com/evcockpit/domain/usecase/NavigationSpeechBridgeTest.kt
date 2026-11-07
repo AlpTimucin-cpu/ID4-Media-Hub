@@ -22,7 +22,7 @@ class NavigationSpeechBridgeTest {
         recordedAtMillis = now
     )
 
-    @Test fun measuredFixShapeFeedsBridgeAt200And50MeterThresholds() {
+    @Test fun measuredFixShapeFeedsBridgeAt650And90MeterThresholds() {
         val bridge = NavigationSpeechBridge()
         val messages = mutableListOf<String>()
         val positions = listOf(300.0, 385.0, 400.0, 520.0, 530.0)
@@ -38,8 +38,8 @@ class NavigationSpeechBridgeTest {
         }
         assertEquals(
             listOf(
-                "İki yüz metre sonra, sağa dön",
-                "Elli metre sonra, sağa dön"
+                "Yaklaşık altı yüz elli metre sonra, sağa dön",
+                "Yaklaşık doksan metre sonra, sağa dön"
             ), messages
         )
     }

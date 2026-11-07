@@ -19,7 +19,7 @@ class OsrmResponseParserTest {
         assertEquals(3,options[0].snapshot.routePoints.size)
         assertNotNull(options[0].snapshot.routeId)
         assertEquals(1,options[0].snapshot.maneuvers.size)
-        assertTrue(options[0].snapshot.maneuvers[0].instructionTr.contains("right"))
+        assertTrue(options[0].snapshot.maneuvers[0].instructionTr.contains("sağa dönün"))
         assertNull(options[0].snapshot.remainingKm) // requires measured GPS
     }
     @Test fun validatedRouterProfileSpeedsAreNotLiveTraffic() {
@@ -49,6 +49,9 @@ class OsrmResponseParserTest {
     }
     @Test fun unknownManeuversAreNeverTranslatedAsKnownTurns() {
         assertNull(OsrmTurkishInstructions.speak("unrecognized","right","Example"))
+        assertEquals("U dönüşü yapın", OsrmTurkishInstructions.speak("turn","uturn",null))
+        assertEquals("Dönel kavşağa girin", OsrmTurkishInstructions.speak("roundabout",null,null))
+        assertEquals("Sola dönün", OsrmTurkishInstructions.speak("turn", "left", null)?.replaceFirst("sola", "Sola"))
     }
     @Test fun photonNoFakeSuggestions() {
         val empty="""{"features":[]}"""

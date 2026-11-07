@@ -147,7 +147,7 @@ fun SettingsScreen(
                 )
                 OutlinedTextField(
                     value = geocodingEntry, onValueChange = { geocodingEntry = it },
-                    label = { Text("Geocoding HTTPS servis kök adresi") },
+                    label = { Text("Adres arama (Nominatim/Photon) HTTPS adresi") },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(

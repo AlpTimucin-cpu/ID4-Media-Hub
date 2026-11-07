@@ -297,6 +297,8 @@ class MainActivity : ComponentActivity() {
                             routePlannerUi = ui.planner,
                             onRouteOriginChange = navigation::editOrigin,
                             onRouteDestinationChange = navigation::editDestination,
+                            onRouteOriginSearch = navigation::requestOriginSearch,
+                            onRouteDestinationSearch = navigation::requestDestinationSearch,
                             onRouteOriginSelected = navigation::selectOrigin,
                             onRouteDestinationSelected = navigation::selectDestination,
                             onRouteFromGps = { requestGps(true) },

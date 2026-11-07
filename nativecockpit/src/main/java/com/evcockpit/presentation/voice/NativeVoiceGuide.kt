@@ -70,6 +70,46 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
     private var closed = false
     private var startWatchdog: Runnable? = null
     private var tts: TextToSpeech? = null
+    private var chosenVoiceName: String? = null
+    private var chosenSpeechRate: Float = 1.0f
+
+    /** The user chooses among actually installed offline tr-TR voices. */
+    fun configureNavigationVoice(name: String?, speechRate: Float) {
+        chosenVoiceName = name?.takeIf(String::isNotBlank)
+        chosenSpeechRate = speechRate.takeIf { it.isFinite() }?.coerceIn(0.7f, 1.4f)
+            ?: 1.0f
+        main.post {
+            if (!closed && status != Status.LOADING) {
+                tts?.let { configureTurkishVoice(it) }
+            }
+        }
+    }
+
+    private fun configureTurkishVoice(engine: TextToSpeech): Boolean {
+        if (engine.setLanguage(TURKISH) < TextToSpeech.LANG_AVAILABLE) {
+            status = Status.TURKISH_VOICE_MISSING
+            lastError = "Türkçe ses paketi yüklü değil."
+            return false
+        }
+        val requested = chosenVoiceName
+        if (requested != null) {
+            val selected = availableTurkishVoices(engine).firstOrNull { it.name == requested }
+            if (selected == null || engine.setVoice(selected) != TextToSpeech.SUCCESS) {
+                status = Status.TURKISH_VOICE_MISSING
+                lastError = "Seçilen Türkçe ses yüklü değil; Ayarlar bölümünden ses seçin."
+                return false
+            }
+        }
+        if (engine.setSpeechRate(chosenSpeechRate) != TextToSpeech.SUCCESS) {
+            status = Status.INIT_FAILED
+            lastError = "Konuşma hızı ayarlanamadı."
+            return false
+        }
+        status = Status.READY
+        lastError = null
+        return true
+    }
+
 
     init {
         tts = try {
@@ -95,7 +135,6 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                     }
                     runCatching {
                         engine.setAudioAttributes(attributes)
-                        engine.setSpeechRate(1.0f)
                         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                             override fun onStart(id: String) {
                                 main.post {
@@ -126,8 +165,7 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
                         Log.e(logTag, "TTS configuration failed", it)
                         return@post
                     }
-                    status = Status.READY
-                    lastError = null
+                    if (!configureTurkishVoice(engine)) return@post
                     Log.i(logTag, "Turkish TTS ready")
                 }
             }
@@ -159,8 +197,9 @@ class NativeVoiceGuide(context: Context, private val audioSignal: AppAudioDuckin
             lastError = null
         } else {
             status = Status.AUDIO_FOCUS_DENIED
-            lastError = "Ses odağı alınamadı; TTS yine de denenecek"
+            lastError = "Ses odağı alınamadı; konuşma başlatılmadı."
             Log.w(logTag, "Audio focus not granted")
+            return false
         }
         val id = "evc-voice-${++sequence}"
         activeUtterance = id

@@ -37,6 +37,7 @@ class OsrmRouteRepository @Inject constructor(
     private fun photon(root: String): PhotonService = Retrofit.Builder()
         .baseUrl(root).client(http).build().create(PhotonService::class.java)
 
+    private val nominatim = NominatimGeocoder(http)
     private val selected = MutableStateFlow<RouteSnapshot?>(null)
     private val variants = MutableStateFlow<List<RouteOption>>(emptyList())
     private val index = MutableStateFlow<Int?>(null)
@@ -47,6 +48,11 @@ class OsrmRouteRepository @Inject constructor(
     override suspend fun search(query: String): List<RoutePlace> = withContext(Dispatchers.IO) {
         require(query.trim().length in 3..100) { "Adres için en az üç karakter yazın" }
         val root = appConfig.configuration.first().endpoints.geocodingBaseUrl
+        // Preserve users who explicitly configured Photon in FAZ 1.
+        // Public Nominatim is NEVER used from automatic text-change suggestions.
+        if (!java.net.URI(root).host.equals("photon.komoot.io", ignoreCase = true)) {
+            return@withContext nominatim.lookup(root, query.trim())
+        }
         val result = BoundedNetworkRetry.io {
             photon(root).search(query.trim())
         }
